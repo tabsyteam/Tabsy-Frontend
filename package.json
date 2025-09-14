@@ -1,0 +1,105 @@
+{
+  "name": "tabsy-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tabsy Frontend Monorepo - QR code restaurant ordering platform with Customer, Restaurant, and Admin applications",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "dev:customer": "turbo run dev --filter=@tabsy/customer",
+    "dev:restaurant": "turbo run dev --filter=@tabsy/restaurant-dashboard",
+    "dev:admin": "turbo run dev --filter=@tabsy/admin-portal",
+    "build": "turbo run build",
+    "build:apps": "turbo run build --filter='./apps/*'",
+    "build:packages": "turbo run build --filter='./packages/*'",
+    "test": "turbo run test",
+    "test:unit": "turbo run test:unit",
+    "test:integration": "turbo run test:integration",
+    "test:e2e": "turbo run test:e2e",
+    "test:coverage": "turbo run test:coverage",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint:fix",
+    "type-check": "turbo run type-check",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,md,mdx,json,css}\"",
+    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,md,mdx,json,css}\"",
+    "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "storybook": "turbo run storybook",
+    "storybook:build": "turbo run storybook:build",
+    "generate:api": "turbo run generate:api",
+    "setup": "pnpm install && turbo run build:packages",
+    "preinstall": "npx only-allow pnpm",
+    "prepare": "husky install",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:publish": "changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.0",
+    "@changesets/cli": "^2.28.1",
+    "@commitlint/cli": "^19.6.0",
+    "@commitlint/config-conventional": "^19.6.0",
+    "@types/react": "^19.0.1",
+    "@types/react-dom": "^19.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.39.1",
+    "@typescript-eslint/parser": "^8.39.1",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.16.0",
+    "eslint-config-next": "^15.1.3",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-tailwindcss": "^3.17.5",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.11",
+    "only-allow": "^1.2.1",
+    "prettier": "^3.4.2",
+    "prettier-plugin-tailwindcss": "^0.6.9",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18.17.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tabsy/tabsy-frontend.git"
+  },
+  "keywords": [
+    "restaurant",
+    "ordering",
+    "qr-code",
+    "payment",
+    "nextjs",
+    "react",
+    "typescript",
+    "monorepo",
+    "turborepo"
+  ],
+  "author": "Tabsy Development Team",
+  "license": "MIT",
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md,mdx}": [
+      "prettier --write"
+    ]
+  },
+  "commitlint": {
+    "extends": [
+      "@commitlint/config-conventional"
+    ]
+  },
+  "dependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/typography": "^0.5.16",
+    "tailwindcss": "^3.4.17",
+    "tailwindcss-animate": "^1.0.7"
+  }
+}

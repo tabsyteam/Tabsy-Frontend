@@ -1,0 +1,32 @@
+{
+  "name": "@tabsy/react-query-hooks",
+  "version": "1.0.0",
+  "description": "React Query hooks for Tabsy API integration",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm",
+    "dev": "tsup src/index.ts --format cjs,esm --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.tsx",
+    "test": "jest"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "@tanstack/react-query": "^5.62.9"
+  },
+  "dependencies": {
+    "@tabsy/api-client": "workspace:*",
+    "@tabsy/shared-types": "workspace:*",
+    "@tabsy/shared-utils": "workspace:*",
+    "@tabsy/ui-components": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.2",
+    "typescript": "^5.7.2",
+    "tsup": "^8.3.5"
+  }
+}

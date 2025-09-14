@@ -1,0 +1,364 @@
+/* Admin Theme CSS Variables - Professional Blue Theme with Semantic Tokens */
+:root {
+  /* Primary Colors - Blue */
+  --primary: 59 130 246; /* blue-500 */
+  --primary-hover: 37 99 235; /* blue-600 */
+  --primary-active: 29 78 216; /* blue-700 */
+  --primary-light: 239 246 255; /* blue-50 */
+  --primary-dark: 30 58 138; /* blue-900 */
+  --primary-foreground: 255 255 255;
+
+  /* Secondary Colors - Indigo */
+  --secondary: 99 102 241; /* indigo-500 */
+  --secondary-hover: 79 70 229; /* indigo-600 */
+  --secondary-active: 67 56 202; /* indigo-700 */
+  --secondary-light: 238 242 255; /* indigo-50 */
+  --secondary-dark: 49 46 129; /* indigo-900 */
+  --secondary-foreground: 255 255 255;
+
+  /* Accent Colors - Purple */
+  --accent: 168 85 247; /* purple-500 */
+  --accent-hover: 147 51 234; /* purple-600 */
+  --accent-active: 126 34 206; /* purple-700 */
+  --accent-light: 250 245 255; /* purple-50 */
+  --accent-dark: 88 28 135; /* purple-900 */
+  --accent-foreground: 255 255 255;
+
+  /* Surface Colors */
+  --surface: 255 255 255;
+  --surface-secondary: 248 250 252; /* slate-50 */
+  --surface-tertiary: 241 245 249; /* slate-100 */
+  --surface-elevated: 255 255 255;
+  --surface-overlay: 0 0 0 / 0.5;
+
+  /* Background Colors */
+  --background: 248 250 252; /* slate-50 */
+  --background-secondary: 239 246 255; /* blue-50 */
+  --background-tertiary: 238 242 255; /* indigo-50 */
+  --background-inverse: 15 23 42; /* slate-900 */
+
+  /* Content/Text Colors */
+  --content-primary: 15 23 42; /* slate-800 */
+  --content-secondary: 71 85 105; /* slate-600 */
+  --content-tertiary: 148 163 184; /* slate-400 */
+  --content-disabled: 203 213 225; /* slate-300 */
+  --content-inverse: 255 255 255;
+  --content-brand: 37 99 235; /* blue-600 */
+
+  /* Border Colors */
+  --border: 191 219 254; /* blue-200 */
+  --border-secondary: 165 180 252; /* indigo-200 */
+  --border-tertiary: 226 232 240; /* slate-200 */
+  --border-focus: 59 130 246; /* blue-500 */
+  --border-error: 239 68 68; /* red-500 */
+
+  /* Status Colors */
+  --status-success: 34 197 94; /* green-500 */
+  --status-success-light: 240 253 244; /* green-50 */
+  --status-success-dark: 21 128 61; /* green-700 */
+  --status-success-foreground: 255 255 255;
+  --status-success-border: 187 247 208; /* green-200 */
+
+  --status-warning: 245 158 11; /* amber-500 */
+  --status-warning-light: 255 251 235; /* amber-50 */
+  --status-warning-dark: 180 83 9; /* amber-700 */
+  --status-warning-foreground: 255 255 255;
+  --status-warning-border: 252 211 77; /* amber-200 */
+
+  --status-error: 239 68 68; /* red-500 */
+  --status-error-light: 254 242 242; /* red-50 */
+  --status-error-dark: 185 28 28; /* red-700 */
+  --status-error-foreground: 255 255 255;
+  --status-error-border: 254 202 202; /* red-200 */
+
+  --status-info: 59 130 246; /* blue-500 */
+  --status-info-light: 239 246 255; /* blue-50 */
+  --status-info-dark: 29 78 216; /* blue-700 */
+  --status-info-foreground: 255 255 255;
+  --status-info-border: 191 219 254; /* blue-200 */
+
+  /* Interactive States */
+  --interactive-hover: 248 250 252; /* slate-50 */
+  --interactive-active: 241 245 249; /* slate-100 */
+  --interactive-disabled: 203 213 225; /* slate-300 */
+  --interactive-focus: 59 130 246; /* blue-500 */
+
+  /* Override shadcn/ui component variables for consistency - using HSL format */
+  --ring: 217 91% 60%; /* blue-500 in HSL */
+  --input: 214 59% 87%; /* blue-200 in HSL */
+  --muted: 210 40% 98%; /* slate-50 in HSL */
+  --muted-foreground: 215 16% 47%; /* slate-400 in HSL */
+  --destructive: 0 84% 60%; /* red-500 in HSL */
+  --destructive-foreground: 0 0% 100%; /* white in HSL */
+  --card: 0 0% 100%; /* white in HSL */
+  --card-foreground: 222 47% 11%; /* slate-800 in HSL */
+  --popover: 0 0% 100%; /* white in HSL */
+  --popover-foreground: 222 47% 11%; /* slate-800 in HSL */
+  --foreground: 222 47% 11%; /* slate-800 in HSL */
+  --background: 210 40% 98%; /* slate-50 in HSL */
+  --border: 214 59% 87%; /* blue-200 in HSL */
+  --radius: 0.5rem;
+}
+
+/* Dark mode variables */
+.dark {
+  --primary: 96 165 250; /* blue-400 */
+  --primary-hover: 59 130 246; /* blue-500 */
+  --primary-active: 37 99 235; /* blue-600 */
+  --primary-light: 30 58 138; /* blue-900 */
+  --primary-dark: 239 246 255; /* blue-50 */
+  --primary-foreground: 30 58 138; /* blue-900 */
+
+  --secondary: 129 140 248; /* indigo-400 */
+  --secondary-hover: 99 102 241; /* indigo-500 */
+  --secondary-active: 79 70 229; /* indigo-600 */
+  --secondary-light: 49 46 129; /* indigo-900 */
+  --secondary-dark: 238 242 255; /* indigo-50 */
+  --secondary-foreground: 49 46 129; /* indigo-900 */
+
+  --accent: 196 181 253; /* purple-300 */
+  --accent-hover: 168 85 247; /* purple-500 */
+  --accent-active: 147 51 234; /* purple-600 */
+  --accent-light: 88 28 135; /* purple-900 */
+  --accent-dark: 250 245 255; /* purple-50 */
+  --accent-foreground: 88 28 135; /* purple-900 */
+
+  --surface: 30 41 59; /* slate-800 */
+  --surface-secondary: 15 23 42; /* slate-900 */
+  --surface-tertiary: 51 65 85; /* slate-700 */
+  --surface-elevated: 51 65 85; /* slate-700 */
+
+  --background: 15 23 42; /* slate-900 */
+  --background-secondary: 30 58 138; /* blue-900 */
+  --background-tertiary: 49 46 129; /* indigo-900 */
+  --background-inverse: 248 250 252; /* slate-50 */
+
+  --content-primary: 241 245 249; /* slate-100 */
+  --content-secondary: 203 213 225; /* slate-300 */
+  --content-tertiary: 148 163 184; /* slate-400 */
+  --content-disabled: 100 116 139; /* slate-500 */
+  --content-inverse: 15 23 42; /* slate-900 */
+  --content-brand: 96 165 250; /* blue-400 */
+
+  --border: 51 65 85; /* slate-700 */
+  --border-secondary: 71 85 105; /* slate-600 */
+  --border-tertiary: 30 41 59; /* slate-800 */
+  --border-focus: 96 165 250; /* blue-400 */
+  --border-error: 248 113 113; /* red-400 */
+
+  --foreground: 210 40% 96%; /* slate-100 in HSL */
+  --background: 222 47% 11%; /* slate-900 in HSL */
+  --muted: 215 25% 27%; /* slate-700 in HSL */
+  --muted-foreground: 215 16% 47%; /* slate-400 in HSL */
+  --card: 217 33% 17%; /* slate-800 in HSL */
+  --card-foreground: 210 40% 96%; /* slate-100 in HSL */
+  --popover: 217 33% 17%; /* slate-800 in HSL */
+  --popover-foreground: 210 40% 96%; /* slate-100 in HSL */
+  --ring: 217 91% 60%; /* blue-400 in HSL */
+  --input: 215 25% 27%; /* slate-700 in HSL */
+  --destructive: 0 63% 31%; /* red-700 in HSL */
+  --destructive-foreground: 0 0% 100%; /* white in HSL */
+}
+
+/* Semantic utility classes */
+  /* Background utilities */
+  .bg-surface { background-color: rgb(var(--surface)); }
+  .bg-surface-secondary { background-color: rgb(var(--surface-secondary)); }
+  .bg-surface-tertiary { background-color: rgb(var(--surface-tertiary)); }
+  .bg-surface-elevated { background-color: rgb(var(--surface-elevated)); }
+  .bg-background { background-color: rgb(var(--background)); }
+  .bg-background-secondary { background-color: rgb(var(--background-secondary)); }
+  .bg-background-tertiary { background-color: rgb(var(--background-tertiary)); }
+
+  /* Text utilities */
+  .text-content-primary { color: rgb(var(--content-primary)); }
+  .text-content-secondary { color: rgb(var(--content-secondary)); }
+  .text-content-tertiary { color: rgb(var(--content-tertiary)); }
+  .text-content-disabled { color: rgb(var(--content-disabled)); }
+  .text-content-inverse { color: rgb(var(--content-inverse)); }
+  .text-content-brand { color: rgb(var(--content-brand)); }
+
+  /* Border utilities */
+  .border-default { border-color: rgb(var(--border)); }
+  .border-secondary { border-color: rgb(var(--border-secondary)); }
+  .border-tertiary { border-color: rgb(var(--border-tertiary)); }
+  .border-focus { border-color: rgb(var(--border-focus)); }
+  .border-error { border-color: rgb(var(--border-error)); }
+
+  /* Button variants */
+  .btn-primary {
+    background-color: rgb(var(--primary));
+    color: rgb(var(--primary-foreground));
+    @apply transition-all duration-200;
+  }
+  .btn-primary:hover {
+    background-color: rgb(var(--primary-hover));
+  }
+  .btn-primary:active {
+    background-color: rgb(var(--primary-active));
+  }
+
+  .btn-secondary {
+    background-color: rgb(var(--secondary));
+    color: rgb(var(--secondary-foreground));
+    @apply transition-all duration-200;
+  }
+  .btn-secondary:hover {
+    background-color: rgb(var(--secondary-hover));
+  }
+
+  .btn-accent {
+    background-color: rgb(var(--accent));
+    color: rgb(var(--accent-foreground));
+    @apply transition-all duration-200;
+  }
+  .btn-accent:hover {
+    background-color: rgb(var(--accent-hover));
+  }
+
+  .btn-outline {
+    @apply border-2;
+    border-color: rgb(var(--border));
+    background-color: transparent;
+    color: rgb(var(--content-primary));
+  }
+  .btn-outline:hover {
+    background-color: rgb(var(--interactive-hover));
+    border-color: rgb(var(--primary));
+  }
+
+  .btn-ghost {
+    background-color: transparent;
+    color: rgb(var(--content-primary));
+  }
+  .btn-ghost:hover {
+    background-color: rgb(var(--interactive-hover));
+  }
+
+  /* Status utilities */
+  .status-success {
+    background-color: rgb(var(--status-success-light));
+    color: rgb(var(--status-success-dark));
+    border-color: rgb(var(--status-success-border));
+  }
+  .status-warning {
+    background-color: rgb(var(--status-warning-light));
+    color: rgb(var(--status-warning-dark));
+    border-color: rgb(var(--status-warning-border));
+  }
+  .status-error {
+    background-color: rgb(var(--status-error-light));
+    color: rgb(var(--status-error-dark));
+    border-color: rgb(var(--status-error-border));
+  }
+  .status-info {
+    background-color: rgb(var(--status-info-light));
+    color: rgb(var(--status-info-dark));
+    border-color: rgb(var(--status-info-border));
+  }
+
+  /* Badge utilities */
+  .badge-success {
+    background-color: rgb(var(--status-success) / 0.1);
+    color: rgb(var(--status-success));
+    @apply border border-opacity-20;
+    border-color: rgb(var(--status-success));
+  }
+  .badge-warning {
+    background-color: rgb(var(--status-warning) / 0.1);
+    color: rgb(var(--status-warning));
+    @apply border border-opacity-20;
+    border-color: rgb(var(--status-warning));
+  }
+  .badge-error {
+    background-color: rgb(var(--status-error) / 0.1);
+    color: rgb(var(--status-error));
+    @apply border border-opacity-20;
+    border-color: rgb(var(--status-error));
+  }
+  .badge-info {
+    background-color: rgb(var(--status-info) / 0.1);
+    color: rgb(var(--status-info));
+    @apply border border-opacity-20;
+    border-color: rgb(var(--status-info));
+  }
+
+  /* Card utilities */
+  .card-elevated {
+    background-color: rgb(var(--surface-elevated));
+    @apply shadow-xl;
+  }
+
+  .card-interactive {
+    background-color: rgb(var(--surface));
+    border-color: rgb(var(--border-tertiary));
+    @apply transition-all duration-200 border;
+  }
+  .card-interactive:hover {
+    @apply shadow-lg transform -translate-y-1;
+    border-color: rgb(var(--primary) / 0.5);
+  }
+
+  /* Special gradient utilities */
+  .gradient-primary {
+    background: linear-gradient(135deg,
+      rgb(var(--primary)),
+      rgb(var(--secondary))
+    );
+  }
+
+  .gradient-professional {
+    background: linear-gradient(to bottom right,
+      rgb(var(--background)),
+      rgb(var(--background-secondary)),
+      rgb(var(--background-tertiary))
+    );
+  }
+
+  .text-gradient-primary {
+    background: linear-gradient(135deg,
+      rgb(var(--primary)),
+      rgb(var(--accent))
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Input theming */
+  .input-theme {
+    border-color: rgb(var(--border));
+    background-color: rgb(var(--surface));
+    color: rgb(var(--content-primary));
+    @apply transition-all duration-200;
+  }
+  .input-theme:focus {
+    border-color: rgb(var(--border-focus));
+    @apply ring-2 ring-opacity-20;
+    --tw-ring-color: rgb(var(--primary));
+  }
+  .input-theme::placeholder {
+    color: rgb(var(--content-disabled));
+  }
+
+  /* Chart colors */
+  .chart-primary { background-color: rgb(var(--primary)); }
+  .chart-secondary { background-color: rgb(var(--secondary)); }
+  .chart-accent { background-color: rgb(var(--accent)); }
+  .chart-success { background-color: rgb(var(--status-success)); }
+  .chart-warning { background-color: rgb(var(--status-warning)); }
+  .chart-error { background-color: rgb(var(--status-error)); }
+
+  /* Activity items */
+  .activity-primary {
+    background-color: rgb(var(--primary-light));
+    border-color: rgb(var(--border));
+  }
+  .activity-secondary {
+    background-color: rgb(var(--background-secondary));
+    border-color: rgb(var(--border-secondary));
+  }
+  .activity-accent {
+    background-color: rgb(var(--background-tertiary));
+    border-color: rgb(var(--accent) / 0.2);
+  }

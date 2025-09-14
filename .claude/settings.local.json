@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pnpm run:*)",
+      "Bash(pnpm turbo build:*)",
+      "Bash(pnpm install:*)",
+      "Bash(chmod:*)",
+      "Bash(./fix-theme-classes.sh:*)",
+      "Bash(tree:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,283 @@
+/* Customer Theme CSS Variables - Fresh Green/Teal Theme */
+:root {
+  /* Primary Colors - Emerald Green */
+  --primary: 16 185 129; /* emerald-500 */
+  --primary-hover: 5 150 105; /* emerald-600 */
+  --primary-active: 4 120 87; /* emerald-700 */
+  --primary-light: 236 253 245; /* emerald-50 */
+  --primary-dark: 6 78 59; /* emerald-900 */
+  --primary-foreground: 255 255 255;
+
+  /* Secondary Colors - Teal */
+  --secondary: 20 184 166; /* teal-500 */
+  --secondary-hover: 13 148 136; /* teal-600 */
+  --secondary-active: 15 118 110; /* teal-700 */
+  --secondary-light: 240 253 250; /* teal-50 */
+  --secondary-dark: 19 78 74; /* teal-900 */
+  --secondary-foreground: 255 255 255;
+
+  /* Accent Colors - Amber */
+  --accent: 245 158 11; /* amber-500 */
+  --accent-hover: 217 119 6; /* amber-600 */
+  --accent-active: 180 83 9; /* amber-700 */
+  --accent-light: 255 251 235; /* amber-50 */
+  --accent-dark: 120 53 15; /* amber-900 */
+  --accent-foreground: 255 255 255;
+
+  /* Surface Colors */
+  --surface: 255 255 255;
+  --surface-secondary: 249 250 251; /* gray-50 */
+  --surface-tertiary: 243 244 246; /* gray-100 */
+  --surface-elevated: 255 255 255;
+  --surface-overlay: 0 0 0 / 0.5;
+
+  /* Background Colors */
+  --background: 249 250 251; /* gray-50 */
+  --background-secondary: 236 253 245; /* emerald-50 */
+  --background-tertiary: 240 253 250; /* teal-50 */
+  --background-inverse: 17 24 39; /* gray-900 */
+
+  /* Content/Text Colors */
+  --content-primary: 17 24 39; /* gray-900 */
+  --content-secondary: 75 85 99; /* gray-600 */
+  --content-tertiary: 107 114 128; /* gray-500 */
+  --content-disabled: 156 163 175; /* gray-400 */
+  --content-inverse: 255 255 255;
+  --content-brand: 5 150 105; /* emerald-600 */
+
+  /* Border Colors */
+  --border: 229 231 235; /* gray-200 */
+  --border-secondary: 209 213 219; /* gray-300 */
+  --border-tertiary: 243 244 246; /* gray-100 */
+  --border-focus: 16 185 129; /* emerald-500 */
+  --border-error: 239 68 68; /* red-500 */
+
+  /* Status Colors */
+  --status-success: 34 197 94; /* green-500 */
+  --status-success-light: 240 253 244; /* green-50 */
+  --status-success-dark: 21 128 61; /* green-700 */
+  --status-success-foreground: 255 255 255;
+  --status-success-border: 187 247 208; /* green-200 */
+
+  --status-warning: 245 158 11; /* amber-500 */
+  --status-warning-light: 255 251 235; /* amber-50 */
+  --status-warning-dark: 180 83 9; /* amber-700 */
+  --status-warning-foreground: 255 255 255;
+  --status-warning-border: 252 211 77; /* amber-200 */
+
+  --status-error: 239 68 68; /* red-500 */
+  --status-error-light: 254 242 242; /* red-50 */
+  --status-error-dark: 185 28 28; /* red-700 */
+  --status-error-foreground: 255 255 255;
+  --status-error-border: 254 202 202; /* red-200 */
+
+  --status-info: 59 130 246; /* blue-500 */
+  --status-info-light: 239 246 255; /* blue-50 */
+  --status-info-dark: 29 78 216; /* blue-700 */
+  --status-info-foreground: 255 255 255;
+  --status-info-border: 191 219 254; /* blue-200 */
+
+  /* Interactive States */
+  --interactive-hover: 249 250 251; /* gray-50 */
+  --interactive-active: 243 244 246; /* gray-100 */
+  --interactive-disabled: 209 213 219; /* gray-300 */
+  --interactive-focus: 16 185 129; /* emerald-500 */
+
+  /* Override shadcn/ui component variables */
+  --ring: 16 185 129; /* emerald-500 */
+  --input: 229 231 235; /* gray-200 */
+  --muted: 249 250 251; /* gray-50 */
+  --muted-foreground: 107 114 128; /* gray-500 */
+  --destructive: 239 68 68; /* red-500 */
+  --destructive-foreground: 255 255 255;
+  --card: 255 255 255;
+  --card-foreground: 17 24 39; /* gray-900 */
+  --popover: 255 255 255;
+  --popover-foreground: 17 24 39; /* gray-900 */
+  --foreground: 17 24 39; /* gray-900 */
+  --radius: 0.5rem;
+}
+
+/* Dark mode variables */
+.dark {
+  --primary: 52 211 153; /* emerald-400 */
+  --primary-hover: 16 185 129; /* emerald-500 */
+  --primary-active: 5 150 105; /* emerald-600 */
+  --primary-light: 6 78 59; /* emerald-900 */
+  --primary-dark: 236 253 245; /* emerald-50 */
+  --primary-foreground: 6 78 59; /* emerald-900 */
+
+  --secondary: 45 212 191; /* teal-400 */
+  --secondary-hover: 20 184 166; /* teal-500 */
+  --secondary-active: 13 148 136; /* teal-600 */
+  --secondary-light: 19 78 74; /* teal-900 */
+  --secondary-dark: 240 253 250; /* teal-50 */
+  --secondary-foreground: 19 78 74; /* teal-900 */
+
+  --accent: 251 191 36; /* amber-400 */
+  --accent-hover: 245 158 11; /* amber-500 */
+  --accent-active: 217 119 6; /* amber-600 */
+  --accent-light: 120 53 15; /* amber-900 */
+  --accent-dark: 255 251 235; /* amber-50 */
+  --accent-foreground: 120 53 15; /* amber-900 */
+
+  --surface: 31 41 55; /* gray-800 */
+  --surface-secondary: 17 24 39; /* gray-900 */
+  --surface-tertiary: 55 65 81; /* gray-700 */
+  --surface-elevated: 55 65 81; /* gray-700 */
+
+  --background: 17 24 39; /* gray-900 */
+  --background-secondary: 6 78 59; /* emerald-900 */
+  --background-tertiary: 19 78 74; /* teal-900 */
+  --background-inverse: 249 250 251; /* gray-50 */
+
+  --content-primary: 243 244 246; /* gray-100 */
+  --content-secondary: 209 213 219; /* gray-300 */
+  --content-tertiary: 156 163 175; /* gray-400 */
+  --content-disabled: 107 114 128; /* gray-500 */
+  --content-inverse: 17 24 39; /* gray-900 */
+  --content-brand: 52 211 153; /* emerald-400 */
+
+  --border: 55 65 81; /* gray-700 */
+  --border-secondary: 75 85 99; /* gray-600 */
+  --border-tertiary: 31 41 55; /* gray-800 */
+  --border-focus: 52 211 153; /* emerald-400 */
+  --border-error: 248 113 113; /* red-400 */
+
+  --foreground: 243 244 246; /* gray-100 */
+  --muted: 55 65 81; /* gray-700 */
+  --muted-foreground: 156 163 175; /* gray-400 */
+  --card: 31 41 55; /* gray-800 */
+  --card-foreground: 243 244 246; /* gray-100 */
+  --popover: 31 41 55; /* gray-800 */
+  --popover-foreground: 243 244 246; /* gray-100 */
+}
+
+/* Semantic utility classes */
+  /* Background utilities */
+  .bg-surface { background-color: rgb(var(--surface)); }
+  .bg-surface-secondary { background-color: rgb(var(--surface-secondary)); }
+  .bg-surface-tertiary { background-color: rgb(var(--surface-tertiary)); }
+  .bg-surface-elevated { background-color: rgb(var(--surface-elevated)); }
+  .bg-background { background-color: rgb(var(--background)); }
+  .bg-background-secondary { background-color: rgb(var(--background-secondary)); }
+  .bg-background-tertiary { background-color: rgb(var(--background-tertiary)); }
+
+  /* Text utilities */
+  .text-content-primary { color: rgb(var(--content-primary)); }
+  .text-content-secondary { color: rgb(var(--content-secondary)); }
+  .text-content-tertiary { color: rgb(var(--content-tertiary)); }
+  .text-content-disabled { color: rgb(var(--content-disabled)); }
+  .text-content-inverse { color: rgb(var(--content-inverse)); }
+  .text-content-brand { color: rgb(var(--content-brand)); }
+
+  /* Border utilities */
+  .border-default { border-color: rgb(var(--border)); }
+  .border-secondary { border-color: rgb(var(--border-secondary)); }
+  .border-tertiary { border-color: rgb(var(--border-tertiary)); }
+  .border-focus { border-color: rgb(var(--border-focus)); }
+  .border-error { border-color: rgb(var(--border-error)); }
+
+  /* Button variants */
+  .btn-primary {
+    background-color: rgb(var(--primary));
+    color: rgb(var(--primary-foreground));
+    @apply transition-all duration-200;
+  }
+  .btn-primary:hover {
+    background-color: rgb(var(--primary-hover));
+  }
+  .btn-primary:active {
+    background-color: rgb(var(--primary-active));
+  }
+
+  .btn-secondary {
+    background-color: rgb(var(--secondary));
+    color: rgb(var(--secondary-foreground));
+    @apply transition-all duration-200;
+  }
+  .btn-secondary:hover {
+    background-color: rgb(var(--secondary-hover));
+  }
+
+  .btn-accent {
+    background-color: rgb(var(--accent));
+    color: rgb(var(--accent-foreground));
+    @apply transition-all duration-200;
+  }
+  .btn-accent:hover {
+    background-color: rgb(var(--accent-hover));
+  }
+
+  .btn-outline {
+    @apply border-2;
+    border-color: rgb(var(--border));
+    background-color: transparent;
+    color: rgb(var(--content-primary));
+  }
+  .btn-outline:hover {
+    background-color: rgb(var(--interactive-hover));
+    border-color: rgb(var(--primary));
+  }
+
+  /* Status utilities */
+  .status-success {
+    background-color: rgb(var(--status-success-light));
+    color: rgb(var(--status-success-dark));
+    border-color: rgb(var(--status-success-border));
+  }
+  .status-warning {
+    background-color: rgb(var(--status-warning-light));
+    color: rgb(var(--status-warning-dark));
+    border-color: rgb(var(--status-warning-border));
+  }
+  .status-error {
+    background-color: rgb(var(--status-error-light));
+    color: rgb(var(--status-error-dark));
+    border-color: rgb(var(--status-error-border));
+  }
+  .status-info {
+    background-color: rgb(var(--status-info-light));
+    color: rgb(var(--status-info-dark));
+    border-color: rgb(var(--status-info-border));
+  }
+
+  /* Card utilities */
+  .card-elevated {
+    background-color: rgb(var(--surface-elevated));
+    @apply shadow-lg;
+  }
+
+  .card-interactive {
+    background-color: rgb(var(--surface));
+    @apply transition-all duration-200;
+  }
+  .card-interactive:hover {
+    background-color: rgb(var(--surface-secondary));
+    @apply shadow-md;
+  }
+
+  /* Special gradient utilities */
+  .gradient-primary {
+    background: linear-gradient(135deg,
+      rgb(var(--primary)),
+      rgb(var(--secondary))
+    );
+  }
+
+  .gradient-brand {
+    background: linear-gradient(135deg,
+      rgb(var(--primary-light)),
+      rgb(var(--secondary-light))
+    );
+  }
+
+  .text-gradient-primary {
+    background: linear-gradient(135deg,
+      rgb(var(--primary)),
+      rgb(var(--secondary))
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }

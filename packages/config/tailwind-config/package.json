@@ -1,0 +1,16 @@
+{
+  "name": "@repo/tailwind-config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared Tailwind CSS configurations for Tabsy Frontend Monorepo",
+  "main": "base.js",
+  "files": [
+    "*.js"
+  ],
+  "devDependencies": {
+    "tailwindcss": "^3.4.0",
+    "@tailwindcss/forms": "^0.5.7",
+    "@tailwindcss/typography": "^0.5.10",
+    "tailwindcss-animate": "^1.0.7"
+  }
+}
