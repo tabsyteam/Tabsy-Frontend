@@ -40,14 +40,17 @@ export function CreateCategoryModal({ open, onClose, restaurantId, onSuccess }: 
   
   const createCategoryMutation = useMutation({
     mutationFn: async (data: CategoryFormData) => {
-      // Create category with the expected parameters
-      return await tabsyClient.menu.createCategory(restaurantId, {
-        menuId: '', // This will be handled by the backend
+      // Create category with only the fields allowed by backend validator
+      const requestBody = {
+        menuId: restaurantId,
         name: data.name.trim(),
-        description: data.description.trim() || '',
         displayOrder: data.displayOrder,
-        isActive: true
-      } as any) // Use 'as any' to bypass TypeScript validation
+        active: true,
+        ...(data.description.trim() ? { description: data.description.trim() } : {})
+      }
+
+      // Use the updated type-safe API call
+      return await tabsyClient.menu.createCategory(restaurantId, requestBody)
     },
     onSuccess: () => {
       setFormData({ name: '', description: '', displayOrder: 0 })
@@ -106,19 +109,19 @@ export function CreateCategoryModal({ open, onClose, restaurantId, onSuccess }: 
   }
   
   if (!open) return null
-  
+
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-card rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-border">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Package className="h-5 w-5 text-primary" />
+    <div className="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-2 sm:p-4">
+      <div className="modal-content rounded-2xl w-full max-w-lg max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
+        {/* Enhanced Header */}
+        <div className="relative px-4 sm:px-8 py-4 sm:py-6 bg-gradient-to-r from-primary/5 via-transparent to-secondary/5">
+          <div className="flex items-center space-x-4">
+            <div className="p-3 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-xl">
+              <Package className="h-6 w-6 text-primary" />
             </div>
-            <div>
-              <h2 className="text-xl font-semibold text-foreground">Add Category</h2>
-              <p className="text-sm text-muted-foreground">Create a new menu category</p>
+            <div className="flex-1">
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground">Add Category</h2>
+              <p className="text-sm sm:text-base text-muted-foreground mt-1">Create a new menu category for your restaurant</p>
             </div>
           </div>
           <Button
@@ -126,17 +129,18 @@ export function CreateCategoryModal({ open, onClose, restaurantId, onSuccess }: 
             size="sm"
             onClick={handleClose}
             disabled={createCategoryMutation.isPending}
-            className="h-8 w-8 p-0 hover:bg-muted"
+            className="absolute top-4 right-4 h-10 w-10 p-0 hover:bg-muted/50 rounded-xl"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </Button>
         </div>
-        
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+
+        {/* Enhanced Form with Scroll */}
+        <div className="max-h-[65vh] sm:max-h-[60vh] overflow-y-auto">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6 sm:space-y-8">
           {/* Category Name */}
-          <div className="space-y-2">
-            <label htmlFor="categoryName" className="text-sm font-medium text-foreground">
+          <div className="form-group">
+            <label htmlFor="categoryName" className="block text-sm font-semibold text-foreground mb-3">
               Category Name *
             </label>
             <input
@@ -145,131 +149,161 @@ export function CreateCategoryModal({ open, onClose, restaurantId, onSuccess }: 
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
               placeholder="e.g., Appetizers, Main Courses, Desserts"
-              className={`input-theme w-full px-3 py-2 rounded-lg placeholder:text-muted-foreground transition-colors ${
-                errors.name ? 'error' : ''
+              className={`form-input ${
+                errors.name ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : ''
               }`}
               disabled={createCategoryMutation.isPending}
             />
             {errors.name && (
-              <p className="text-sm text-destructive flex items-center">
-                <AlertCircle className="h-4 w-4 mr-1" />
-                {errors.name}
-              </p>
+              <div className="flex items-center mt-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span>{errors.name}</span>
+              </div>
             )}
           </div>
-          
+
           {/* Description */}
-          <div className="space-y-2">
-            <label htmlFor="categoryDescription" className="text-sm font-medium text-foreground">
+          <div className="form-group">
+            <label htmlFor="categoryDescription" className="block text-sm font-semibold text-foreground mb-3">
               Description
+              <span className="text-muted-foreground font-normal ml-1">(Optional)</span>
             </label>
             <textarea
               id="categoryDescription"
               value={formData.description}
               onChange={(e) => handleInputChange('description', e.target.value)}
-              placeholder="Optional description for this category"
-              rows={3}
-              className={`input-theme w-full px-3 py-2 rounded-lg placeholder:text-muted-foreground resize-none transition-colors ${
-                errors.description ? 'error' : ''
+              placeholder="Describe this category to help customers understand what to expect..."
+              rows={4}
+              className={`form-textarea ${
+                errors.description ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : ''
               }`}
               disabled={createCategoryMutation.isPending}
             />
-            {errors.description && (
-              <p className="text-sm text-destructive flex items-center">
-                <AlertCircle className="h-4 w-4 mr-1" />
-                {errors.description}
-              </p>
-            )}
-            <p className="text-xs text-muted-foreground">
-              {formData.description.length}/200 characters
-            </p>
+            <div className="flex items-center justify-between mt-2">
+              {errors.description ? (
+                <div className="flex items-center text-sm text-destructive">
+                  <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                  <span>{errors.description}</span>
+                </div>
+              ) : (
+                <div></div>
+              )}
+              <span className={`text-xs ${
+                formData.description.length > 180 ? 'text-orange-500' :
+                formData.description.length > 160 ? 'text-amber-500' : 'text-muted-foreground'
+              }`}>
+                {formData.description.length}/200
+              </span>
+            </div>
           </div>
-          
+
           {/* Display Order */}
-          <div className="space-y-2">
-            <label htmlFor="displayOrder" className="text-sm font-medium text-foreground">
+          <div className="form-group">
+            <label htmlFor="displayOrder" className="block text-sm font-semibold text-foreground mb-3">
               Display Order
             </label>
             <input
               id="displayOrder"
               type="number"
               min="0"
+              max="999"
               value={formData.displayOrder}
               onChange={(e) => handleInputChange('displayOrder', parseInt(e.target.value) || 0)}
               placeholder="0"
-              className={`input-theme w-full px-3 py-2 rounded-lg placeholder:text-muted-foreground transition-colors ${
-                errors.displayOrder ? 'error' : ''
+              className={`form-input ${
+                errors.displayOrder ? 'border-destructive focus:border-destructive focus:ring-destructive/20' : ''
               }`}
               disabled={createCategoryMutation.isPending}
             />
-            {errors.displayOrder && (
-              <p className="text-sm text-destructive flex items-center">
-                <AlertCircle className="h-4 w-4 mr-1" />
-                {errors.displayOrder}
+            {errors.displayOrder ? (
+              <div className="flex items-center mt-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                <span>{errors.displayOrder}</span>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground mt-2 flex items-start">
+                <span className="inline-block w-1 h-1 bg-primary rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                Categories with lower numbers appear first in your menu
               </p>
             )}
-            <p className="text-xs text-muted-foreground">
-              Categories with lower numbers appear first
-            </p>
           </div>
           
-          {/* Error Display */}
+          {/* Enhanced Error Display */}
           {createCategoryMutation.error && (
-            <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <AlertCircle className="h-4 w-4 text-destructive" />
-                <span className="text-sm text-destructive font-medium">
-                  Failed to create category
-                </span>
+            <div className="p-4 bg-gradient-to-r from-destructive/10 to-red-50 border border-destructive/20 rounded-xl">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-destructive/10 rounded-lg">
+                  <AlertCircle className="h-5 w-5 text-destructive" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-destructive">
+                    Failed to create category
+                  </h4>
+                  <p className="text-sm text-destructive/80 mt-1">
+                    {createCategoryMutation.error.message || 'Please check your input and try again.'}
+                  </p>
+                </div>
               </div>
-              <p className="text-sm text-destructive/80 mt-1">
-                {createCategoryMutation.error.message || 'Please try again later.'}
-              </p>
             </div>
           )}
-          
-          {/* Success Display */}
+
+          {/* Enhanced Success Display */}
           {createCategoryMutation.isSuccess && (
-            <div className="p-3 bg-success/10 border border-success/20 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="h-4 w-4 text-success" />
-                <span className="text-sm text-success font-medium">
-                  Category created successfully!
-                </span>
+            <div className="p-4 bg-gradient-to-r from-success/10 to-green-50 border border-success/20 rounded-xl">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-success/10 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-success" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-success">
+                    Category created successfully!
+                  </h4>
+                  <p className="text-sm text-success/80 mt-1">
+                    Your new category is ready to use.
+                  </p>
+                </div>
               </div>
             </div>
           )}
-          
-          {/* Actions */}
-          <div className="flex items-center justify-end space-x-3 pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={createCategoryMutation.isPending}
-              className=""
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={createCategoryMutation.isPending || !formData.name.trim()}
-              className="btn-primary"
-            >
-              {createCategoryMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                <>
-                  <Package className="h-4 w-4 mr-2" />
-                  Create Category
-                </>
-              )}
-            </Button>
+          </form>
+        </div>
+
+        {/* Enhanced Actions Footer */}
+        <div className="px-4 sm:px-8 py-4 sm:py-6 bg-muted/20 border-t border-border/50">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-muted-foreground">
+              * Required fields must be completed
+            </div>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                disabled={createCategoryMutation.isPending}
+                className="hover:scale-105 transition-all duration-200 w-full sm:w-auto order-2 sm:order-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={createCategoryMutation.isPending || !formData.name.trim()}
+                className="btn-primary hover:scale-105 transition-all duration-200 shadow-lg hover:shadow-xl min-w-[140px] w-full sm:w-auto order-1 sm:order-2"
+              >
+                {createCategoryMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <Package className="h-4 w-4 mr-2" />
+                    Create Category
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   )
