@@ -6,6 +6,7 @@ import { useAuth } from '@tabsy/ui-components'
 import { BarChart3, ShoppingCart, Users, Utensils, TrendingUp, Clock } from 'lucide-react'
 import { OrdersManagement } from '@/components/orders/OrdersManagement'
 import { MenuManagement } from '@/components/menu/MenuManagement'
+import { TableManagement } from '@/components/tables/TableManagement'
 import { DynamicWeeklyOverviewChart } from '@/components'
 import { Header } from '@/components/layout'
 import { useRouter } from 'next/navigation'
@@ -39,8 +40,8 @@ export function DashboardClient(): JSX.Element {
   const router = useRouter()
   const auth = useAuth()
   const user = auth.user as UserType | null
-  // State hooks - ADD MENU AS A VIEW
-  const [currentView, setCurrentView] = useState<'overview' | 'orders' | 'menu'>('overview')
+  // State hooks - ADD MENU AND TABLES AS VIEWS
+  const [currentView, setCurrentView] = useState<'overview' | 'orders' | 'menu' | 'tables'>('overview')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   
   // Get current restaurant
@@ -200,6 +201,7 @@ export function DashboardClient(): JSX.Element {
       {/* Modern Responsive Header */}
       <Header
         user={user}
+        restaurant={restaurant}
         restaurantName={restaurant?.name}
         currentView={currentView}
         onViewChange={setCurrentView}
@@ -317,7 +319,11 @@ export function DashboardClient(): JSX.Element {
                     <Utensils className="h-4 w-4 mr-2" />
                     Manage Menu
                   </Button>
-                  <Button className="w-full justify-start " variant="outline">
+                  <Button
+                    className="w-full justify-start "
+                    variant="outline"
+                    onClick={() => setCurrentView('tables')}
+                  >
                     <Users className="h-4 w-4 mr-2" />
                     Table Management
                   </Button>
@@ -382,6 +388,14 @@ export function DashboardClient(): JSX.Element {
           <div className="h-full overflow-y-auto">
             {restaurantId ? (
               <MenuManagement restaurantId={restaurantId} />
+            ) : (
+              <p className="text-foreground/80">No restaurant access available.</p>
+            )}
+          </div>
+        ) : currentView === 'tables' ? (
+          <div className="h-full overflow-y-auto">
+            {restaurantId ? (
+              <TableManagement restaurantId={restaurantId} />
             ) : (
               <p className="text-foreground/80">No restaurant access available.</p>
             )}

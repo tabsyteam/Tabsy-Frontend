@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient, QueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient, QueryClient } from '@tanstack/react-query'
 import { TabsyAPI, tabsyClient } from '@tabsy/api-client'
 import type { OrderStatus } from '@tabsy/shared-types'
 

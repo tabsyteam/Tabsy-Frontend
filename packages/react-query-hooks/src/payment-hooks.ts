@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { TabsyAPI } from '@tabsy/api-client'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { TabsyAPI, tabsyClient } from '@tabsy/api-client'
 
 // ===========================
 // STANDARD PATTERN: Payment Hook Factory
@@ -15,7 +15,7 @@ export function createPaymentHooks(useQuery: any) {
       return useQuery({
         queryKey: ['payment', id],
         queryFn: async () => {
-          const client = new TabsyAPI()
+          const client = tabsyClient
           return await client.payment.getById(id)
         },
         enabled: !!id,
@@ -26,7 +26,7 @@ export function createPaymentHooks(useQuery: any) {
       return useQuery({
         queryKey: ['payments', 'order', orderId],
         queryFn: async () => {
-          const client = new TabsyAPI()
+          const client = tabsyClient
           return await client.payment.getByOrder(orderId)
         },
         enabled: !!orderId,
@@ -37,7 +37,7 @@ export function createPaymentHooks(useQuery: any) {
       return useQuery({
         queryKey: ['payments', 'restaurant', restaurantId, filters],
         queryFn: async () => {
-          const client = new TabsyAPI()
+          const client = tabsyClient
           return await client.payment.getByRestaurant(restaurantId, filters)
         },
         enabled: !!restaurantId,
@@ -48,7 +48,7 @@ export function createPaymentHooks(useQuery: any) {
       return useQuery({
         queryKey: ['payment-receipt', paymentId],
         queryFn: async () => {
-          const client = new TabsyAPI()
+          const client = tabsyClient
           return await client.payment.getReceipt(paymentId)
         },
         enabled: !!paymentId,
@@ -59,7 +59,7 @@ export function createPaymentHooks(useQuery: any) {
       return useQuery({
         queryKey: ['split-payments', groupId],
         queryFn: async () => {
-          const client = new TabsyAPI()
+          const client = tabsyClient
           return await client.payment.getSplitPayments(groupId)
         },
         enabled: !!groupId,
@@ -76,7 +76,7 @@ export function useCreatePaymentIntent() {
   
   return useMutation({
     mutationFn: async (data: any) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.payment.createIntent(data)
     },
     onSuccess: (_, variables) => {
@@ -90,7 +90,7 @@ export function useCreateOrderPayment() {
   
   return useMutation({
     mutationFn: async (data: { orderId: string } & any) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.payment.createForOrder(data.orderId, data)
     },
     onSuccess: (_, variables) => {
@@ -104,7 +104,7 @@ export function useUpdatePaymentStatus() {
   
   return useMutation({
     mutationFn: async (data: { paymentId: string; status: any }) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.payment.updateStatus(data.paymentId, data.status)
     },
     onSuccess: (_, variables) => {
@@ -119,7 +119,7 @@ export function useAddTip() {
   
   return useMutation({
     mutationFn: async (data: { paymentId: string; tipAmount: number }) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.payment.addTip(data.paymentId, data.tipAmount)
     },
     onSuccess: (_, variables) => {
@@ -133,7 +133,7 @@ export function useRecordCashPayment() {
   
   return useMutation({
     mutationFn: async (data: any) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.payment.recordCash(data)
     },
     onSuccess: () => {
@@ -147,7 +147,7 @@ export function useCreateSplitPayment() {
   
   return useMutation({
     mutationFn: async (data: any) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.payment.createSplit(data)
     },
     onSuccess: (_, variables) => {
@@ -161,7 +161,7 @@ export function useDeletePayment() {
   
   return useMutation({
     mutationFn: async (paymentId: string) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.payment.delete(paymentId)
     },
     onSuccess: (_, paymentId) => {

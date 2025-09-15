@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tabsyClient } from '@tabsy/api-client'
 import { QUERY_KEYS } from './auth-hooks'
 
@@ -70,10 +70,12 @@ export function createRestaurantHooks(useQuery: any) {
   }
 }
 
-// Restaurant Mutations
+// Restaurant Mutations - Temporarily disabled to prevent QueryClient context errors
+// TODO: Move these into the factory pattern or use direct API calls where needed
+/*
 export function useCreateRestaurant() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async (data: any) => {
       return await tabsyClient.restaurant.create(data)
@@ -86,7 +88,7 @@ export function useCreateRestaurant() {
 
 export function useUpdateRestaurant() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       return await tabsyClient.restaurant.update(id, data)
@@ -103,7 +105,7 @@ export function useUpdateRestaurant() {
 
 export function useDeleteRestaurant() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async (id: string) => {
       return await tabsyClient.restaurant.delete(id)
@@ -117,7 +119,7 @@ export function useDeleteRestaurant() {
 
 export function useUpdateRestaurantStatus() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async ({ id, status }: { id: string; status: any }) => {
       return await tabsyClient.restaurant.partialUpdate(id, { status })
@@ -131,3 +133,4 @@ export function useUpdateRestaurantStatus() {
     }
   })
 }
+*/

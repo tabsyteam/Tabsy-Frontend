@@ -319,6 +319,78 @@ export interface MenuCategory {
 
 ---
 
+## Table Management API
+
+### Base Routes
+All table management endpoints are prefixed with `/api/v1/restaurants/:restaurantId/tables`
+
+### Authentication
+- **Required Roles**: `RESTAURANT_OWNER`, `RESTAURANT_STAFF`, or `ADMIN`
+- **Header**: `Authorization: Bearer <jwt_token>`
+
+---
+
+### Get Table Sessions
+
+```http
+GET /api/v1/restaurants/:restaurantId/tables/:tableId/sessions
+```
+
+**Authentication**: Required (Restaurant Owner/Staff/Admin)
+
+**Description**: Retrieves session status information for a specific table, including active guest sessions and cleanup recommendations.
+
+**URL Parameters**:
+- `restaurantId` (string, required) - The restaurant identifier
+- `tableId` (string, required) - The table identifier
+
+**Response**:
+```typescript
+{
+  success: boolean
+  data: {
+    tableId: string
+    restaurantId: string
+    sessionStatus: {
+      needsAttention: boolean
+      activeSessions: number
+      oldSessions: number
+      recommendations: string[]
+    }
+    activeSessions: Array<{
+      sessionId: string
+      createdAt: string
+      expiresAt: string
+      ageMinutes: number
+      isOld: boolean
+    }>
+    totalActiveSessions: number
+  }
+  message: string
+}
+```
+
+**Use Cases**:
+- Restaurant staff checking table cleanup status
+- Identifying tables with old/stale guest sessions
+- Monitoring active customer sessions per table
+
+**Example Frontend Usage**:
+```typescript
+// Get session status for a table
+const sessionStatus = await tabsyClient.table.getSessions(restaurantId, tableId)
+
+if (sessionStatus.data.sessionStatus.needsAttention) {
+  // Show cleanup recommendations to staff
+  console.log('Recommendations:', sessionStatus.data.sessionStatus.recommendations)
+}
+```
+
+**Backend Route Issue**:
+> **Note**: Currently there's a mismatch in the backend route definition. The route should be `/:restaurantId/tables/:tableId/sessions` but is currently defined as `/:tableId/sessions` in `restaurantTable.ts:113`. This needs to be fixed in the backend to match the controller expectations.
+
+---
+
 ## Frontend API Client Usage
 
 ### Correct Implementation Example

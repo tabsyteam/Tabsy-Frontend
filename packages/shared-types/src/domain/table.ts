@@ -2,8 +2,7 @@ export enum TableStatus {
   AVAILABLE = 'AVAILABLE',
   OCCUPIED = 'OCCUPIED',
   RESERVED = 'RESERVED',
-  CLEANING = 'CLEANING',
-  OUT_OF_SERVICE = 'OUT_OF_SERVICE'
+  MAINTENANCE = 'MAINTENANCE'
 }
 
 export interface Table {
@@ -86,4 +85,27 @@ export enum TableSessionStatus {
   ACTIVE = 'ACTIVE',
   EXPIRED = 'EXPIRED',
   TERMINATED = 'TERMINATED'
+}
+
+export interface TableSessionStatusInfo {
+  needsAttention: boolean
+  activeSessions: number
+  oldSessions: number
+  recommendations: string[]
+}
+
+export interface ActiveSession {
+  sessionId: string
+  createdAt: string
+  expiresAt: string
+  ageMinutes: number
+  isOld: boolean
+}
+
+export interface TableSessionStatusResponse {
+  tableId: string
+  restaurantId: string
+  sessionStatus: TableSessionStatusInfo
+  activeSessions: ActiveSession[]
+  totalActiveSessions: number
 }

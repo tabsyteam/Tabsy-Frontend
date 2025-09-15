@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { TabsyAPI } from '@tabsy/api-client'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { TabsyAPI, tabsyClient } from '@tabsy/api-client'
 
 // ===========================
 // STANDARD PATTERN: User Hook Factory
@@ -15,7 +15,7 @@ export function createUserHooks(useQuery: any) {
       return useQuery({
         queryKey: ['user', 'current'],
         queryFn: async () => {
-          const client = new TabsyAPI()
+          const client = tabsyClient
           return await client.user.getCurrentUser()
         }
       })
@@ -25,7 +25,7 @@ export function createUserHooks(useQuery: any) {
       return useQuery({
         queryKey: ['users', filters],
         queryFn: async () => {
-          const client = new TabsyAPI()
+          const client = tabsyClient
           return await client.user.list(filters)
         }
       })
@@ -35,7 +35,7 @@ export function createUserHooks(useQuery: any) {
       return useQuery({
         queryKey: ['user', id],
         queryFn: async () => {
-          const client = new TabsyAPI()
+          const client = tabsyClient
           return await client.user.getById(id)
         },
         enabled: !!id,
@@ -52,7 +52,7 @@ export function useCreateUser() {
   
   return useMutation({
     mutationFn: async (data: any) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.user.create(data)
     },
     onSuccess: () => {
@@ -66,7 +66,7 @@ export function useUpdateUser() {
   
   return useMutation({
     mutationFn: async (data: { id: string } & any) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.user.update(data.id, data)
     },
     onSuccess: (_, variables) => {
@@ -81,7 +81,7 @@ export function useDeleteUser() {
   
   return useMutation({
     mutationFn: async (id: string) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.user.delete(id)
     },
     onSuccess: (_, id) => {
@@ -96,7 +96,7 @@ export function useUpdateUserStatus() {
   
   return useMutation({
     mutationFn: async (data: { id: string; status: any }) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.user.updateStatus(data.id, data.status)
     },
     onSuccess: (_, variables) => {
@@ -111,7 +111,7 @@ export function useUpdateUserRoles() {
   
   return useMutation({
     mutationFn: async (data: { id: string; roles: any[] }) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.user.updateRoles(data.id, data.roles)
     },
     onSuccess: (_, variables) => {

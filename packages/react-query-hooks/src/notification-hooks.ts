@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { TabsyAPI } from '@tabsy/api-client'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { TabsyAPI, tabsyClient } from '@tabsy/api-client'
 
 // ===========================
 // STANDARD PATTERN: Notification Hook Factory
@@ -15,7 +15,7 @@ export function createNotificationHooks(useQuery: any) {
       return useQuery({
         queryKey: ['notifications', 'user', filters],
         queryFn: async () => {
-          const client = new TabsyAPI()
+          const client = tabsyClient
           return await client.notification.getUserNotifications(filters)
         }
       })
@@ -25,7 +25,7 @@ export function createNotificationHooks(useQuery: any) {
       return useQuery({
         queryKey: ['notifications', 'restaurant', restaurantId, filters],
         queryFn: async () => {
-          const client = new TabsyAPI()
+          const client = tabsyClient
           return await client.notification.getRestaurantNotifications(restaurantId, filters)
         },
         enabled: !!restaurantId,
@@ -36,7 +36,7 @@ export function createNotificationHooks(useQuery: any) {
       return useQuery({
         queryKey: ['notification-preferences'],
         queryFn: async () => {
-          const client = new TabsyAPI()
+          const client = tabsyClient
           return await client.notification.getPreferences()
         }
       })
@@ -50,7 +50,7 @@ export function useSendNotification() {
   
   return useMutation({
     mutationFn: async (data: any) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.notification.send(data)
     },
     onSuccess: () => {
@@ -64,7 +64,7 @@ export function useMarkNotificationAsRead() {
   
   return useMutation({
     mutationFn: async (id: string) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.notification.markAsRead(id)
     },
     onSuccess: () => {
@@ -78,7 +78,7 @@ export function useMarkMultipleNotificationsAsRead() {
   
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.notification.markMultipleAsRead(ids)
     },
     onSuccess: () => {
@@ -92,7 +92,7 @@ export function useClearAllNotifications() {
   
   return useMutation({
     mutationFn: async () => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.notification.clearAll()
     },
     onSuccess: () => {
@@ -106,7 +106,7 @@ export function useUpdateNotificationPreferences() {
   
   return useMutation({
     mutationFn: async (preferences: any) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.notification.updatePreferences(preferences)
     },
     onSuccess: () => {
@@ -118,7 +118,7 @@ export function useUpdateNotificationPreferences() {
 export function useTestNotification() {
   return useMutation({
     mutationFn: async (data: any) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.notification.test(data)
     }
   })

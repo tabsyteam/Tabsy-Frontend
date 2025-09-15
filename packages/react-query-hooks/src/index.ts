@@ -1,46 +1,111 @@
 // Authentication hooks
-export * from './auth-hooks'
+export {
+  useLogin,
+  useRegister,
+  useLogout,
+  useProfile,
+  useRefreshToken
+} from './auth-hooks'
 
-// Restaurant hooks  
-export * from './restaurant-hooks'
+// Restaurant hooks - Using factory pattern to prevent QueryClient context errors
+export {
+  createRestaurantHooks
+} from './restaurant-hooks'
 
 // Dashboard hooks
-export * from './dashboard-hooks'
-export type { DashboardMetrics } from './dashboard-hooks'
+export {
+  createDashboardHooks,
+  useTodayOrders,
+  type DashboardMetrics
+} from './dashboard-hooks'
 
 // Menu hooks
-export * from './menu-hooks'
+export {
+  createMenuHooks,
+  useCreateMenu,
+  useUpdateMenu,
+  useDeleteMenu,
+  useCreateCategory,
+  useUpdateCategory,
+  useDeleteCategory,
+  useCreateMenuItem,
+  useUpdateMenuItem,
+  useDeleteMenuItem
+} from './menu-hooks'
 
 // Order hooks
-export * from './order-hooks'
+export {
+  createOrderHooks,
+  useOrdersByRestaurant,
+  useCreateOrder,
+  useUpdateOrder,
+  useUpdateOrderStatus,
+  useCancelOrder,
+  useAddOrderItem,
+  useUpdateOrderItem,
+  useRemoveOrderItem
+} from './order-hooks'
 
 // Table hooks
-export * from './table-hooks'
+export {
+  createTableHooks,
+  useCreateTable,
+  useUpdateTable,
+  useDeleteTable,
+  useUpdateTableStatus,
+  useResetTable
+} from './table-hooks'
 
 // Payment hooks
-export * from './payment-hooks'
+export {
+  createPaymentHooks,
+  useCreatePaymentIntent,
+  useCreateOrderPayment,
+  useUpdatePaymentStatus,
+  useAddTip,
+  useRecordCashPayment,
+  useCreateSplitPayment,
+  useDeletePayment
+} from './payment-hooks'
 
-// Notification hooks
-export * from './notification-hooks'
+// Notification hooks - Temporarily disabled to prevent QueryClient context errors
+// TODO: Fix notification hooks to not call useQueryClient() at module load time
+// export {
+//   useSendNotification,
+//   useMarkNotificationAsRead,
+//   useMarkMultipleNotificationsAsRead,
+//   useClearAllNotifications,
+//   useUpdateNotificationPreferences,
+//   useTestNotification
+// } from './notification-hooks'
+
+// Factory function for notification hooks (requires useQuery)
+export { createNotificationHooks } from './notification-hooks'
 
 // User hooks
-export * from './user-hooks'
+export {
+  createUserHooks,
+  useCreateUser,
+  useUpdateUser,
+  useDeleteUser,
+  useUpdateUserStatus,
+  useUpdateUserRoles
+} from './user-hooks'
 
 // Session and QR Access hooks
-export * from './session-hooks'
+export {
+  useSession,
+  useSessionValidation,
+  useTableInfo,
+  useCreateGuestSession,
+  useCreateGuestSessionFromQR,
+  useUpdateSession,
+  useDeleteSession,
+  usePingSession
+} from './session-hooks'
 
 // Utility hooks
-export * from './useClientSafeQuery'
+export { useClientSafeQuery } from './useClientSafeQuery'
 
-// ===========================
-// FACTORY FUNCTIONS FOR MONOREPO DEPENDENCY INJECTION
-// These are the enterprise-grade patterns for shared hooks
-// ===========================
-export { createOrderHooks } from './order-hooks'
-export { createDashboardHooks } from './dashboard-hooks'
-export { createNotificationHooks } from './notification-hooks'
-export { createRestaurantHooks } from './restaurant-hooks'
-export { createMenuHooks } from './menu-hooks'
-export { createTableHooks } from './table-hooks'
-export { createPaymentHooks } from './payment-hooks'
-export { createUserHooks } from './user-hooks'
+// QUERY_KEYS
+export { QUERY_KEYS } from './auth-hooks'

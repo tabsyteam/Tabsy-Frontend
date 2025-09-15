@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { TabsyAPI } from '@tabsy/api-client'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { TabsyAPI, tabsyClient } from '@tabsy/api-client'
 
 // ===========================
 // STANDARD PATTERN: Table Hook Factory
@@ -15,8 +15,8 @@ export function createTableHooks(useQuery: any) {
       return useQuery({
         queryKey: ['tables', restaurantId],
         queryFn: async () => {
-          const client = new TabsyAPI()
-          return await client.table.list(restaurantId)
+          // Use the shared client instance that has auth token
+          return await tabsyClient.table.list(restaurantId)
         },
         enabled: !!restaurantId,
       })
@@ -26,8 +26,8 @@ export function createTableHooks(useQuery: any) {
       return useQuery({
         queryKey: ['table', restaurantId, tableId],
         queryFn: async () => {
-          const client = new TabsyAPI()
-          return await client.table.getById(restaurantId, tableId)
+          // Use the shared client instance that has auth token
+          return await tabsyClient.table.getById(restaurantId, tableId)
         },
         enabled: !!restaurantId && !!tableId,
       })
@@ -37,21 +37,32 @@ export function createTableHooks(useQuery: any) {
       return useQuery({
         queryKey: ['table-qrcode', restaurantId, tableId],
         queryFn: async () => {
-          const client = new TabsyAPI()
-          return await client.table.getQRCode(restaurantId, tableId)
+          // Use the shared client instance that has auth token
+          return await tabsyClient.table.getQRCode(restaurantId, tableId)
         },
         enabled: !!restaurantId && !!tableId,
       })
     },
 
-    useTableSessions: (tableId: string) => {
+    useTableSessions: (restaurantId: string, tableId: string) => {
       return useQuery({
-        queryKey: ['table-sessions', tableId],
+        queryKey: ['table-sessions', restaurantId, tableId],
         queryFn: async () => {
-          const client = new TabsyAPI()
-          return await client.table.getSessions(tableId)
+          // Use the shared client instance that has auth token
+          return await tabsyClient.table.getSessions(restaurantId, tableId)
         },
-        enabled: !!tableId,
+        enabled: !!restaurantId && !!tableId,
+      })
+    },
+
+    useTableQRCodeImage: (restaurantId: string, tableId: string) => {
+      return useQuery({
+        queryKey: ['table-qrcode-image', restaurantId, tableId],
+        queryFn: async () => {
+          // Use the shared client instance that has auth token
+          return await tabsyClient.table.getQRCodeImage(restaurantId, tableId)
+        },
+        enabled: !!restaurantId && !!tableId,
       })
     }
   }
@@ -62,11 +73,11 @@ export function createTableHooks(useQuery: any) {
 // ===========================
 export function useCreateTable() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async (data: { restaurantId: string } & any) => {
-      const client = new TabsyAPI()
-      return await client.table.create(data.restaurantId, data)
+      // Use the shared client instance that has auth token
+      return await tabsyClient.table.create(data.restaurantId, data)
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tables', variables.restaurantId] })
@@ -76,11 +87,11 @@ export function useCreateTable() {
 
 export function useUpdateTable() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async (data: { restaurantId: string; tableId: string } & any) => {
-      const client = new TabsyAPI()
-      return await client.table.update(data.restaurantId, data.tableId, data)
+      // Use the shared client instance that has auth token
+      return await tabsyClient.table.update(data.restaurantId, data.tableId, data)
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tables', variables.restaurantId] })
@@ -91,11 +102,11 @@ export function useUpdateTable() {
 
 export function useDeleteTable() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async (data: { restaurantId: string; tableId: string }) => {
-      const client = new TabsyAPI()
-      return await client.table.delete(data.restaurantId, data.tableId)
+      // Use the shared client instance that has auth token
+      return await tabsyClient.table.delete(data.restaurantId, data.tableId)
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tables', variables.restaurantId] })
@@ -106,11 +117,11 @@ export function useDeleteTable() {
 
 export function useUpdateTableStatus() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async (data: { restaurantId: string; tableId: string; status: any }) => {
-      const client = new TabsyAPI()
-      return await client.table.updateStatus(data.restaurantId, data.tableId, data.status)
+      // Use the shared client instance that has auth token
+      return await tabsyClient.table.updateStatus(data.restaurantId, data.tableId, data.status)
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tables', variables.restaurantId] })
@@ -121,11 +132,11 @@ export function useUpdateTableStatus() {
 
 export function useResetTable() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
     mutationFn: async (data: { restaurantId: string; tableId: string }) => {
-      const client = new TabsyAPI()
-      return await client.table.reset(data.restaurantId, data.tableId)
+      // Use the shared client instance that has auth token
+      return await tabsyClient.table.reset(data.restaurantId, data.tableId)
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['tables', variables.restaurantId] })

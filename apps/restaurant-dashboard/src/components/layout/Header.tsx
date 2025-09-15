@@ -18,20 +18,25 @@ import {
   Calendar,
   HelpCircle
 } from 'lucide-react'
-import { User as UserType } from '@tabsy/shared-types'
+import { User as UserType, Restaurant, UpdateRestaurantRequest } from '@tabsy/shared-types'
 import { cn } from '@/lib/utils'
+import { ProfileSettingsModal } from '@/components/profile/ProfileSettingsModal'
+import { RestaurantSettingsModal } from '@/components/settings/RestaurantSettingsModal'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { tabsyClient } from '@tabsy/api-client'
 
 interface HeaderProps {
   user: UserType | null
+  restaurant?: Restaurant | null
   restaurantName?: string
-  currentView: 'overview' | 'orders' | 'menu'
-  onViewChange: (view: 'overview' | 'orders' | 'menu') => void
+  currentView: 'overview' | 'orders' | 'menu' | 'tables'
+  onViewChange: (view: 'overview' | 'orders' | 'menu' | 'tables') => void
   onLogout: () => void
   isLoggingOut?: boolean
 }
 
 interface NavItem {
-  id: 'overview' | 'orders' | 'menu'
+  id: 'overview' | 'orders' | 'menu' | 'tables'
   label: string
   icon: React.ReactNode
   badge?: number
@@ -39,6 +44,7 @@ interface NavItem {
 
 export function Header({
   user,
+  restaurant,
   restaurantName,
   currentView,
   onViewChange,
@@ -48,9 +54,47 @@ export function Header({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false)
 
   const userMenuRef = useRef<HTMLDivElement>(null)
   const notificationMenuRef = useRef<HTMLDivElement>(null)
+
+  // API hooks
+  const queryClient = useQueryClient()
+  const updateRestaurantMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdateRestaurantRequest }) => {
+      return await tabsyClient.restaurant.update(id, data)
+    },
+    onSuccess: (response) => {
+      const restaurant = response.data as any
+      queryClient.invalidateQueries({ queryKey: ['restaurants'] })
+      if (restaurant && restaurant.id) {
+        queryClient.invalidateQueries({ queryKey: ['restaurant', restaurant.id] })
+      }
+    }
+  })
+
+  // Handlers
+  const handleProfileSettings = () => {
+    setIsProfileModalOpen(true)
+    setIsUserMenuOpen(false)
+  }
+
+  const handleSettings = () => {
+    setIsSettingsModalOpen(true)
+    setIsUserMenuOpen(false)
+  }
+
+  const handleRestaurantSettingsSave = async (data: UpdateRestaurantRequest) => {
+    if (!restaurant) return
+    try {
+      await updateRestaurantMutation.mutateAsync({ id: restaurant.id, data })
+    } catch (error) {
+      console.error('Failed to update restaurant settings:', error)
+      throw error
+    }
+  }
 
   // Click outside handler
   useEffect(() => {
@@ -73,6 +117,8 @@ export function Header({
         document.removeEventListener('mousedown', handleClickOutside)
       }
     }
+
+    return undefined
   }, [isUserMenuOpen, isNotificationOpen])
 
   const navItems: NavItem[] = [
@@ -91,6 +137,11 @@ export function Header({
       id: 'menu',
       label: 'Menu',
       icon: <Utensils className="w-4 h-4" />
+    },
+    {
+      id: 'tables',
+      label: 'Tables',
+      icon: <Users className="w-4 h-4" />
     }
   ]
 
@@ -224,6 +275,7 @@ export function Header({
 
                   {/* Settings */}
                   <button
+                    onClick={handleSettings}
                     className="p-2 rounded-lg hover:bg-surface-secondary transition-colors"
                     aria-label="Settings"
                   >
@@ -265,7 +317,10 @@ export function Header({
                       </div>
 
                       <div className="py-1">
-                        <button className="w-full px-4 py-2 text-left text-sm text-content-primary hover:bg-surface-secondary transition-colors flex items-center gap-2">
+                        <button
+                          onClick={handleProfileSettings}
+                          className="w-full px-4 py-2 text-left text-sm text-content-primary hover:bg-surface-secondary transition-colors flex items-center gap-2"
+                        >
                           <User className="w-4 h-4" />
                           Profile Settings
                         </button>
@@ -273,7 +328,10 @@ export function Header({
                           <Bell className="w-4 h-4" />
                           Notifications
                         </button>
-                        <button className="w-full px-4 py-2 text-left text-sm text-content-primary hover:bg-surface-secondary transition-colors flex items-center gap-2 xl:hidden">
+                        <button
+                          onClick={handleSettings}
+                          className="w-full px-4 py-2 text-left text-sm text-content-primary hover:bg-surface-secondary transition-colors flex items-center gap-2 xl:hidden"
+                        >
                           <Settings className="w-4 h-4" />
                           Settings
                         </button>
@@ -360,6 +418,21 @@ export function Header({
           </div>
         </div>
       )}
+
+      {/* Modals */}
+      <ProfileSettingsModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        user={user}
+      />
+
+      <RestaurantSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        restaurant={restaurant || null}
+        onSave={handleRestaurantSettingsSave}
+        isLoading={updateRestaurantMutation.isPending}
+      />
     </>
   )
 }

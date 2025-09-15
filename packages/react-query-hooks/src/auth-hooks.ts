@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { TabsyAPI } from '@tabsy/api-client'
+import { TabsyAPI, tabsyClient } from '@tabsy/api-client'
 
 export const QUERY_KEYS = {
   auth: {
@@ -60,7 +60,7 @@ export function useLogin() {
   
   return useMutation({
     mutationFn: async (credentials: any) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.auth.login(credentials)
     },
     onSuccess: () => {
@@ -74,7 +74,7 @@ export function useRegister() {
   
   return useMutation({
     mutationFn: async (data: any) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.auth.register(data)
     },
     onSuccess: () => {
@@ -88,7 +88,7 @@ export function useLogout() {
   
   return useMutation({
     mutationFn: async () => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.auth.logout()
     },
     onSuccess: () => {
@@ -101,7 +101,7 @@ export function useProfile() {
   return useQuery({
     queryKey: QUERY_KEYS.auth.profile,
     queryFn: async () => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.user.getCurrentUser()
     }
   })
@@ -112,7 +112,7 @@ export function useRefreshToken() {
   
   return useMutation({
     mutationFn: async (refreshToken: string) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.auth.refreshToken(refreshToken)
     },
     onSuccess: () => {

@@ -1,12 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { TabsyAPI } from '@tabsy/api-client'
+import { TabsyAPI, tabsyClient } from '@tabsy/api-client'
 
 // Session Queries
 export function useSession(sessionId: string) {
   return useQuery({
     queryKey: ['session', sessionId],
     queryFn: async () => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.session.getById(sessionId)
     },
     enabled: !!sessionId,
@@ -17,7 +17,7 @@ export function useSessionValidation(sessionId: string) {
   return useQuery({
     queryKey: ['session', 'validation', sessionId],
     queryFn: async () => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.session.validate(sessionId)
     },
     enabled: !!sessionId,
@@ -29,7 +29,7 @@ export function useTableInfo(qrCode: string) {
   return useQuery({
     queryKey: ['qr', 'table-info', qrCode],
     queryFn: async () => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.qr.getTableInfo(qrCode)
     },
     enabled: !!qrCode,
@@ -42,7 +42,7 @@ export function useCreateGuestSession() {
   
   return useMutation({
     mutationFn: async (data: any) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.session.createGuest(data)
     },
     onSuccess: () => {
@@ -56,7 +56,7 @@ export function useCreateGuestSessionFromQR() {
   
   return useMutation({
     mutationFn: async ({ qrCode, guestData }: { qrCode: string; guestData: any }) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.qr.createGuestSession({
         qrCode,
         ...guestData
@@ -73,7 +73,7 @@ export function useUpdateSession() {
   
   return useMutation({
     mutationFn: async (data: { sessionId: string } & any) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.session.update(data.sessionId, data)
     },
     onSuccess: (_, variables) => {
@@ -87,7 +87,7 @@ export function useDeleteSession() {
   
   return useMutation({
     mutationFn: async (sessionId: string) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.session.delete(sessionId)
     },
     onSuccess: (_, sessionId) => {
@@ -102,7 +102,7 @@ export function usePingSession() {
   
   return useMutation({
     mutationFn: async (sessionId: string) => {
-      const client = new TabsyAPI()
+      const client = tabsyClient
       return await client.session.ping(sessionId)
     },
     onSuccess: (_, sessionId) => {
