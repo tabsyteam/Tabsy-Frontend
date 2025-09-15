@@ -117,7 +117,7 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
 
   return (
     <div
-      className={`flex flex-col bg-card rounded-lg border p-4 shadow-sm transition-all duration-200 hover:shadow-md min-h-[320px] ${order.status === OrderStatus.RECEIVED ? 'ring-2 ring-primary/50 border-primary/40' : ''
+      className={`group flex flex-col bg-card rounded-lg border p-4 shadow-sm transition-all duration-300 ease-out hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.02] min-h-[320px] cursor-pointer relative overflow-hidden ${order.status === OrderStatus.RECEIVED ? 'ring-2 ring-primary/50 border-primary/40 m-0.5 hover:ring-primary/70' : 'hover:border-primary/30'
         }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -125,12 +125,12 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
       {/* Order Header - Order Number and Price */}
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1">
-          <h3 className="font-bold text-md text-card-foreground">
+          <h3 className="font-bold text-md text-card-foreground group-hover:text-primary transition-colors duration-200">
             #{order.orderNumber}
           </h3>
         </div>
         <div className="text-right">
-          <p className="font-bold text-xl text-card-foreground">
+          <p className="font-bold text-xl text-card-foreground group-hover:text-primary transition-colors duration-200">
             ${parseFloat(String(order.total || 0)).toFixed(2)}
           </p>
         </div>
@@ -171,7 +171,7 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
 
       {/* Order Items Preview - Now with flex-1 to take remaining space */}
       <div className="flex-1 mb-4 min-h-[80px]">
-        <div className="bg-muted/30 rounded-md p-3 space-y-2 h-full">
+        <div className="bg-muted/30 rounded-md p-3 space-y-2 h-full group-hover:bg-muted/40 transition-colors duration-200">
             {order.items.slice(0, 2).map((item: OrderItem, index: number) => (
               <div key={index} className="flex justify-between items-center text-sm">
                 <span className="text-card-foreground font-medium truncate flex-1 mr-2">
@@ -190,13 +190,14 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
         </div>
       </div>
 
+
       {/* Action Buttons - Always at bottom */}
       <div className="flex justify-center gap-2 mt-auto">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onViewDetails(order)}
-            className="flex-1 text-xs h-8 font-medium border-text-foreground hover:border-text-foreground/80"
+            className="flex-1 text-xs h-8 font-medium border-text-foreground hover:border-primary hover:text-primary hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
           >
             <Eye className="h-3 w-3 mr-1" />
             Details
@@ -206,7 +207,7 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
             <Button
               size="sm"
               onClick={() => onStatusUpdate(order.id, getNextStatus(order.status)!)}
-              className="flex-1 text-xs h-8 font-medium"
+              className="flex-1 text-xs h-8 font-medium hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
             >
               {getNextStatusText(order.status)}
             </Button>
@@ -217,7 +218,7 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
               variant="destructive"
               size="sm"
               onClick={() => onStatusUpdate(order.id, OrderStatus.CANCELLED)}
-              className="flex-1 text-xs h-8 px-3 font-medium flex-shrink-0"
+              className="flex-1 text-xs h-8 px-3 font-medium flex-shrink-0 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
             >
               Cancel
             </Button>

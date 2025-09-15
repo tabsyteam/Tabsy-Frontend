@@ -344,7 +344,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
       {/* Orders Grid - Scrollable */}
       {!ordersLoading && !ordersError && (
         <div className="flex-1 overflow-y-auto">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pb-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pb-6 pt-2">
             {filteredOrders.length === 0 ? (
               <div className="col-span-full flex items-center justify-center h-64 bg-muted/50 rounded-lg border-2 border-dashed border-border">
                 <div className="text-center">

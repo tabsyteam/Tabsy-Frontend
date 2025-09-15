@@ -138,14 +138,11 @@ export function MenuDetailSlidePanel({
                       </span>
                       {type === 'item' &&
                         ((item as MenuItem)?.basePrice || (item as MenuItem)?.price) && (
-                          <div className="flex items-center space-x-1">
-                            <DollarSign className="h-4 w-4 text-primary" />
-                            <span className="price-display">
-                              {formatPrice(
-                                (item as MenuItem).basePrice || (item as MenuItem).price || 0,
-                              )}
-                            </span>
-                          </div>
+                          <span className="price-display font-semibold">
+                            {formatPrice(
+                              (item as MenuItem).basePrice || (item as MenuItem).price || 0,
+                            )}
+                          </span>
                         )}
                     </div>
                   </div>
@@ -208,63 +205,69 @@ export function MenuDetailSlidePanel({
             {activeTab === 'details' && (
               <div className="px-4 sm:px-8 pb-4 sm:pb-8 space-y-6 sm:space-y-8">
                 {/* Quick Actions */}
-                <div className="flex items-center justify-between p-4 glass-card rounded-xl">
-                  <div className="flex items-center space-x-2">
-                    <Settings className="h-5 w-5 text-muted-foreground" />
-                    <span className="font-medium">Quick Actions</span>
+                <div className="mx-2 sm:mx-4">
+                  <div className="flex items-center justify-between p-4 sm:p-6 glass-card rounded-xl">
+                    <div className="flex items-center space-x-2">
+                      <Settings className="h-5 w-5 text-muted-foreground" />
+                      <span className="font-medium">Quick Actions</span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleToggleStatus(data.id, type)}
+                      disabled={isTogglingStatus}
+                      className="hover:scale-105 transition-all duration-200"
+                    >
+                      {isTogglingStatus
+                        ? 'Updating...'
+                        : (type === 'category' ? (category as any)?.active : (item as any)?.active)
+                          ? 'Deactivate'
+                          : 'Activate'}
+                    </Button>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleToggleStatus(data.id, type)}
-                    disabled={isTogglingStatus}
-                    className="hover:scale-105 transition-all duration-200"
-                  >
-                    {isTogglingStatus
-                      ? 'Updating...'
-                      : (type === 'category' ? (category as any)?.active : (item as any)?.active)
-                        ? 'Deactivate'
-                        : 'Activate'}
-                  </Button>
                 </div>
 
                 {/* Description */}
                 {data.description && (
-                  <div className="space-y-3">
-                    <h3 className="text-lg font-semibold text-foreground flex items-center">
-                      <span className="w-2 h-2 bg-primary rounded-full mr-3"></span>
-                      Description
-                    </h3>
-                    <div className="p-4 bg-muted/30 rounded-xl border">
-                      <p className="text-muted-foreground leading-relaxed">{data.description}</p>
+                  <div className="mx-2 sm:mx-4">
+                    <div className="space-y-3">
+                      <h3 className="text-lg font-semibold text-foreground flex items-center">
+                        <span className="w-2 h-2 bg-primary rounded-full mr-3"></span>
+                        Description
+                      </h3>
+                      <div className="p-4 sm:p-6 bg-muted/30 rounded-xl border">
+                        <p className="text-muted-foreground leading-relaxed">{data.description}</p>
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Category Details */}
                 {type === 'category' && category && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-foreground flex items-center">
-                      <span className="w-2 h-2 bg-secondary rounded-full mr-3"></span>
-                      Category Information
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="stat-card">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-muted-foreground text-sm">Items Count</p>
-                            <p className="text-2xl font-bold">0</p>
+                  <div className="mx-2 sm:mx-4">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-foreground flex items-center">
+                        <span className="w-2 h-2 bg-secondary rounded-full mr-3"></span>
+                        Category Information
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="stat-card">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-muted-foreground text-sm">Items Count</p>
+                              <p className="text-2xl font-bold">0</p>
+                            </div>
+                            <Package className="h-8 w-8 text-primary/40" />
                           </div>
-                          <Package className="h-8 w-8 text-primary/40" />
                         </div>
-                      </div>
-                      <div className="stat-card">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-muted-foreground text-sm">Display Order</p>
-                            <p className="text-2xl font-bold">{category.displayOrder || 0}</p>
+                        <div className="stat-card">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-muted-foreground text-sm">Display Order</p>
+                              <p className="text-2xl font-bold">{category.displayOrder || 0}</p>
+                            </div>
+                            <Users className="h-8 w-8 text-secondary/40" />
                           </div>
-                          <Users className="h-8 w-8 text-secondary/40" />
                         </div>
                       </div>
                     </div>
@@ -273,76 +276,80 @@ export function MenuDetailSlidePanel({
 
                 {/* Item Details */}
                 {type === 'item' && item && (
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-semibold text-foreground flex items-center">
-                      <span className="w-2 h-2 bg-secondary rounded-full mr-3"></span>
-                      Item Information
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="stat-card">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-muted-foreground text-sm">Price</p>
-                            <p className="price-display text-xl">
-                              {formatPrice(item.basePrice || item.price || 0)}
-                            </p>
-                          </div>
-                          <DollarSign className="h-8 w-8 text-primary/40" />
-                        </div>
-                      </div>
-                      {item.preparationTime && (
+                  <div className="mx-2 sm:mx-4">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-foreground flex items-center">
+                        <span className="w-2 h-2 bg-secondary rounded-full mr-3"></span>
+                        Item Information
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="stat-card">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-muted-foreground text-sm">Prep Time</p>
-                              <p className="text-2xl font-bold">{item.preparationTime}m</p>
+                              <p className="text-muted-foreground text-sm">Price</p>
+                              <p className="price-display text-xl">
+                                {formatPrice(item.basePrice || item.price || 0)}
+                              </p>
                             </div>
-                            <Clock className="h-8 w-8 text-secondary/40" />
+                            <DollarSign className="h-8 w-8 text-primary/40" />
                           </div>
                         </div>
-                      )}
+                        {item.preparationTime && (
+                          <div className="stat-card">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-muted-foreground text-sm">Prep Time</p>
+                                <p className="text-2xl font-bold">{item.preparationTime}m</p>
+                              </div>
+                              <Clock className="h-8 w-8 text-secondary/40" />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
 
                 {/* Timeline */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-foreground flex items-center">
-                    <span className="w-2 h-2 bg-accent rounded-full mr-3"></span>
-                    Timeline
-                  </h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-4 glass-card rounded-xl hover:shadow-md transition-shadow">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-success/10 rounded-lg">
-                          <CheckCircle className="h-4 w-4 text-success" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Created</p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(data.createdAt).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                            })}
-                          </p>
+                <div className="mx-2 sm:mx-4">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center">
+                      <span className="w-2 h-2 bg-accent rounded-full mr-3"></span>
+                      Timeline
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-4 glass-card rounded-xl hover:shadow-md transition-shadow">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-success/10 rounded-lg">
+                            <CheckCircle className="h-4 w-4 text-success" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Created</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(data.createdAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                              })}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between p-4 glass-card rounded-xl hover:shadow-md transition-shadow">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                          <Edit className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium">Last Updated</p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date(data.updatedAt).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric',
-                            })}
-                          </p>
+                      <div className="flex items-center justify-between p-4 glass-card rounded-xl hover:shadow-md transition-shadow">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-primary/10 rounded-lg">
+                            <Edit className="h-4 w-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">Last Updated</p>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(data.updatedAt).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                              })}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
