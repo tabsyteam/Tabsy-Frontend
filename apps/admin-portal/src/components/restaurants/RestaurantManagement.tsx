@@ -176,17 +176,17 @@ function RestaurantCard({
       <div className="space-y-2 text-sm text-gray-600">
         <div className="flex items-center">
           <MapPin className="w-4 h-4 mr-2 text-gray-400" />
-          <span>{restaurant.address.street}, {restaurant.address.city}</span>
+          <span>{restaurant.address}, {restaurant.city}</span>
         </div>
-        
+
         <div className="flex items-center">
           <Phone className="w-4 h-4 mr-2 text-gray-400" />
-          <span>{restaurant.contact.phone}</span>
+          <span>{restaurant.phoneNumber}</span>
         </div>
         
         <div className="flex items-center">
           <Mail className="w-4 h-4 mr-2 text-gray-400" />
-          <span>{restaurant.contact.email}</span>
+          <span>{restaurant.email}</span>
         </div>
         
         <div className="flex items-center">
@@ -230,7 +230,7 @@ export function RestaurantManagement({
 
   const filteredRestaurants = restaurants.filter(restaurant => {
     const matchesSearch = restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         restaurant.address.city.toLowerCase().includes(searchQuery.toLowerCase())
+                         restaurant.city.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesStatus = statusFilter === 'ALL' || restaurant.status === statusFilter
     
     return matchesSearch && matchesStatus

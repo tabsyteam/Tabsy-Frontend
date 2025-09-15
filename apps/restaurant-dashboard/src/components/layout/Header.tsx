@@ -18,12 +18,13 @@ import {
   Calendar,
   HelpCircle
 } from 'lucide-react'
-import { User as UserType, Restaurant, UpdateRestaurantRequest } from '@tabsy/shared-types'
+import { User as UserType, Restaurant, UpdateRestaurantRequest, OrderStatus } from '@tabsy/shared-types'
 import { cn } from '@/lib/utils'
 import { ProfileSettingsModal } from '@/components/profile/ProfileSettingsModal'
 import { RestaurantSettingsModal } from '@/components/settings/RestaurantSettingsModal'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { tabsyClient } from '@tabsy/api-client'
+import { createOrderHooks } from '@tabsy/react-query-hooks'
 
 interface HeaderProps {
   user: UserType | null
@@ -63,7 +64,7 @@ export function Header({
   // API hooks
   const queryClient = useQueryClient()
   const updateRestaurantMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: UpdateRestaurantRequest }) => {
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
       return await tabsyClient.restaurant.update(id, data)
     },
     onSuccess: (response) => {
@@ -74,6 +75,24 @@ export function Header({
       }
     }
   })
+
+  // Order hooks for real-time badge count
+  const orderHooks = createOrderHooks(useQuery)
+  const {
+    data: ordersData,
+    isLoading: ordersLoading
+  } = orderHooks.useOrdersByRestaurant(
+    restaurant?.id || '',
+    { status: OrderStatus.RECEIVED }, // Only fetch RECEIVED orders for badge
+    {
+      enabled: !!restaurant?.id,
+      refetchInterval: 30000, // Refresh every 30 seconds for real-time updates
+      staleTime: 10000 // Consider data stale after 10 seconds
+    }
+  )
+
+  // Calculate badge count from real API data
+  const receivedOrdersCount = ordersData?.data?.orders?.length || 0
 
   // Handlers
   const handleProfileSettings = () => {
@@ -86,7 +105,7 @@ export function Header({
     setIsUserMenuOpen(false)
   }
 
-  const handleRestaurantSettingsSave = async (data: UpdateRestaurantRequest) => {
+  const handleRestaurantSettingsSave = async (data: any) => {
     if (!restaurant) return
     try {
       await updateRestaurantMutation.mutateAsync({ id: restaurant.id, data })
@@ -131,7 +150,7 @@ export function Header({
       id: 'orders',
       label: 'Orders',
       icon: <ShoppingCart className="w-4 h-4" />,
-      badge: 3 // This could be dynamic based on pending orders
+      badge: receivedOrdersCount > 0 ? receivedOrdersCount : undefined // Real API data for RECEIVED orders
     },
     {
       id: 'menu',
@@ -216,10 +235,9 @@ export function Header({
                     onClick={() => onViewChange(item.id)}
                     className={cn(
                       "flex items-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all duration-200",
-                      "hover:bg-surface-tertiary",
                       currentView === item.id
-                        ? "bg-primary text-white shadow-sm"
-                        : "text-content-secondary hover:text-content-primary"
+                        ? "bg-primary text-white shadow-sm hover:bg-primary-hover"
+                        : "text-content-secondary hover:bg-surface-tertiary hover:text-content-primary"
                     )}
                   >
                     {item.icon}
@@ -366,8 +384,8 @@ export function Header({
                     className={cn(
                       "flex items-center gap-2 px-3 py-1.5 rounded-md font-medium text-sm whitespace-nowrap transition-all",
                       currentView === item.id
-                        ? "bg-primary text-white shadow-sm"
-                        : "text-content-secondary"
+                        ? "bg-primary text-white shadow-sm hover:bg-primary-hover"
+                        : "text-content-secondary hover:bg-surface-tertiary hover:text-content-primary"
                     )}
                   >
                     {item.icon}

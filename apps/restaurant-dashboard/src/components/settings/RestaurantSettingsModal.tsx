@@ -10,7 +10,7 @@ interface RestaurantSettingsModalProps {
   isOpen: boolean
   onClose: () => void
   restaurant: Restaurant | null
-  onSave: (data: UpdateRestaurantRequest) => Promise<void>
+  onSave: (data: any) => Promise<void>
   isLoading?: boolean
 }
 
@@ -75,7 +75,7 @@ export function RestaurantSettingsModal({
     e.preventDefault()
     try {
       // Transform the form data to match backend validator expectations
-      const updateData: UpdateRestaurantRequest = {
+      const updateData: any = {
         name: formData.name,
         description: formData.description,
         // Convert nested address object to flat fields for backend
