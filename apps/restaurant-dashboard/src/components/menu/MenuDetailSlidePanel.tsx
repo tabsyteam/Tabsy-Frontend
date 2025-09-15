@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { Button } from '@tabsy/ui-components'
+import { useState, useEffect } from "react";
+import { Button } from "@tabsy/ui-components";
 import {
   X,
   Edit,
@@ -13,20 +13,27 @@ import {
   Users,
   Tag,
   CheckCircle,
-  XCircle
-} from 'lucide-react'
-import type { MenuCategory, MenuItem } from '@tabsy/shared-types'
-import { MenuItemStatus } from '@tabsy/shared-types'
+  XCircle,
+  Info,
+  BarChart3,
+  History,
+  Settings,
+  Image as ImageIcon,
+  Star,
+  TrendingUp,
+} from "lucide-react";
+import type { MenuCategory, MenuItem } from "@tabsy/shared-types";
+import { MenuItemStatus } from "@tabsy/shared-types";
 
 interface MenuDetailSlidePanelProps {
-  isOpen: boolean
-  onClose: () => void
-  type: 'category' | 'item' | null
-  category?: MenuCategory | null
-  item?: MenuItem | null
-  onEdit: (data: MenuCategory | MenuItem) => void
-  onDelete: (id: string) => void
-  onToggleStatus: (id: string, type: 'category' | 'item') => void
+  isOpen: boolean;
+  onClose: () => void;
+  type: "category" | "item" | null;
+  category?: MenuCategory | null;
+  item?: MenuItem | null;
+  onEdit: (data: MenuCategory | MenuItem) => void;
+  onDelete: (id: string) => void;
+  onToggleStatus: (id: string, type: "category" | "item") => void;
 }
 
 export function MenuDetailSlidePanel({
@@ -37,199 +44,418 @@ export function MenuDetailSlidePanel({
   item,
   onEdit,
   onDelete,
-  onToggleStatus
+  onToggleStatus,
 }: MenuDetailSlidePanelProps) {
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false);
+  const [activeTab, setActiveTab] = useState<
+    "details" | "analytics" | "history"
+  >("details");
 
-  if (!isOpen || !type) return null
+  // Prevent body scroll when modal is open - must be before any returns
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+
+    // Cleanup on unmount
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !type) return null;
 
   const handleDelete = async (id: string) => {
-    setIsDeleting(true)
+    setIsDeleting(true);
     try {
-      await onDelete(id)
-      onClose()
+      await onDelete(id);
+      onClose();
     } finally {
-      setIsDeleting(false)
+      setIsDeleting(false);
     }
-  }
+  };
 
-  const data = type === 'category' ? category : item
-  if (!data) return null
+  const handleToggleStatus = async (id: string, type: "category" | "item") => {
+    setIsTogglingStatus(true);
+    try {
+      await onToggleStatus(id, type);
+      onClose(); // Close the panel after successful status toggle
+    } finally {
+      setIsTogglingStatus(false);
+    }
+  };
+
+  const data = type === "category" ? category : item;
+  if (!data) return null;
+
+  const formatPrice = (price: number | string) => {
+    const numPrice = typeof price === "string" ? parseFloat(price) : price;
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+    }).format(numPrice / 100); // Assuming price is in cents
+  };
+
+  const tabs = [
+    { id: "details", label: "Details", icon: Info },
+    { id: "analytics", label: "Analytics", icon: BarChart3 },
+    { id: "history", label: "History", icon: History },
+  ] as const;
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Enhanced Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-50 transition-opacity"
+        className="fixed inset-0 modal-backdrop z-50 transition-opacity"
         onClick={onClose}
+        onWheel={(e) => e.preventDefault()}
+        onTouchMove={(e) => e.preventDefault()}
       />
 
-      {/* Slide Panel */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-md bg-background shadow-xl z-50 transform transition-transform">
+      {/* Enhanced Slide Panel */}
+      <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-background shadow-2xl z-50 transform transition-transform overflow-hidden">
         <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b bg-card">
-            <div className="flex items-center space-x-3">
-              <div className="bg-primary/10 p-2 rounded-lg">
-                {type === 'category' ? (
-                  <Package className="h-5 w-5 text-primary" />
+          {/* Enhanced Header */}
+          <div className="bg-background">
+            {/* Header Content */}
+            <div className="px-4 sm:px-8 py-2 bg-gradient-to-r from-primary/5 via-transparent to-secondary/5 border-b">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="p-1.5 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-lg shadow-md">
+                    {type === "category" ? (
+                      <Package className="h-5 w-5 text-primary" />
+                    ) : (
+                      <Utensils className="h-5 w-5 text-primary" />
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold text-foreground">
+                      {data.name}
+                    </h2>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                      <span className="text-xs sm:text-sm text-muted-foreground">
+                        {type === "category" ? "Menu Category" : "Menu Item"}
+                      </span>
+                      {type === "item" &&
+                        ((item as MenuItem)?.basePrice ||
+                          (item as MenuItem)?.price) && (
+                          <div className="flex items-center space-x-1">
+                            <DollarSign className="h-4 w-4 text-primary" />
+                            <span className="price-display">
+                              {formatPrice(
+                                (item as MenuItem).basePrice ||
+                                  (item as MenuItem).price ||
+                                  0,
+                              )}
+                            </span>
+                          </div>
+                        )}
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClose}
+                  className="h-7 w-7 p-0 rounded-lg hover:bg-muted/50 -mt-1"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Status Badge */}
+              <div className="mt-1">
+                {(
+                  type === "category"
+                    ? (category as any)?.active
+                    : (item as any)?.active
+                ) ? (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    {type === "category" ? "Active" : "Available"}
+                  </span>
                 ) : (
-                  <Utensils className="h-5 w-5 text-primary" />
+                  <span
+                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                      type === "category"
+                        ? "bg-gray-100 text-gray-600 border border-gray-200"
+                        : "bg-red-100 text-red-700 border border-red-200"
+                    }`}
+                  >
+                    <XCircle className="h-3 w-3 mr-1" />
+                    {type === "category" ? "Inactive" : "Unavailable"}
+                  </span>
                 )}
               </div>
-              <div>
-                <h2 className="text-lg font-semibold text-foreground">
-                  {data.name}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  {type === 'category' ? 'Menu Category' : 'Menu Item'}
-                </p>
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="px-4 sm:px-8">
+              <div className="tab-nav">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`tab-button ${activeTab === tab.id ? "tab-button-active" : ""}`}
+                    >
+                      <Icon className="h-4 w-4 mr-2" />
+                      {tab.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="h-8 w-8 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="space-y-6">
-              {/* Status */}
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-foreground">Status</span>
-                <div className="flex items-center space-x-2">
-                  {(type === 'category' ? (category as MenuCategory)?.isActive : (item as MenuItem)?.status === MenuItemStatus.AVAILABLE) ? (
-                    <div className="flex items-center space-x-1 text-success">
-                      <CheckCircle className="h-4 w-4" />
-                      <span className="text-sm">{type === 'category' ? 'Active' : 'Available'}</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center space-x-1 text-destructive">
-                      <XCircle className="h-4 w-4" />
-                      <span className="text-sm">{type === 'category' ? 'Inactive' : 'Unavailable'}</span>
-                    </div>
-                  )}
+          {/* Tabbed Content */}
+          <div className="flex-1 overflow-y-auto px-4 sm:px-0">
+            {activeTab === "details" && (
+              <div className="p-4 sm:p-8 space-y-6 sm:space-y-8">
+                {/* Quick Actions */}
+                <div className="flex items-center justify-between p-4 glass-card rounded-xl">
+                  <div className="flex items-center space-x-2">
+                    <Settings className="h-5 w-5 text-muted-foreground" />
+                    <span className="font-medium">Quick Actions</span>
+                  </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => onToggleStatus(data.id, type)}
+                    onClick={() => handleToggleStatus(data.id, type)}
+                    disabled={isTogglingStatus}
+                    className="hover:scale-105 transition-all duration-200"
                   >
-                    {(type === 'category' ? (category as MenuCategory)?.isActive : (item as MenuItem)?.status === MenuItemStatus.AVAILABLE) ? 'Deactivate' : 'Activate'}
+                    {isTogglingStatus
+                      ? "Updating..."
+                      : (
+                            type === "category"
+                              ? (category as any)?.active
+                              : (item as any)?.active
+                          )
+                        ? "Deactivate"
+                        : "Activate"}
                   </Button>
                 </div>
-              </div>
 
-              {/* Description */}
-              {data.description && (
-                <div>
-                  <h3 className="text-sm font-medium text-foreground mb-2">Description</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {data.description}
+                {/* Description */}
+                {data.description && (
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center">
+                      <span className="w-2 h-2 bg-primary rounded-full mr-3"></span>
+                      Description
+                    </h3>
+                    <div className="p-4 bg-muted/30 rounded-xl border">
+                      <p className="text-muted-foreground leading-relaxed">
+                        {data.description}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Category Details */}
+                {type === "category" && category && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center">
+                      <span className="w-2 h-2 bg-secondary rounded-full mr-3"></span>
+                      Category Information
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="stat-card">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-muted-foreground text-sm">
+                              Items Count
+                            </p>
+                            <p className="text-2xl font-bold">0</p>
+                          </div>
+                          <Package className="h-8 w-8 text-primary/40" />
+                        </div>
+                      </div>
+                      <div className="stat-card">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-muted-foreground text-sm">
+                              Display Order
+                            </p>
+                            <p className="text-2xl font-bold">
+                              {category.displayOrder || 0}
+                            </p>
+                          </div>
+                          <Users className="h-8 w-8 text-secondary/40" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Item Details */}
+                {type === "item" && item && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-foreground flex items-center">
+                      <span className="w-2 h-2 bg-secondary rounded-full mr-3"></span>
+                      Item Information
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="stat-card">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-muted-foreground text-sm">
+                              Price
+                            </p>
+                            <p className="price-display text-xl">
+                              {formatPrice(item.basePrice || item.price || 0)}
+                            </p>
+                          </div>
+                          <DollarSign className="h-8 w-8 text-primary/40" />
+                        </div>
+                      </div>
+                      {item.preparationTime && (
+                        <div className="stat-card">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-muted-foreground text-sm">
+                                Prep Time
+                              </p>
+                              <p className="text-2xl font-bold">
+                                {item.preparationTime}m
+                              </p>
+                            </div>
+                            <Clock className="h-8 w-8 text-secondary/40" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Timeline */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-foreground flex items-center">
+                    <span className="w-2 h-2 bg-accent rounded-full mr-3"></span>
+                    Timeline
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-4 glass-card rounded-xl hover:shadow-md transition-shadow">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-success/10 rounded-lg">
+                          <CheckCircle className="h-4 w-4 text-success" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Created</p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(data.createdAt).toLocaleDateString(
+                              "en-US",
+                              {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              },
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-4 glass-card rounded-xl hover:shadow-md transition-shadow">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <Edit className="h-4 w-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">Last Updated</p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(data.updatedAt).toLocaleDateString(
+                              "en-US",
+                              {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                              },
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "analytics" && (
+              <div className="p-4 sm:p-8 space-y-6 sm:space-y-8">
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl flex items-center justify-center">
+                    <BarChart3 className="h-10 w-10 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">
+                    Analytics Coming Soon
+                  </h3>
+                  <p className="text-muted-foreground">
+                    Track performance metrics, popular items, and revenue data
+                    for this {type}.
                   </p>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Category-specific details */}
-              {type === 'category' && category && (
-                <div>
-                  <h3 className="text-sm font-medium text-foreground mb-3">Category Details</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg">
-                      <span className="text-sm text-muted-foreground">Items Count</span>
-                      <span className="text-sm font-medium">0</span>
-                    </div>
-                    <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg">
-                      <span className="text-sm text-muted-foreground">Display Order</span>
-                      <span className="text-sm font-medium">{category.displayOrder || 0}</span>
-                    </div>
+            {activeTab === "history" && (
+              <div className="p-4 sm:p-8 space-y-6 sm:space-y-8">
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-secondary/10 to-accent/10 rounded-2xl flex items-center justify-center">
+                    <History className="h-10 w-10 text-secondary" />
                   </div>
-                </div>
-              )}
-
-              {/* Item-specific details */}
-              {type === 'item' && item && (
-                <div>
-                  <h3 className="text-sm font-medium text-foreground mb-3">Item Details</h3>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg">
-                      <span className="text-sm text-muted-foreground flex items-center space-x-1">
-                        <DollarSign className="h-3 w-3" />
-                        <span>Price</span>
-                      </span>
-                      <span className="text-sm font-medium">${item.basePrice}</span>
-                    </div>
-                    {item.preparationTime && (
-                      <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg">
-                        <span className="text-sm text-muted-foreground flex items-center space-x-1">
-                          <Clock className="h-3 w-3" />
-                          <span>Prep Time</span>
-                        </span>
-                        <span className="text-sm font-medium">{item.preparationTime} min</span>
-                      </div>
-                    )}
-                    {item.categoryId && (
-                      <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg">
-                        <span className="text-sm text-muted-foreground flex items-center space-x-1">
-                          <Tag className="h-3 w-3" />
-                          <span>Category</span>
-                        </span>
-                        <span className="text-sm font-medium">{item.categoryId}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Timestamps */}
-              <div>
-                <h3 className="text-sm font-medium text-foreground mb-3">Timeline</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg">
-                    <span className="text-sm text-muted-foreground">Created</span>
-                    <span className="text-sm font-medium">
-                      {new Date(data.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between py-2 px-3 bg-muted/50 rounded-lg">
-                    <span className="text-sm text-muted-foreground">Updated</span>
-                    <span className="text-sm font-medium">
-                      {new Date(data.updatedAt).toLocaleDateString()}
-                    </span>
-                  </div>
+                  <h3 className="text-xl font-semibold mb-2">
+                    History Coming Soon
+                  </h3>
+                  <p className="text-muted-foreground">
+                    View detailed history of changes, orders, and activity for
+                    this {type}.
+                  </p>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Actions */}
-          <div className="border-t p-6 bg-card">
-            <div className="flex space-x-3">
-              <Button
-                onClick={() => onEdit(data)}
-                className="flex-1"
-                variant="default"
-              >
-                <Edit className="h-4 w-4 mr-2" />
-                Edit {type === 'category' ? 'Category' : 'Item'}
-              </Button>
-              <Button
-                onClick={() => handleDelete(data.id)}
-                disabled={isDeleting}
-                variant="destructive"
-                className="flex-1"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                {isDeleting ? 'Deleting...' : `Delete ${type === 'category' ? 'Category' : 'Item'}`}
-              </Button>
+          {/* Enhanced Action Footer */}
+          <div className="border-t bg-muted/20 p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                <Info className="h-4 w-4" />
+                <span>
+                  Manage your {type === "category" ? "category" : "menu item"}
+                </span>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                <Button
+                  onClick={() => {
+                    onEdit(data);
+                    onClose(); // Close the detail panel when opening edit modal
+                  }}
+                  variant="outline"
+                  className="hover:scale-105 transition-all duration-200 w-full sm:w-auto"
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+                <Button
+                  onClick={() => handleDelete(data.id)}
+                  disabled={isDeleting}
+                  variant="destructive"
+                  className="hover:scale-105 transition-all duration-200 min-w-[120px] w-full sm:w-auto"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </>
-  )
+  );
 }
