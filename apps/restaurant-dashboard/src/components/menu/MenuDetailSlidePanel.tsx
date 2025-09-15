@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import { Button } from "@tabsy/ui-components";
+import { useState, useEffect } from 'react';
+import { Button } from '@tabsy/ui-components';
 import {
   X,
   Edit,
@@ -21,19 +21,19 @@ import {
   Image as ImageIcon,
   Star,
   TrendingUp,
-} from "lucide-react";
-import type { MenuCategory, MenuItem } from "@tabsy/shared-types";
-import { MenuItemStatus } from "@tabsy/shared-types";
+} from 'lucide-react';
+import type { MenuCategory, MenuItem } from '@tabsy/shared-types';
+import { MenuItemStatus } from '@tabsy/shared-types';
 
 interface MenuDetailSlidePanelProps {
   isOpen: boolean;
   onClose: () => void;
-  type: "category" | "item" | null;
+  type: 'category' | 'item' | null;
   category?: MenuCategory | null;
   item?: MenuItem | null;
   onEdit: (data: MenuCategory | MenuItem) => void;
   onDelete: (id: string) => void;
-  onToggleStatus: (id: string, type: "category" | "item") => void;
+  onToggleStatus: (id: string, type: 'category' | 'item') => void;
 }
 
 export function MenuDetailSlidePanel({
@@ -48,21 +48,19 @@ export function MenuDetailSlidePanel({
 }: MenuDetailSlidePanelProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    "details" | "analytics" | "history"
-  >("details");
+  const [activeTab, setActiveTab] = useState<'details' | 'analytics' | 'history'>('details');
 
   // Prevent body scroll when modal is open - must be before any returns
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = "hidden";
+      document.body.style.overflow = 'hidden';
     } else {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = 'unset';
     }
 
     // Cleanup on unmount
     return () => {
-      document.body.style.overflow = "unset";
+      document.body.style.overflow = 'unset';
     };
   }, [isOpen]);
 
@@ -78,7 +76,7 @@ export function MenuDetailSlidePanel({
     }
   };
 
-  const handleToggleStatus = async (id: string, type: "category" | "item") => {
+  const handleToggleStatus = async (id: string, type: 'category' | 'item') => {
     setIsTogglingStatus(true);
     try {
       await onToggleStatus(id, type);
@@ -88,22 +86,22 @@ export function MenuDetailSlidePanel({
     }
   };
 
-  const data = type === "category" ? category : item;
+  const data = type === 'category' ? category : item;
   if (!data) return null;
 
   const formatPrice = (price: number | string) => {
-    const numPrice = typeof price === "string" ? parseFloat(price) : price;
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
       minimumFractionDigits: 2,
     }).format(numPrice / 100); // Assuming price is in cents
   };
 
   const tabs = [
-    { id: "details", label: "Details", icon: Info },
-    { id: "analytics", label: "Analytics", icon: BarChart3 },
-    { id: "history", label: "History", icon: History },
+    { id: 'details', label: 'Details', icon: Info },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'history', label: 'History', icon: History },
   ] as const;
 
   return (
@@ -126,30 +124,25 @@ export function MenuDetailSlidePanel({
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="p-1.5 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-lg shadow-md">
-                    {type === "category" ? (
+                    {type === 'category' ? (
                       <Package className="h-5 w-5 text-primary" />
                     ) : (
                       <Utensils className="h-5 w-5 text-primary" />
                     )}
                   </div>
                   <div>
-                    <h2 className="text-lg sm:text-xl font-bold text-foreground">
-                      {data.name}
-                    </h2>
+                    <h2 className="text-lg sm:text-xl font-bold text-foreground">{data.name}</h2>
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                       <span className="text-xs sm:text-sm text-muted-foreground">
-                        {type === "category" ? "Menu Category" : "Menu Item"}
+                        {type === 'category' ? 'Menu Category' : 'Menu Item'}
                       </span>
-                      {type === "item" &&
-                        ((item as MenuItem)?.basePrice ||
-                          (item as MenuItem)?.price) && (
+                      {type === 'item' &&
+                        ((item as MenuItem)?.basePrice || (item as MenuItem)?.price) && (
                           <div className="flex items-center space-x-1">
                             <DollarSign className="h-4 w-4 text-primary" />
                             <span className="price-display">
                               {formatPrice(
-                                (item as MenuItem).basePrice ||
-                                  (item as MenuItem).price ||
-                                  0,
+                                (item as MenuItem).basePrice || (item as MenuItem).price || 0,
                               )}
                             </span>
                           </div>
@@ -170,25 +163,21 @@ export function MenuDetailSlidePanel({
 
               {/* Status Badge */}
               <div className="mt-1">
-                {(
-                  type === "category"
-                    ? (category as any)?.active
-                    : (item as any)?.active
-                ) ? (
+                {(type === 'category' ? (category as any)?.active : (item as any)?.active) ? (
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
                     <CheckCircle className="h-3 w-3 mr-1" />
-                    {type === "category" ? "Active" : "Available"}
+                    {type === 'category' ? 'Active' : 'Available'}
                   </span>
                 ) : (
                   <span
                     className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                      type === "category"
-                        ? "bg-gray-100 text-gray-600 border border-gray-200"
-                        : "bg-red-100 text-red-700 border border-red-200"
+                      type === 'category'
+                        ? 'bg-gray-100 text-gray-600 border border-gray-200'
+                        : 'bg-red-100 text-red-700 border border-red-200'
                     }`}
                   >
                     <XCircle className="h-3 w-3 mr-1" />
-                    {type === "category" ? "Inactive" : "Unavailable"}
+                    {type === 'category' ? 'Inactive' : 'Unavailable'}
                   </span>
                 )}
               </div>
@@ -203,7 +192,7 @@ export function MenuDetailSlidePanel({
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`tab-button ${activeTab === tab.id ? "tab-button-active" : ""}`}
+                      className={`tab-button ${activeTab === tab.id ? 'tab-button-active' : ''}`}
                     >
                       <Icon className="h-4 w-4 mr-2" />
                       {tab.label}
@@ -215,9 +204,9 @@ export function MenuDetailSlidePanel({
           </div>
 
           {/* Tabbed Content */}
-          <div className="flex-1 overflow-y-auto px-4 sm:px-0">
-            {activeTab === "details" && (
-              <div className="p-4 sm:p-8 space-y-6 sm:space-y-8">
+          <div className="flex-1 overflow-y-auto">
+            {activeTab === 'details' && (
+              <div className="px-4 sm:px-8 pb-4 sm:pb-8 space-y-6 sm:space-y-8">
                 {/* Quick Actions */}
                 <div className="flex items-center justify-between p-4 glass-card rounded-xl">
                   <div className="flex items-center space-x-2">
@@ -232,14 +221,10 @@ export function MenuDetailSlidePanel({
                     className="hover:scale-105 transition-all duration-200"
                   >
                     {isTogglingStatus
-                      ? "Updating..."
-                      : (
-                            type === "category"
-                              ? (category as any)?.active
-                              : (item as any)?.active
-                          )
-                        ? "Deactivate"
-                        : "Activate"}
+                      ? 'Updating...'
+                      : (type === 'category' ? (category as any)?.active : (item as any)?.active)
+                        ? 'Deactivate'
+                        : 'Activate'}
                   </Button>
                 </div>
 
@@ -251,15 +236,13 @@ export function MenuDetailSlidePanel({
                       Description
                     </h3>
                     <div className="p-4 bg-muted/30 rounded-xl border">
-                      <p className="text-muted-foreground leading-relaxed">
-                        {data.description}
-                      </p>
+                      <p className="text-muted-foreground leading-relaxed">{data.description}</p>
                     </div>
                   </div>
                 )}
 
                 {/* Category Details */}
-                {type === "category" && category && (
+                {type === 'category' && category && (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-foreground flex items-center">
                       <span className="w-2 h-2 bg-secondary rounded-full mr-3"></span>
@@ -269,9 +252,7 @@ export function MenuDetailSlidePanel({
                       <div className="stat-card">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-muted-foreground text-sm">
-                              Items Count
-                            </p>
+                            <p className="text-muted-foreground text-sm">Items Count</p>
                             <p className="text-2xl font-bold">0</p>
                           </div>
                           <Package className="h-8 w-8 text-primary/40" />
@@ -280,12 +261,8 @@ export function MenuDetailSlidePanel({
                       <div className="stat-card">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-muted-foreground text-sm">
-                              Display Order
-                            </p>
-                            <p className="text-2xl font-bold">
-                              {category.displayOrder || 0}
-                            </p>
+                            <p className="text-muted-foreground text-sm">Display Order</p>
+                            <p className="text-2xl font-bold">{category.displayOrder || 0}</p>
                           </div>
                           <Users className="h-8 w-8 text-secondary/40" />
                         </div>
@@ -295,7 +272,7 @@ export function MenuDetailSlidePanel({
                 )}
 
                 {/* Item Details */}
-                {type === "item" && item && (
+                {type === 'item' && item && (
                   <div className="space-y-4">
                     <h3 className="text-lg font-semibold text-foreground flex items-center">
                       <span className="w-2 h-2 bg-secondary rounded-full mr-3"></span>
@@ -305,9 +282,7 @@ export function MenuDetailSlidePanel({
                       <div className="stat-card">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-muted-foreground text-sm">
-                              Price
-                            </p>
+                            <p className="text-muted-foreground text-sm">Price</p>
                             <p className="price-display text-xl">
                               {formatPrice(item.basePrice || item.price || 0)}
                             </p>
@@ -319,12 +294,8 @@ export function MenuDetailSlidePanel({
                         <div className="stat-card">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-muted-foreground text-sm">
-                                Prep Time
-                              </p>
-                              <p className="text-2xl font-bold">
-                                {item.preparationTime}m
-                              </p>
+                              <p className="text-muted-foreground text-sm">Prep Time</p>
+                              <p className="text-2xl font-bold">{item.preparationTime}m</p>
                             </div>
                             <Clock className="h-8 w-8 text-secondary/40" />
                           </div>
@@ -349,14 +320,11 @@ export function MenuDetailSlidePanel({
                         <div>
                           <p className="font-medium">Created</p>
                           <p className="text-sm text-muted-foreground">
-                            {new Date(data.createdAt).toLocaleDateString(
-                              "en-US",
-                              {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              },
-                            )}
+                            {new Date(data.createdAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}
                           </p>
                         </div>
                       </div>
@@ -369,14 +337,11 @@ export function MenuDetailSlidePanel({
                         <div>
                           <p className="font-medium">Last Updated</p>
                           <p className="text-sm text-muted-foreground">
-                            {new Date(data.updatedAt).toLocaleDateString(
-                              "en-US",
-                              {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                              },
-                            )}
+                            {new Date(data.updatedAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })}
                           </p>
                         </div>
                       </div>
@@ -386,35 +351,29 @@ export function MenuDetailSlidePanel({
               </div>
             )}
 
-            {activeTab === "analytics" && (
-              <div className="p-4 sm:p-8 space-y-6 sm:space-y-8">
+            {activeTab === 'analytics' && (
+              <div className="px-4 sm:px-8 pb-4 sm:pb-8 space-y-6 sm:space-y-8">
                 <div className="text-center py-16">
                   <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-2xl flex items-center justify-center">
                     <BarChart3 className="h-10 w-10 text-primary" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">
-                    Analytics Coming Soon
-                  </h3>
+                  <h3 className="text-xl font-semibold mb-2">Analytics Coming Soon</h3>
                   <p className="text-muted-foreground">
-                    Track performance metrics, popular items, and revenue data
-                    for this {type}.
+                    Track performance metrics, popular items, and revenue data for this {type}.
                   </p>
                 </div>
               </div>
             )}
 
-            {activeTab === "history" && (
-              <div className="p-4 sm:p-8 space-y-6 sm:space-y-8">
+            {activeTab === 'history' && (
+              <div className="px-4 sm:px-8 pb-4 sm:pb-8 space-y-6 sm:space-y-8">
                 <div className="text-center py-16">
                   <div className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-secondary/10 to-accent/10 rounded-2xl flex items-center justify-center">
                     <History className="h-10 w-10 text-secondary" />
                   </div>
-                  <h3 className="text-xl font-semibold mb-2">
-                    History Coming Soon
-                  </h3>
+                  <h3 className="text-xl font-semibold mb-2">History Coming Soon</h3>
                   <p className="text-muted-foreground">
-                    View detailed history of changes, orders, and activity for
-                    this {type}.
+                    View detailed history of changes, orders, and activity for this {type}.
                   </p>
                 </div>
               </div>
@@ -426,9 +385,7 @@ export function MenuDetailSlidePanel({
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                 <Info className="h-4 w-4" />
-                <span>
-                  Manage your {type === "category" ? "category" : "menu item"}
-                </span>
+                <span>Manage your {type === 'category' ? 'category' : 'menu item'}</span>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <Button
@@ -449,7 +406,7 @@ export function MenuDetailSlidePanel({
                   className="hover:scale-105 transition-all duration-200 min-w-[120px] w-full sm:w-auto"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
-                  {isDeleting ? "Deleting..." : "Delete"}
+                  {isDeleting ? 'Deleting...' : 'Delete'}
                 </Button>
               </div>
             </div>

@@ -1,151 +1,166 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { Button } from '@tabsy/ui-components'
-import { X, Clock, User, MapPin, FileText, DollarSign, ChefHat, CheckCircle2, ArrowRight } from 'lucide-react'
-import { Order, OrderStatus, OrderItem } from '@tabsy/shared-types'
-import { format } from 'date-fns'
-import { OrderStatusFlow } from './OrderStatusFlow'
+import { useState, useEffect } from 'react';
+import { Button } from '@tabsy/ui-components';
+import {
+  X,
+  Clock,
+  User,
+  MapPin,
+  FileText,
+  DollarSign,
+  ChefHat,
+  CheckCircle2,
+  ArrowRight,
+} from 'lucide-react';
+import { Order, OrderStatus, OrderItem } from '@tabsy/shared-types';
+import { format } from 'date-fns';
+import { OrderStatusFlow } from './OrderStatusFlow';
 
 interface OrderDetailSlidePanelProps {
-  order: Order | null
-  isOpen: boolean
-  onClose: () => void
-  onStatusUpdate: (orderId: string, status: OrderStatus) => void
+  order: Order | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onStatusUpdate: (orderId: string, status: OrderStatus) => void;
 }
 
-export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }: OrderDetailSlidePanelProps) {
-  const [updating, setUpdating] = useState(false)
-  const [mounted, setMounted] = useState(false)
+export function OrderDetailSlidePanel({
+  order,
+  isOpen,
+  onClose,
+  onStatusUpdate,
+}: OrderDetailSlidePanelProps) {
+  const [updating, setUpdating] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
-      setMounted(true)
+      setMounted(true);
       // Prevent body scroll when panel is open
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = 'hidden';
     } else {
       // Re-enable body scroll when panel is closed
-      document.body.style.overflow = 'unset'
+      document.body.style.overflow = 'unset';
       // Delay unmounting to allow exit animation
-      const timer = setTimeout(() => setMounted(false), 300)
-      return () => clearTimeout(timer)
+      const timer = setTimeout(() => setMounted(false), 300);
+      return () => clearTimeout(timer);
     }
 
     return () => {
-      document.body.style.overflow = 'unset'
-    }
-  }, [isOpen])
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
 
   const handleStatusUpdate = async (newStatus: OrderStatus) => {
-    if (!order) return
-    
-    setUpdating(true)
+    if (!order) return;
+
+    setUpdating(true);
     try {
-      await onStatusUpdate(order.id, newStatus)
+      await onStatusUpdate(order.id, newStatus);
     } catch (err) {
-      console.error('Failed to update order status:', err)
+      console.error('Failed to update order status:', err);
     } finally {
-      setUpdating(false)
+      setUpdating(false);
     }
-  }
+  };
 
   const getNextStatus = (currentStatus: OrderStatus): OrderStatus | null => {
     switch (currentStatus) {
       case OrderStatus.RECEIVED:
-        return OrderStatus.PREPARING
+        return OrderStatus.PREPARING;
       case OrderStatus.PREPARING:
-        return OrderStatus.READY
+        return OrderStatus.READY;
       case OrderStatus.READY:
-        return OrderStatus.DELIVERED
+        return OrderStatus.DELIVERED;
       case OrderStatus.DELIVERED:
-        return OrderStatus.COMPLETED
+        return OrderStatus.COMPLETED;
       default:
-        return null
+        return null;
     }
-  }
+  };
 
   const getNextStatusText = (currentStatus: OrderStatus): string => {
-    const nextStatus = getNextStatus(currentStatus)
-    if (!nextStatus) return ''
-    
+    const nextStatus = getNextStatus(currentStatus);
+    if (!nextStatus) return '';
+
     switch (nextStatus) {
       case OrderStatus.PREPARING:
-        return 'Start Preparing'
+        return 'Start Preparing';
       case OrderStatus.READY:
-        return 'Mark Ready'
+        return 'Mark Ready';
       case OrderStatus.DELIVERED:
-        return 'Mark Delivered'
+        return 'Mark Delivered';
       case OrderStatus.COMPLETED:
-        return 'Complete Order'
+        return 'Complete Order';
       default:
-        return ''
+        return '';
     }
-  }
+  };
 
   const canUpdateStatus = (status: OrderStatus): boolean => {
-    return ![OrderStatus.COMPLETED, OrderStatus.CANCELLED].includes(status)
-  }
+    return ![OrderStatus.COMPLETED, OrderStatus.CANCELLED].includes(status);
+  };
 
   const canCancelOrder = (status: OrderStatus): boolean => {
-    return [OrderStatus.RECEIVED, OrderStatus.PREPARING].includes(status)
-  }
+    return [OrderStatus.RECEIVED, OrderStatus.PREPARING].includes(status);
+  };
 
   const getStatusProgress = (status: OrderStatus): number => {
     switch (status) {
       case OrderStatus.RECEIVED:
-        return 20
+        return 20;
       case OrderStatus.PREPARING:
-        return 40
+        return 40;
       case OrderStatus.READY:
-        return 60
+        return 60;
       case OrderStatus.DELIVERED:
-        return 80
+        return 80;
       case OrderStatus.COMPLETED:
-        return 100
+        return 100;
       default:
-        return 0
+        return 0;
     }
-  }
+  };
 
   const getStatusColor = (status: OrderStatus): string => {
     switch (status) {
       case OrderStatus.RECEIVED:
-        return 'text-primary bg-primary/10'
+        return 'text-primary bg-primary/10';
       case OrderStatus.PREPARING:
-        return 'text-amber-600 bg-amber-100'
+        return 'text-amber-600 bg-amber-100';
       case OrderStatus.READY:
-        return 'text-green-600 bg-green-100'
+        return 'text-green-600 bg-green-100';
       case OrderStatus.DELIVERED:
-        return 'text-purple-600 bg-purple-100'
+        return 'text-purple-600 bg-purple-100';
       case OrderStatus.COMPLETED:
-        return 'text-muted-foreground bg-muted'
+        return 'text-muted-foreground bg-muted';
       case OrderStatus.CANCELLED:
-        return 'text-destructive bg-destructive/10'
+        return 'text-destructive bg-destructive/10';
       default:
-        return 'text-muted-foreground bg-muted'
+        return 'text-muted-foreground bg-muted';
     }
-  }
+  };
 
-  if (!mounted || !order) return null
+  if (!mounted || !order) return null;
 
   return (
     <>
       {/* Backdrop */}
-      <div 
+      <div
         className={`fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300 ${
           isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
         onClick={onClose}
       />
-      
+
       {/* Slide Panel */}
-      <div 
-        className={`fixed right-0 top-0 h-full w-full max-w-lg bg-background shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-l ${
+      <div
+        className={`fixed right-0 top-0 h-full w-full max-w-lg bg-background shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-l flex flex-col ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Header */}
-        <div className="bg-primary text-primary-foreground p-4 border-b">
+        <div className="bg-primary text-primary-foreground p-4 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Order #{order.orderNumber}</h2>
@@ -153,10 +168,10 @@ export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }
                 {format(new Date(order.createdAt), 'PPpp')}
               </p>
             </div>
-            
-            <Button 
-              variant="ghost" 
-              size="sm" 
+
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onClose}
               className="text-primary-foreground hover:bg-primary-foreground/20 h-8 w-8 p-0"
             >
@@ -167,7 +182,9 @@ export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }
           {/* Status Progress Bar */}
           <div className="mt-4">
             <div className="flex items-center justify-between mb-2">
-              <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(order.status)}`}>
+              <span
+                className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(order.status)}`}
+              >
                 {order.status.replace('_', ' ')}
               </span>
               <span className="text-primary-foreground/80 text-sm">
@@ -175,7 +192,7 @@ export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }
               </span>
             </div>
             <div className="w-full bg-primary-foreground/20 rounded-full h-2">
-              <div 
+              <div
                 className="bg-primary-foreground rounded-full h-2 transition-all duration-500 ease-out"
                 style={{ width: `${getStatusProgress(order.status)}%` }}
               />
@@ -183,8 +200,8 @@ export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }
           </div>
         </div>
 
-        {/* Content - Now with proper height calculation */}
-        <div className="h-[calc(100vh-10rem)] overflow-y-auto p-4 space-y-4">
+        {/* Content - Now with proper flexbox layout */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Quick Info Cards */}
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-muted/50 rounded-lg p-3 border">
@@ -249,7 +266,9 @@ export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }
               <div className="flex items-start space-x-2">
                 <FileText className="h-4 w-4 text-warning-foreground mt-0.5" />
                 <div>
-                  <p className="text-sm font-medium text-warning-foreground mb-1">Special Instructions</p>
+                  <p className="text-sm font-medium text-warning-foreground mb-1">
+                    Special Instructions
+                  </p>
                   <p className="text-sm text-foreground">{order.specialInstructions}</p>
                 </div>
               </div>
@@ -262,7 +281,7 @@ export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }
               <ChefHat className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-lg font-semibold text-foreground">Order Items</h3>
             </div>
-            
+
             <div className="space-y-3">
               {order.items.map((item: OrderItem, index) => (
                 <div key={item.id} className="bg-card border rounded-lg p-3">
@@ -271,12 +290,12 @@ export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }
                       <h4 className="font-medium text-foreground">
                         {item.quantity}x {item.menuItem.name}
                       </h4>
-                      <p className="text-sm text-foreground/80 mt-1">
-                        {item.menuItem.description}
-                      </p>
+                      <p className="text-sm text-foreground/80 mt-1">{item.menuItem.description}</p>
                     </div>
                     <div className="text-right ml-3">
-                      <p className="font-semibold text-foreground">${parseFloat(String(item.subtotal || 0)).toFixed(2)}</p>
+                      <p className="font-semibold text-foreground">
+                        ${parseFloat(String(item.subtotal || 0)).toFixed(2)}
+                      </p>
                       <p className="text-xs text-foreground/70">
                         ${parseFloat(String(item.price || 0)).toFixed(2)} each
                       </p>
@@ -284,23 +303,27 @@ export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }
                   </div>
 
                   {/* Selected Options */}
-                  {(item.options && Array.isArray(item.options) && item.options.length > 0) && (
+                  {item.options && Array.isArray(item.options) && item.options.length > 0 && (
                     <div className="mt-2 p-2 bg-muted/50 rounded border-l-2 border-primary/20">
                       <p className="text-xs font-medium text-foreground/90 mb-1">Customizations:</p>
                       {item.options.map((option: any, optionIndex: number) => (
                         <div key={optionIndex} className="text-xs text-foreground/80">
                           <span className="font-medium">{option.optionName || option.name}:</span>
-                          {(option.selectedValues || option.values || []).map((value: any, valueIndex: number) => (
-                            <span key={valueIndex} className="ml-1">
-                              {value.valueName || value.name || value}
-                              {value.priceModifier && value.priceModifier !== 0 && (
-                                <span className="text-foreground/70">
-                                  ({value.priceModifier > 0 ? '+' : ''}${value.priceModifier.toFixed(2)})
-                                </span>
-                              )}
-                              {valueIndex < (option.selectedValues || option.values || []).length - 1 && ', '}
-                            </span>
-                          ))}
+                          {(option.selectedValues || option.values || []).map(
+                            (value: any, valueIndex: number) => (
+                              <span key={valueIndex} className="ml-1">
+                                {value.valueName || value.name || value}
+                                {value.priceModifier && value.priceModifier !== 0 && (
+                                  <span className="text-foreground/70">
+                                    ({value.priceModifier > 0 ? '+' : ''}$
+                                    {value.priceModifier.toFixed(2)})
+                                  </span>
+                                )}
+                                {valueIndex <
+                                  (option.selectedValues || option.values || []).length - 1 && ', '}
+                              </span>
+                            ),
+                          )}
                         </div>
                       ))}
                     </div>
@@ -316,11 +339,15 @@ export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }
 
                   {/* Item Status */}
                   <div className="mt-2">
-                    <span className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-md ${
-                      (item.status || 'PENDING') === 'READY' ? 'bg-success/10 text-success-foreground' : 
-                      (item.status || 'PENDING') === 'PREPARING' ? 'bg-warning/10 text-warning-foreground' :
-                      'bg-muted text-muted-foreground'
-                    }`}>
+                    <span
+                      className={`inline-flex items-center px-2 py-1 text-xs font-medium rounded-md ${
+                        (item.status || 'PENDING') === 'READY'
+                          ? 'bg-success/10 text-success-foreground'
+                          : (item.status || 'PENDING') === 'PREPARING'
+                            ? 'bg-warning/10 text-warning-foreground'
+                            : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
                       <CheckCircle2 className="w-3 h-3 mr-1" />
                       {(item.status || 'PENDING').replace('_', ' ')}
                     </span>
@@ -336,24 +363,32 @@ export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-foreground/80">Subtotal:</span>
-                <span className="font-medium">${parseFloat(String(order.subtotal || 0)).toFixed(2)}</span>
+                <span className="font-medium">
+                  ${parseFloat(String(order.subtotal || 0)).toFixed(2)}
+                </span>
               </div>
               {parseFloat(String(order.tax || '0')) > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-foreground/80">Tax:</span>
-                  <span className="font-medium">${parseFloat(String(order.tax || 0)).toFixed(2)}</span>
+                  <span className="font-medium">
+                    ${parseFloat(String(order.tax || 0)).toFixed(2)}
+                  </span>
                 </div>
               )}
               {(order.serviceChargeAmount || 0) > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-foreground/80">Service Charge:</span>
-                  <span className="font-medium">${(order.serviceChargeAmount || 0).toFixed(2)}</span>
+                  <span className="font-medium">
+                    ${(order.serviceChargeAmount || 0).toFixed(2)}
+                  </span>
                 </div>
               )}
               {parseFloat(String(order.tip || '0')) > 0 && (
                 <div className="flex justify-between text-sm">
                   <span className="text-foreground/80">Tip:</span>
-                  <span className="font-medium">${parseFloat(String(order.tip || 0)).toFixed(2)}</span>
+                  <span className="font-medium">
+                    ${parseFloat(String(order.tip || 0)).toFixed(2)}
+                  </span>
                 </div>
               )}
               {(order.discountAmount || 0) > 0 && (
@@ -371,7 +406,7 @@ export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }
         </div>
 
         {/* Footer Actions */}
-        <div className="border-t bg-background p-4">
+        <div className="border-t bg-background p-4 flex-shrink-0">
           <div className="flex gap-2">
             {canCancelOrder(order.status) && (
               <Button
@@ -384,7 +419,7 @@ export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }
                 Cancel Order
               </Button>
             )}
-            
+
             {canUpdateStatus(order.status) && getNextStatus(order.status) && (
               <Button
                 size="sm"
@@ -392,7 +427,9 @@ export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }
                 disabled={updating}
                 className="flex-1"
               >
-                {updating ? 'Updating...' : (
+                {updating ? (
+                  'Updating...'
+                ) : (
                   <>
                     {getNextStatusText(order.status)}
                     <ArrowRight className="w-4 h-4 ml-1" />
@@ -400,18 +437,13 @@ export function OrderDetailSlidePanel({ order, isOpen, onClose, onStatusUpdate }
                 )}
               </Button>
             )}
-            
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={onClose}
-              className="flex-1"
-            >
+
+            <Button variant="outline" size="sm" onClick={onClose} className="flex-1">
               Close
             </Button>
           </div>
         </div>
       </div>
     </>
-  )
+  );
 }
