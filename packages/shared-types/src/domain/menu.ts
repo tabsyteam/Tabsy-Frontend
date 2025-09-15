@@ -70,7 +70,8 @@ export interface MenuItem {
   basePrice: number
   price?: number // Backend might return price instead of basePrice
   displayOrder: number
-  imageUrl?: string
+  image?: string // Backend returns 'image' field, not 'imageUrl'
+  imageUrl?: string // Keep for backward compatibility during transition
   dietaryTypes: DietaryType[]
   allergens: AllergenType[]
   spiceLevel?: SpiceLevel
@@ -164,7 +165,7 @@ export interface CreateMenuItemRequest {
   basePrice: number
   displayOrder: number
   status?: MenuItemStatus
-  imageUrl?: string
+  image?: string // Backend expects 'image' not 'imageUrl'
   dietaryTypes?: DietaryType[]
   allergens?: AllergenType[]
   spiceLevel?: SpiceLevel
@@ -180,7 +181,7 @@ export interface UpdateMenuItemRequest {
   basePrice?: number
   displayOrder?: number
   status?: MenuItemStatus
-  imageUrl?: string
+  image?: string // Backend expects 'image' not 'imageUrl'
   dietaryTypes?: DietaryType[]
   allergens?: AllergenType[]
   spiceLevel?: SpiceLevel

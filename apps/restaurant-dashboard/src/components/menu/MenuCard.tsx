@@ -151,6 +151,7 @@ export function MenuCard(props: MenuCardProps) {
 
   // Menu Item Card
   const item = data as MenuItem
+
   const formatPrice = (price: number | string) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price
     return new Intl.NumberFormat('en-US', {
@@ -166,9 +167,33 @@ export function MenuCard(props: MenuCardProps) {
         {/* Header with image placeholder and status */}
         <div className="flex items-start space-x-3 mb-3 relative">
           <div className="relative flex-shrink-0">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-muted/30 to-muted/50 flex items-center justify-center group-hover:from-primary/10 group-hover:to-secondary/10 transition-all duration-300">
-              <ImageIcon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
-            </div>
+            {(() => {
+              const imageUrl = (item as any).image || (item as any).imageUrl; // Prioritize 'image' field from backend
+              const hasImage = !!imageUrl;
+
+              return hasImage ? (
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted/20 group-hover:shadow-md transition-all duration-300">
+                  <img
+                    src={imageUrl}
+                    alt={item.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    onError={(e) => {
+                      // Fallback to placeholder if image fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                      target.nextElementSibling?.classList.remove('hidden');
+                    }}
+                  />
+                  <div className="hidden w-full h-full bg-gradient-to-br from-muted/30 to-muted/50 flex items-center justify-center">
+                    <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                </div>
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-muted/30 to-muted/50 flex items-center justify-center group-hover:from-primary/10 group-hover:to-secondary/10 transition-all duration-300">
+                  <ImageIcon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+              );
+            })()}
             {/* Status indicator */}
             <div className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-card ${
               (item as any).active ? 'bg-green-500' : 'bg-red-500'
