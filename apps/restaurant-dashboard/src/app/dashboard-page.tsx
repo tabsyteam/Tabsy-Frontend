@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@tabsy/ui-components'
 import { useAuth } from '@tabsy/ui-components'
-import { BarChart3, ShoppingCart, Users, Utensils, Bell, Settings, TrendingUp, Clock, LogOut, User } from 'lucide-react'
+import { BarChart3, ShoppingCart, Users, Utensils, TrendingUp, Clock } from 'lucide-react'
 import { OrdersManagement } from '@/components/orders/OrdersManagement'
 import { MenuManagement } from '@/components/menu/MenuManagement'
 import { DynamicWeeklyOverviewChart } from '@/components'
+import { Header } from '@/components/layout'
 import { useRouter } from 'next/navigation'
 import { User as UserType } from '@tabsy/shared-types'
 import { createDashboardHooks } from '@tabsy/react-query-hooks'
@@ -196,94 +197,17 @@ export function DashboardClient(): JSX.Element {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50">
-      {/* Header */}
-      <header className="bg-card border-b shadow-sm backdrop-blur-sm bg-surface-secondary">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-8">
-              <div className="flex flex-col">
-                <h1 className="text-2xl font-bold text-primary">
-                  {restaurantLoading ? (
-                    <span className="animate-pulse">Loading...</span>
-                  ) : (
-                    restaurant?.name || 'Restaurant Dashboard'
-                  )}
-                </h1>
-                {restaurant?.name && !restaurantLoading && (
-                  <p className="text-sm text-primary font-medium">
-                    Dashboard
-                  </p>
-                )}
-              </div>
-              
-              {/* Navigation */}
-              <nav className="flex space-x-4">
-                <Button
-                  variant={currentView === 'overview' ? 'default' : 'ghost'}
-                  onClick={() => setCurrentView('overview')}
-                  className={currentView === 'overview' ? 'btn-primary' : ''}
-                >
-                  Overview
-                </Button>
-                <Button
-                  variant={currentView === 'orders' ? 'default' : 'ghost'}
-                  onClick={() => setCurrentView('orders')}
-                  className={currentView === 'orders' ? 'btn-primary' : ''}
-                >
-                  Orders
-                </Button>
-                <Button
-                  variant={currentView === 'menu' ? 'default' : 'ghost'}
-                  onClick={() => setCurrentView('menu')}
-                  className={currentView === 'menu' ? 'btn-primary' : ''}
-                >
-                  <Utensils className="h-4 w-4 mr-2" />
-                  Menu
-                </Button>
-              </nav>
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <Button variant="outline" size="sm" className="">
-                <Bell className="h-4 w-4 mr-2" />
-                Notifications
-              </Button>
-              <Button variant="outline" size="sm" className="">
-                <Settings className="h-4 w-4 mr-2" />
-                Settings
-              </Button>
-              
-              {/* User Info and Logout */}
-              <div className="flex items-center space-x-3 pl-4 border-l border-primary">
-                <div className="flex items-center space-x-2">
-                  <div className="h-8 w-8 bg-gradient-to-r from-[rgb(var(--color-primary))] to-[rgb(var(--color-accent))] rounded-full flex items-center justify-center shadow-lg">
-                    <User className="h-4 w-4 text-white" />
-                  </div>
-                  <div className="hidden sm:block">
-                    <p className="text-sm font-medium text-foreground">
-                      {(user as UserType)?.firstName} {(user as UserType)?.lastName}
-                    </p>
-                    <p className="text-xs text-primary">{(user as UserType)?.role}</p>
-                  </div>
-                </div>
-                
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleLogout}
-                  disabled={isLoggingOut}
-                  className=""
-                >
-                  <LogOut className="h-4 w-4 mr-2" />
-                  {isLoggingOut ? 'Signing out...' : 'Logout'}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Modern Responsive Header */}
+      <Header
+        user={user}
+        restaurantName={restaurant?.name}
+        currentView={currentView}
+        onViewChange={setCurrentView}
+        onLogout={handleLogout}
+        isLoggingOut={isLoggingOut}
+      />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 h-[calc(100vh-5rem)] overflow-hidden">
+      <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 min-h-[calc(100vh-4rem)]">
         {currentView === 'overview' ? (
           <>
             {/* Stats Grid */}
