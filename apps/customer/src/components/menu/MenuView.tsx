@@ -184,8 +184,8 @@ export function MenuView() {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-600 mb-2">Error</h1>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <h1 className="text-2xl font-bold text-status-error mb-2">Error</h1>
+          <p className="text-content-secondary mb-4">{error}</p>
           <Button onClick={() => router.push('/')}>
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Home
@@ -196,9 +196,9 @@ export function MenuView() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b sticky top-0 z-10">
+      <div className="bg-surface shadow-sm border-b sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -211,7 +211,7 @@ export function MenuView() {
               </Button>
               <div>
                 <h1 className="text-xl font-semibold">{restaurant?.name || 'Menu'}</h1>
-                <p className="text-sm text-gray-500">Table {table?.number}</p>
+                <p className="text-sm text-content-tertiary">Table {table?.number}</p>
               </div>
             </div>
             
@@ -261,12 +261,12 @@ export function MenuView() {
             return (
               <div
                 key={item.id}
-                className="bg-white rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow"
+                className="bg-surface rounded-lg shadow-sm border p-4 hover:shadow-md transition-shadow"
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
                     <div className="flex items-start justify-between mb-2">
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <h3 className="text-lg font-semibold text-content-primary">
                         {item.name}
                       </h3>
                       <span className="text-lg font-bold text-primary ml-4">
@@ -274,7 +274,7 @@ export function MenuView() {
                       </span>
                     </div>
                     
-                    <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                    <p className="text-content-secondary text-sm mb-3 line-clamp-2">
                       {item.description}
                     </p>
 
@@ -283,7 +283,7 @@ export function MenuView() {
                         {item.dietaryTypes.map(diet => (
                           <span
                             key={diet}
-                            className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full"
+                            className="px-2 py-1 bg-status-success-light text-status-success-dark text-xs rounded-full"
                           >
                             {diet.replace('_', ' ')}
                           </span>
@@ -292,7 +292,7 @@ export function MenuView() {
                     )}
 
                     {item.allergens && item.allergens.length > 0 && (
-                      <div className="text-xs text-orange-600 mb-3">
+                      <div className="text-xs text-primary mb-3">
                         Contains: {item.allergens.map(allergen => allergen.replace('_', ' ')).join(', ')}
                       </div>
                     )}
@@ -301,7 +301,7 @@ export function MenuView() {
                     <div className="flex items-center justify-between">
                       <div>
                         {item.status !== MenuItemStatus.AVAILABLE && (
-                          <span className="text-red-500 text-sm font-medium">
+                          <span className="text-status-error text-sm font-medium">
                             {item.status === MenuItemStatus.OUT_OF_STOCK ? 'Out of Stock' : 'Currently unavailable'}
                           </span>
                         )}

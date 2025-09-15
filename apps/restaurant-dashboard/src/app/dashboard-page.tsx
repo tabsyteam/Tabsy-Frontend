@@ -283,7 +283,7 @@ export function DashboardClient(): JSX.Element {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 pb-8 h-[calc(100vh-5rem)] overflow-hidden">
         {currentView === 'overview' ? (
           <>
             {/* Stats Grid */}
@@ -447,21 +447,7 @@ export function DashboardClient(): JSX.Element {
             </div>
           </>
         ) : currentView === 'orders' ? (
-          <div className="space-y-4">
-            <div className="bg-card rounded-lg shadow-lg border p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-primary">
-                    {restaurant?.name ? `${restaurant.name} - Orders` : 'Orders Management'}
-                  </h2>
-                  {restaurant?.address && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {restaurant.address}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
+          <div className="h-full">
             {restaurantId ? (
               <OrdersManagement restaurantId={restaurantId} />
             ) : (
@@ -469,21 +455,7 @@ export function DashboardClient(): JSX.Element {
             )}
           </div>
         ) : currentView === 'menu' ? (
-          <div className="space-y-4">
-            <div className="bg-card rounded-lg shadow-lg border p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-primary">
-                    {restaurant?.name ? `${restaurant.name} - Menu` : 'Menu Management'}
-                  </h2>
-                  {restaurant?.address && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {restaurant.address}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
+          <div className="h-full overflow-y-auto">
             {restaurantId ? (
               <MenuManagement restaurantId={restaurantId} />
             ) : (

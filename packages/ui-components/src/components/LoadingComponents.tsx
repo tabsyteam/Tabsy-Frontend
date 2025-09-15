@@ -17,10 +17,10 @@ export function LoadingSpinner({ size = 'md', color = 'primary', className = '' 
   }
 
   const colorClasses = {
-    primary: 'text-blue-600',
-    secondary: 'text-gray-600',
+    primary: 'text-primary',
+    secondary: 'text-secondary',
     white: 'text-white',
-    gray: 'text-gray-400'
+    gray: 'text-content-disabled'
   }
 
   return (
@@ -59,7 +59,7 @@ export function LoadingState({
     return (
       <div className={`relative ${className}`}>
         {children}
-        <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
+        <div className="absolute inset-0 bg-surface bg-opacity-75 flex items-center justify-center">
           {fallback || defaultFallback}
         </div>
       </div>
@@ -110,7 +110,7 @@ export function LoadingSkeleton({
   width,
   height 
 }: LoadingSkeletonProps) {
-  const baseClasses = 'animate-pulse bg-gray-200 rounded'
+  const baseClasses = 'animate-pulse bg-surface-tertiary rounded'
   
   const variantClasses = {
     text: 'h-4',
@@ -151,7 +151,7 @@ interface LoadingCardProps {
 
 export function LoadingCard({ className = '' }: LoadingCardProps) {
   return (
-    <div className={`bg-white p-6 rounded-lg border ${className}`}>
+    <div className={`bg-surface p-6 rounded-lg border ${className}`}>
       <div className="animate-pulse">
         <div className="flex items-center space-x-4 mb-4">
           <LoadingSkeleton variant="circle" />
@@ -178,9 +178,9 @@ interface LoadingTableProps {
 
 export function LoadingTable({ rows = 5, columns = 4, className = '' }: LoadingTableProps) {
   return (
-    <div className={`bg-white rounded-lg border overflow-hidden ${className}`}>
+    <div className={`bg-surface rounded-lg border overflow-hidden ${className}`}>
       {/* Header */}
-      <div className="bg-gray-50 px-6 py-3 border-b">
+      <div className="bg-background px-6 py-3 border-b">
         <div className="flex space-x-4">
           {Array.from({ length: columns }, (_, i) => (
             <LoadingSkeleton key={i} width="100px" className="flex-1" />
@@ -189,7 +189,7 @@ export function LoadingTable({ rows = 5, columns = 4, className = '' }: LoadingT
       </div>
       
       {/* Rows */}
-      <div className="divide-y divide-gray-200">
+      <div className="divide-y divide-border-tertiary">
         {Array.from({ length: rows }, (_, i) => (
           <div key={i} className="px-6 py-4">
             <div className="flex space-x-4">

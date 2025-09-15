@@ -109,19 +109,19 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       // Render error UI based on error level
       return (
         <div className={`
-          ${level === 'critical' ? 'min-h-screen' : 'min-h-[400px]'} 
-          flex items-center justify-center p-6 bg-gray-50
+          ${level === 'critical' ? 'min-h-screen' : 'min-h-[400px]'}
+          flex items-center justify-center p-6 bg-background
         `}>
-          <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6 text-center">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 mb-4">
+          <div className="max-w-md w-full bg-surface rounded-lg shadow-lg p-6 text-center">
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-status-error-light mb-4">
               <span className="text-2xl">⚠️</span>
             </div>
             
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <h3 className="text-lg font-medium text-content-primary mb-2">
               {level === 'critical' ? 'Application Error' : 'Something went wrong'}
             </h3>
             
-            <p className="text-sm text-gray-500 mb-6">
+            <p className="text-sm text-content-tertiary mb-6">
               {level === 'critical' 
                 ? 'A critical error occurred that prevented the application from working properly.'
                 : 'We encountered an unexpected error. Please try again.'
@@ -129,11 +129,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             </p>
 
             {showErrorDetails && error && (
-              <div className="mb-6 p-3 bg-gray-100 rounded text-left">
-                <p className="text-xs font-mono text-gray-700 break-all">
+              <div className="mb-6 p-3 bg-surface-secondary rounded text-left">
+                <p className="text-xs font-mono text-content-secondary break-all">
                   <strong>Error ID:</strong> {errorId}
                 </p>
-                <p className="text-xs font-mono text-gray-700 mt-1">
+                <p className="text-xs font-mono text-content-secondary mt-1">
                   <strong>Message:</strong> {error.message}
                 </p>
               </div>
@@ -142,7 +142,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={this.handleRetry}
-                className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-status-info-foreground bg-status-info hover:bg-status-info-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-status-info"
               >
                 <span className="mr-2">🔄</span>
                 Try Again
@@ -151,7 +151,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
               {level === 'critical' && (
                 <button
                   onClick={() => typeof window !== 'undefined' && (window.location.href = '/')}
-                  className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-border text-sm font-medium rounded-md text-content-secondary bg-surface hover:bg-interactive-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
                 >
                   <span className="mr-2">🏠</span>
                   Go Home
@@ -169,10 +169,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
             {errorInfo && (
               <details className="mt-6 text-left">
-                <summary className="cursor-pointer text-sm font-medium text-gray-900">
+                <summary className="cursor-pointer text-sm font-medium text-content-primary">
                   Debug Information
                 </summary>
-                <pre className="mt-2 text-xs bg-gray-100 p-2 rounded overflow-auto max-h-32">
+                <pre className="mt-2 text-xs bg-surface-secondary p-2 rounded overflow-auto max-h-32">
                   {errorInfo.componentStack}
                 </pre>
               </details>

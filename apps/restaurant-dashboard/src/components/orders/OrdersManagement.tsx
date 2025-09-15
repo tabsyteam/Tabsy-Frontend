@@ -261,10 +261,10 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-full">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Orders Management</h1>
           <p className="text-foreground/80 mt-1">
@@ -292,7 +292,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4 p-4 bg-card rounded-lg border">
+      <div className="flex items-center gap-4 p-4 bg-card rounded-lg border mb-4">
         <Filter className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-medium text-foreground">Filter by status:</span>
         <div className="flex gap-2 flex-wrap">
@@ -343,10 +343,10 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
 
       {/* Orders Grid - Scrollable */}
       {!ordersLoading && !ordersError && (
-        <div className="h-[calc(100vh-24rem)] overflow-y-auto pr-2">
-          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="flex-1 overflow-y-auto">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pb-4">
             {filteredOrders.length === 0 ? (
-              <div className="col-span-full flex items-center justify-center h-32 bg-muted/50 rounded-lg border-2 border-dashed border-border">
+              <div className="col-span-full flex items-center justify-center h-64 bg-muted/50 rounded-lg border-2 border-dashed border-border">
                 <div className="text-center">
                   <p className="text-foreground font-medium">No orders found</p>
                   <p className="text-muted-foreground text-sm mt-1">

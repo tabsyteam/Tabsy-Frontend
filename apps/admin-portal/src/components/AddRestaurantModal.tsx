@@ -190,7 +190,7 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-interactive-hover rounded-full transition-colors"
           >
             <X className="h-5 w-5 text-gray-500" />
           </button>

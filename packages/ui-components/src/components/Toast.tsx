@@ -96,10 +96,10 @@ interface ToastItemProps {
 
 function ToastItem({ toast, onClose }: ToastItemProps) {
   const typeStyles = {
-    success: 'bg-green-50 border-green-200 text-green-800',
-    error: 'bg-red-50 border-red-200 text-red-800',
-    warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-    info: 'bg-blue-50 border-blue-200 text-blue-800'
+    success: 'bg-status-success-light border-status-success-border text-status-success-dark',
+    error: 'bg-status-error-light border-status-error-border text-status-error-dark',
+    warning: 'bg-status-warning-light border-status-warning-border text-status-warning-dark',
+    info: 'bg-status-info-light border-status-info-border text-status-info-dark'
   }
 
   const iconMap = {
@@ -134,7 +134,7 @@ function ToastItem({ toast, onClose }: ToastItemProps) {
         
         <button
           onClick={onClose}
-          className="flex-shrink-0 ml-3 text-gray-400 hover:text-gray-600"
+          className="flex-shrink-0 ml-3 text-content-disabled hover:text-content-secondary"
         >
           <span className="sr-only">Close</span>
           <span className="text-lg">×</span>

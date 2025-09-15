@@ -44,15 +44,15 @@ function UserCard({ user, onView, onEdit, onDelete, onStatusChange }: UserCardPr
   const getRoleColor = (role: UserRole): string => {
     switch (role) {
       case UserRole.ADMIN:
-        return 'bg-red-100 text-red-800 border-red-200'
+        return 'bg-status-error-light text-status-error-dark border-status-error-border'
       case UserRole.RESTAURANT_OWNER:
-        return 'bg-purple-100 text-purple-800 border-purple-200'
+        return 'bg-secondary-light text-secondary-dark border-secondary/20'
       case UserRole.RESTAURANT_STAFF:
-        return 'bg-blue-100 text-blue-800 border-blue-200'
+        return 'bg-status-info-light text-status-info-dark border-status-info-border'
       case UserRole.CUSTOMER:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-surface-tertiary text-content-secondary border-border-secondary'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-surface-tertiary text-content-secondary border-border-secondary'
     }
   }
 
@@ -74,15 +74,15 @@ function UserCard({ user, onView, onEdit, onDelete, onStatusChange }: UserCardPr
   const getStatusColor = (status: AdminUser['status']): string => {
     switch (status) {
       case 'ACTIVE':
-        return 'bg-green-100 text-green-800 border-green-200'
+        return 'bg-status-success-light text-status-success-dark border-status-success-border'
       case 'PENDING':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        return 'bg-status-warning-light text-status-warning-dark border-status-warning-border'
       case 'SUSPENDED':
-        return 'bg-red-100 text-red-800 border-red-200'
+        return 'bg-status-error-light text-status-error-dark border-status-error-border'
       case 'INACTIVE':
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-surface-tertiary text-content-secondary border-border-secondary'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-surface-tertiary text-content-secondary border-border-secondary'
     }
   }
 
@@ -141,18 +141,18 @@ function UserCard({ user, onView, onEdit, onDelete, onStatusChange }: UserCardPr
           </Button>
           
           {menuOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border z-10">
+            <div className="absolute right-0 mt-2 w-48 bg-surface rounded-md shadow-lg border z-10">
               <div className="py-1">
                 <button
                   onClick={() => { onView(user); setMenuOpen(false) }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className="flex items-center w-full px-4 py-2 text-sm text-content-secondary hover:bg-interactive-hover"
                 >
                   <Eye className="w-4 h-4 mr-2" />
                   View Profile
                 </button>
                 <button
                   onClick={() => { onEdit(user); setMenuOpen(false) }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className="flex items-center w-full px-4 py-2 text-sm text-content-secondary hover:bg-interactive-hover"
                 >
                   <Edit className="w-4 h-4 mr-2" />
                   Edit User
@@ -162,7 +162,7 @@ function UserCard({ user, onView, onEdit, onDelete, onStatusChange }: UserCardPr
                 {user.status !== 'ACTIVE' && (
                   <button
                     onClick={() => { onStatusChange(user, UserStatus.ACTIVE); setMenuOpen(false) }}
-                    className="flex items-center w-full px-4 py-2 text-sm text-green-700 hover:bg-green-50"
+                    className="flex items-center w-full px-4 py-2 text-sm text-status-success-dark hover:bg-status-success-light"
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
                     Activate
@@ -172,17 +172,17 @@ function UserCard({ user, onView, onEdit, onDelete, onStatusChange }: UserCardPr
                 {user.status === 'ACTIVE' && (
                   <button
                     onClick={() => { onStatusChange(user, UserStatus.SUSPENDED); setMenuOpen(false) }}
-                    className="flex items-center w-full px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-50"
+                    className="flex items-center w-full px-4 py-2 text-sm text-status-warning-dark hover:bg-status-warning-light"
                   >
                     <AlertCircle className="w-4 h-4 mr-2" />
                     Suspend
                   </button>
                 )}
                 
-                <div className="border-t border-gray-100"></div>
+                <div className="border-t border-border-tertiary"></div>
                 <button
                   onClick={() => { onDelete(user); setMenuOpen(false) }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                  className="flex items-center w-full px-4 py-2 text-sm text-status-error-dark hover:bg-status-error-light"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete User
@@ -194,29 +194,29 @@ function UserCard({ user, onView, onEdit, onDelete, onStatusChange }: UserCardPr
       </div>
 
       {/* User Info */}
-      <div className="space-y-2 text-sm text-gray-600">
+      <div className="space-y-2 text-sm text-content-secondary">
         {user.phone && (
           <div className="flex items-center">
-            <Phone className="w-4 h-4 mr-2 text-gray-400" />
+            <Phone className="w-4 h-4 mr-2 text-content-disabled" />
             <span>{user.phone}</span>
           </div>
         )}
         
         <div className="flex items-center">
-          <Calendar className="w-4 h-4 mr-2 text-gray-400" />
+          <Calendar className="w-4 h-4 mr-2 text-content-disabled" />
           <span>Joined {format(new Date(user.createdAt), 'MMM d, yyyy')}</span>
         </div>
         
         {user.lastLoginAt && (
           <div className="flex items-center">
-            <User className="w-4 h-4 mr-2 text-gray-400" />
+            <User className="w-4 h-4 mr-2 text-content-disabled" />
             <span>Last login {format(new Date(user.lastLoginAt), 'MMM d, yyyy')}</span>
           </div>
         )}
 
         {user.restaurantAccess && user.restaurantAccess.length > 0 && (
           <div className="flex items-center">
-            <Shield className="w-4 h-4 mr-2 text-gray-400" />
+            <Shield className="w-4 h-4 mr-2 text-content-disabled" />
             <span>Access to {user.restaurantAccess.length} restaurant(s)</span>
           </div>
         )}

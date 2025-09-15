@@ -124,14 +124,14 @@ function RestaurantCard({
               <div className="py-1">
                 <button
                   onClick={() => { onView(restaurant); setMenuOpen(false) }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className="flex items-center w-full px-4 py-2 text-sm text-content-secondary hover:bg-interactive-hover"
                 >
                   <Eye className="w-4 h-4 mr-2" />
                   View Details
                 </button>
                 <button
                   onClick={() => { onEdit(restaurant); setMenuOpen(false) }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                  className="flex items-center w-full px-4 py-2 text-sm text-content-secondary hover:bg-interactive-hover"
                 >
                   <Edit className="w-4 h-4 mr-2" />
                   Edit

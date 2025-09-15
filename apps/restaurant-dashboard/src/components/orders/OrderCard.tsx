@@ -30,19 +30,19 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
   const getStatusColor = (status: OrderStatus): string => {
     switch (status) {
       case OrderStatus.RECEIVED:
-        return 'bg-primary/10 text-primary border-primary/30'
+        return 'bg-primary/10 text-primary border-primary/20'
       case OrderStatus.PREPARING:
-        return 'bg-amber-100 text-amber-800 border-amber-300'
+        return 'bg-status-warning-light text-status-warning-dark border-status-warning-border'
       case OrderStatus.READY:
-        return 'bg-green-100 text-green-800 border-green-300'
+        return 'bg-status-success-light text-status-success-dark border-status-success-border'
       case OrderStatus.DELIVERED:
-        return 'bg-purple-100 text-purple-800 border-purple-300'
+        return 'bg-secondary-light text-secondary-dark border-secondary/20'
       case OrderStatus.COMPLETED:
-        return 'bg-slate-100 text-slate-800 border-slate-300'
+        return 'bg-surface-tertiary text-content-secondary border-border-secondary'
       case OrderStatus.CANCELLED:
-        return 'bg-red-100 text-red-800 border-red-300'
+        return 'bg-status-error-light text-status-error-dark border-status-error-border'
       default:
-        return 'bg-slate-100 text-slate-800 border-slate-300'
+        return 'bg-surface-tertiary text-content-secondary border-border-secondary'
     }
   }
 
@@ -117,7 +117,7 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
 
   return (
     <div
-      className={`flex flex-col bg-card rounded-lg border p-4 shadow-sm transition-all duration-200 hover:shadow-md h-full ${order.status === OrderStatus.RECEIVED ? 'ring-2 ring-primary/50 border-primary/40' : ''
+      className={`flex flex-col bg-card rounded-lg border p-4 shadow-sm transition-all duration-200 hover:shadow-md min-h-[320px] ${order.status === OrderStatus.RECEIVED ? 'ring-2 ring-primary/50 border-primary/40' : ''
         }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -138,7 +138,7 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
 
       {/* Status Badge Row */}
       <div className="flex items-center justify-between mb-3">
-        <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-semibold border ${getStatusColor(order.status)}`}>
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(order.status)}`}>
           {getStatusIcon(order.status)}
           <span className="ml-1">{order.status.replace('_', ' ')}</span>
         </span>
@@ -170,8 +170,8 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
 
 
       {/* Order Items Preview - Now with flex-1 to take remaining space */}
-      <div className="flex-1 mb-4">
-        <div className="bg-muted/30 rounded-md p-3 space-y-2">
+      <div className="flex-1 mb-4 min-h-[80px]">
+        <div className="bg-muted/30 rounded-md p-3 space-y-2 h-full">
             {order.items.slice(0, 2).map((item: OrderItem, index: number) => (
               <div key={index} className="flex justify-between items-center text-sm">
                 <span className="text-card-foreground font-medium truncate flex-1 mr-2">
