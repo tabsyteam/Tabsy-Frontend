@@ -85,6 +85,18 @@ pnpm run storybook       # Start Storybook (customer app)
 pnpm run generate:api    # Generate API client code
 ```
 
+## API Documentation
+
+See [API_DOCUMENTATION.md](./API_DOCUMENTATION.md) for comprehensive API specifications, including:
+- Complete endpoint documentation
+- Request/response schemas
+- Authentication requirements
+- Error handling
+- Frontend type definitions
+- Common issues and solutions
+
+**Important**: Always refer to API_DOCUMENTATION.md when implementing API calls to ensure frontend requests match backend validator expectations.
+
 ## Development Guidelines
 
 ### Package Dependencies
@@ -105,6 +117,159 @@ turbo lint --filter="./packages/*"
 - Husky git hooks with lint-staged for pre-commit checks
 - Conventional commit messages enforced via commitlint
 - TypeScript strict mode across all packages
+
+## Semantic Color System
+
+The project uses a comprehensive semantic color system that provides consistent theming across all three applications while allowing each app to maintain its distinct visual identity.
+
+### Architecture
+
+#### Color Token Structure
+The system uses CSS custom properties with semantic naming conventions organized into these categories:
+
+- **Brand Colors**: Primary, Secondary, Accent with hover/active states
+- **Surface Colors**: Card and component backgrounds with hierarchy
+- **Background Colors**: Page and section backgrounds
+- **Content Colors**: Text and icon colors with semantic hierarchy
+- **Border Colors**: Consistent border styling across components
+- **Status Colors**: Success, warning, error, and info states
+- **Interactive States**: Hover, active, disabled, and focus states
+
+#### Format Standards
+- **Custom Properties**: RGB format (`249 115 22`) for maximum flexibility with alpha values
+- **shadcn/ui Components**: HSL format for compatibility with existing components
+- **Utility Classes**: Semantic naming for consistent usage patterns
+
+### Application Themes
+
+Each app has its own distinct theme while following the same semantic structure:
+
+#### Customer App - Fresh Green/Teal Theme
+- **Primary**: Emerald Green (#10B981) - Fresh, healthy food ordering
+- **Secondary**: Teal (#14B8A6) - Modern, appetizing
+- **Accent**: Amber (#F59E0B) - Call-to-action highlights
+
+#### Restaurant Dashboard - Warm Orange Theme
+- **Primary**: Orange (#F97316) - Energetic, hospitality-focused
+- **Secondary**: Amber (#F59E0B) - Warm, culinary passion
+- **Accent**: Red (#EF4444) - Important alerts and actions
+
+#### Admin Portal - Professional Blue Theme
+- **Primary**: Blue (#3B82F6) - Professional, trustworthy
+- **Secondary**: Indigo (#6366F1) - Administrative clarity
+- **Accent**: Purple (#A855F7) - System-level actions
+
+### Implementation
+
+#### Theme Files Location
+Each app has its theme defined in:
+```
+apps/[app-name]/src/styles/theme.css
+```
+
+#### Tailwind Configuration
+Semantic tokens are configured in:
+```
+packages/config/tailwind-config/semantic.js
+```
+
+#### Example Usage
+```jsx
+// ✅ Good - Using semantic tokens
+<button className="bg-primary text-primary-foreground hover:bg-primary-hover">
+  Save Changes
+</button>
+<div className="bg-surface border-default text-content-primary">
+  Content Card
+</div>
+
+// ❌ Bad - Using hardcoded colors
+<button className="bg-orange-500 text-white hover:bg-orange-600">
+  Save Changes
+</button>
+<div className="bg-white border-gray-200 text-gray-900">
+  Content Card
+</div>
+```
+
+### Available Semantic Classes
+
+#### Background Utilities
+```css
+.bg-surface             /* Primary surface color */
+.bg-surface-secondary   /* Secondary surface level */
+.bg-surface-tertiary    /* Tertiary surface level */
+.bg-surface-elevated    /* Elevated surfaces (modals, dropdowns) */
+```
+
+#### Text Utilities
+```css
+.text-content-primary   /* Primary text content */
+.text-content-secondary /* Secondary text content */
+.text-content-tertiary  /* Tertiary text content */
+.text-content-brand     /* Brand-colored text */
+```
+
+#### Border Utilities
+```css
+.border-default         /* Default border color */
+.border-secondary       /* Secondary border color */
+.border-focus           /* Focus state borders */
+.border-error           /* Error state borders */
+```
+
+#### Status Utilities
+```css
+.status-success         /* Success messages/indicators */
+.status-warning         /* Warning messages/indicators */
+.status-error           /* Error messages/indicators */
+.status-info            /* Info messages/indicators */
+```
+
+#### Button Variants
+```css
+.btn-primary           /* Primary action buttons */
+.btn-secondary         /* Secondary action buttons */
+.btn-outline           /* Outline style buttons */
+.btn-ghost             /* Ghost/minimal buttons */
+```
+
+### Dark Mode Support
+
+All themes include comprehensive dark mode variants that automatically apply when the `dark` class is present on the root element. Dark mode colors are carefully chosen to maintain the same semantic meaning while providing optimal contrast and readability.
+
+### Integration with shadcn/ui
+
+The system seamlessly integrates with shadcn/ui components by providing HSL format variables for compatibility:
+
+```css
+:root {
+  --ring: 25 95% 53%;              /* Focus ring color */
+  --input: 210 14% 83%;            /* Input border color */
+  --muted: 210 40% 98%;            /* Muted backgrounds */
+  --destructive: 0 84% 60%;        /* Destructive actions */
+  /* ... additional shadcn variables */
+}
+```
+
+### Best Practices
+
+1. **Always use semantic tokens** instead of hardcoded color values
+2. **Prefer semantic utility classes** over direct Tailwind color classes
+3. **Test in both light and dark modes** to ensure proper contrast
+4. **Maintain consistency** within each app's theme while respecting the semantic structure
+5. **Extend thoughtfully** - add new semantic tokens rather than breaking the system
+
+### Extension Guidelines
+
+When adding new semantic colors:
+
+1. **Define in theme.css**: Add both light and dark mode variants
+2. **Update Tailwind config**: Add to `semantic.js` configuration
+3. **Create utility classes**: Add corresponding CSS utilities
+4. **Document usage**: Update this guide with new token purposes
+
+For detailed implementation examples and troubleshooting, see [THEME_SYSTEM.md](./THEME_SYSTEM.md).
 
 ### Testing Strategy
 - Unit tests with Vitest and Testing Library

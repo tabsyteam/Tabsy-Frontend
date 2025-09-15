@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@tabsy/ui-components'
 import { useMutation } from '@tanstack/react-query'
 import { tabsyClient } from '@tabsy/api-client'
+import { MenuCategory } from '@tabsy/shared-types'
 import {
   X,
   Package,
@@ -15,6 +16,8 @@ interface CreateCategoryModalProps {
   onClose: () => void
   restaurantId: string
   onSuccess: () => void
+  editMode?: boolean
+  initialData?: MenuCategory | null
 }
 
 interface CategoryFormData {
@@ -29,28 +32,49 @@ interface CategoryFormErrors {
   displayOrder?: string
 }
 
-export function CreateCategoryModal({ open, onClose, restaurantId, onSuccess }: CreateCategoryModalProps) {
+export function CreateCategoryModal({ open, onClose, restaurantId, onSuccess, editMode = false, initialData }: CreateCategoryModalProps) {
   const [formData, setFormData] = useState<CategoryFormData>({
-    name: '',
-    description: '',
-    displayOrder: 0
+    name: initialData?.name || '',
+    description: initialData?.description || '',
+    displayOrder: initialData?.displayOrder || 0
   })
   
   const [errors, setErrors] = useState<CategoryFormErrors>({})
+
+  // Reset form when modal opens/closes or when initialData changes
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        name: initialData?.name || '',
+        description: initialData?.description || '',
+        displayOrder: initialData?.displayOrder || 0
+      })
+      setErrors({})
+    }
+  }, [open, initialData])
   
   const createCategoryMutation = useMutation({
     mutationFn: async (data: CategoryFormData) => {
-      // Create category with only the fields allowed by backend validator
-      const requestBody = {
-        menuId: restaurantId,
-        name: data.name.trim(),
-        displayOrder: data.displayOrder,
-        active: true,
-        ...(data.description.trim() ? { description: data.description.trim() } : {})
+      if (editMode && initialData) {
+        // Update existing category
+        const requestBody = {
+          name: data.name.trim(),
+          displayOrder: data.displayOrder,
+          active: (initialData as any).active,
+          ...(data.description.trim() ? { description: data.description.trim() } : {})
+        }
+        return await tabsyClient.menu.updateCategory(restaurantId, initialData.id, requestBody)
+      } else {
+        // Create new category
+        const requestBody = {
+          menuId: restaurantId,
+          name: data.name.trim(),
+          displayOrder: data.displayOrder,
+          active: true,
+          ...(data.description.trim() ? { description: data.description.trim() } : {})
+        }
+        return await tabsyClient.menu.createCategory(restaurantId, requestBody)
       }
-
-      // Use the updated type-safe API call
-      return await tabsyClient.menu.createCategory(restaurantId, requestBody)
     },
     onSuccess: () => {
       setFormData({ name: '', description: '', displayOrder: 0 })
@@ -120,8 +144,8 @@ export function CreateCategoryModal({ open, onClose, restaurantId, onSuccess }: 
               <Package className="h-6 w-6 text-primary" />
             </div>
             <div className="flex-1">
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground">Add Category</h2>
-              <p className="text-sm sm:text-base text-muted-foreground mt-1">Create a new menu category for your restaurant</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground">{editMode ? 'Edit Category' : 'Add Category'}</h2>
+              <p className="text-sm sm:text-base text-muted-foreground mt-1">{editMode ? 'Update your menu category details' : 'Create a new menu category for your restaurant'}</p>
             </div>
           </div>
           <Button
@@ -237,7 +261,7 @@ export function CreateCategoryModal({ open, onClose, restaurantId, onSuccess }: 
                 </div>
                 <div>
                   <h4 className="text-sm font-semibold text-destructive">
-                    Failed to create category
+                    Failed to {editMode ? 'update' : 'create'} category
                   </h4>
                   <p className="text-sm text-destructive/80 mt-1">
                     {createCategoryMutation.error.message || 'Please check your input and try again.'}
@@ -256,10 +280,10 @@ export function CreateCategoryModal({ open, onClose, restaurantId, onSuccess }: 
                 </div>
                 <div>
                   <h4 className="text-sm font-semibold text-success">
-                    Category created successfully!
+                    Category {editMode ? 'updated' : 'created'} successfully!
                   </h4>
                   <p className="text-sm text-success/80 mt-1">
-                    Your new category is ready to use.
+                    Your {editMode ? 'changes have been saved' : 'new category is ready to use'}.
                   </p>
                 </div>
               </div>
@@ -297,7 +321,7 @@ export function CreateCategoryModal({ open, onClose, restaurantId, onSuccess }: 
                 ) : (
                   <>
                     <Package className="h-4 w-4 mr-2" />
-                    Create Category
+                    {editMode ? 'Update Category' : 'Create Category'}
                   </>
                 )}
               </Button>

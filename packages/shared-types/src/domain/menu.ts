@@ -54,8 +54,8 @@ export interface MenuCategory {
   name: string
   description: string
   displayOrder: number
-  isActive: boolean
-  imageUrl?: string
+  isActive: boolean  // Keep this as isActive for now to maintain backward compatibility with frontend components
+  imageUrl?: string  // Keep this as imageUrl for frontend compatibility
   items: MenuItem[]
   createdAt: string
   updatedAt: string
@@ -68,6 +68,7 @@ export interface MenuItem {
   description: string
   status: MenuItemStatus
   basePrice: number
+  price?: number // Backend might return price instead of basePrice
   displayOrder: number
   imageUrl?: string
   dietaryTypes: DietaryType[]
@@ -140,20 +141,20 @@ export interface UpdateMenuRequest {
 }
 
 export interface CreateMenuCategoryRequest {
-  menuId: string
   name: string
-  description: string
-  displayOrder: number
-  isActive?: boolean
-  imageUrl?: string
+  description?: string
+  displayOrder?: number
+  active?: boolean
+  image?: string
+  // Note: menuId is handled automatically by backend via restaurantId route parameter
 }
 
 export interface UpdateMenuCategoryRequest {
   name?: string
   description?: string
   displayOrder?: number
-  isActive?: boolean
-  imageUrl?: string
+  active?: boolean
+  image?: string
 }
 
 export interface CreateMenuItemRequest {

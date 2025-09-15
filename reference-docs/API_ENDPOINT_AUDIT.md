@@ -1,5 +1,7 @@
 # Tabsy Core Server - Complete API Endpoint Audit
 
+> **Note**: For detailed implementation specifications, request/response schemas, and frontend integration guides, see [API_DOCUMENTATION.md](../API_DOCUMENTATION.md)
+
 ## Executive Summary
 **Total API Endpoints: 86** (Verified through systematic code analysis)
 

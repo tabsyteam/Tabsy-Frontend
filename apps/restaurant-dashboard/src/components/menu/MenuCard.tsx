@@ -9,7 +9,12 @@ import {
   Trash2,
   Eye,
   DollarSign,
-  Clock
+  Clock,
+  Star,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Image as ImageIcon
 } from 'lucide-react'
 import type { MenuCategory, MenuItem } from '@tabsy/shared-types'
 import { MenuItemStatus } from '@tabsy/shared-types'
@@ -38,63 +43,105 @@ export function MenuCard(props: MenuCardProps) {
   if (type === 'category') {
     const category = data as MenuCategory
     return (
-      <div className="bg-card rounded-lg border shadow-sm hover:shadow-md transition-shadow">
-        <div className="p-4">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center space-x-3 flex-1">
-              <div className="bg-primary/10 p-2 rounded-lg">
-                <Package className="h-5 w-5 text-primary" />
+      <div className="glass-card menu-card-hover group cursor-pointer relative overflow-hidden h-full" onClick={() => onSelect(category)}>
+        <div className="p-4 h-full flex flex-col">
+          {/* Header with icon and status */}
+          <div className="flex items-start justify-between mb-3 relative">
+            <div className="flex items-start space-x-3 flex-1 min-w-0">
+              <div className="relative flex-shrink-0">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/10 to-secondary/10 group-hover:from-primary/20 group-hover:to-secondary/20 transition-all duration-300">
+                  <Package className="h-5 w-5 text-primary" />
+                </div>
+                {/* Status indicator dot */}
+                <div className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-card ${
+                  (category as any).active ? 'bg-green-500' : 'bg-gray-400'
+                }`} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2">
-                  <h3 className="font-medium text-foreground truncate">
-                    {category.name}
-                  </h3>
-                  {category.isActive ? (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success/10 text-success">
-                      Active
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                      Inactive
-                    </span>
-                  )}
-                </div>
-                {category.description && (
-                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                    {category.description}
-                  </p>
+                <h3 className="font-semibold text-foreground text-base mb-2 truncate group-hover:text-primary transition-colors leading-tight">
+                  {category.name}
+                </h3>
+                {(category as any).active ? (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Active
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Inactive
+                  </span>
                 )}
-                <div className="flex items-center text-xs text-muted-foreground mt-2">
-                  <span>Category items</span>
-                </div>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
+
+            {/* Quick actions - positioned absolutely to stay within bounds */}
+            <div className="absolute top-0 right-0 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-lg border border-border/20">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onSelect(category)}
-                className="h-8 w-8 p-0"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onSelect(category)
+                }}
+                className="h-7 w-7 p-0 hover:bg-blue-100 hover:text-blue-600 hover:shadow-md transition-all"
+                title="View details"
               >
-                <Eye className="h-4 w-4" />
+                <Eye className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onEdit(category)}
-                className="h-8 w-8 p-0"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEdit(category)
+                }}
+                className="h-7 w-7 p-0 hover:bg-blue-100 hover:text-blue-600 hover:shadow-md transition-all"
+                title="Edit category"
               >
-                <Edit className="h-4 w-4" />
+                <Edit className="h-3.5 w-3.5" />
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onDelete(category.id)}
-                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete(category.id)
+                }}
+                className="h-7 w-7 p-0 hover:bg-red-100 hover:text-red-600 hover:shadow-md transition-all"
+                title="Delete category"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="flex-1 mb-3">
+            {category.description ? (
+              <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                {category.description}
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">
+                No description provided
+              </p>
+            )}
+          </div>
+
+          {/* Footer stats */}
+          <div className="flex items-center justify-between pt-3 border-t border-border/50 mt-auto">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                <Package className="h-3 w-3 flex-shrink-0" />
+                <span>Category</span>
+              </div>
+              <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                <span>#{category.displayOrder || 0}</span>
+              </div>
+            </div>
+            <div className="text-xs font-medium text-primary">
+              <span>Manage →</span>
             </div>
           </div>
         </div>
@@ -104,74 +151,125 @@ export function MenuCard(props: MenuCardProps) {
 
   // Menu Item Card
   const item = data as MenuItem
+  const formatPrice = (price: number | string) => {
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2
+    }).format(numPrice / 100) // Assuming price is in cents
+  }
+
   return (
-    <div className="bg-card rounded-lg border shadow-sm hover:shadow-md transition-shadow">
-      <div className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3 flex-1">
-            <div className="bg-primary/10 p-2 rounded-lg">
-              <Utensils className="h-5 w-5 text-primary" />
+    <div className="glass-card menu-card-hover group cursor-pointer relative overflow-hidden h-full" onClick={() => onSelect(item)}>
+      <div className="p-4 h-full flex flex-col">
+        {/* Header with image placeholder and status */}
+        <div className="flex items-start space-x-3 mb-3 relative">
+          <div className="relative flex-shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-muted/30 to-muted/50 flex items-center justify-center group-hover:from-primary/10 group-hover:to-secondary/10 transition-all duration-300">
+              <ImageIcon className="h-6 w-6 text-muted-foreground group-hover:text-primary transition-colors" />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center space-x-2">
-                <h3 className="font-medium text-foreground truncate">
-                  {item.name}
-                </h3>
-                {item.status === MenuItemStatus.AVAILABLE ? (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success/10 text-success">
-                    Available
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive">
-                    {item.status === MenuItemStatus.OUT_OF_STOCK ? 'Out of Stock' :
-                     item.status === MenuItemStatus.ARCHIVED ? 'Archived' : 'Unavailable'}
-                  </span>
-                )}
-              </div>
-              {item.description && (
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                  {item.description}
-                </p>
-              )}
-              <div className="flex items-center space-x-4 text-xs text-muted-foreground mt-2">
-                <span className="flex items-center space-x-1">
-                  <DollarSign className="h-3 w-3" />
-                  <span>{item.basePrice}</span>
-                </span>
-                {item.preparationTime && (
-                  <span className="flex items-center space-x-1">
-                    <Clock className="h-3 w-3" />
-                    <span>{item.preparationTime}min</span>
-                  </span>
-                )}
-              </div>
-            </div>
+            {/* Status indicator */}
+            <div className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-card ${
+              (item as any).active ? 'bg-green-500' : 'bg-red-500'
+            }`} />
           </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="mb-2">
+              <h3 className="font-semibold text-foreground text-base truncate group-hover:text-primary transition-colors leading-tight">
+                {item.name}
+              </h3>
+            </div>
+            {(item as any).active ? (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Available
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200">
+                <XCircle className="h-3 w-3 mr-1" />
+                Unavailable
+              </span>
+            )}
+          </div>
+
+          {/* Quick actions - positioned absolutely to stay within bounds */}
+          <div className="absolute top-0 right-0 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-lg border border-border/20">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                onSelect(item)
+              }}
+              className="h-7 w-7 p-0 hover:bg-blue-100 hover:text-blue-600 hover:shadow-md transition-all"
+              title="View details"
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                onEdit(item)
+              }}
+              className="h-7 w-7 p-0 hover:bg-blue-100 hover:text-blue-600 hover:shadow-md transition-all"
+              title="Edit item"
+            >
+              <Edit className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDelete(item.id)
+              }}
+              className="h-7 w-7 p-0 hover:bg-red-100 hover:text-red-600 hover:shadow-md transition-all"
+              title="Delete item"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Description */}
+        <div className="flex-1 mb-3">
+          {item.description ? (
+            <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+              {item.description}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">
+              No description provided
+            </p>
+          )}
+        </div>
+
+        {/* Footer with price and metadata */}
+        <div className="flex items-center justify-between pt-3 border-t border-border/50 mt-auto">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-1">
+              <DollarSign className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+              <span className="font-semibold text-sm text-primary">
+                {formatPrice(item.basePrice || item.price || 0)}
+              </span>
+            </div>
+            {item.preparationTime && item.preparationTime > 0 && (
+              <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3 flex-shrink-0" />
+                <span>{item.preparationTime}m</span>
+              </div>
+            )}
+          </div>
+
           <div className="flex items-center space-x-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onSelect(item)}
-              className="h-8 w-8 p-0"
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onEdit(item)}
-              className="h-8 w-8 p-0"
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDelete(item.id)}
-              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center space-x-1 text-xs text-amber-600">
+              <Star className="h-3 w-3 flex-shrink-0" />
+              <span>Popular</span>
+            </div>
           </div>
         </div>
       </div>
