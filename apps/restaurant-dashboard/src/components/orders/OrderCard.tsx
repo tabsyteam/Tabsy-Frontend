@@ -115,6 +115,19 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
     return [OrderStatus.RECEIVED, OrderStatus.PREPARING].includes(status)
   }
 
+  const formatTimeAgo = (timeStr: string): string => {
+    // Convert "about 8 hours ago" -> "8h ago"
+    // Convert "5 minutes ago" -> "5m ago"
+    return timeStr
+      .replace('about ', '')
+      .replace(' hours ago', 'h ago')
+      .replace(' hour ago', 'h ago')
+      .replace(' minutes ago', 'm ago')
+      .replace(' minute ago', 'm ago')
+      .replace(' days ago', 'd ago')
+      .replace(' day ago', 'd ago')
+  }
+
   return (
     <div
       className={`group flex flex-col bg-card rounded-lg border p-4 shadow-sm transition-all duration-300 ease-out hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.02] min-h-[320px] cursor-pointer relative overflow-hidden ${order.status === OrderStatus.RECEIVED ? 'ring-2 ring-primary/50 border-primary/40 m-0.5 hover:ring-primary/70' : 'hover:border-primary/30'
@@ -152,19 +165,19 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
         )}
       </div>
 
-      {/* Table and Items Info Row */}
-      <div className="flex items-center justify-between mb-3 text-sm text-foreground/80">
-        <div className="flex items-center gap-1">
-          <MapPin className="h-3 w-3" />
-          <span className="font-medium">{getTableDisplay()}</span>
+      {/* Metadata Row - Responsive Grid Layout */}
+      <div className="grid grid-cols-3 gap-1 sm:gap-2 mb-3 text-xs text-foreground/80">
+        <div className="flex items-center gap-1 min-w-0">
+          <MapPin className="h-3 w-3 flex-shrink-0" />
+          <span className="font-medium truncate">{getTableDisplay()}</span>
         </div>
-        <div className="flex items-center gap-1">
-          <Users className="h-3 w-3" />
-          <span className="font-medium">{getTotalItemCount()} items</span>
+        <div className="flex items-center gap-1 justify-center min-w-0">
+          <Users className="h-3 w-3 flex-shrink-0" />
+          <span className="font-medium truncate">{getTotalItemCount()}x</span>
         </div>
-        <div className="flex items-center gap-1">
-          <Timer className="h-3 w-3" />
-          <span className="font-medium">{timeAgo}</span>
+        <div className="flex items-center gap-1 justify-end min-w-0">
+          <Timer className="h-3 w-3 flex-shrink-0" />
+          <span className="font-medium truncate">{formatTimeAgo(timeAgo)}</span>
         </div>
       </div>
 

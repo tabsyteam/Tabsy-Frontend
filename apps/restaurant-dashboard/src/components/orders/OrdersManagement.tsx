@@ -7,7 +7,7 @@ import { Button } from '@tabsy/ui-components'
 import { Order, OrderStatus } from '@tabsy/shared-types'
 import { OrderCard } from './OrderCard'
 import { OrderDetailSlidePanel } from './OrderDetailSlidePanel'
-import { Filter, RefreshCw, AlertCircle } from 'lucide-react'
+import { Filter, RefreshCw, AlertCircle, ShoppingCart } from 'lucide-react'
 import { toast } from 'sonner'
 import { createOrderHooks } from '@tabsy/react-query-hooks'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -265,11 +265,16 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Orders Management</h1>
-          <p className="text-foreground/80 mt-1">
-            Manage and track restaurant orders in real-time
-          </p>
+        <div className="flex items-center space-x-3">
+          <div className="p-3 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/10">
+            <ShoppingCart className="h-8 w-8 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Orders Management</h1>
+            <p className="text-foreground/80 mt-1">
+              Manage and track restaurant orders in real-time
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">

@@ -33,11 +33,11 @@ function WeeklyOverviewChart({ data }: WeeklyOverviewChartProps) {
           </div>
           <div className="flex items-center space-x-4 text-xs">
             <div className="flex items-center">
-              <div className="w-3 h-3 bg-theme-primary rounded-sm mr-2"></div>
+              <div className="w-3 h-3 bg-primary rounded-sm mr-2"></div>
               <span className="text-muted-foreground">Orders</span>
             </div>
             <div className="flex items-center">
-              <div className="w-3 h-3 bg-theme-secondary rounded-sm mr-2"></div>
+              <div className="w-3 h-3 bg-secondary rounded-sm mr-2"></div>
               <span className="text-muted-foreground">Revenue</span>
             </div>
           </div>
@@ -49,23 +49,23 @@ function WeeklyOverviewChart({ data }: WeeklyOverviewChartProps) {
               <div className="w-full flex flex-col items-center space-y-1">
                 {/* Revenue bar (background) */}
                 <div
-                  className="bg-theme-secondary-light w-full rounded-t-sm min-h-[4px] relative"
+                  className="bg-secondary/30 w-full rounded-t-sm min-h-[4px] relative"
                   style={{ height: `${(item.revenue / maxRevenue) * 140}px` }}
                 >
                   {/* Orders bar (foreground) */}
                   <div
-                    className="bg-theme-primary w-full rounded-t-sm absolute bottom-0"
+                    className="bg-primary w-full rounded-t-sm absolute bottom-0"
                     style={{ height: `${(item.orders / maxOrders) * 140}px` }}
                   />
                 </div>
                 
                 {/* Tooltip on hover */}
-                <div className="invisible group-hover:visible absolute -top-20 left-1/2 transform -translate-x-1/2 bg-theme-text-primary text-theme-surface text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+                <div className="invisible group-hover:visible absolute -top-20 left-1/2 transform -translate-x-1/2 bg-foreground text-background text-xs rounded px-2 py-1 whitespace-nowrap z-10">
                   <div className="text-center">
                     <div>Orders: {item.orders}</div>
                     <div>Revenue: ${item.revenue}</div>
                   </div>
-                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-[rgb(var(--color-text-primary))]"></div>
+                  <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-foreground"></div>
                 </div>
               </div>
               

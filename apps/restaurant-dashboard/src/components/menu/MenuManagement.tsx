@@ -270,8 +270,8 @@ export function MenuManagement({ restaurantId }: MenuManagementProps) {
                   <Utensils className="h-8 w-8 text-primary" />
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-foreground">Menu Management</h1>
-                  <p className="text-muted-foreground text-lg">
+                  <h1 className="text-2xl font-bold text-foreground">Menu Management</h1>
+                  <p className="text-foreground/80 mt-1">
                     Organize and optimize your restaurant's menu
                   </p>
                 </div>
