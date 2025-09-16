@@ -430,6 +430,269 @@ const createCategory = async (data: CategoryFormData) => {
 
 ---
 
+## Notification Management API
+
+### Base Routes
+All notification endpoints are prefixed with `/api/v1/notifications`
+
+### Authentication
+- **Required**: JWT Bearer token for protected routes
+- **Header**: `Authorization: Bearer <jwt_token>`
+
+---
+
+### 1. Get User Notifications
+
+```http
+GET /api/v1/notifications
+```
+
+**Authentication**: Required
+
+**Query Parameters**:
+- `page?: number` - Page number (default: 1)
+- `limit?: number` - Items per page (default: 20)
+- `unreadOnly?: boolean` - Filter to unread notifications only (default: false)
+
+**Response**:
+```typescript
+{
+  success: boolean
+  data: Notification[]
+  meta: {
+    pagination: {
+      page: number
+      limit: number
+      total: number
+      totalPages: number
+    }
+  }
+}
+
+interface Notification {
+  id: string
+  recipientId?: string
+  type: 'ORDER_STATUS' | 'PAYMENT_STATUS' | 'ASSISTANCE_REQUIRED' | 'SYSTEM' | 'MARKETING'
+  content: string
+  metadata: {
+    restaurantId?: string
+    tableId?: string
+    orderId?: string
+    paymentId?: string
+    priority?: 'high' | 'medium' | 'low'
+    expiresAt?: string
+    actionUrl?: string
+    [key: string]: any
+  }
+  isRead: boolean
+  createdAt: string
+  updatedAt: string
+}
+```
+
+---
+
+### 2. Create Notification
+
+```http
+POST /api/v1/notifications
+```
+
+**Authentication**: Required (`ADMIN`, `RESTAURANT_OWNER`, `RESTAURANT_STAFF`)
+
+**Request Body**:
+```typescript
+{
+  recipientId?: string                 // Optional - allows system/broadcast notifications
+  type: NotificationType              // Required - notification type enum
+  content: string                     // Required - message content (max 500 characters)
+  metadata?: {
+    restaurantId?: string
+    tableId?: string
+    orderId?: string
+    paymentId?: string
+    priority?: 'high' | 'medium' | 'low'
+    expiresAt?: string              // ISO date string
+    actionUrl?: string
+    [key: string]: any
+  }
+  isSystem?: boolean                  // Optional - default: false
+}
+```
+
+**Response**:
+```typescript
+{
+  success: boolean
+  data: Notification    // Created notification with generated ID
+  message?: string
+}
+```
+
+---
+
+### 3. Mark Notification as Read
+
+```http
+PATCH /api/v1/notifications/:id
+```
+
+**Authentication**: Required
+
+**Request**: No body required (automatically sets `isRead: true`)
+
+**Response**:
+```typescript
+{
+  success: boolean
+  data: Notification    // Updated notification
+  message?: string
+}
+```
+
+---
+
+### 4. Clear All Notifications
+
+```http
+DELETE /api/v1/notifications
+```
+
+**Authentication**: Required
+
+**Note**: This marks all notifications as read rather than deleting them
+
+**Response**:
+```typescript
+{
+  success: boolean
+  data: { cleared: number }    // Number of notifications cleared
+  message?: string
+}
+```
+
+---
+
+### 5. Get Notification Preferences
+
+```http
+GET /api/v1/notifications/preferences
+```
+
+**Authentication**: Required
+
+**Response**:
+```typescript
+{
+  success: boolean
+  data: NotificationPreferences
+}
+
+interface NotificationPreferences {
+  email: boolean
+  sms: boolean
+  push: boolean
+  orderUpdates: boolean
+  paymentUpdates: boolean
+  promotions: boolean
+}
+```
+
+---
+
+### 6. Update Notification Preferences
+
+```http
+PUT /api/v1/notifications/preferences
+```
+
+**Authentication**: Required
+
+**Request Body**:
+```typescript
+Partial<NotificationPreferences>
+```
+
+**Response**:
+```typescript
+{
+  success: boolean
+  data: NotificationPreferences    // Updated preferences
+  message?: string
+}
+```
+
+---
+
+### 7. Test Notification
+
+```http
+POST /api/v1/notifications/test
+```
+
+**Authentication**: Required
+
+**Request Body**:
+```typescript
+{
+  type: 'EMAIL' | 'PUSH' | 'SMS'
+  recipient: string
+  template: string
+  data?: Record<string, any>
+}
+```
+
+**Response**:
+```typescript
+{
+  success: boolean
+  data: void
+  message?: string
+}
+```
+
+---
+
+### Real-time Features
+
+The notification system includes WebSocket support for real-time updates:
+
+**WebSocket Namespaces**:
+- `/restaurant` - For authenticated restaurant staff/admin
+- `/customer` - For anonymous table customers
+
+**Events**:
+- `notification:created` - New notification received
+- `notification:read` - Notification marked as read
+- `notification:dismissed` - Notification dismissed
+- `notification:cleared` - All notifications cleared
+
+---
+
+### Frontend Implementation Notes
+
+1. **Paginated Responses**: All notification list endpoints return paginated data with metadata
+2. **Filtering**: Backend only supports `page`, `limit`, and `unreadOnly` query parameters
+3. **Type Safety**: Use the `NotificationType` enum for consistent type values
+4. **Error Handling**: Handle network errors gracefully with fallback data
+5. **Real-time Updates**: Consider implementing WebSocket listeners for live updates
+
+**Frontend Hook Usage**:
+```typescript
+// Get notifications with pagination support
+const { data: notificationsData } = notificationHooks.useUserNotifications({
+  limit: 10,
+  unreadOnly: false
+})
+
+// Access notifications and pagination info
+const notifications = notificationsData?.notifications || []
+const pagination = notificationsData?.pagination
+const total = notificationsData?.total || 0
+```
+
+---
+
 ## Summary of Key Changes Made
 
 1. **Fixed Type Definitions**: Updated `CreateMenuCategoryRequest` and `UpdateMenuCategoryRequest` interfaces

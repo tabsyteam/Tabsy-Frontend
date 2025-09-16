@@ -11,24 +11,33 @@ import { TabsyAPI, tabsyClient } from '@tabsy/api-client'
  */
 export function createNotificationHooks(useQuery: any) {
   return {
-    useUserNotifications: (filters?: any) => {
+    useUserNotifications: (filters?: any, options?: any) => {
       return useQuery({
         queryKey: ['notifications', 'user', filters],
         queryFn: async () => {
           const client = tabsyClient
-          return await client.notification.getUserNotifications(filters)
-        }
-      })
-    },
-
-    useRestaurantNotifications: (restaurantId: string, filters?: any) => {
-      return useQuery({
-        queryKey: ['notifications', 'restaurant', restaurantId, filters],
-        queryFn: async () => {
-          const client = tabsyClient
-          return await client.notification.getRestaurantNotifications(restaurantId, filters)
+          const response = await client.notification.getUserNotifications(filters)
+          // Extract notifications from paginated response
+          return response.data || response
         },
-        enabled: !!restaurantId,
+        select: (data: any) => {
+          // Handle both paginated and direct response formats
+          if (data.data && Array.isArray(data.data)) {
+            return {
+              notifications: data.data,
+              pagination: data.meta?.pagination,
+              total: data.meta?.pagination?.total || 0
+            }
+          }
+          // Fallback for direct array response or data property
+          const notifications = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : []
+          return {
+            notifications,
+            pagination: null,
+            total: notifications.length
+          }
+        },
+        ...options
       })
     },
 
@@ -73,19 +82,6 @@ export function useMarkNotificationAsRead() {
   })
 }
 
-export function useMarkMultipleNotificationsAsRead() {
-  const queryClient = useQueryClient()
-  
-  return useMutation({
-    mutationFn: async (ids: string[]) => {
-      const client = tabsyClient
-      return await client.notification.markMultipleAsRead(ids)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] })
-    }
-  })
-}
 
 export function useClearAllNotifications() {
   const queryClient = useQueryClient()

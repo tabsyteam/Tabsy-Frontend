@@ -7,22 +7,25 @@ import type {
 
 export interface SendNotificationRequest {
   recipientId?: string
-  recipientType: 'USER' | 'RESTAURANT' | 'ALL'
-  title: string
-  message: string
-  type: 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS'
-  priority: 'LOW' | 'MEDIUM' | 'HIGH'
-  data?: Record<string, any>
+  type: 'ORDER_STATUS' | 'PAYMENT_STATUS' | 'ASSISTANCE_REQUIRED' | 'SYSTEM' | 'MARKETING'
+  content: string
+  metadata?: {
+    restaurantId?: string
+    tableId?: string
+    orderId?: string
+    paymentId?: string
+    priority?: 'high' | 'medium' | 'low'
+    expiresAt?: string
+    actionUrl?: string
+    [key: string]: any
+  }
+  isSystem?: boolean
 }
 
 export interface NotificationFilters {
-  type?: string
-  priority?: string
-  read?: boolean
-  dateFrom?: string
-  dateTo?: string
   page?: number
   limit?: number
+  unreadOnly?: boolean
 }
 
 export interface TestNotificationRequest {
@@ -36,18 +39,28 @@ export class NotificationAPI {
   constructor(private client: TabsyApiClient) {}
 
   /**
-   * POST /notification/ - Send notification
+   * POST /notifications - Send notification
    */
   async send(data: SendNotificationRequest): Promise<ApiResponse<Notification>> {
-    return this.client.post('/notification', data)
+    return this.client.post('/notifications', data)
   }
 
   /**
-   * GET /notification/ - Get user notifications
+   * GET /notifications - Get user notifications (paginated)
    */
-  async getUserNotifications(filters?: NotificationFilters): Promise<ApiResponse<Notification[]>> {
+  async getUserNotifications(filters?: NotificationFilters): Promise<ApiResponse<{
+    data: Notification[]
+    meta: {
+      pagination: {
+        page: number
+        limit: number
+        total: number
+        totalPages: number
+      }
+    }
+  }>> {
     const params = new URLSearchParams()
-    
+
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined) {
@@ -55,68 +68,43 @@ export class NotificationAPI {
         }
       })
     }
-    
-    const url = `/notification${params.toString() ? `?${params.toString()}` : ''}`
+
+    const url = `/notifications${params.toString() ? `?${params.toString()}` : ''}`
     return this.client.get(url)
   }
 
   /**
-   * PATCH /notification/:id - Mark notification as read
+   * PATCH /notifications/:id - Mark notification as read
    */
   async markAsRead(id: string): Promise<ApiResponse<Notification>> {
-    return this.client.patch(`/notification/${id}`, { read: true })
+    return this.client.patch(`/notifications/${id}`)
   }
 
   /**
-   * DELETE /notification/ - Clear notifications
+   * DELETE /notifications - Clear notifications
    */
-  async clearAll(): Promise<ApiResponse<void>> {
-    return this.client.delete('/notification')
+  async clearAll(): Promise<ApiResponse<{ cleared: number }>> {
+    return this.client.delete('/notifications')
   }
 
   /**
-   * GET /notification/preferences - Get notification preferences
+   * GET /notifications/preferences - Get notification preferences
    */
   async getPreferences(): Promise<ApiResponse<NotificationPreferences>> {
-    return this.client.get('/notification/preferences')
+    return this.client.get('/notifications/preferences')
   }
 
   /**
-   * PUT /notification/preferences - Update notification preferences
+   * PUT /notifications/preferences - Update notification preferences
    */
   async updatePreferences(preferences: Partial<NotificationPreferences>): Promise<ApiResponse<NotificationPreferences>> {
-    return this.client.put('/notification/preferences', preferences)
+    return this.client.put('/notifications/preferences', preferences)
   }
 
   /**
-   * POST /notification/test - Test notification
+   * POST /notifications/test - Test notification
    */
   async test(data: TestNotificationRequest): Promise<ApiResponse<void>> {
-    return this.client.post('/notification/test', data)
-  }
-
-  /**
-   * Helper method: Get restaurant notifications
-   */
-  async getRestaurantNotifications(restaurantId: string, filters?: NotificationFilters): Promise<ApiResponse<Notification[]>> {
-    const params = new URLSearchParams()
-    
-    if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined) {
-          params.append(key, value.toString())
-        }
-      })
-    }
-    
-    const url = `/notification/restaurant/${restaurantId}${params.toString() ? `?${params.toString()}` : ''}`
-    return this.client.get(url)
-  }
-
-  /**
-   * Helper method: Mark multiple notifications as read
-   */
-  async markMultipleAsRead(ids: string[]): Promise<ApiResponse<void>> {
-    return this.client.patch('/notification/bulk', { ids, action: 'mark_read' })
+    return this.client.post('/notifications/test', data)
   }
 }

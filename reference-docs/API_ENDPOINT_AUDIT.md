@@ -110,13 +110,13 @@ The previous estimate of 88 endpoints was slightly inaccurate. After thorough an
 - `DELETE /user/:id` - Delete user (admin)
 
 ### Notification System (7 endpoints)
-- `POST /notification/` - Send notification
-- `GET /notification/` - Get user notifications
-- `PATCH /notification/:id` - Mark notification as read
-- `DELETE /notification/` - Clear notifications
-- `GET /notification/preferences` - Get notification preferences
-- `PUT /notification/preferences` - Update notification preferences
-- `POST /notification/test` - Test notification
+- `POST /api/v1/notifications` - Send notification
+- `GET /api/v1/notifications` - Get user notifications (paginated)
+- `PATCH /api/v1/notifications/:id` - Mark notification as read
+- `DELETE /api/v1/notifications` - Clear notifications (marks as read)
+- `GET /api/v1/notifications/preferences` - Get notification preferences
+- `PUT /api/v1/notifications/preferences` - Update notification preferences
+- `POST /api/v1/notifications/test` - Test notification
 
 ### Menu Item Options (2 endpoints)
 - `POST /menu-item-options/` - Create menu item option
@@ -134,6 +134,16 @@ The system includes real-time communication via Socket.io with events for:
 - Table status changes
 - Staff notifications
 - Customer updates
+
+**Notification WebSocket Events**:
+- `notification:created` - New notification received
+- `notification:read` - Notification marked as read
+- `notification:dismissed` - Notification dismissed
+- `notification:cleared` - All notifications cleared
+
+**WebSocket Namespaces**:
+- `/restaurant` - For authenticated restaurant staff/admin
+- `/customer` - For anonymous table customers
 
 ### Webhook Handlers
 - Stripe payment webhooks

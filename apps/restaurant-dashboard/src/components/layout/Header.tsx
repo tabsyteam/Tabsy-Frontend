@@ -16,15 +16,17 @@ import {
   BarChart3,
   Users,
   Calendar,
-  HelpCircle
+  HelpCircle,
+  AlertCircle
 } from 'lucide-react'
-import { User as UserType, Restaurant, UpdateRestaurantRequest, OrderStatus } from '@tabsy/shared-types'
+import { User as UserType, Restaurant, UpdateRestaurantRequest, OrderStatus, Notification } from '@tabsy/shared-types'
 import { cn } from '@/lib/utils'
 import { ProfileSettingsModal } from '@/components/profile/ProfileSettingsModal'
 import { RestaurantSettingsModal } from '@/components/settings/RestaurantSettingsModal'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { tabsyClient } from '@tabsy/api-client'
-import { createOrderHooks } from '@tabsy/react-query-hooks'
+import { createOrderHooks, createNotificationHooks } from '@tabsy/react-query-hooks'
+import { formatNotificationContent, formatRelativeTime, getNotificationPriorityColor, generateFallbackNotifications } from '@/lib/notificationUtils'
 
 interface HeaderProps {
   user: UserType | null
@@ -91,8 +93,37 @@ export function Header({
     }
   )
 
+  // Notification hooks for real-time notifications
+  const notificationHooks = createNotificationHooks(useQuery)
+  const {
+    data: notificationsData,
+    isLoading: notificationsLoading,
+    error: notificationsError
+  } = notificationHooks.useUserNotifications({
+    limit: 10,
+    unreadOnly: false
+  }, {
+    enabled: !!user?.id,
+    refetchInterval: 30000, // Refresh every 30 seconds
+    staleTime: 10000
+  })
+
+  // Mark notification as read mutation
+  const markAsReadMutation = useMutation({
+    mutationFn: async (notificationId: string) => {
+      return await tabsyClient.notification.markAsRead(notificationId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    }
+  })
+
   // Calculate badge count from real API data
   const receivedOrdersCount = ordersData?.data?.orders?.length || 0
+
+  // Get notifications with fallback for testing
+  const notifications = notificationsData?.notifications || generateFallbackNotifications()
+  const unreadNotificationsCount = notifications.filter((n: Notification) => !n.isRead).length
 
   // Handlers
   const handleProfileSettings = () => {
@@ -112,6 +143,16 @@ export function Header({
     } catch (error) {
       console.error('Failed to update restaurant settings:', error)
       throw error
+    }
+  }
+
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.isRead) {
+      try {
+        await markAsReadMutation.mutateAsync(notification.id)
+      } catch (error) {
+        console.error('Failed to mark notification as read:', error)
+      }
     }
   }
 
@@ -268,7 +309,11 @@ export function Header({
                       aria-label="Notifications"
                     >
                       <Bell className="w-5 h-5 text-content-secondary" />
-                      <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full animate-pulse" />
+                      {unreadNotificationsCount > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1">
+                          {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                        </span>
+                      )}
                     </button>
 
                     {/* Notification Dropdown */}
@@ -276,16 +321,72 @@ export function Header({
                       <div className="absolute right-0 mt-2 w-80 bg-surface rounded-lg shadow-lg border border-border py-2 z-50">
                         <div className="px-4 py-2 border-b border-border">
                           <h3 className="font-semibold text-content-primary">Notifications</h3>
+                          {unreadNotificationsCount > 0 && (
+                            <p className="text-xs text-content-secondary mt-1">
+                              {unreadNotificationsCount} unread notification{unreadNotificationsCount === 1 ? '' : 's'}
+                            </p>
+                          )}
                         </div>
                         <div className="max-h-80 overflow-y-auto">
-                          <div className="px-4 py-3 hover:bg-surface-secondary transition-colors cursor-pointer">
-                            <p className="text-sm text-content-primary">New order #1234 received</p>
-                            <p className="text-xs text-content-tertiary mt-1">2 minutes ago</p>
-                          </div>
-                          <div className="px-4 py-3 hover:bg-surface-secondary transition-colors cursor-pointer">
-                            <p className="text-sm text-content-primary">Table 5 is requesting service</p>
-                            <p className="text-xs text-content-tertiary mt-1">5 minutes ago</p>
-                          </div>
+                          {notificationsLoading ? (
+                            <div className="px-4 py-8 text-center">
+                              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+                              <p className="text-sm text-content-secondary">Loading notifications...</p>
+                            </div>
+                          ) : notificationsError ? (
+                            <div className="px-4 py-8 text-center">
+                              <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
+                              <p className="text-sm text-content-secondary">Failed to load notifications</p>
+                            </div>
+                          ) : notifications.length === 0 ? (
+                            <div className="px-4 py-8 text-center">
+                              <Bell className="w-8 h-8 text-content-tertiary mx-auto mb-2" />
+                              <p className="text-sm text-content-secondary">No notifications yet</p>
+                            </div>
+                          ) : (
+                            notifications.slice(0, 5).map((notification: Notification) => {
+                              const { title, message, icon: IconComponent, iconColor } = formatNotificationContent(notification)
+                              return (
+                                <div
+                                  key={notification.id}
+                                  onClick={() => handleNotificationClick(notification)}
+                                  className={cn(
+                                    "px-4 py-3 hover:bg-surface-secondary transition-colors cursor-pointer border-l-2",
+                                    notification.isRead ? "border-l-transparent" : "border-l-primary bg-primary/5"
+                                  )}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className={cn("flex-shrink-0 p-1.5 rounded-lg", notification.isRead ? "bg-surface-tertiary" : "bg-primary/10")}>
+                                      <IconComponent className={cn("w-4 h-4", iconColor)} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center justify-between mb-1">
+                                        <p className={cn("text-sm font-medium", notification.isRead ? "text-content-secondary" : "text-content-primary")}>
+                                          {title}
+                                        </p>
+                                        {!notification.isRead && (
+                                          <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0" />
+                                        )}
+                                      </div>
+                                      <p className={cn("text-sm", notification.isRead ? "text-content-tertiary" : "text-content-secondary")}>
+                                        {message}
+                                      </p>
+                                      <p className="text-xs text-content-tertiary mt-1">
+                                        {formatRelativeTime(notification.createdAt)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })
+                          )}
+                          {notifications.length > 5 && (
+                            <div className="px-4 py-2 border-t border-border">
+                              <button className="w-full text-sm text-primary hover:text-primary-hover transition-colors">
+                                View all notifications
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
