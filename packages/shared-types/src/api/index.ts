@@ -1,7 +1,7 @@
 export interface ApiResponse<T = any> {
   success: boolean;
   data?: T;
-  error?: string;
+  error?: ApiError;
   message?: string;
 }
 
@@ -17,5 +17,6 @@ export interface PaginatedResponse<T> extends ApiResponse<T[]> {
 export interface ApiError {
   code: string;
   message: string;
-  statusCode: number;
+  details?: any;
+  stack?: string[];
 }

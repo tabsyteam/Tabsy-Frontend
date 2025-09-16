@@ -14,15 +14,21 @@ export interface SessionToken {
   expiresIn: number;
 }
 
-export interface GuestSession extends Session {
-  guestId: string;
-  guestName?: string;
-  guestPhone?: string;
+export interface GuestSession {
+  sessionId: string;  // Primary field - matches backend response
+  tableId: string;
+  restaurantId: string;
+  expiresAt: string;
+  createdAt?: string;
 }
 
 export interface CreateGuestSessionRequest {
-  restaurantId: string;
+  qrCode?: string;  // Optional - only required for QR code validation
   tableId: string;
-  guestName?: string;
-  guestPhone?: string;
+  restaurantId: string;
+  customerInfo?: {
+    name?: string;
+    phone?: string;
+    email?: string;
+  };
 }

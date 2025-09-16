@@ -13,6 +13,8 @@ export interface UseWebSocketOptions {
     token?: string;
     restaurantId?: string;
     namespace?: 'restaurant' | 'customer';
+    tableId?: string;
+    sessionId?: string;
   };
   onConnect?: () => void;
   onDisconnect?: (reason: string) => void;
@@ -30,9 +32,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
 
   const connect = useCallback(() => {
     if (clientRef.current) {
+      // Update auth before connecting in case it changed
+      if (options.auth) {
+        clientRef.current.setAuth(options.auth);
+      }
       clientRef.current.connect();
     }
-  }, []);
+  }, [options.auth]);
 
   const disconnect = useCallback(() => {
     if (clientRef.current) {
@@ -99,7 +105,14 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         clientRef.current = null;
       }
     };
-  }, [options.url, options.autoConnect, options.reconnectAttempts, options.reconnectDelay, options.auth]);
+  }, [options.url, options.autoConnect, options.reconnectAttempts, options.reconnectDelay]);
+
+  // Separate effect to update auth without recreating the client
+  useEffect(() => {
+    if (clientRef.current && options.auth) {
+      clientRef.current.setAuth(options.auth);
+    }
+  }, [options.auth]);
 
   return {
     isConnected,

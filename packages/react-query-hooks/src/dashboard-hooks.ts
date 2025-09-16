@@ -131,10 +131,10 @@ export function createDashboardHooks(useQuery: any) {
           }
         },
         enabled: !!restaurantId,
-        staleTime: 0,
+        staleTime: 60000, // 1 minute - dashboard metrics don't need frequent updates
         refetchOnMount: true,
-        refetchOnWindowFocus: false,
-        refetchInterval: 30000, // Refetch every 30 seconds for real-time updates
+        refetchOnWindowFocus: false
+        // Removed refetchInterval - rely on WebSocket for real-time updates
       })
     },
 
@@ -157,10 +157,10 @@ export function createDashboardHooks(useQuery: any) {
           return result
         },
         enabled: !!restaurantId,
-        staleTime: 0,
+        staleTime: 60000, // 1 minute
         refetchOnMount: true,
-        refetchOnWindowFocus: false,
-        refetchInterval: 15000 // Refetch every 15 seconds
+        refetchOnWindowFocus: false
+        // Removed refetchInterval - rely on WebSocket for real-time updates
       })
     },
 
@@ -215,9 +215,9 @@ export function createDashboardHooks(useQuery: any) {
           return { data: dailyStats }
         },
         enabled: !!restaurantId,
-        staleTime: 0,
-        refetchOnMount: true,
-        refetchInterval: 60000 // Refetch every minute
+        staleTime: 300000, // 5 minutes - weekly stats change infrequently
+        refetchOnMount: true
+        // Removed refetchInterval - weekly stats don't need frequent updates
       })
     },
 
@@ -236,9 +236,9 @@ export function createDashboardHooks(useQuery: any) {
           return result
         },
         enabled: !!restaurantId,
-        staleTime: 0,
-        refetchOnMount: true,
-        refetchInterval: 30000 // Refetch every 30 seconds
+        staleTime: 120000, // 2 minutes
+        refetchOnMount: true
+        // Removed refetchInterval - rely on WebSocket for real-time updates
       })
     }
   }
@@ -290,13 +290,8 @@ export function useTodayOrders(restaurantId: string) {
   }
   
   if (!useQuery) {
-    // Return a mock implementation if useQuery is not available
-    return {
-      data: null,
-      isLoading: false,
-      error: new Error('useQuery from @tanstack/react-query is required but not available'),
-      refetch: () => Promise.resolve()
-    }
+    // Throw an error if useQuery is not available - no mock fallback
+    throw new Error('useQuery from @tanstack/react-query is required but not available. Please ensure @tanstack/react-query is properly installed and configured.')
   }
   
   return useQuery({
@@ -314,10 +309,10 @@ export function useTodayOrders(restaurantId: string) {
       return result
     },
     enabled: !!restaurantId,
-    staleTime: 0,
+    staleTime: 300000, // 5 minutes - rely on WebSocket for real-time updates
     refetchOnMount: true,
-    refetchOnWindowFocus: false,
-    refetchInterval: 15000 // Refetch every 15 seconds
+    refetchOnWindowFocus: false
+    // Removed refetchInterval - rely on WebSocket for real-time updates
   })
 }
 

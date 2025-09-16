@@ -9,6 +9,8 @@ export interface TabsyWebSocketConfig {
     token?: string;
     restaurantId?: string;
     namespace?: 'restaurant' | 'customer';
+    tableId?: string;
+    sessionId?: string;
   };
 }
 
@@ -67,12 +69,27 @@ export class TabsyWebSocketClient {
       timeout: 10000,
     };
 
-    // Add authentication for restaurant namespace
-    if (this.config.auth.namespace === 'restaurant' && this.config.auth.token && this.config.auth.restaurantId) {
-      connectionOptions.auth = {
-        token: this.config.auth.token,
-        restaurantId: this.config.auth.restaurantId,
-      };
+    // Add authentication based on namespace
+    if (this.config.auth.namespace === 'restaurant') {
+      // Restaurant namespace uses auth object
+      if (this.config.auth.token && this.config.auth.restaurantId) {
+        connectionOptions.auth = {
+          token: this.config.auth.token,
+          restaurantId: this.config.auth.restaurantId,
+        };
+      }
+    } else if (this.config.auth.namespace === 'customer') {
+      // Customer namespace uses query parameters
+      connectionOptions.query = {};
+      if (this.config.auth.tableId) {
+        connectionOptions.query.tableId = this.config.auth.tableId;
+      }
+      if (this.config.auth.restaurantId) {
+        connectionOptions.query.restaurantId = this.config.auth.restaurantId;
+      }
+      if (this.config.auth.sessionId) {
+        connectionOptions.query.sessionId = this.config.auth.sessionId;
+      }
     }
 
     this.socket = io(namespaceUrl, connectionOptions);
@@ -100,7 +117,13 @@ export class TabsyWebSocketClient {
   /**
    * Update authentication configuration
    */
-  setAuth(auth: { token?: string; restaurantId?: string; namespace?: 'restaurant' | 'customer' }): void {
+  setAuth(auth: {
+    token?: string;
+    restaurantId?: string;
+    namespace?: 'restaurant' | 'customer';
+    tableId?: string;
+    sessionId?: string;
+  }): void {
     this.config.auth = { ...this.config.auth, ...auth };
   }
 
@@ -260,5 +283,7 @@ export class TabsyWebSocketClient {
   }
 }
 
-// Default WebSocket client instance
-export const websocketClient = new TabsyWebSocketClient();
+// Default WebSocket client instance - don't auto-connect until namespace is set
+export const websocketClient = new TabsyWebSocketClient({
+  autoConnect: false,  // Don't auto-connect until the app determines which namespace to use
+});

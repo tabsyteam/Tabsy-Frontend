@@ -88,8 +88,10 @@ export function Header({
     { status: OrderStatus.RECEIVED }, // Only fetch RECEIVED orders for badge
     {
       enabled: !!restaurant?.id,
-      refetchInterval: 30000, // Refresh every 30 seconds for real-time updates
-      staleTime: 10000 // Consider data stale after 10 seconds
+      staleTime: 300000, // 5 minutes - rely on WebSocket for real-time updates
+      refetchOnMount: true,
+      refetchOnWindowFocus: false
+      // Removed refetchInterval - rely on WebSocket events for real-time badge updates
     }
   )
 

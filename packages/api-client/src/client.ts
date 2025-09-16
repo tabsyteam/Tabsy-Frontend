@@ -79,6 +79,16 @@ export class TabsyApiClient {
         if (this.authToken && config.headers) {
           config.headers.Authorization = `Bearer ${this.authToken}`
         }
+        // Add guest session header if available
+        if (this.guestSessionId && config.headers) {
+          console.log('API Client: Adding x-session-id header:', this.guestSessionId)
+          config.headers['x-session-id'] = this.guestSessionId
+        } else {
+          console.log('API Client: No guestSessionId available', {
+            guestSessionId: this.guestSessionId,
+            hasHeaders: !!config.headers
+          })
+        }
         return config
       },
       (error) => Promise.reject(error)
@@ -211,10 +221,24 @@ export class TabsyApiClient {
 
   // Generic request methods
   async get<T = any>(
-    url: string, 
+    url: string,
     config?: AxiosRequestConfig
   ): Promise<ApiResponse<T>> {
-    const response = await this.axiosInstance.get<ApiResponse<T>>(url, config)
+    // Health endpoints are mounted at the root, not under /api/v1
+    let actualUrl = url
+    let actualConfig = config
+
+    if (url === '/health' || url === '/ready' || url === '/live') {
+      // For health endpoints, use the base host URL without /api/v1
+      const baseHostUrl = this.config.baseURL.replace('/api/v1', '')
+      actualUrl = `${baseHostUrl}${url}`
+      actualConfig = {
+        ...config,
+        baseURL: '' // Override baseURL for this request
+      }
+    }
+
+    const response = await this.axiosInstance.get<ApiResponse<T>>(actualUrl, actualConfig)
     return response.data
   }
 
@@ -246,10 +270,26 @@ export class TabsyApiClient {
   }
 
   async delete<T = any>(
-    url: string, 
+    url: string,
     config?: AxiosRequestConfig
   ): Promise<ApiResponse<T>> {
     const response = await this.axiosInstance.delete<ApiResponse<T>>(url, config)
+    return response.data
+  }
+
+  // Form data upload method
+  async postFormData<T = any>(
+    url: string,
+    formData: FormData,
+    config?: AxiosRequestConfig
+  ): Promise<T> {
+    const response = await this.axiosInstance.post<T>(url, formData, {
+      ...config,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        ...config?.headers,
+      },
+    })
     return response.data
   }
 

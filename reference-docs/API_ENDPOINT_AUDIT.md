@@ -102,12 +102,12 @@ The previous estimate of 88 endpoints was slightly inaccurate. After thorough an
 - `POST /qr/session` - Create session from QR
 
 ### User Management (6 endpoints)
-- `GET /user/me` - Get current user
-- `GET /user/` - List users (admin)
-- `POST /user/` - Create user (admin)
-- `GET /user/:id` - Get user by ID (admin)
-- `PUT /user/:id` - Update user (admin)
-- `DELETE /user/:id` - Delete user (admin)
+- `GET /users/me` - Get current user
+- `GET /users/` - List users (admin)
+- `POST /users/` - Create user (admin)
+- `GET /users/:id` - Get user by ID (admin)
+- `PUT /users/:id` - Update user (admin)
+- `DELETE /users/:id` - Delete user (admin)
 
 ### Notification System (7 endpoints)
 - `POST /api/v1/notifications` - Send notification

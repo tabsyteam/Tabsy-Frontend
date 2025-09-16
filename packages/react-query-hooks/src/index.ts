@@ -104,6 +104,19 @@ export {
   usePingSession
 } from './session-hooks'
 
+// Feedback hooks
+export {
+  useCreateFeedback,
+  useFeedback,
+  useRestaurantFeedback,
+  useFeedbackStats,
+  useUploadFeedbackPhotos,
+  useDeleteFeedbackPhoto,
+  useRespondToFeedback,
+  useFlagFeedback,
+  FEEDBACK_KEYS
+} from './feedback-hooks'
+
 // Utility hooks
 export { useClientSafeQuery } from './useClientSafeQuery'
 

@@ -25,23 +25,23 @@ export class HealthAPI {
   constructor(private client: TabsyApiClient) {}
 
   /**
-   * GET /health/health - Health check
+   * GET /health - Health check
    */
   async check(): Promise<ApiResponse<HealthCheckResponse>> {
-    return this.client.get('/health/health')
+    return this.client.get('/health')
   }
 
   /**
-   * GET /health/ready - Readiness probe
+   * GET /ready - Readiness probe
    */
   async readiness(): Promise<ApiResponse<{ ready: boolean }>> {
-    return this.client.get('/health/ready')
+    return this.client.get('/ready')
   }
 
   /**
-   * GET /health/live - Liveness probe
+   * GET /live - Liveness probe
    */
   async liveness(): Promise<ApiResponse<{ alive: boolean }>> {
-    return this.client.get('/health/live')
+    return this.client.get('/live')
   }
 }

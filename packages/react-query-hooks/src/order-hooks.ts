@@ -124,13 +124,8 @@ export function useOrdersByRestaurant(restaurantId: string, filters?: any, optio
   }
   
   if (!useQuery) {
-    // Return a mock implementation if useQuery is not available
-    return {
-      data: null,
-      isLoading: false,
-      error: new Error('useQuery from @tanstack/react-query is required but not available'),
-      refetch: () => Promise.resolve()
-    }
+    // Throw an error if useQuery is not available - no mock fallback
+    throw new Error('useQuery from @tanstack/react-query is required but not available. Please ensure @tanstack/react-query is properly installed and configured.')
   }
   
   return useQuery({

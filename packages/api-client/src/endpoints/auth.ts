@@ -38,7 +38,7 @@ export class AuthAPI {
   }
 
   async getCurrentUser(): Promise<User> {
-    const response = await this.client.get<User>('/user/me')
+    const response = await this.client.get<User>('/users/me')
     return response.data!
   }
 

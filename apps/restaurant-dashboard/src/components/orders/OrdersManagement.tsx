@@ -97,7 +97,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
   useEffect(() => {
     // Initialize WebSocket connection and join restaurant room only if authenticated
     const initializeRealtime = async () => {
-      if (!session?.token || !user) {
+      if (!session?.token || !user || !restaurantId) {
         return
       }
 
@@ -113,10 +113,15 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     initializeRealtime()
 
     return () => {
-      leaveRoom(`restaurant:${restaurantId}`)
+      if (restaurantId) {
+        leaveRoom(`restaurant:${restaurantId}`)
+      }
       disconnect()
     }
-  }, [restaurantId, session?.token, user, connect, disconnect, joinRoom, leaveRoom])
+    // Only depend on essential values to prevent unnecessary reconnections
+    // connect, disconnect, joinRoom, leaveRoom are functions from useWebSocket hook
+    // and should be stable references, but including them causes reconnection loops
+  }, [restaurantId, session?.token, user?.id])
 
   useEffect(() => {
     if (!client) return
@@ -124,52 +129,165 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     const handleNewOrder = (order: Order) => {
       console.log('📦 New order received via WebSocket:', order)
       toast.success(`New order #${order.id} received`)
-      refetchOrders()
+      // Real-time data received via WebSocket - add to cache directly
+      queryClient.setQueryData(['orders', 'restaurant', restaurantId], (oldData: any) => {
+        if (oldData?.data?.orders) {
+          // Add new order to the beginning of the array (most recent first)
+          const updatedOrders = [order, ...oldData.data.orders]
+          return {
+            ...oldData,
+            data: {
+              ...oldData.data,
+              orders: updatedOrders,
+              totalCount: (oldData.data.totalCount || 0) + 1
+            }
+          }
+        }
+        return oldData
+      })
+
+      // Also update the RECEIVED orders cache used by the Header badge
+      if (order.status === 'RECEIVED') {
+        queryClient.setQueryData(['orders', 'restaurant', restaurantId, { status: 'RECEIVED' }], (oldData: any) => {
+          if (oldData?.data?.orders) {
+            const updatedOrders = [order, ...oldData.data.orders]
+            return {
+              ...oldData,
+              data: {
+                ...oldData.data,
+                orders: updatedOrders,
+                totalCount: (oldData.data.totalCount || 0) + 1
+              }
+            }
+          }
+          return oldData
+        })
+      }
+
+      // Also update other relevant query caches
+      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics', restaurantId] })
+      queryClient.invalidateQueries({ queryKey: ['orders', 'today', restaurantId] })
     }
 
     const handleOrderUpdate = (order: Order) => {
       console.log('📝 Order updated via WebSocket:', order)
       toast.info(`Order #${order.id} updated`)
-      refetchOrders()
-      
-      // Update selected order if it matches the updated order
-      if (selectedOrder && selectedOrder.id === order.id) {
-        setSelectedOrder(order)
-      }
+      // Real-time data received via WebSocket - no need to refetch API
+      // Update React Query cache directly instead of refetching
+      queryClient.setQueryData(['orders', 'restaurant', restaurantId], (oldData: any) => {
+        if (oldData?.data?.orders) {
+          const updatedOrders = oldData.data.orders.map((existingOrder: Order) =>
+            existingOrder.id === order.id ? order : existingOrder
+          )
+          return { ...oldData, data: { ...oldData.data, orders: updatedOrders } }
+        }
+        return oldData
+      })
+
+      // Update selected order if it matches the updated order - use functional update
+      setSelectedOrder(current =>
+        current && current.id === order.id ? order : current
+      )
     }
 
     const handleOrderStatusChange = (data: { orderId: string; status: OrderStatus }) => {
       console.log('🔄 Order status changed via WebSocket:', data)
       toast.info(`Order #${data.orderId} status: ${data.status}`)
-      refetchOrders()
-      
-      // Update selected order status if it matches
-      if (selectedOrder && selectedOrder.id === data.orderId) {
-        setSelectedOrder({
-          ...selectedOrder,
-          status: data.status
-        })
-      }
+
+      // Find the current order to check its previous status
+      let previousStatus: OrderStatus | null = null
+      queryClient.setQueryData(['orders', 'restaurant', restaurantId], (oldData: any) => {
+        if (oldData?.data?.orders) {
+          const existingOrder = oldData.data.orders.find((order: Order) => order.id === data.orderId)
+          previousStatus = existingOrder?.status || null
+
+          const updatedOrders = oldData.data.orders.map((existingOrder: Order) =>
+            existingOrder.id === data.orderId
+              ? { ...existingOrder, status: data.status }
+              : existingOrder
+          )
+          return { ...oldData, data: { ...oldData.data, orders: updatedOrders } }
+        }
+        return oldData
+      })
+
+      // Update RECEIVED orders cache for badge count
+      queryClient.setQueryData(['orders', 'restaurant', restaurantId, { status: 'RECEIVED' }], (oldData: any) => {
+        if (oldData?.data?.orders) {
+          let updatedOrders = oldData.data.orders
+          let totalCount = oldData.data.totalCount || 0
+
+          // If order was moved FROM RECEIVED status, remove it from RECEIVED cache
+          if (previousStatus === 'RECEIVED' && data.status !== 'RECEIVED') {
+            updatedOrders = updatedOrders.filter((order: Order) => order.id !== data.orderId)
+            totalCount = Math.max(0, totalCount - 1)
+          }
+          // If order was moved TO RECEIVED status, add it to RECEIVED cache
+          else if (previousStatus !== 'RECEIVED' && data.status === 'RECEIVED') {
+            // Find the full order from the main cache
+            const mainCache = queryClient.getQueryData(['orders', 'restaurant', restaurantId]) as any
+            const fullOrder = mainCache?.data?.orders?.find((order: Order) => order.id === data.orderId)
+            if (fullOrder) {
+              updatedOrders = [{ ...fullOrder, status: data.status }, ...updatedOrders]
+              totalCount = totalCount + 1
+            }
+          }
+          // If order status changed within RECEIVED (shouldn't happen but just in case)
+          else if (previousStatus === 'RECEIVED' && data.status === 'RECEIVED') {
+            updatedOrders = updatedOrders.map((order: Order) =>
+              order.id === data.orderId ? { ...order, status: data.status } : order
+            )
+          }
+
+          return {
+            ...oldData,
+            data: {
+              ...oldData.data,
+              orders: updatedOrders,
+              totalCount
+            }
+          }
+        }
+        return oldData
+      })
+
+      // Update selected order status if it matches - use functional update
+      setSelectedOrder(current =>
+        current && current.id === data.orderId
+          ? { ...current, status: data.status }
+          : current
+      )
     }
 
     // Subscribe to real-time events
-    client.on('order:new', handleNewOrder)
+    client.on('order:created', handleNewOrder)
     client.on('order:updated', handleOrderUpdate)
     client.on('order:status_changed', handleOrderStatusChange)
 
     return () => {
-      client.off('order:new', handleNewOrder)
+      client.off('order:created', handleNewOrder)
       client.off('order:updated', handleOrderUpdate)
       client.off('order:status_changed', handleOrderStatusChange)
     }
-  }, [client, refetchOrders, selectedOrder])
+    // Remove selectedOrder from dependencies to prevent unnecessary re-subscriptions
+    // Use functional updates instead to avoid stale closures
+  }, [client, queryClient, restaurantId])
   
   // Update selected order when orders data changes
+  // Use more efficient comparison instead of expensive JSON.stringify
   useEffect(() => {
     if (selectedOrder && finalOrders.length > 0) {
       const updatedOrder = finalOrders.find(order => order.id === selectedOrder.id)
-      if (updatedOrder && JSON.stringify(updatedOrder) !== JSON.stringify(selectedOrder)) {
-        setSelectedOrder(updatedOrder)
+      if (updatedOrder) {
+        // Compare key fields instead of full object serialization
+        const hasChanges =
+          updatedOrder.status !== selectedOrder.status ||
+          updatedOrder.updatedAt !== selectedOrder.updatedAt ||
+          updatedOrder.totalAmount !== selectedOrder.totalAmount
+
+        if (hasChanges) {
+          setSelectedOrder(updatedOrder)
+        }
       }
     }
   }, [finalOrders, selectedOrder])

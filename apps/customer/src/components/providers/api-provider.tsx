@@ -12,9 +12,9 @@ interface ApiContextType {
 const ApiContext = createContext<ApiContextType | undefined>(undefined)
 
 export function ApiProvider({ children }: { children: React.ReactNode }) {
-  const [api] = useState(() => 
+  const [api] = useState(() =>
     createTabsyClient({
-      baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5001/api/v1',
+      baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1',
       timeout: 10000,
     })
   )
@@ -26,10 +26,39 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // Health check on mount
-    api.health.check()
-      .then(() => setIsConnected(true))
-      .catch(() => setIsConnected(false))
+    // Restore guest session from sessionStorage if available
+    const sessionStr = sessionStorage.getItem('tabsy-session')
+    console.log('ApiProvider: Checking for stored session:', sessionStr)
+    if (sessionStr) {
+      try {
+        const session = JSON.parse(sessionStr)
+        console.log('ApiProvider: Parsed session:', session)
+        if (session.sessionId) {
+          console.log('ApiProvider: Restoring session ID:', session.sessionId)
+          api.setGuestSession(session.sessionId)
+          console.log('ApiProvider: Session restored in API client')
+        } else {
+          console.log('ApiProvider: No sessionId in session object')
+        }
+      } catch (error) {
+        console.error('Failed to restore session:', error)
+      }
+    } else {
+      console.log('ApiProvider: No session found in sessionStorage')
+    }
+
+    // Health check on mount with better error handling
+    const checkHealth = async () => {
+      try {
+        await api.health.check()
+        setIsConnected(true)
+      } catch (error) {
+        console.warn('API health check failed - running in offline mode:', error)
+        setIsConnected(false)
+      }
+    }
+
+    checkHealth()
   }, [api])
 
   return (

@@ -131,7 +131,7 @@ POST   /user/
 GET    /user/:id
 PUT    /user/:id
 DELETE /user/:id
-GET    /user/me
+GET    /users/me
 ```
 
 ## 4. Restaurant Profile Management 🏪

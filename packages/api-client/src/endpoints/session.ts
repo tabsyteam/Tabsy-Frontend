@@ -5,7 +5,7 @@ import type {
 } from '@tabsy/shared-types'
 
 export interface CreateGuestSessionRequest {
-  qrCode: string
+  qrCode?: string  // Optional - only required for QR code validation
   tableId: string
   restaurantId: string
   customerInfo?: {
@@ -38,52 +38,52 @@ export class SessionAPI {
   constructor(private client: TabsyApiClient) {}
 
   /**
-   * POST /session/guest - Create guest session
+   * POST /sessions/guest - Create guest session
    */
   async createGuest(data: CreateGuestSessionRequest): Promise<ApiResponse<GuestSession>> {
-    const response = await this.client.post<GuestSession>('/session/guest', data)
-    
+    const response = await this.client.post<GuestSession>('/sessions/guest', data)
+
     // Store session info for subsequent requests
-    if (response.success && response.data?.id) {
+    if (response.success && response.data?.sessionId) {
       // You might want to store this in localStorage or context
-      this.client.setGuestSession(response.data.id)
+      this.client.setGuestSession(response.data.sessionId)
     }
-    
+
     return response
   }
 
   /**
-   * GET /session/:sessionId/validate - Validate session
+   * GET /sessions/:sessionId/validate - Validate session
    */
   async validate(sessionId: string): Promise<ApiResponse<SessionValidationResponse>> {
-    return this.client.get(`/session/${sessionId}/validate`)
+    return this.client.get(`/sessions/${sessionId}/validate`)
   }
 
   /**
-   * GET /session/:sessionId - Get session details
+   * GET /sessions/:sessionId - Get session details
    */
   async getById(sessionId: string): Promise<ApiResponse<GuestSession>> {
-    return this.client.get(`/session/${sessionId}`)
+    return this.client.get(`/sessions/${sessionId}`)
   }
 
   /**
-   * PATCH /session/:sessionId - Update session
+   * PATCH /sessions/:sessionId - Update session
    */
   async update(sessionId: string, data: UpdateGuestSessionRequest): Promise<ApiResponse<GuestSession>> {
-    return this.client.patch(`/session/${sessionId}`, data)
+    return this.client.patch(`/sessions/${sessionId}`, data)
   }
 
   /**
-   * DELETE /session/:sessionId - Delete session
+   * DELETE /sessions/:sessionId - Delete session
    */
   async delete(sessionId: string): Promise<ApiResponse<void>> {
-    const response = await this.client.delete(`/session/${sessionId}`)
-    
+    const response = await this.client.delete(`/sessions/${sessionId}`)
+
     // Clear stored session info
     if (response.success) {
       this.client.clearGuestSession()
     }
-    
+
     return response
   }
 
@@ -91,6 +91,6 @@ export class SessionAPI {
    * Helper method: Extend session (ping to keep alive)
    */
   async ping(sessionId: string): Promise<ApiResponse<GuestSession>> {
-    return this.client.patch(`/session/${sessionId}`, { lastActivity: new Date().toISOString() })
+    return this.client.patch(`/sessions/${sessionId}`, { action: 'extend' })
   }
 }

@@ -9,17 +9,29 @@ import { useQuery } from '@tanstack/react-query'
  */
 export function useCurrentRestaurant() {
   const { user } = useAuth()
-  
+
+  // Debug log to understand user structure
+  console.log('🔍 useCurrentRestaurant - User object:', {
+    user,
+    hasRestaurantOwner: !!(user as any)?.restaurantOwner,
+    hasRestaurantStaff: !!(user as any)?.restaurantStaff,
+    restaurantOwnerId: (user as any)?.restaurantOwner?.restaurantId,
+    restaurantStaffId: (user as any)?.restaurantStaff?.restaurantId,
+    role: user?.role
+  })
+
   // Create restaurant hooks using the factory pattern
   const restaurantHooks = createRestaurantHooks(useQuery)
   
-  // For now, we'll use a mock restaurant ID based on user role
-  // In a real app, you'd fetch restaurants by owner or staff assignment
+  // Determine if user has restaurant access
   const isRestaurantUser = (user as User)?.role === UserRole.RESTAURANT_OWNER || (user as User)?.role === UserRole.RESTAURANT_STAFF
-  
-  // For demonstration, we'll use the test restaurant ID that matches the backend
-  // In production, you'd fetch this from the user's associated restaurants
-  const restaurantId = isRestaurantUser ? 'test-restaurant-id' : undefined
+
+  // Get restaurant ID from user data - extract from restaurant relationships
+  // For restaurant owners: user.restaurantOwner.restaurantId
+  // For restaurant staff: user.restaurantStaff.restaurantId
+  const restaurantId = isRestaurantUser
+    ? (user as any)?.restaurantOwner?.restaurantId || (user as any)?.restaurantStaff?.restaurantId
+    : undefined
   
   // Fetch restaurant details if we have a restaurant ID
   const {

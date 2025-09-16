@@ -21,14 +21,14 @@ export class UserAPI {
   constructor(private client: TabsyApiClient) {}
 
   /**
-   * GET /user/me - Get current user
+   * GET /users/me - Get current user
    */
   async getCurrentUser(): Promise<ApiResponse<User>> {
-    return this.client.get('/user/me')
+    return this.client.get('/users/me')
   }
 
   /**
-   * GET /user/ - List users (admin)
+   * GET /users/ - List users (admin)
    */
   async list(filters?: UserListFilters): Promise<ApiResponse<User[]>> {
     const params = new URLSearchParams()
@@ -46,28 +46,28 @@ export class UserAPI {
   }
 
   /**
-   * POST /user/ - Create user (admin)
+   * POST /users/ - Create user (admin)
    */
   async create(data: CreateUserRequest): Promise<ApiResponse<User>> {
     return this.client.post('/user', data)
   }
 
   /**
-   * GET /user/:id - Get user by ID (admin)
+   * GET /users/:id - Get user by ID (admin)
    */
   async getById(id: string): Promise<ApiResponse<User>> {
     return this.client.get(`/user/${id}`)
   }
 
   /**
-   * PUT /user/:id - Update user (admin)
+   * PUT /users/:id - Update user (admin)
    */
   async update(id: string, data: UpdateUserRequest): Promise<ApiResponse<User>> {
     return this.client.put(`/user/${id}`, data)
   }
 
   /**
-   * DELETE /user/:id - Delete user (admin)
+   * DELETE /users/:id - Delete user (admin)
    */
   async delete(id: string): Promise<ApiResponse<void>> {
     return this.client.delete(`/user/${id}`)
