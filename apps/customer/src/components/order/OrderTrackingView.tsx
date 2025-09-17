@@ -39,7 +39,7 @@ const transformApiOrderToLocal = (apiOrder: any): Order => ({
   status: apiOrder.status,
   items: apiOrder.items.map((item: any) => ({
     id: item.id,
-    name: item.menuItem.name,
+    name: item.menuItem?.name || item.name || 'Unknown Item',
     quantity: item.quantity,
     unitPrice: typeof item.price === 'string' ? parseFloat(item.price) : (item.price || 0),
     totalPrice: typeof item.subtotal === 'string' ? parseFloat(item.subtotal) : (item.subtotal || 0),
@@ -173,7 +173,7 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
     isConnected: wsConnected,
     client: wsClient
   } = useWebSocket({
-    url: 'http://localhost:5001',
+    url: process.env.NEXT_PUBLIC_WS_BASE_URL || 'http://localhost:5001',
     auth: {
       namespace: 'customer',
       restaurantId: restaurantId || undefined,
@@ -195,26 +195,40 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
   // Listen for order status updates
   useWebSocketEvent(
     wsClient,
-    'order:status-changed',
+    'order:status_updated',
     (payload) => {
       if (payload.orderId === orderId) {
         console.log('Order status updated via WebSocket:', payload)
         setOrder(prevOrder => {
           if (!prevOrder) return prevOrder
 
+          // Extract status from the payload structure - can be in payload.order.status or payload.status
+          const newStatus = payload.order?.status || payload.status || payload.newStatus
+
+          if (!newStatus) {
+            console.warn('No status found in payload:', payload)
+            return prevOrder
+          }
+
           const updatedOrder = {
             ...prevOrder,
-            status: payload.newStatus as OrderStatus,
+            status: newStatus as OrderStatus,
             updatedAt: new Date().toISOString()
           }
 
-          if (payload.estimatedTime) {
-            updatedOrder.estimatedTime = payload.estimatedTime
+          // If we have a full order object in the payload, use it to update more fields
+          if (payload.order && typeof payload.order === 'object') {
+            Object.assign(updatedOrder, payload.order)
+            updatedOrder.updatedAt = new Date().toISOString()
+          }
+
+          if (payload.estimatedTime || payload.order?.estimatedPreparationTime) {
+            updatedOrder.estimatedTime = payload.estimatedTime || payload.order.estimatedPreparationTime
           }
 
           // Show notification for status change
-          if (payload.newStatus !== prevOrder.status) {
-            const statusInfo = ORDER_STATUSES.find(s => s.key === payload.newStatus)
+          if (newStatus !== prevOrder.status) {
+            const statusInfo = ORDER_STATUSES.find(s => s.key === newStatus)
             if (statusInfo) {
               toast.success(statusInfo.label, {
                 description: statusInfo.description,
@@ -223,7 +237,7 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
               })
             }
             // Show payment option if order is delivered
-            if (payload.newStatus === OrderStatus.DELIVERED) {
+            if (newStatus === OrderStatus.DELIVERED) {
               setShowPaymentOption(true)
             }
           }
@@ -241,13 +255,35 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
     'order:updated',
     (payload) => {
       if (payload.orderId === orderId) {
-        console.log('Order updated via WebSocket:', payload)
-        // Refresh order data to get latest changes
-        refreshOrder()
+        console.log('🔄 Order updated via WebSocket:', payload)
+
+        // Update order directly from WebSocket data instead of making API call
+        setOrder(prevOrder => {
+          if (!prevOrder) return prevOrder
+
+          const updatedOrder = { ...prevOrder }
+
+          // Handle different payload structures
+          if (payload.order && typeof payload.order === 'object') {
+            // If we have a full order object, merge it
+            Object.assign(updatedOrder, transformApiOrderToLocal(payload.order))
+          } else if (payload.changes && typeof payload.changes === 'object') {
+            // If we have changes object, apply the changes
+            Object.assign(updatedOrder, payload.changes)
+          } else {
+            // Apply any direct fields from payload (excluding metadata)
+            const { orderId, timestamp, restaurantId, tableId, userId, ...orderFields } = payload
+            Object.assign(updatedOrder, orderFields)
+          }
+
+          updatedOrder.updatedAt = new Date().toISOString()
+          return updatedOrder
+        })
       }
     },
     [orderId]
   )
+
 
 
   // Pull-to-refresh hook
@@ -328,46 +364,34 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
     }
   }, [order])
 
-  // Fallback polling when WebSocket is not connected
+  // Real-time updates via WebSocket only - no fallback polling
   useEffect(() => {
-    if (wsConnected || !order || order.status === OrderStatus.COMPLETED) return
+    console.log('🔌 Customer WebSocket connection status:', {
+      wsConnected,
+      hasOrder: !!order,
+      orderStatus: order?.status,
+      orderId,
+      restaurantId,
+      tableId,
+      sessionId
+    })
 
-    const pollOrder = async () => {
-      try {
-        const response = await api.order.getById(orderId)
-        if (response.success && response.data) {
-          const orderData = transformApiOrderToLocal(response.data)
-
-          // Check if status changed
-          if (orderData.status !== order.status) {
-            setOrder(orderData)
-
-            // Show notification for status change
-            const statusInfo = ORDER_STATUSES.find(s => s.key === orderData.status)
-            if (statusInfo) {
-              toast.success(statusInfo.label, {
-                description: statusInfo.description,
-                duration: 4000,
-                icon: '📡'
-              })
-            }
-
-            // Show payment option if order is delivered
-            if (orderData.status === OrderStatus.DELIVERED) {
-              setShowPaymentOption(true)
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Polling error:', err)
-      }
+    // Log connection status for debugging
+    if (!wsConnected && order && order.status !== OrderStatus.COMPLETED) {
+      console.warn('⚠️ WebSocket not connected - real-time updates may be delayed')
+      console.log('🔧 WebSocket auth params:', {
+        namespace: 'customer',
+        restaurantId: restaurantId || undefined,
+        tableId: tableId || undefined,
+        sessionId: sessionId || undefined
+      })
+    } else if (wsConnected) {
+      console.log('✅ WebSocket connected - real-time updates active')
     }
 
-    // Use longer polling interval as fallback (60 seconds)
-    const pollingInterval = setInterval(pollOrder, 60000)
-
-    return () => clearInterval(pollingInterval)
-  }, [wsConnected, order, orderId, api])
+    // NO FALLBACK POLLING - rely exclusively on WebSocket for real-time updates
+    // This eliminates the 1-minute API polling that was causing delays
+  }, [wsConnected, order, orderId, restaurantId, tableId, sessionId])
 
   const getCurrentStatusIndex = (): number => {
     if (!order) return 0
@@ -648,11 +672,11 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                     <div className="flex-1">
                       <h4 className="font-medium text-content-primary">{item.name}</h4>
                       <div className="text-sm text-content-secondary">
-                        ${item.unitPrice.toFixed(2)} × {item.quantity}
+                        ${(item.unitPrice || 0).toFixed(2)} × {item.quantity}
                       </div>
                     </div>
                     <div className="font-semibold text-content-primary">
-                      ${item.totalPrice.toFixed(2)}
+                      ${(item.totalPrice || 0).toFixed(2)}
                     </div>
                   </div>
                 ))}
@@ -738,7 +762,7 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                       </div>
                       <Button onClick={handlePayment} className="w-full">
                         <CreditCard className="w-4 h-4 mr-2" />
-                        Pay Now - ${order.total.toFixed(2)}
+                        Pay Now - ${(order.total || 0).toFixed(2)}
                       </Button>
                     </div>
                   </motion.div>
@@ -759,16 +783,16 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                 <div className="space-y-2">
                   <div className="flex justify-between text-content-secondary">
                     <span>Subtotal</span>
-                    <span>${order.subtotal.toFixed(2)}</span>
+                    <span>${(order.subtotal || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between text-content-secondary">
                     <span>Tax</span>
-                    <span>${order.tax.toFixed(2)}</span>
+                    <span>${(order.tax || 0).toFixed(2)}</span>
                   </div>
                   <div className="border-t pt-2">
                     <div className="flex justify-between text-lg font-semibold text-content-primary">
                       <span>Total</span>
-                      <span>${order.total.toFixed(2)}</span>
+                      <span>${(order.total || 0).toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
