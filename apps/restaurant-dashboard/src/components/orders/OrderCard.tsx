@@ -151,9 +151,9 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
 
       {/* Status Badge Row */}
       <div className="flex items-center justify-between mb-3">
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${getStatusColor(order.status)}`}>
-          {getStatusIcon(order.status)}
-          <span className="ml-1">{order.status.replace('_', ' ')}</span>
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${order.status ? getStatusColor(order.status) : 'bg-muted text-muted-foreground border-border'}`}>
+          {order.status ? getStatusIcon(order.status) : <span className="w-3 h-3">?</span>}
+          <span className="ml-1">{order.status?.replace('_', ' ') || 'UNKNOWN'}</span>
         </span>
         {order.estimatedPreparationTime && (
           <div className="flex items-center gap-1">
@@ -188,7 +188,7 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
             {order.items.slice(0, 2).map((item: OrderItem, index: number) => (
               <div key={index} className="flex justify-between items-center text-sm">
                 <span className="text-card-foreground font-medium truncate flex-1 mr-2">
-                  {item.quantity}x {item.menuItem.name}
+                  {item.quantity}x {item.menuItem?.name || (item as any).name || 'Unknown Item'}
                 </span>
                 <span className="font-bold text-card-foreground flex-shrink-0">
                   ${parseFloat(String(item.subtotal || 0)).toFixed(2)}
@@ -216,17 +216,17 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
             Details
           </Button>
 
-          {canUpdateStatus(order.status) && getNextStatus(order.status) && (
+          {order.status && canUpdateStatus(order.status) && getNextStatus(order.status) && (
             <Button
               size="sm"
-              onClick={() => onStatusUpdate(order.id, getNextStatus(order.status)!)}
+              onClick={() => order.status && onStatusUpdate(order.id, getNextStatus(order.status)!)}
               className="flex-1 text-xs h-8 font-medium hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
             >
-              {getNextStatusText(order.status)}
+              {order.status ? getNextStatusText(order.status) : 'Update'}
             </Button>
           )}
 
-          {canCancelOrder(order.status) && (
+          {order.status && canCancelOrder(order.status) && (
             <Button
               variant="destructive"
               size="sm"

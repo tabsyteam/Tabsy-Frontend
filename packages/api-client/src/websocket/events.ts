@@ -26,8 +26,8 @@ export interface OrderCreatedEvent extends BaseWebSocketEvent {
   };
 }
 
-export interface OrderStatusChangedEvent extends BaseWebSocketEvent {
-  type: 'order:status-changed';
+export interface OrderStatusUpdatedEvent extends BaseWebSocketEvent {
+  type: 'order:status_updated';
   data: {
     orderId: string;
     previousStatus: string;
@@ -48,8 +48,8 @@ export interface OrderUpdatedEvent extends BaseWebSocketEvent {
 }
 
 // Table Events
-export interface TableUpdatedEvent extends BaseWebSocketEvent {
-  type: 'table:updated';
+export interface TableStatusUpdatedEvent extends BaseWebSocketEvent {
+  type: 'table:status_updated';
   data: {
     tableId: string;
     status: 'available' | 'occupied' | 'reserved' | 'cleaning';
@@ -60,8 +60,8 @@ export interface TableUpdatedEvent extends BaseWebSocketEvent {
   };
 }
 
-export interface TableOccupiedEvent extends BaseWebSocketEvent {
-  type: 'table:occupied';
+export interface TableCheckInEvent extends BaseWebSocketEvent {
+  type: 'table:check_in';
   data: {
     tableId: string;
     sessionId: string;
@@ -70,8 +70,8 @@ export interface TableOccupiedEvent extends BaseWebSocketEvent {
   };
 }
 
-export interface TableAvailableEvent extends BaseWebSocketEvent {
-  type: 'table:available';
+export interface TableCheckOutEvent extends BaseWebSocketEvent {
+  type: 'table:check_out';
   data: {
     tableId: string;
     previousSessionId?: string;
@@ -231,8 +231,8 @@ export interface AnalyticsUpdateEvent extends BaseWebSocketEvent {
 }
 
 // Menu Events (for real-time menu updates)
-export interface MenuItemUpdatedEvent extends BaseWebSocketEvent {
-  type: 'menu:item-updated';
+export interface MenuUpdatedEvent extends BaseWebSocketEvent {
+  type: 'menu:updated';
   data: {
     itemId: string;
     changes: {
@@ -247,17 +247,96 @@ export interface MenuItemUpdatedEvent extends BaseWebSocketEvent {
   };
 }
 
+// Additional events from backend
+export interface OrderItemAddedEvent extends BaseWebSocketEvent {
+  type: 'order:item_added';
+  data: {
+    orderId: string;
+    itemId: string;
+    quantity: number;
+    addedBy: string;
+  };
+}
+
+export interface OrderItemUpdatedEvent extends BaseWebSocketEvent {
+  type: 'order:item_updated';
+  data: {
+    orderId: string;
+    itemId: string;
+    changes: Record<string, any>;
+    updatedBy: string;
+  };
+}
+
+export interface OrderItemRemovedEvent extends BaseWebSocketEvent {
+  type: 'order:item_removed';
+  data: {
+    orderId: string;
+    itemId: string;
+    removedBy: string;
+  };
+}
+
+export interface PaymentCreatedEvent extends BaseWebSocketEvent {
+  type: 'payment:created';
+  data: {
+    paymentId: string;
+    orderId: string;
+    amount: number;
+    method: string;
+    createdAt: Date;
+  };
+}
+
+export interface PaymentCancelledEvent extends BaseWebSocketEvent {
+  type: 'payment:cancelled';
+  data: {
+    paymentId: string;
+    orderId: string;
+    cancelledAt: Date;
+    reason: string;
+  };
+}
+
+export interface PaymentStatusUpdatedEvent extends BaseWebSocketEvent {
+  type: 'payment:status_updated';
+  data: {
+    paymentId: string;
+    orderId: string;
+    status: string;
+    updatedAt: Date;
+  };
+}
+
+export interface NotificationCreatedEvent extends BaseWebSocketEvent {
+  type: 'notification:created';
+  data: {
+    notificationId: string;
+    title: string;
+    message: string;
+    category: string;
+    priority: string;
+    createdAt: Date;
+  };
+}
+
 // Union type for all possible WebSocket events
-export type TabsyWebSocketEvent = 
+export type TabsyWebSocketEvent =
   | OrderCreatedEvent
-  | OrderStatusChangedEvent
+  | OrderStatusUpdatedEvent
   | OrderUpdatedEvent
-  | TableUpdatedEvent
-  | TableOccupiedEvent
-  | TableAvailableEvent
+  | OrderItemAddedEvent
+  | OrderItemUpdatedEvent
+  | OrderItemRemovedEvent
+  | TableStatusUpdatedEvent
+  | TableCheckInEvent
+  | TableCheckOutEvent
+  | PaymentCreatedEvent
   | PaymentCompletedEvent
   | PaymentFailedEvent
+  | PaymentCancelledEvent
   | PaymentRefundedEvent
+  | PaymentStatusUpdatedEvent
   | SessionUpdatedEvent
   | SessionExpiredEvent
   | KitchenNewOrderEvent
@@ -266,28 +345,36 @@ export type TabsyWebSocketEvent =
   | StaffNotificationEvent
   | UrgentAlertEvent
   | AnalyticsUpdateEvent
-  | MenuItemUpdatedEvent;
+  | MenuUpdatedEvent
+  | NotificationCreatedEvent;
 
 // Event type mapping for type safety
 export type WebSocketEventMap = {
   'order:created': OrderCreatedEvent['data'];
-  'order:status-changed': OrderStatusChangedEvent['data'];
+  'order:status_updated': OrderStatusUpdatedEvent['data'];
   'order:updated': OrderUpdatedEvent['data'];
-  'table:updated': TableUpdatedEvent['data'];
-  'table:occupied': TableOccupiedEvent['data'];
-  'table:available': TableAvailableEvent['data'];
+  'order:item_added': OrderItemAddedEvent['data'];
+  'order:item_updated': OrderItemUpdatedEvent['data'];
+  'order:item_removed': OrderItemRemovedEvent['data'];
+  'table:status_updated': TableStatusUpdatedEvent['data'];
+  'table:check_in': TableCheckInEvent['data'];
+  'table:check_out': TableCheckOutEvent['data'];
+  'payment:created': PaymentCreatedEvent['data'];
   'payment:completed': PaymentCompletedEvent['data'];
   'payment:failed': PaymentFailedEvent['data'];
+  'payment:cancelled': PaymentCancelledEvent['data'];
   'payment:refunded': PaymentRefundedEvent['data'];
+  'payment:status_updated': PaymentStatusUpdatedEvent['data'];
   'session:updated': SessionUpdatedEvent['data'];
   'session:expired': SessionExpiredEvent['data'];
   'kitchen:new-order': KitchenNewOrderEvent['data'];
   'kitchen:order-ready': KitchenOrderReadyEvent['data'];
   'kitchen:order-cancelled': KitchenOrderCancelledEvent['data'];
+  'notification:created': NotificationCreatedEvent['data'];
   'notification:staff': StaffNotificationEvent['data'];
   'alert:urgent': UrgentAlertEvent['data'];
   'analytics:update': AnalyticsUpdateEvent['data'];
-  'menu:item-updated': MenuItemUpdatedEvent['data'];
+  'menu:updated': MenuUpdatedEvent['data'];
 };
 
 // Type-safe event listener

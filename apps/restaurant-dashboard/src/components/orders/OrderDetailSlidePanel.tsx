@@ -98,10 +98,12 @@ export function OrderDetailSlidePanel({
   };
 
   const canUpdateStatus = (status: OrderStatus): boolean => {
+    if (!status) return false;
     return ![OrderStatus.COMPLETED, OrderStatus.CANCELLED].includes(status);
   };
 
   const canCancelOrder = (status: OrderStatus): boolean => {
+    if (!status) return false;
     return [OrderStatus.RECEIVED, OrderStatus.PREPARING].includes(status);
   };
 
@@ -185,7 +187,7 @@ export function OrderDetailSlidePanel({
               <span
                 className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${getStatusColor(order.status)}`}
               >
-                {order.status.replace('_', ' ')}
+                {order.status?.replace('_', ' ') || 'UNKNOWN'}
               </span>
               <span className="text-primary-foreground/80 text-sm">
                 {getStatusProgress(order.status)}% Complete
@@ -288,9 +290,9 @@ export function OrderDetailSlidePanel({
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex-1">
                       <h4 className="font-medium text-foreground">
-                        {item.quantity}x {item.menuItem.name}
+                        {item.quantity}x {item.menuItem?.name || (item as any).name || 'Unknown Item'}
                       </h4>
-                      <p className="text-sm text-foreground/80 mt-1">{item.menuItem.description}</p>
+                      <p className="text-sm text-foreground/80 mt-1">{item.menuItem?.description || ''}</p>
                     </div>
                     <div className="text-right ml-3">
                       <p className="font-semibold text-foreground">

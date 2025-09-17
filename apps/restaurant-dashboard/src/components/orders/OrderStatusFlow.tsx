@@ -5,7 +5,7 @@ import { OrderStatus } from '@tabsy/shared-types'
 import { CheckCircle2, Clock, AlertTriangle, Package, Utensils, CheckSquare } from 'lucide-react'
 
 interface OrderStatusFlowProps {
-  currentStatus: OrderStatus
+  currentStatus: OrderStatus | undefined
   onStatusUpdate: (newStatus: OrderStatus) => void
   disabled?: boolean
 }
@@ -195,7 +195,7 @@ export function OrderStatusFlow({ currentStatus, onStatusUpdate, disabled = fals
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs text-muted-foreground">Current Status</p>
-            <p className="text-sm font-semibold text-foreground">{currentStatus.replace('_', ' ')}</p>
+            <p className="text-sm font-semibold text-foreground">{currentStatus?.replace('_', ' ') || 'UNKNOWN'}</p>
           </div>
           {getCurrentStepIndex() < statusSteps.length - 1 && (
             <div className="text-right">

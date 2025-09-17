@@ -22,6 +22,9 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'ALL'>('ALL')
 
+  // Track locally initiated status changes to avoid processing our own WebSocket events
+  const [pendingStatusChanges, setPendingStatusChanges] = useState<Set<string>>(new Set())
+
   // CLEAN SOLUTION: Inject app's useQuery into factory
   const orderHooks = createOrderHooks(useQuery)
   
@@ -71,14 +74,15 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     : finalOrders.filter((order: Order) => order.status === statusFilter)
 
   // WebSocket connection for real-time updates with authentication
-  const { 
-    isConnected, 
-    connect, 
+  const {
+    isConnected,
+    connect,
     disconnect,
     joinRoom,
     leaveRoom,
     client
   } = useWebSocket({
+    url: process.env.NEXT_PUBLIC_WS_BASE_URL || 'http://localhost:5001',
     auth: {
       token: session?.token,
       restaurantId: restaurantId,
@@ -126,15 +130,59 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
   useEffect(() => {
     if (!client) return
 
-    const handleNewOrder = (order: Order) => {
-      console.log('📦 New order received via WebSocket:', order)
+    const handleNewOrder = (...args: any[]) => {
+      console.log('📦 Raw WebSocket event received for order:created:', args)
+      console.log('📦 Number of arguments:', args.length)
+      console.log('📦 All arguments:', args)
+
+      // Try to extract order data from different possible formats
+      let order = null
+
+      if (args.length > 0) {
+        const data = args[0]
+
+        // Try different data formats
+        if (data && typeof data === 'object') {
+          // Case 1: Event wrapper { data: order }
+          if (data.data && data.data.id) {
+            order = data.data
+            console.log('📦 Found order in data.data:', order)
+          }
+          // Case 2: Direct order object
+          else if (data.id) {
+            order = data
+            console.log('📦 Found order as direct data:', order)
+          }
+          // Case 3: Order in other properties
+          else if (data.order && data.order.id) {
+            order = data.order
+            console.log('📦 Found order in data.order:', order)
+          }
+        }
+      }
+
+      if (!order || !order.id) {
+        console.error('❌ Invalid order data received. Raw args:', args)
+        console.error('❌ Could not extract order from any format')
+
+        // Let's try to refetch orders manually as fallback
+        console.log('🔄 Attempting manual order refetch as fallback...')
+        refetchOrders()
+        return
+      }
+
+      console.log('✅ Valid order found:', order)
+
       toast.success(`New order #${order.id} received`)
-      // Real-time data received via WebSocket - add to cache directly
-      queryClient.setQueryData(['orders', 'restaurant', restaurantId], (oldData: any) => {
+
+      // Use WebSocket data directly (backend sends complete menu item details)
+      queryClient.setQueryData(['orders', 'restaurant', restaurantId, undefined], (oldData: any) => {
+        console.log('📊 Current cache data for orders:', oldData)
+
         if (oldData?.data?.orders) {
           // Add new order to the beginning of the array (most recent first)
           const updatedOrders = [order, ...oldData.data.orders]
-          return {
+          const newData = {
             ...oldData,
             data: {
               ...oldData.data,
@@ -142,11 +190,25 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
               totalCount: (oldData.data.totalCount || 0) + 1
             }
           }
+          console.log('📊 Updated cache data with WebSocket order:', newData)
+          return newData
+        } else {
+          // Create initial cache structure if it doesn't exist
+          const newData = {
+            data: {
+              orders: [order],
+              totalCount: 1,
+              page: 1,
+              limit: 50
+            },
+            success: true
+          }
+          console.log('📊 Creating new cache data with WebSocket order:', newData)
+          return newData
         }
-        return oldData
       })
 
-      // Also update the RECEIVED orders cache used by the Header badge
+      // Also update the RECEIVED orders cache if needed
       if (order.status === 'RECEIVED') {
         queryClient.setQueryData(['orders', 'restaurant', restaurantId, { status: 'RECEIVED' }], (oldData: any) => {
           if (oldData?.data?.orders) {
@@ -159,8 +221,17 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
                 totalCount: (oldData.data.totalCount || 0) + 1
               }
             }
+          } else {
+            return {
+              data: {
+                orders: [order],
+                totalCount: 1,
+                page: 1,
+                limit: 50
+              },
+              success: true
+            }
           }
-          return oldData
         })
       }
 
@@ -169,12 +240,50 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
       queryClient.invalidateQueries({ queryKey: ['orders', 'today', restaurantId] })
     }
 
-    const handleOrderUpdate = (order: Order) => {
-      console.log('📝 Order updated via WebSocket:', order)
+    const handleOrderUpdate = (data: any) => {
+      console.log('📝 Raw WebSocket data received for order:updated:', data)
+      console.log('📝 Data type:', typeof data, 'Keys:', Object.keys(data || {}))
+
+      // Handle different data formats - backend might send just order data or wrapped event
+      let order = null
+
+      if (data && typeof data === 'object') {
+        // Try different data formats
+        if (data.data && data.data.id) {
+          order = data.data
+          console.log('📝 Found order in data.data:', order)
+        } else if (data.id) {
+          order = data
+          console.log('📝 Found order as direct data:', order)
+        } else if (data.order && data.order.id) {
+          order = data.order
+          console.log('📝 Found order in data.order:', order)
+        }
+      }
+
+      if (!order || !order.id) {
+        console.error('❌ Invalid order data received for order:updated. Raw data:', data)
+        console.error('❌ Could not extract order from any format')
+
+        // Don't show error toast for empty data - might be a backend issue
+        // Just log it and return silently
+        return
+      }
+
+      // Check if this is a status update that we initiated locally
+      if (order.status) {
+        const changeKey = `${order.id}:${order.status}`
+        if (pendingStatusChanges.has(changeKey)) {
+          console.log('🔄 Ignoring locally initiated order update:', changeKey)
+          return
+        }
+      }
+
       toast.info(`Order #${order.id} updated`)
       // Real-time data received via WebSocket - no need to refetch API
       // Update React Query cache directly instead of refetching
-      queryClient.setQueryData(['orders', 'restaurant', restaurantId], (oldData: any) => {
+      // IMPORTANT: Must match the exact query key used by useOrdersByRestaurant hook
+      queryClient.setQueryData(['orders', 'restaurant', restaurantId, undefined], (oldData: any) => {
         if (oldData?.data?.orders) {
           const updatedOrders = oldData.data.orders.map((existingOrder: Order) =>
             existingOrder.id === order.id ? order : existingOrder
@@ -192,11 +301,20 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
 
     const handleOrderStatusChange = (data: { orderId: string; status: OrderStatus }) => {
       console.log('🔄 Order status changed via WebSocket:', data)
+
+      // Check if this is a locally initiated change (feedback loop prevention)
+      const changeKey = `${data.orderId}:${data.status}`
+      if (pendingStatusChanges.has(changeKey)) {
+        console.log('🔄 Ignoring locally initiated status change:', changeKey)
+        return
+      }
+
       toast.info(`Order #${data.orderId} status: ${data.status}`)
 
       // Find the current order to check its previous status
       let previousStatus: OrderStatus | null = null
-      queryClient.setQueryData(['orders', 'restaurant', restaurantId], (oldData: any) => {
+      // IMPORTANT: Must match the exact query key used by useOrdersByRestaurant hook
+      queryClient.setQueryData(['orders', 'restaurant', restaurantId, undefined], (oldData: any) => {
         if (oldData?.data?.orders) {
           const existingOrder = oldData.data.orders.find((order: Order) => order.id === data.orderId)
           previousStatus = existingOrder?.status || null
@@ -225,7 +343,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
           // If order was moved TO RECEIVED status, add it to RECEIVED cache
           else if (previousStatus !== 'RECEIVED' && data.status === 'RECEIVED') {
             // Find the full order from the main cache
-            const mainCache = queryClient.getQueryData(['orders', 'restaurant', restaurantId]) as any
+            const mainCache = queryClient.getQueryData(['orders', 'restaurant', restaurantId, undefined]) as any
             const fullOrder = mainCache?.data?.orders?.find((order: Order) => order.id === data.orderId)
             if (fullOrder) {
               updatedOrders = [{ ...fullOrder, status: data.status }, ...updatedOrders]
@@ -259,19 +377,34 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
       )
     }
 
-    // Subscribe to real-time events
-    client.on('order:created', handleNewOrder)
-    client.on('order:updated', handleOrderUpdate)
-    client.on('order:status_changed', handleOrderStatusChange)
+    // Subscribe to real-time events with enhanced debugging
+    console.log('🔌 Setting up WebSocket event listeners...')
+
+    client.on('order:created', (data: any) => {
+      console.log('🎯 order:created event triggered')
+      handleNewOrder(data)
+    })
+
+    client.on('order:updated', (data: any) => {
+      console.log('🎯 order:updated event triggered')
+      handleOrderUpdate(data)
+    })
+
+    client.on('order:status_updated', (data: any) => {
+      console.log('🎯 order:status_updated event triggered')
+      handleOrderStatusChange(data)
+    })
+
 
     return () => {
-      client.off('order:created', handleNewOrder)
-      client.off('order:updated', handleOrderUpdate)
-      client.off('order:status_changed', handleOrderStatusChange)
+      // Clean up all event listeners
+      client.off('order:created')
+      client.off('order:updated')
+      client.off('order:status_updated')
     }
     // Remove selectedOrder from dependencies to prevent unnecessary re-subscriptions
     // Use functional updates instead to avoid stale closures
-  }, [client, queryClient, restaurantId])
+  }, [client, queryClient, restaurantId, pendingStatusChanges])
   
   // Update selected order when orders data changes
   // Use more efficient comparison instead of expensive JSON.stringify
@@ -297,6 +430,12 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
   }
 
   const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+    // Track this as a locally initiated change to avoid processing our own WebSocket event
+    const changeKey = `${orderId}:${newStatus}`
+    setPendingStatusChanges(prev => new Set([...prev, changeKey]))
+
+    console.log('🔄 Locally initiating status change:', { orderId, newStatus, changeKey })
+
     // Optimistic update: Update the selected order immediately for better UX
     if (selectedOrder && selectedOrder.id === orderId) {
       setSelectedOrder({
@@ -304,18 +443,27 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
         status: newStatus
       })
     }
-    
+
     try {
       const response = await tabsyClient.order.updateStatus(orderId, newStatus)
       toast.success('Order status updated successfully')
-      
+
       // Manually invalidate React Query cache to ensure UI sync
       queryClient.invalidateQueries({ queryKey: ['orders'] })
-      queryClient.invalidateQueries({ queryKey: ['orders', 'restaurant', restaurantId] })
+      queryClient.invalidateQueries({ queryKey: ['orders', 'restaurant', restaurantId, undefined] })
       queryClient.invalidateQueries({ queryKey: ['order', orderId] })
-      
-      // Refetch orders to ensure fresh data
-      await refetchOrders()
+
+      // Note: No need to refetch - WebSocket will handle real-time updates
+
+      // Clear the pending change after a delay (allow time for WebSocket event)
+      setTimeout(() => {
+        setPendingStatusChanges(prev => {
+          const newSet = new Set(prev)
+          newSet.delete(changeKey)
+          console.log('🔄 Cleared pending change:', changeKey)
+          return newSet
+        })
+      }, 3000) // 3 second timeout
       
       // Update the selected order with the latest data from the cache
       if (selectedOrder && selectedOrder.id === orderId) {

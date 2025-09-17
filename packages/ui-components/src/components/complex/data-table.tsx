@@ -92,7 +92,7 @@ export function DataTable<TData, TValue>({
           <Input
             placeholder={searchPlaceholder}
             value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ""}
-            onChange={(event) =>
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
               table.getColumn(searchKey)?.setFilterValue(event.target.value)
             }
             className="max-w-sm"
@@ -116,7 +116,7 @@ export function DataTable<TData, TValue>({
                       key={column.id}
                       className="capitalize"
                       checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
+                      onCheckedChange={(value: boolean) =>
                         column.toggleVisibility(!!value)
                       }
                     >
@@ -211,17 +211,19 @@ export function DataTable<TData, TValue>({
 }
 
 // Row actions component for common table operations
+interface DataTableRowActionsProps<TData> {
+  row: { original: TData };
+  onEdit?: (data: TData) => void;
+  onDelete?: (data: TData) => void;
+  onView?: (data: TData) => void;
+}
+
 export function DataTableRowActions<TData>({
   row,
   onEdit,
   onDelete,
   onView,
-}: {
-  row: any;
-  onEdit?: (data: TData) => void;
-  onDelete?: (data: TData) => void;
-  onView?: (data: TData) => void;
-}) {
+}: DataTableRowActionsProps<TData>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

@@ -159,10 +159,10 @@ export function OrderDetailModal({ order, onClose, onStatusUpdate }: OrderDetail
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900">
-                          {item.quantity}x {item.menuItem.name}
+                          {item.quantity}x {item.menuItem?.name || (item as any).name || 'Unknown Item'}
                         </h4>
                         <p className="text-sm text-gray-600 mt-1">
-                          {item.menuItem.description}
+                          {item.menuItem?.description || ''}
                         </p>
                       </div>
                       <div className="text-right ml-4">

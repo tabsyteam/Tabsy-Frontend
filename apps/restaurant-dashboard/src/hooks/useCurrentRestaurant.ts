@@ -17,7 +17,8 @@ export function useCurrentRestaurant() {
     hasRestaurantStaff: !!(user as any)?.restaurantStaff,
     restaurantOwnerId: (user as any)?.restaurantOwner?.restaurantId,
     restaurantStaffId: (user as any)?.restaurantStaff?.restaurantId,
-    role: user?.role
+    role: user?.role,
+    fullUserObject: JSON.stringify(user, null, 2)
   })
 
   // Create restaurant hooks using the factory pattern
@@ -29,9 +30,17 @@ export function useCurrentRestaurant() {
   // Get restaurant ID from user data - extract from restaurant relationships
   // For restaurant owners: user.restaurantOwner.restaurantId
   // For restaurant staff: user.restaurantStaff.restaurantId
-  const restaurantId = isRestaurantUser
+  let restaurantId = isRestaurantUser
     ? (user as any)?.restaurantOwner?.restaurantId || (user as any)?.restaurantStaff?.restaurantId
     : undefined
+
+  // TEMPORARY FIX: If user has restaurant role but no restaurant relationships in database,
+  // use a hardcoded restaurant ID for testing purposes
+  if (isRestaurantUser && !restaurantId) {
+    console.warn('⚠️ Restaurant user found but no restaurant relationships in database. Using hardcoded restaurant ID for testing.')
+    // You should replace this with your actual restaurant ID from the backend
+    restaurantId = 'test-restaurant-id'
+  }
   
   // Fetch restaurant details if we have a restaurant ID
   const {

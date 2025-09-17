@@ -26,6 +26,20 @@ export interface User {
   createdAt: string
   updatedAt: string
   lastLoginAt?: string
+  // Restaurant relationships - included when user is restaurant owner/staff
+  restaurantOwner?: {
+    id: string
+    restaurantId: string
+    createdAt: string
+    updatedAt: string
+  }
+  restaurantStaff?: {
+    id: string
+    restaurantId: string
+    position: string
+    createdAt: string
+    updatedAt: string
+  }
 }
 
 export interface CreateUserRequest {

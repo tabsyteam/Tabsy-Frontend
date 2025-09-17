@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@tabsy/ui-components'
 import {
@@ -17,22 +17,10 @@ import {
   ChevronRight,
   Heart
 } from 'lucide-react'
-import { MenuItem, DietaryType, AllergenType } from '@tabsy/shared-types'
+import { MenuItem, DietaryType, AllergenType, SpiceLevel, MenuItemOption, OptionType } from '@tabsy/shared-types'
 import { formatCurrency } from '@/lib/utils'
-
-interface MenuItemCustomization {
-  id: string
-  name: string
-  type: 'size' | 'extra' | 'modification'
-  options: Array<{
-    id: string
-    name: string
-    price: number
-    isDefault?: boolean
-  }>
-  required?: boolean
-  maxSelections?: number
-}
+import { haptics } from '@/lib/haptics'
+import { InteractiveButton, InteractiveCard, ToggleSwitch, AnimatedCounter, useShakeAnimation } from '@/components/ui/MicroInteractions'
 
 interface ItemDetailModalProps {
   item: MenuItem | null
@@ -42,52 +30,22 @@ interface ItemDetailModalProps {
   existingQuantity?: number
 }
 
-// Mock customizations - in real app this would come from the item data
-const getMockCustomizations = (item: MenuItem): MenuItemCustomization[] => {
-  const customizations: MenuItemCustomization[] = []
-
-  // Add size options for food items
-  if (item && !item.name.toLowerCase().includes('drink')) {
-    customizations.push({
-      id: 'size',
-      name: 'Size',
-      type: 'size',
-      required: true,
-      options: [
-        { id: 'regular', name: 'Regular', price: 0, isDefault: true },
-        { id: 'large', name: 'Large', price: 3.00 }
-      ]
-    })
+// Helper function to get spice level display
+const getSpiceLevelDisplay = (level: SpiceLevel): { name: string; icon: string; color: string } => {
+  switch (level) {
+    case SpiceLevel.NONE:
+      return { name: 'No Spice', icon: '○', color: 'text-gray-500' }
+    case SpiceLevel.MILD:
+      return { name: 'Mild', icon: '🌶️', color: 'text-green-600' }
+    case SpiceLevel.MEDIUM:
+      return { name: 'Medium', icon: '🌶️🌶️', color: 'text-yellow-600' }
+    case SpiceLevel.HOT:
+      return { name: 'Hot', icon: '🌶️🌶️🌶️', color: 'text-orange-600' }
+    case SpiceLevel.EXTRA_HOT:
+      return { name: 'Extra Hot', icon: '🌶️🌶️🌶️🌶️', color: 'text-red-600' }
+    default:
+      return { name: '', icon: '', color: '' }
   }
-
-  // Add extras
-  customizations.push({
-    id: 'extras',
-    name: 'Add Extras',
-    type: 'extra',
-    maxSelections: 3,
-    options: [
-      { id: 'extra-cheese', name: 'Extra Cheese', price: 2.50 },
-      { id: 'avocado', name: 'Avocado', price: 3.00 },
-      { id: 'bacon', name: 'Bacon', price: 4.00 },
-      { id: 'mushrooms', name: 'Mushrooms', price: 2.00 }
-    ]
-  })
-
-  // Add modifications
-  customizations.push({
-    id: 'modifications',
-    name: 'Modifications',
-    type: 'modification',
-    options: [
-      { id: 'no-onions', name: 'No Onions', price: 0 },
-      { id: 'no-pickles', name: 'No Pickles', price: 0 },
-      { id: 'extra-spicy', name: 'Extra Spicy', price: 0 },
-      { id: 'on-side', name: 'Sauce on Side', price: 0 }
-    ]
-  })
-
-  return customizations
 }
 
 const getDietaryIcon = (dietary: DietaryType) => {
@@ -111,82 +69,162 @@ export function ItemDetailModal({
 }: ItemDetailModalProps) {
   const [quantity, setQuantity] = useState(existingQuantity || 1)
   const [selectedCustomizations, setSelectedCustomizations] = useState<Record<string, string[]>>({})
+  const [textInputs, setTextInputs] = useState<Record<string, string>>({})
+  const [numberInputs, setNumberInputs] = useState<Record<string, number>>({})
   const [specialInstructions, setSpecialInstructions] = useState('')
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [showNutrition, setShowNutrition] = useState(false)
+  const [imageLoading, setImageLoading] = useState(false)
+  const [showFullscreen, setShowFullscreen] = useState(false)
+  const [imageScale, setImageScale] = useState(1)
+  const [isFavorite, setIsFavorite] = useState(false)
+  const imageRef = useRef<HTMLImageElement>(null)
+  const { controls: shakeControls, shake } = useShakeAnimation()
 
-  // Mock multiple images - in real app this would come from item data
-  const images = item?.imageUrl ? [item.imageUrl, item.imageUrl, item.imageUrl] : []
+  // Enhanced image gallery - supports single image with modern UI patterns
+  // Future enhancement: backend support for multiple images per item
+  const images = item?.imageUrl ? [item.imageUrl] : []
 
-  const customizations = item ? getMockCustomizations(item) : []
+  // Mock additional images for demonstration (remove when backend supports multiple images)
+  const enhancedImages = images.length > 0 ? [
+    ...images,
+    // Placeholder for additional angles/variations - replace with real backend data
+  ] : []
+
+  // Use real backend options instead of mock customizations
+  const options = item?.options || []
 
   useEffect(() => {
     if (isOpen) {
       setQuantity(existingQuantity || 1)
       setSelectedCustomizations({})
+      setTextInputs({})
+      setNumberInputs({})
       setSpecialInstructions('')
       setCurrentImageIndex(0)
       setShowNutrition(false)
+      setImageScale(1)
+      setImageLoading(false)
+      setShowFullscreen(false)
 
-      // Set default selections
+      // Set default selections from real backend data
       const defaults: Record<string, string[]> = {}
-      customizations.forEach(custom => {
-        const defaultOptions = custom.options.filter(opt => opt.isDefault)
-        if (defaultOptions.length > 0) {
-          defaults[custom.id] = defaultOptions.map(opt => opt.id)
+      const defaultTexts: Record<string, string> = {}
+      const defaultNumbers: Record<string, number> = {}
+
+      options.forEach(option => {
+        if (option.type === OptionType.TEXT_INPUT) {
+          defaultTexts[option.id] = ''
+        } else if (option.type === OptionType.NUMBER_INPUT) {
+          defaultNumbers[option.id] = option.minSelections || 0
+        } else {
+          const defaultValues = option.values.filter(value => value.isDefault)
+          if (defaultValues.length > 0) {
+            defaults[option.id] = defaultValues.map(value => value.id)
+          }
         }
       })
+
       setSelectedCustomizations(defaults)
+      setTextInputs(defaultTexts)
+      setNumberInputs(defaultNumbers)
     }
-  }, [isOpen, existingQuantity, item])
+  }, [isOpen, existingQuantity, item, options])
 
   if (!item) return null
 
-  const handleCustomizationChange = (customizationId: string, optionId: string, isSelected: boolean) => {
+  const handleCustomizationChange = (optionId: string, valueId: string, isSelected: boolean) => {
     setSelectedCustomizations(prev => {
-      const customization = customizations.find(c => c.id === customizationId)
-      if (!customization) return prev
+      const option = options.find(o => o.id === optionId)
+      if (!option) return prev
 
-      const current = prev[customizationId] || []
+      const current = prev[optionId] || []
 
-      if (customization.type === 'size' || customization.maxSelections === 1) {
+      if (option.type === OptionType.SINGLE_SELECT || option.maxSelections === 1) {
         // Single selection
+        haptics.customizationSelect()
         return {
           ...prev,
-          [customizationId]: isSelected ? [optionId] : []
+          [optionId]: isSelected ? [valueId] : []
         }
-      } else {
+      } else if (option.type === OptionType.MULTI_SELECT) {
         // Multiple selection
         const updated = isSelected
-          ? [...current, optionId]
-          : current.filter(id => id !== optionId)
+          ? [...current, valueId]
+          : current.filter(id => id !== valueId)
 
         // Respect max selections
-        if (customization.maxSelections && updated.length > customization.maxSelections) {
+        if (updated.length > option.maxSelections) {
+          shake() // Shake animation for invalid action
           return prev
         }
 
+        // Respect min selections (don't allow going below minimum)
+        if (updated.length < option.minSelections && !isSelected) {
+          shake() // Shake animation for invalid action
+          return prev
+        }
+
+        haptics.customizationSelect()
         return {
           ...prev,
-          [customizationId]: updated
+          [optionId]: updated
         }
       }
+
+      return prev
     })
+  }
+
+  const handleTextInputChange = (optionId: string, value: string) => {
+    setTextInputs(prev => ({
+      ...prev,
+      [optionId]: value
+    }))
+  }
+
+  const handleNumberInputChange = (optionId: string, value: number) => {
+    const option = options.find(o => o.id === optionId)
+    if (!option) return
+
+    // Respect min/max constraints
+    const clampedValue = Math.max(
+      option.minSelections,
+      Math.min(option.maxSelections, value)
+    )
+
+    setNumberInputs(prev => ({
+      ...prev,
+      [optionId]: clampedValue
+    }))
   }
 
   const getCustomizationPrice = (): number => {
     let total = 0
-    Object.entries(selectedCustomizations).forEach(([customizationId, optionIds]) => {
-      const customization = customizations.find(c => c.id === customizationId)
-      if (customization) {
-        optionIds.forEach(optionId => {
-          const option = customization.options.find(o => o.id === optionId)
-          if (option) {
-            total += option.price
+
+    // Price from selected option values
+    Object.entries(selectedCustomizations).forEach(([optionId, valueIds]) => {
+      const option = options.find(o => o.id === optionId)
+      if (option) {
+        valueIds.forEach(valueId => {
+          const value = option.values.find(v => v.id === valueId)
+          if (value) {
+            total += value.priceModifier
           }
         })
       }
     })
+
+    // Price from number inputs (if any option charges per unit)
+    Object.entries(numberInputs).forEach(([optionId, count]) => {
+      const option = options.find(o => o.id === optionId)
+      if (option && option.type === OptionType.NUMBER_INPUT) {
+        // For number inputs, we might need to multiply by count
+        // This depends on how the backend handles it - for now assume it's just the count
+        total += count * (option.values[0]?.priceModifier || 0)
+      }
+    })
+
     return total
   }
 
@@ -195,19 +233,79 @@ export function ItemDetailModal({
   }
 
   const handleAddToCart = () => {
+    haptics.addToCart()
     onAddToCart(item, quantity, {
-      customizations: selectedCustomizations,
+      selectedOptions: selectedCustomizations,
+      textInputs,
+      numberInputs,
       specialInstructions: specialInstructions.trim() || undefined
     })
     onClose()
   }
 
   const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % images.length)
+    if (images.length > 0) {
+      haptics.pageSwipe()
+      setCurrentImageIndex((prev) => (prev + 1) % images.length)
+      setImageScale(1)
+    }
   }
 
   const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length)
+    if (images.length > 0) {
+      haptics.pageSwipe()
+      setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length)
+      setImageScale(1)
+    }
+  }
+
+  const handleImageLoad = () => {
+    setImageLoading(false)
+  }
+
+  const handleImageError = () => {
+    setImageLoading(false)
+  }
+
+  const toggleFullscreen = () => {
+    haptics.modal()
+    setShowFullscreen(!showFullscreen)
+    setImageScale(1)
+  }
+
+  const toggleFavorite = () => {
+    setIsFavorite(!isFavorite)
+    if (!isFavorite) {
+      haptics.favoriteToggle()
+    } else {
+      haptics.unfavoriteToggle()
+    }
+  }
+
+  const handleImageClick = (e: React.MouseEvent) => {
+    if (images.length > 0) {
+      // Toggle zoom on click
+      if (imageScale === 1) {
+        setImageScale(2)
+        // Center the zoom on click point
+        const rect = imageRef.current?.getBoundingClientRect()
+        if (rect) {
+          const x = e.clientX - rect.left
+          const y = e.clientY - rect.top
+          const centerX = rect.width / 2
+          const centerY = rect.height / 2
+          // Apply transform origin for zoom
+          if (imageRef.current) {
+            imageRef.current.style.transformOrigin = `${x}px ${y}px`
+          }
+        }
+      } else {
+        setImageScale(1)
+        if (imageRef.current) {
+          imageRef.current.style.transformOrigin = 'center center'
+        }
+      }
+    }
   }
 
   return (
@@ -231,7 +329,7 @@ export function ItemDetailModal({
           {/* Modal */}
           <motion.div
             initial={{ y: '100%', opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
+            animate={shakeControls}
             exit={{ y: '100%', opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="relative w-full max-w-2xl max-h-[90vh] md:max-h-[80vh] bg-surface rounded-t-2xl md:rounded-2xl overflow-hidden shadow-xl"
@@ -241,64 +339,176 @@ export function ItemDetailModal({
               <h2 className="text-lg font-semibold text-content-primary truncate pr-4">
                 {item.name}
               </h2>
-              <Button
+              <InteractiveButton
                 variant="ghost"
                 size="sm"
-                onClick={onClose}
+                onClick={() => {
+                  haptics.modalClose()
+                  onClose()
+                }}
                 className="p-2 rounded-full"
+                hapticType="light"
               >
                 <X className="w-5 h-5" />
-              </Button>
+              </InteractiveButton>
             </div>
 
             {/* Content */}
             <div className="overflow-y-auto max-h-[calc(90vh-8rem)] md:max-h-[calc(80vh-8rem)]">
-              {/* Image Gallery */}
+              {/* Enhanced Image Gallery */}
               {images.length > 0 && (
                 <div className="relative">
-                  <div className="aspect-video bg-gray-100 relative overflow-hidden">
-                    <img
+                  <motion.div
+                    className="aspect-[4/3] bg-gradient-to-br from-gray-100 to-gray-200 relative overflow-hidden group"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6 }}
+                  >
+                    {/* Loading Skeleton */}
+                    <AnimatePresence>
+                      {imageLoading && (
+                        <motion.div
+                          initial={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center"
+                        >
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full"
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Main Image */}
+                    <motion.img
+                      ref={imageRef}
                       src={images[currentImageIndex]}
-                      alt={item.name}
-                      className="w-full h-full object-cover"
+                      alt={item?.name || 'Menu item'}
+                      className="w-full h-full object-cover cursor-zoom-in transition-transform duration-300 ease-out"
+                      style={{
+                        transform: `scale(${imageScale})`,
+                        cursor: imageScale > 1 ? 'zoom-out' : 'zoom-in'
+                      }}
+                      onClick={handleImageClick}
+                      onLoad={handleImageLoad}
+                      onError={handleImageError}
+                      onLoadStart={() => setImageLoading(true)}
+                      initial={{ scale: 0.95, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.5 }}
                     />
 
-                    {/* Image Navigation */}
+                    {/* Image Overlay Gradient */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                    {/* Navigation Controls */}
                     {images.length > 1 && (
                       <>
-                        <button
+                        <motion.button
                           onClick={prevImage}
-                          className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
+                          className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm text-gray-800 rounded-full p-3 shadow-lg hover:bg-white hover:scale-110 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
                         >
-                          <ChevronLeft className="w-4 h-4" />
-                        </button>
-                        <button
+                          <ChevronLeft className="w-5 h-5" />
+                        </motion.button>
+                        <motion.button
                           onClick={nextImage}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 text-white rounded-full p-2 hover:bg-black/70 transition-colors"
+                          className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 backdrop-blur-sm text-gray-800 rounded-full p-3 shadow-lg hover:bg-white hover:scale-110 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
                         >
-                          <ChevronRight className="w-4 h-4" />
-                        </button>
+                          <ChevronRight className="w-5 h-5" />
+                        </motion.button>
 
-                        {/* Dots Indicator */}
-                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
+                        {/* Modern Dots Indicator */}
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-2 bg-black/30 backdrop-blur-sm rounded-full px-4 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                           {images.map((_, index) => (
-                            <button
+                            <motion.button
                               key={index}
-                              onClick={() => setCurrentImageIndex(index)}
-                              className={`w-2 h-2 rounded-full transition-colors ${
-                                index === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                              onClick={() => {
+                                setCurrentImageIndex(index)
+                                setImageScale(1)
+                              }}
+                              className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                                index === currentImageIndex
+                                  ? 'bg-white scale-125'
+                                  : 'bg-white/60 hover:bg-white/80'
                               }`}
+                              whileHover={{ scale: 1.2 }}
+                              whileTap={{ scale: 0.9 }}
                             />
                           ))}
                         </div>
                       </>
                     )}
 
-                    {/* Favorite Button */}
-                    <button className="absolute top-4 right-4 bg-white/90 text-gray-700 rounded-full p-2 hover:bg-white transition-colors">
-                      <Heart className="w-5 h-5" />
-                    </button>
-                  </div>
+                    {/* Enhanced Action Buttons */}
+                    <div className="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      {/* Fullscreen Button */}
+                      <motion.button
+                        onClick={toggleFullscreen}
+                        className="bg-white/90 backdrop-blur-sm text-gray-800 rounded-full p-2.5 shadow-lg hover:bg-white transition-all duration-200"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        title="View fullscreen"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
+                      </motion.button>
+
+                      {/* Favorite Button */}
+                      <motion.button
+                        onClick={toggleFavorite}
+                        className={`bg-white/90 backdrop-blur-sm rounded-full p-2.5 shadow-lg hover:bg-white transition-all duration-200 ${
+                          isFavorite ? 'text-red-500' : 'text-gray-800'
+                        }`}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.95 }}
+                        title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                      >
+                        <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
+                      </motion.button>
+                    </div>
+
+                    {/* Image Counter */}
+                    {images.length > 1 && (
+                      <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        {currentImageIndex + 1} / {images.length}
+                      </div>
+                    )}
+
+                    {/* Zoom Indicator */}
+                    {imageScale > 1 && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-medium flex items-center space-x-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10h-3m-3 0h3m0 0V7m0 3v3" />
+                        </svg>
+                        <span>{Math.round(imageScale * 100)}%</span>
+                      </motion.div>
+                    )}
+
+                    {/* Tap to zoom hint */}
+                    <AnimatePresence>
+                      {imageScale === 1 && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 0.7, y: 0 }}
+                          exit={{ opacity: 0, y: 10 }}
+                          className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs opacity-0 group-hover:opacity-70 transition-opacity duration-300 pointer-events-none"
+                        >
+                          Tap to zoom
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
                 </div>
               )}
 
@@ -326,7 +536,7 @@ export function ItemDetailModal({
                     </div>
                   </div>
 
-                  {/* Dietary & Allergen Info */}
+                  {/* Dietary & Spice Level Info */}
                   <div className="flex flex-wrap gap-2 mb-4">
                     {item.dietaryTypes?.map(diet => (
                       <span
@@ -337,6 +547,12 @@ export function ItemDetailModal({
                         <span>{diet.replace('_', ' ')}</span>
                       </span>
                     ))}
+                    {item.spiceLevel !== undefined && item.spiceLevel !== SpiceLevel.NONE && (
+                      <span className={`inline-flex items-center space-x-1 px-3 py-1 bg-red-100 text-sm rounded-full font-medium ${getSpiceLevelDisplay(item.spiceLevel).color}`}>
+                        <span>{getSpiceLevelDisplay(item.spiceLevel).icon}</span>
+                        <span>{getSpiceLevelDisplay(item.spiceLevel).name}</span>
+                      </span>
+                    )}
                   </div>
 
                   {item.allergens && item.allergens.length > 0 && (
@@ -352,64 +568,140 @@ export function ItemDetailModal({
                   )}
                 </div>
 
-                {/* Customizations */}
-                {customizations.map(customization => (
-                  <div key={customization.id} className="space-y-3">
+                {/* Menu Item Options (Real Backend Data) */}
+                {options.map(option => (
+                  <div key={option.id} className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h4 className="font-semibold text-content-primary">
-                        {customization.name}
-                        {customization.required && (
+                        {option.name}
+                        {option.isRequired && (
                           <span className="text-red-500 ml-1">*</span>
                         )}
                       </h4>
-                      {customization.maxSelections && customization.maxSelections > 1 && (
-                        <span className="text-xs text-content-tertiary">
-                          Choose up to {customization.maxSelections}
-                        </span>
-                      )}
+                      <div className="text-right">
+                        {option.type === OptionType.MULTI_SELECT && option.maxSelections > 1 && (
+                          <span className="text-xs text-content-tertiary">
+                            Choose up to {option.maxSelections}
+                          </span>
+                        )}
+                        {option.minSelections > 0 && (
+                          <span className="text-xs text-content-tertiary block">
+                            Min: {option.minSelections}
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    {option.description && (
+                      <p className="text-sm text-content-secondary">
+                        {option.description}
+                      </p>
+                    )}
 
-                    <div className="grid gap-2">
-                      {customization.options.map(option => {
-                        const isSelected = selectedCustomizations[customization.id]?.includes(option.id) || false
-                        const isSingleSelect = customization.type === 'size' || customization.maxSelections === 1
+                    {option.type === OptionType.TEXT_INPUT ? (
+                      <input
+                        type="text"
+                        value={textInputs[option.id] || ''}
+                        onChange={(e) => handleTextInputChange(option.id, e.target.value)}
+                        onFocus={() => haptics.inputFocus()}
+                        placeholder={option.description || "Enter text..."}
+                        className="w-full p-3 border border-border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                        maxLength={200}
+                      />
+                    ) : option.type === OptionType.NUMBER_INPUT ? (
+                      <div className="flex items-center space-x-4">
+                        <InteractiveButton
+                          onClick={() => {
+                            const newValue = (numberInputs[option.id] || 0) - 1
+                            if (newValue >= option.minSelections) {
+                              haptics.updateQuantity()
+                              handleNumberInputChange(option.id, newValue)
+                            } else {
+                              shake()
+                            }
+                          }}
+                          disabled={(numberInputs[option.id] || 0) <= option.minSelections}
+                          variant="ghost"
+                          className="w-10 h-10 rounded-full bg-surface border border-border-default hover:border-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center p-0"
+                          hapticType="light"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </InteractiveButton>
+                        <AnimatedCounter
+                          value={numberInputs[option.id] || 0}
+                          className="font-medium text-lg min-w-[2rem] text-center"
+                        />
+                        <InteractiveButton
+                          onClick={() => {
+                            const newValue = (numberInputs[option.id] || 0) + 1
+                            if (newValue <= option.maxSelections) {
+                              haptics.updateQuantity()
+                              handleNumberInputChange(option.id, newValue)
+                            } else {
+                              shake()
+                            }
+                          }}
+                          disabled={(numberInputs[option.id] || 0) >= option.maxSelections}
+                          variant="ghost"
+                          className="w-10 h-10 rounded-full bg-surface border border-border-default hover:border-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center p-0"
+                          hapticType="light"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </InteractiveButton>
+                        {option.values[0]?.priceModifier !== 0 && (
+                          <span className="text-sm text-content-secondary">
+                            {(option.values[0]?.priceModifier ?? 0) > 0 ? '+' : ''}
+                            {formatCurrency(option.values[0]?.priceModifier ?? 0)} each
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="grid gap-2">
+                        {option.values.map(value => {
+                          const isSelected = selectedCustomizations[option.id]?.includes(value.id) || false
+                          const isSingleSelect = option.type === OptionType.SINGLE_SELECT || option.maxSelections === 1
 
-                        return (
-                          <label
-                            key={option.id}
-                            className={`flex items-center justify-between p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                              isSelected
-                                ? 'border-primary bg-primary/5'
-                                : 'border-border-default hover:border-primary/50'
-                            }`}
-                          >
-                            <div className="flex items-center space-x-3">
-                              <input
-                                type={isSingleSelect ? 'radio' : 'checkbox'}
-                                name={isSingleSelect ? customization.id : undefined}
-                                checked={isSelected}
-                                onChange={(e) => handleCustomizationChange(
-                                  customization.id,
-                                  option.id,
-                                  e.target.checked
-                                )}
-                                className="text-primary focus:ring-primary"
-                              />
-                              <div>
-                                <div className="font-medium text-content-primary">
-                                  {option.name}
-                                </div>
-                                {option.price > 0 && (
-                                  <div className="text-sm text-content-secondary">
-                                    +{formatCurrency(option.price)}
+                          return (
+                            <label
+                              key={value.id}
+                              className={`flex items-center justify-between p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                                isSelected
+                                  ? 'border-primary bg-primary/5'
+                                  : 'border-border-default hover:border-primary/50'
+                              }`}
+                            >
+                              <div className="flex items-center space-x-3">
+                                <input
+                                  type={isSingleSelect ? 'radio' : 'checkbox'}
+                                  name={isSingleSelect ? option.id : undefined}
+                                  checked={isSelected}
+                                  onChange={(e) => handleCustomizationChange(
+                                    option.id,
+                                    value.id,
+                                    e.target.checked
+                                  )}
+                                  className="text-primary focus:ring-primary"
+                                />
+                                <div>
+                                  <div className="font-medium text-content-primary">
+                                    {value.name}
                                   </div>
-                                )}
+                                  {value.description && (
+                                    <div className="text-xs text-content-tertiary">
+                                      {value.description}
+                                    </div>
+                                  )}
+                                  {value.priceModifier !== 0 && (
+                                    <div className="text-sm text-content-secondary">
+                                      {value.priceModifier > 0 ? '+' : ''}{formatCurrency(value.priceModifier)}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </label>
-                        )
-                      })}
-                    </div>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 ))}
 
@@ -421,6 +713,7 @@ export function ItemDetailModal({
                   <textarea
                     value={specialInstructions}
                     onChange={(e) => setSpecialInstructions(e.target.value)}
+                    onFocus={() => haptics.inputFocus()}
                     placeholder="Any special requests or modifications..."
                     className="w-full p-3 border border-border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
                     rows={3}
@@ -448,24 +741,42 @@ export function ItemDetailModal({
                         exit={{ opacity: 0, height: 0 }}
                         className="mt-3 p-4 bg-gray-50 rounded-lg"
                       >
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="font-medium">Calories:</span>
-                            <span className="ml-2">450</span>
+                        {item.nutritionalInfo ? (
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                              <span className="font-medium">Calories:</span>
+                              <span className="ml-2">{item.nutritionalInfo.calories}</span>
+                            </div>
+                            <div>
+                              <span className="font-medium">Protein:</span>
+                              <span className="ml-2">{item.nutritionalInfo.protein}g</span>
+                            </div>
+                            <div>
+                              <span className="font-medium">Carbs:</span>
+                              <span className="ml-2">{item.nutritionalInfo.carbohydrates}g</span>
+                            </div>
+                            <div>
+                              <span className="font-medium">Fat:</span>
+                              <span className="ml-2">{item.nutritionalInfo.fat}g</span>
+                            </div>
+                            <div>
+                              <span className="font-medium">Fiber:</span>
+                              <span className="ml-2">{item.nutritionalInfo.fiber}g</span>
+                            </div>
+                            <div>
+                              <span className="font-medium">Sugar:</span>
+                              <span className="ml-2">{item.nutritionalInfo.sugar}g</span>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="font-medium">Sodium:</span>
+                              <span className="ml-2">{item.nutritionalInfo.sodium}mg</span>
+                            </div>
                           </div>
-                          <div>
-                            <span className="font-medium">Protein:</span>
-                            <span className="ml-2">25g</span>
+                        ) : (
+                          <div className="text-sm text-content-tertiary text-center py-4">
+                            Nutritional information not available for this item
                           </div>
-                          <div>
-                            <span className="font-medium">Carbs:</span>
-                            <span className="ml-2">45g</span>
-                          </div>
-                          <div>
-                            <span className="font-medium">Fat:</span>
-                            <span className="ml-2">18g</span>
-                          </div>
-                        </div>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -479,25 +790,38 @@ export function ItemDetailModal({
                 <div className="flex items-center space-x-4">
                   <span className="font-medium text-content-primary">Quantity:</span>
                   <div className="flex items-center space-x-2">
-                    <Button
+                    <InteractiveButton
                       variant="outline"
                       size="sm"
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      onClick={() => {
+                        if (quantity > 1) {
+                          haptics.updateQuantity()
+                          setQuantity(Math.max(1, quantity - 1))
+                        } else {
+                          shake()
+                        }
+                      }}
                       className="w-8 h-8 p-0"
+                      hapticType="light"
                     >
                       <Minus className="w-4 h-4" />
-                    </Button>
-                    <span className="text-lg font-semibold min-w-[2rem] text-center">
-                      {quantity}
-                    </span>
-                    <Button
+                    </InteractiveButton>
+                    <AnimatedCounter
+                      value={quantity}
+                      className="text-lg font-semibold min-w-[2rem] text-center"
+                    />
+                    <InteractiveButton
                       variant="outline"
                       size="sm"
-                      onClick={() => setQuantity(quantity + 1)}
+                      onClick={() => {
+                        haptics.updateQuantity()
+                        setQuantity(quantity + 1)
+                      }}
                       className="w-8 h-8 p-0"
+                      hapticType="light"
                     >
                       <Plus className="w-4 h-4" />
-                    </Button>
+                    </InteractiveButton>
                   </div>
                 </div>
 
@@ -509,14 +833,16 @@ export function ItemDetailModal({
                 </div>
               </div>
 
-              <Button
+              <InteractiveButton
                 onClick={handleAddToCart}
                 size="lg"
                 className="w-full"
+                hapticType="medium"
+                variant="primary"
               >
                 <Plus className="w-4 h-4 mr-2" />
                 {existingQuantity > 0 ? 'Update Cart' : 'Add to Cart'}
-              </Button>
+              </InteractiveButton>
             </div>
           </motion.div>
         </motion.div>

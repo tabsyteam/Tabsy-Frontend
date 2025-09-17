@@ -1,161 +1,161 @@
-/* Customer Theme CSS Variables - Fresh Green/Teal Theme */
+/* Modern Food App Theme - Soft, Appetizing Colors */
 :root {
-  /* Primary Colors - Emerald Green */
-  --primary: 16 185 129; /* emerald-500 */
-  --primary-hover: 5 150 105; /* emerald-600 */
-  --primary-active: 4 120 87; /* emerald-700 */
-  --primary-light: 236 253 245; /* emerald-50 */
-  --primary-dark: 6 78 59; /* emerald-900 */
+  /* Primary Colors - Warm Coral for food enthusiasm */
+  --primary: 255 107 107; /* #FF6B6B - Warm coral */
+  --primary-hover: 255 82 82; /* #FF5252 - Darker coral */
+  --primary-active: 239 68 68; /* #EF4444 - Active coral */
+  --primary-light: 254 242 242; /* #FEF2F2 - Light coral tint */
+  --primary-dark: 220 38 38; /* #DC2626 - Dark coral */
   --primary-foreground: 255 255 255;
 
-  /* Secondary Colors - Teal */
-  --secondary: 20 184 166; /* teal-500 */
-  --secondary-hover: 13 148 136; /* teal-600 */
-  --secondary-active: 15 118 110; /* teal-700 */
-  --secondary-light: 240 253 250; /* teal-50 */
-  --secondary-dark: 19 78 74; /* teal-900 */
+  /* Secondary Colors - Sage Green for freshness */
+  --secondary: 135 169 107; /* #87A96B - Sage green */
+  --secondary-hover: 124 158 92; /* Darker sage */
+  --secondary-active: 113 147 77; /* Active sage */
+  --secondary-light: 240 249 235; /* #F0F9EB - Light sage tint */
+  --secondary-dark: 102 139 61; /* Dark sage */
   --secondary-foreground: 255 255 255;
 
-  /* Accent Colors - Amber */
-  --accent: 245 158 11; /* amber-500 */
-  --accent-hover: 217 119 6; /* amber-600 */
-  --accent-active: 180 83 9; /* amber-700 */
-  --accent-light: 255 251 235; /* amber-50 */
-  --accent-dark: 120 53 15; /* amber-900 */
-  --accent-foreground: 255 255 255;
+  /* Accent Colors - Warm Amber for highlights */
+  --accent: 251 191 36; /* #FBBF24 - Warm amber */
+  --accent-hover: 245 158 11; /* #F59E0B - Darker amber */
+  --accent-active: 217 119 6; /* #D97706 - Active amber */
+  --accent-light: 255 251 235; /* #FFFBEB - Light amber tint */
+  --accent-dark: 180 83 9; /* #B45309 - Dark amber */
+  --accent-foreground: 92 84 72; /* Dark text on amber */
 
-  /* Surface Colors */
-  --surface: 255 255 255;
-  --surface-secondary: 249 250 251; /* gray-50 */
-  --surface-tertiary: 243 244 246; /* gray-100 */
-  --surface-elevated: 255 255 255;
-  --surface-overlay: 0 0 0 / 0.5;
+  /* Surface Colors - Clean whites and off-whites */
+  --surface: 255 255 255; /* Pure white */
+  --surface-secondary: 250 249 247; /* #FAF9F7 - Soft off-white */
+  --surface-tertiary: 245 244 240; /* #F5F4F0 - Slightly darker off-white */
+  --surface-elevated: 255 255 255; /* Elevated white with shadow */
+  --surface-overlay: 0 0 0 / 0.4; /* Subtle overlay */
 
-  /* Background Colors */
-  --background: 249 250 251; /* gray-50 */
-  --background-secondary: 236 253 245; /* emerald-50 */
-  --background-tertiary: 240 253 250; /* teal-50 */
-  --background-inverse: 17 24 39; /* gray-900 */
+  /* Background Colors - Warm, appetizing neutrals */
+  --background: 250 249 247; /* #FAF9F7 - Primary soft background */
+  --background-secondary: 245 244 240; /* #F5F4F0 - Secondary background */
+  --background-tertiary: 254 242 242; /* Light coral for accent sections */
+  --background-inverse: 41 37 36; /* #292524 - Dark warm gray */
 
-  /* Content/Text Colors */
-  --content-primary: 17 24 39; /* gray-900 */
-  --content-secondary: 75 85 99; /* gray-600 */
-  --content-tertiary: 107 114 128; /* gray-500 */
-  --content-disabled: 156 163 175; /* gray-400 */
-  --content-inverse: 255 255 255;
-  --content-brand: 5 150 105; /* emerald-600 */
+  /* Content/Text Colors - High contrast, readable */
+  --content-primary: 41 37 36; /* #292524 - Primary dark text */
+  --content-secondary: 68 64 60; /* #44403C - Secondary text */
+  --content-tertiary: 120 113 108; /* #78716C - Tertiary text */
+  --content-disabled: 168 162 158; /* #A8A29E - Disabled text */
+  --content-inverse: 255 255 255; /* White text on dark */
+  --content-brand: 255 107 107; /* Coral for brand highlights */
 
-  /* Border Colors */
-  --border: 229 231 235; /* gray-200 */
-  --border-secondary: 209 213 219; /* gray-300 */
-  --border-tertiary: 243 244 246; /* gray-100 */
-  --border-focus: 16 185 129; /* emerald-500 */
-  --border-error: 239 68 68; /* red-500 */
+  /* Border Colors - Subtle, modern */
+  --border: 231 229 228; /* #E7E5E4 - Light border */
+  --border-secondary: 214 211 209; /* #D6D3D1 - Darker border */
+  --border-tertiary: 245 244 240; /* Slightly darker off-white border */
+  --border-focus: 255 107 107; /* Coral focus */
+  --border-error: 239 68 68; /* Error red */
 
-  /* Status Colors */
-  --status-success: 34 197 94; /* green-500 */
-  --status-success-light: 240 253 244; /* green-50 */
-  --status-success-dark: 21 128 61; /* green-700 */
+  /* Status Colors - Updated for food app */
+  --status-success: 102 139 61; /* Sage green for success */
+  --status-success-light: 240 249 235; /* Light sage */
+  --status-success-dark: 82 109 46; /* Dark sage */
   --status-success-foreground: 255 255 255;
-  --status-success-border: 187 247 208; /* green-200 */
+  --status-success-border: 187 224 145; /* Light sage border */
 
-  --status-warning: 245 158 11; /* amber-500 */
-  --status-warning-light: 255 251 235; /* amber-50 */
-  --status-warning-dark: 180 83 9; /* amber-700 */
-  --status-warning-foreground: 255 255 255;
-  --status-warning-border: 252 211 77; /* amber-200 */
+  --status-warning: 251 191 36; /* Warm amber for warnings */
+  --status-warning-light: 255 251 235; /* Light amber */
+  --status-warning-dark: 180 83 9; /* Dark amber */
+  --status-warning-foreground: 92 84 72; /* Dark text on amber */
+  --status-warning-border: 252 211 77; /* Amber border */
 
-  --status-error: 239 68 68; /* red-500 */
-  --status-error-light: 254 242 242; /* red-50 */
-  --status-error-dark: 185 28 28; /* red-700 */
+  --status-error: 239 68 68; /* Coral red for errors */
+  --status-error-light: 254 242 242; /* Light coral */
+  --status-error-dark: 185 28 28; /* Dark red */
   --status-error-foreground: 255 255 255;
-  --status-error-border: 254 202 202; /* red-200 */
+  --status-error-border: 254 202 202; /* Light red border */
 
-  --status-info: 59 130 246; /* blue-500 */
-  --status-info-light: 239 246 255; /* blue-50 */
-  --status-info-dark: 29 78 216; /* blue-700 */
+  --status-info: 255 107 107; /* Coral for info */
+  --status-info-light: 254 242 242; /* Light coral */
+  --status-info-dark: 220 38 38; /* Dark coral */
   --status-info-foreground: 255 255 255;
-  --status-info-border: 191 219 254; /* blue-200 */
+  --status-info-border: 254 202 202; /* Light coral border */
 
-  /* Interactive States */
-  --interactive-hover: 249 250 251; /* gray-50 */
-  --interactive-active: 243 244 246; /* gray-100 */
-  --interactive-disabled: 209 213 219; /* gray-300 */
-  --interactive-focus: 16 185 129; /* emerald-500 */
+  /* Interactive States - Updated */
+  --interactive-hover: 245 244 240; /* Soft background hover */
+  --interactive-active: 231 229 228; /* Pressed state */
+  --interactive-disabled: 168 162 158; /* Disabled state */
+  --interactive-focus: 255 107 107; /* Coral focus */
 
   /* Override shadcn/ui component variables - using HSL format for compatibility */
-  --ring: 160 84% 39%; /* emerald-500 in HSL */
-  --input: 210 14% 83%; /* gray-200 in HSL */
-  --muted: 210 20% 98%; /* gray-50 in HSL */
-  --muted-foreground: 215 16% 47%; /* gray-500 in HSL */
-  --destructive: 0 84% 60%; /* red-500 in HSL */
-  --destructive-foreground: 0 0% 100%; /* white in HSL */
-  --card: 0 0% 100%; /* white in HSL */
-  --card-foreground: 222 84% 5%; /* gray-900 in HSL */
-  --popover: 0 0% 100%; /* white in HSL */
-  --popover-foreground: 222 84% 5%; /* gray-900 in HSL */
-  --foreground: 222 84% 5%; /* gray-900 in HSL */
+  --ring: 0 71% 71%; /* Coral in HSL for focus ring */
+  --input: 46 20% 96%; /* Soft off-white input background in HSL */
+  --muted: 46 20% 98%; /* Light background in HSL */
+  --muted-foreground: 25 13% 45%; /* Secondary text in HSL */
+  --destructive: 0 84% 60%; /* Error red in HSL */
+  --destructive-foreground: 0 0% 100%; /* White text in HSL */
+  --card: 0 0% 100%; /* White card background in HSL */
+  --card-foreground: 16 20% 22%; /* Primary dark text in HSL */
+  --popover: 0 0% 100%; /* White popover in HSL */
+  --popover-foreground: 16 20% 22%; /* Primary dark text in HSL */
+  --foreground: 16 20% 22%; /* Primary dark text in HSL */
   --radius: 0.75rem;
 }
 
-/* Dark mode variables */
+/* Dark mode variables - Modern food app dark theme */
 .dark {
-  --primary: 52 211 153; /* emerald-400 */
-  --primary-hover: 16 185 129; /* emerald-500 */
-  --primary-active: 5 150 105; /* emerald-600 */
-  --primary-light: 6 78 59; /* emerald-900 */
-  --primary-dark: 236 253 245; /* emerald-50 */
-  --primary-foreground: 6 78 59; /* emerald-900 */
+  --primary: 255 139 139; /* Lighter coral for dark mode */
+  --primary-hover: 255 107 107; /* Standard coral */
+  --primary-active: 255 82 82; /* Darker coral */
+  --primary-light: 41 37 36; /* Dark background */
+  --primary-dark: 254 242 242; /* Light coral tint */
+  --primary-foreground: 41 37 36; /* Dark text on coral */
 
-  --secondary: 45 212 191; /* teal-400 */
-  --secondary-hover: 20 184 166; /* teal-500 */
-  --secondary-active: 13 148 136; /* teal-600 */
-  --secondary-light: 19 78 74; /* teal-900 */
-  --secondary-dark: 240 253 250; /* teal-50 */
-  --secondary-foreground: 19 78 74; /* teal-900 */
+  --secondary: 167 201 139; /* Lighter sage for dark mode */
+  --secondary-hover: 135 169 107; /* Standard sage */
+  --secondary-active: 124 158 92; /* Darker sage */
+  --secondary-light: 41 37 36; /* Dark background */
+  --secondary-dark: 240 249 235; /* Light sage tint */
+  --secondary-foreground: 41 37 36; /* Dark text on sage */
 
-  --accent: 251 191 36; /* amber-400 */
-  --accent-hover: 245 158 11; /* amber-500 */
-  --accent-active: 217 119 6; /* amber-600 */
-  --accent-light: 120 53 15; /* amber-900 */
-  --accent-dark: 255 251 235; /* amber-50 */
-  --accent-foreground: 120 53 15; /* amber-900 */
+  --accent: 253 211 68; /* Lighter amber for dark mode */
+  --accent-hover: 251 191 36; /* Standard amber */
+  --accent-active: 245 158 11; /* Darker amber */
+  --accent-light: 41 37 36; /* Dark background */
+  --accent-dark: 255 251 235; /* Light amber tint */
+  --accent-foreground: 41 37 36; /* Dark text on amber */
 
-  --surface: 31 41 55; /* gray-800 */
-  --surface-secondary: 17 24 39; /* gray-900 */
-  --surface-tertiary: 55 65 81; /* gray-700 */
-  --surface-elevated: 55 65 81; /* gray-700 */
+  --surface: 41 37 36; /* Warm dark surface */
+  --surface-secondary: 31 27 24; /* Darker warm surface */
+  --surface-tertiary: 23 20 18; /* Darkest warm surface */
+  --surface-elevated: 51 47 44; /* Elevated warm surface */
 
-  --background: 17 24 39; /* gray-900 */
-  --background-secondary: 6 78 59; /* emerald-900 */
-  --background-tertiary: 19 78 74; /* teal-900 */
-  --background-inverse: 249 250 251; /* gray-50 */
+  --background: 23 20 18; /* Primary dark background */
+  --background-secondary: 31 27 24; /* Secondary dark background */
+  --background-tertiary: 41 37 36; /* Tertiary dark background */
+  --background-inverse: 250 249 247; /* Light background for contrast */
 
-  --content-primary: 243 244 246; /* gray-100 */
-  --content-secondary: 209 213 219; /* gray-300 */
-  --content-tertiary: 156 163 175; /* gray-400 */
-  --content-disabled: 107 114 128; /* gray-500 */
-  --content-inverse: 17 24 39; /* gray-900 */
-  --content-brand: 52 211 153; /* emerald-400 */
+  --content-primary: 250 249 247; /* Light text */
+  --content-secondary: 231 229 228; /* Secondary light text */
+  --content-tertiary: 168 162 158; /* Tertiary light text */
+  --content-disabled: 120 113 108; /* Disabled text */
+  --content-inverse: 41 37 36; /* Dark text on light */
+  --content-brand: 255 139 139; /* Light coral for highlights */
 
-  --border: 55 65 81; /* gray-700 */
-  --border-secondary: 75 85 99; /* gray-600 */
-  --border-tertiary: 31 41 55; /* gray-800 */
-  --border-focus: 52 211 153; /* emerald-400 */
-  --border-error: 248 113 113; /* red-400 */
+  --border: 68 64 60; /* Dark border */
+  --border-secondary: 87 83 78; /* Lighter dark border */
+  --border-tertiary: 51 47 44; /* Darkest border */
+  --border-focus: 255 139 139; /* Coral focus */
+  --border-error: 255 139 139; /* Light coral for errors */
 
   /* shadcn/ui dark mode variables in HSL */
-  --foreground: 210 40% 96%; /* gray-100 in HSL */
-  --muted: 215 25% 27%; /* gray-700 in HSL */
-  --muted-foreground: 215 16% 65%; /* gray-400 in HSL */
-  --card: 217 33% 17%; /* gray-800 in HSL */
-  --card-foreground: 210 40% 96%; /* gray-100 in HSL */
-  --popover: 217 33% 17%; /* gray-800 in HSL */
-  --popover-foreground: 210 40% 96%; /* gray-100 in HSL */
-  --ring: 160 84% 39%; /* emerald-400 in HSL */
-  --input: 215 25% 27%; /* gray-700 in HSL */
-  --destructive: 0 63% 31%; /* red-700 in HSL */
-  --destructive-foreground: 0 0% 100%; /* white in HSL */
+  --foreground: 46 20% 98%; /* Light text in HSL */
+  --muted: 25 13% 16%; /* Dark muted background in HSL */
+  --muted-foreground: 0 71% 77%; /* Light coral muted text in HSL */
+  --card: 25 13% 16%; /* Dark card background in HSL */
+  --card-foreground: 46 20% 98%; /* Light text in HSL */
+  --popover: 25 13% 16%; /* Dark popover in HSL */
+  --popover-foreground: 46 20% 98%; /* Light text in HSL */
+  --ring: 0 71% 77%; /* Light coral ring in HSL */
+  --input: 25 13% 16%; /* Dark input background in HSL */
+  --destructive: 0 71% 77%; /* Light coral destructive in HSL */
+  --destructive-foreground: 25 13% 16%; /* Dark text on coral in HSL */
 }
 
 /* Semantic utility classes */
@@ -292,75 +292,75 @@
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(16, 185, 129, 0.1);
-    box-shadow: 0 8px 32px rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(30, 58, 138, 0.1);
+    box-shadow: 0 8px 32px rgba(30, 58, 138, 0.08);
   }
 
   .glass-header {
     background: rgba(255, 255, 255, 0.90);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid rgba(16, 185, 129, 0.15);
+    border-bottom: 1px solid rgba(30, 58, 138, 0.15);
   }
 
   .glass-surface {
     background: rgba(255, 255, 255, 0.80);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(30, 58, 138, 0.08);
   }
 
   /* Enhanced Card Effects */
   .card-modern {
     background: linear-gradient(135deg,
       rgba(255, 255, 255, 0.95) 0%,
-      rgba(236, 253, 245, 0.95) 100%);
+      rgba(252, 248, 243, 0.95) 100%);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(16, 185, 129, 0.12);
-    box-shadow: 0 4px 24px rgba(16, 185, 129, 0.08);
+    border: 1px solid rgba(30, 58, 138, 0.12);
+    box-shadow: 0 4px 24px rgba(30, 58, 138, 0.08);
     @apply transition-all duration-300 ease-out;
   }
 
   .card-modern:hover {
     background: linear-gradient(135deg,
       rgba(255, 255, 255, 0.98) 0%,
-      rgba(236, 253, 245, 0.98) 100%);
-    box-shadow: 0 8px 40px rgba(16, 185, 129, 0.15);
-    border-color: rgba(16, 185, 129, 0.2);
+      rgba(252, 248, 243, 0.98) 100%);
+    box-shadow: 0 8px 40px rgba(30, 58, 138, 0.15);
+    border-color: rgba(30, 58, 138, 0.2);
     transform: translateY(-2px) scale(1.02);
   }
 
   /* Modern Button Styles */
   .btn-glass {
-    background: rgba(16, 185, 129, 0.1);
+    background: rgba(30, 58, 138, 0.1);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(30, 58, 138, 0.2);
     color: rgb(var(--primary));
     @apply transition-all duration-200;
   }
 
   .btn-glass:hover {
-    background: rgba(16, 185, 129, 0.15);
-    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(30, 58, 138, 0.15);
+    border-color: rgba(30, 58, 138, 0.3);
     transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2);
+    box-shadow: 0 4px 16px rgba(30, 58, 138, 0.2);
   }
 
   .btn-gradient {
     background: linear-gradient(135deg,
       rgb(var(--primary)) 0%,
-      rgb(var(--secondary)) 100%);
-    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+      rgb(var(--accent)) 100%);
+    box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
     @apply transition-all duration-200;
   }
 
   .btn-gradient:hover {
     background: linear-gradient(135deg,
       rgb(var(--primary-hover)) 0%,
-      rgb(var(--secondary-hover)) 100%);
-    box-shadow: 0 6px 24px rgba(16, 185, 129, 0.4);
+      rgb(var(--accent-hover)) 100%);
+    box-shadow: 0 6px 24px rgba(30, 58, 138, 0.4);
     transform: translateY(-2px);
   }
 
@@ -369,22 +369,22 @@
     background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(30, 58, 138, 0.15);
     @apply transition-all duration-200;
   }
 
   .category-pill:hover {
-    background: rgba(16, 185, 129, 0.1);
-    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(30, 58, 138, 0.1);
+    border-color: rgba(30, 58, 138, 0.3);
     transform: translateY(-1px);
   }
 
   .category-pill-active {
     background: linear-gradient(135deg,
       rgb(var(--primary)) 0%,
-      rgb(var(--secondary)) 100%);
+      rgb(var(--accent)) 100%);
     color: rgb(var(--primary-foreground));
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
     border: 1px solid transparent;
   }
 
@@ -392,15 +392,15 @@
   .floating-cart {
     background: linear-gradient(135deg,
       rgb(var(--primary)) 0%,
-      rgb(var(--secondary)) 100%);
+      rgb(var(--accent)) 100%);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    box-shadow: 0 8px 32px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 8px 32px rgba(30, 58, 138, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.2);
   }
 
   .floating-cart:hover {
-    box-shadow: 0 12px 48px rgba(16, 185, 129, 0.5);
+    box-shadow: 0 12px 48px rgba(30, 58, 138, 0.5);
     transform: translateY(-4px) scale(1.02);
   }
 
@@ -409,60 +409,60 @@
     background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(30, 58, 138, 0.2);
   }
 
   .search-glass:focus {
     background: rgba(255, 255, 255, 0.95);
     border-color: rgb(var(--primary));
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
   }
 
   /* Enhanced Shadows */
   .shadow-soft {
-    box-shadow: 0 2px 16px rgba(16, 185, 129, 0.06);
+    box-shadow: 0 2px 16px rgba(30, 58, 138, 0.06);
   }
 
   .shadow-medium {
-    box-shadow: 0 4px 24px rgba(16, 185, 129, 0.1);
+    box-shadow: 0 4px 24px rgba(30, 58, 138, 0.1);
   }
 
   .shadow-strong {
-    box-shadow: 0 8px 40px rgba(16, 185, 129, 0.15);
+    box-shadow: 0 8px 40px rgba(30, 58, 138, 0.15);
   }
 
   /* Advanced Gradients */
   .gradient-mesh {
     background: linear-gradient(135deg,
-      rgba(236, 253, 245, 0.4) 0%,
-      rgba(240, 253, 250, 0.4) 25%,
-      rgba(255, 251, 235, 0.4) 50%,
-      rgba(236, 253, 245, 0.4) 75%,
-      rgba(240, 253, 250, 0.4) 100%);
+      rgba(252, 248, 243, 0.4) 0%,
+      rgba(239, 246, 255, 0.4) 25%,
+      rgba(255, 247, 237, 0.4) 50%,
+      rgba(252, 248, 243, 0.4) 75%,
+      rgba(239, 246, 255, 0.4) 100%);
   }
 
   /* Dark mode glassmorphism */
   .dark .glass-card {
     background: rgba(31, 41, 55, 0.95);
-    border: 1px solid rgba(52, 211, 153, 0.15);
+    border: 1px solid rgba(147, 197, 253, 0.15);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   }
 
   .dark .glass-header {
     background: rgba(17, 24, 39, 0.90);
-    border-bottom: 1px solid rgba(52, 211, 153, 0.2);
+    border-bottom: 1px solid rgba(147, 197, 253, 0.2);
   }
 
   .dark .card-modern {
     background: linear-gradient(135deg,
       rgba(31, 41, 55, 0.95) 0%,
-      rgba(6, 78, 59, 0.95) 100%);
-    border: 1px solid rgba(52, 211, 153, 0.15);
+      rgba(23, 37, 84, 0.95) 100%);
+    border: 1px solid rgba(147, 197, 253, 0.15);
   }
 
   .dark .card-modern:hover {
     background: linear-gradient(135deg,
       rgba(55, 65, 81, 0.98) 0%,
-      rgba(6, 78, 59, 0.98) 100%);
-    box-shadow: 0 8px 40px rgba(52, 211, 153, 0.2);
+      rgba(23, 37, 84, 0.98) 100%);
+    box-shadow: 0 8px 40px rgba(147, 197, 253, 0.2);
   }

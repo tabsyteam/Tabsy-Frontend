@@ -203,7 +203,7 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
           if (!prevOrder) return prevOrder
 
           // Extract status from the payload structure - can be in payload.order.status or payload.status
-          const newStatus = payload.order?.status || payload.status || payload.newStatus
+          const newStatus = (payload as any).order?.status || (payload as any).status || payload.newStatus
 
           if (!newStatus) {
             console.warn('No status found in payload:', payload)
@@ -217,13 +217,13 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
           }
 
           // If we have a full order object in the payload, use it to update more fields
-          if (payload.order && typeof payload.order === 'object') {
-            Object.assign(updatedOrder, payload.order)
+          if ((payload as any).order && typeof (payload as any).order === 'object') {
+            Object.assign(updatedOrder, (payload as any).order)
             updatedOrder.updatedAt = new Date().toISOString()
           }
 
-          if (payload.estimatedTime || payload.order?.estimatedPreparationTime) {
-            updatedOrder.estimatedTime = payload.estimatedTime || payload.order.estimatedPreparationTime
+          if (payload.estimatedTime || (payload as any).order?.estimatedPreparationTime) {
+            updatedOrder.estimatedTime = payload.estimatedTime || (payload as any).order.estimatedPreparationTime
           }
 
           // Show notification for status change
@@ -264,15 +264,15 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
           const updatedOrder = { ...prevOrder }
 
           // Handle different payload structures
-          if (payload.order && typeof payload.order === 'object') {
+          if ((payload as any).order && typeof (payload as any).order === 'object') {
             // If we have a full order object, merge it
-            Object.assign(updatedOrder, transformApiOrderToLocal(payload.order))
+            Object.assign(updatedOrder, transformApiOrderToLocal((payload as any).order))
           } else if (payload.changes && typeof payload.changes === 'object') {
             // If we have changes object, apply the changes
             Object.assign(updatedOrder, payload.changes)
           } else {
             // Apply any direct fields from payload (excluding metadata)
-            const { orderId, timestamp, restaurantId, tableId, userId, ...orderFields } = payload
+            const { orderId, timestamp, restaurantId, tableId, userId, ...orderFields } = payload as any
             Object.assign(updatedOrder, orderFields)
           }
 

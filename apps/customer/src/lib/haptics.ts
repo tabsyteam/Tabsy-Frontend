@@ -130,37 +130,87 @@ export function withHapticFeedback<T extends any[]>(
 }
 
 /**
+ * Enhanced haptic patterns for complex interactions
+ */
+export function hapticSequence(types: HapticFeedbackType[], delays: number[] = []): void {
+  if (!isHapticSupported()) return
+
+  types.forEach((type, index) => {
+    const delay = delays[index] || 0
+    setTimeout(() => hapticFeedback(type), delay)
+  })
+}
+
+/**
  * Haptic feedback for common UI interactions
  */
 export const haptics = {
   // Button interactions
   buttonPress: () => hapticFeedback('light'),
   buttonPressImportant: () => hapticFeedback('medium'),
+  buttonPressDestructive: () => hapticFeedback('heavy'),
 
-  // Item selection
+  // Item selection and interaction
   selectItem: () => hapticFeedback('selection'),
+  deselectItem: () => hapticFeedback('light'),
+  favoriteToggle: () => hapticFeedback('success'),
+  unfavoriteToggle: () => hapticFeedback('light'),
 
-  // Cart operations
-  addToCart: () => hapticFeedback('success'),
-  removeFromCart: () => hapticFeedback('light'),
+  // Cart operations with enhanced feedback
+  addToCart: () => hapticSequence(['medium', 'success'], [0, 100]),
+  removeFromCart: () => hapticSequence(['light', 'light'], [0, 50]),
+  updateQuantity: () => hapticFeedback('selection'),
+  clearCart: () => hapticSequence(['warning', 'heavy'], [0, 150]),
+
+  // Menu item interactions
+  itemTap: () => hapticFeedback('light'),
+  itemLongPress: () => hapticFeedback('heavy'),
+  customizationSelect: () => hapticFeedback('selection'),
+  spiceLevelSelect: () => hapticFeedback('medium'),
 
   // Form interactions
   formSubmit: () => hapticFeedback('medium'),
   formError: () => hapticFeedback('error'),
-  formSuccess: () => hapticFeedback('success'),
+  formSuccess: () => hapticSequence(['success', 'light'], [0, 200]),
+  inputFocus: () => hapticFeedback('light'),
+  checkboxToggle: () => hapticFeedback('selection'),
 
   // Navigation
   navigate: () => hapticFeedback('light'),
   modal: () => hapticFeedback('light'),
+  modalClose: () => hapticFeedback('light'),
+  tabSwitch: () => hapticFeedback('selection'),
+  pageSwipe: () => hapticFeedback('light'),
 
-  // Notifications
+  // Search and filtering
+  searchStart: () => hapticFeedback('light'),
+  searchClear: () => hapticFeedback('light'),
+  filterApply: () => hapticFeedback('medium'),
+  filterClear: () => hapticFeedback('light'),
+  voiceSearchStart: () => hapticSequence(['medium', 'light'], [0, 100]),
+  voiceSearchEnd: () => hapticFeedback('success'),
+
+  // Notifications and feedback
   notification: () => hapticFeedback('impact'),
   warning: () => hapticFeedback('warning'),
   error: () => hapticFeedback('error'),
   success: () => hapticFeedback('success'),
+  orderPlaced: () => hapticSequence(['success', 'medium', 'light'], [0, 200, 400]),
 
   // Special interactions
   refresh: () => hapticFeedback('medium'),
+  pullRefresh: () => hapticSequence(['light', 'medium'], [0, 300]),
   toggle: () => hapticFeedback('selection'),
-  longPress: () => hapticFeedback('heavy')
+  longPress: () => hapticFeedback('heavy'),
+  swipeAction: () => hapticFeedback('medium'),
+  loadingComplete: () => hapticFeedback('light'),
+
+  // QR Code scanning
+  qrScanStart: () => hapticFeedback('medium'),
+  qrScanSuccess: () => hapticSequence(['success', 'light'], [0, 150]),
+  qrScanError: () => hapticFeedback('error'),
+
+  // Real-time updates
+  orderStatusUpdate: () => hapticFeedback('impact'),
+  newNotification: () => hapticSequence(['impact', 'light'], [0, 100])
 }

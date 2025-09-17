@@ -1,31 +1,37 @@
 'use client'
 
-import { useEffect, useState, useRef, useMemo } from 'react'
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useApi } from '@/components/providers/api-provider'
 import { Button } from '@tabsy/ui-components'
-import { ShoppingCart, ArrowLeft, Plus, Minus, Search, X, Utensils, Clock, Leaf, Zap } from 'lucide-react'
+import {
+  ArrowLeft,
+  Filter,
+  Grid,
+  List,
+  SlidersHorizontal,
+  Star,
+  MapPin,
+  Clock,
+  Users,
+  X,
+  Check,
+  Search
+} from 'lucide-react'
 import { toast } from 'sonner'
-import { MenuItem, MenuCategory, MenuItemStatus, DietaryType, AllergenType } from '@tabsy/shared-types'
+import { MenuItem, MenuCategory, MenuItemStatus, DietaryType, AllergenType, SpiceLevel, Restaurant, Table } from '@tabsy/shared-types'
 import { ItemDetailModal } from './ItemDetailModal'
 import { CartDrawer } from '../cart/CartDrawer'
 import { useWebSocket } from '@tabsy/api-client'
-import { MenuCategorySkeleton, HeaderSkeleton } from '../ui/Skeleton'
-import { haptics } from '@/lib/haptics'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator'
 
-interface Restaurant {
-  id: string
-  name: string
-  description: string
-}
-
-interface Table {
-  id: string
-  number: string
-}
+// Import our new modern components
+import SearchBar from '@/components/navigation/SearchBar'
+import BottomNav from '@/components/navigation/BottomNav'
+import MenuItemCard from '@/components/cards/MenuItemCard'
+import CategoryCard from '@/components/cards/CategoryCard'
 
 interface CartItem {
   id: string
@@ -40,549 +46,517 @@ interface CartItem {
   dietaryTypes: DietaryType[]
 }
 
+interface Category {
+  id: string
+  name: string
+  description?: string
+  image?: string
+  icon?: string
+  itemCount?: number
+  isActive?: boolean
+}
+
+interface FilterState {
+  dietary: DietaryType[]
+  spiceLevel: number[]
+  priceRange: { min: number; max: number }
+  showFavoritesOnly: boolean
+}
+
 export function MenuView() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { api } = useApi()
-  const categoryRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
+  const searchBarRef = useRef<HTMLDivElement>(null)
 
+  // URL parameters
+  const restaurantId = searchParams.get('restaurant')
+  const tableId = searchParams.get('table')
+  const qrCode = searchParams.get('qr')
+
+  // Core state
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [table, setTable] = useState<Table | null>(null)
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([])
-  const [categories, setCategories] = useState<string[]>([])
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [cart, setCart] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // UI state
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearch, setShowSearch] = useState(false)
-  const [cartAnimations, setCartAnimations] = useState<{ [key: string]: boolean }>({})
+  const [showFilters, setShowFilters] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [layout, setLayout] = useState<'grid' | 'list'>('grid')
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [recentSearches, setRecentSearches] = useState<string[]>([])
+
+  // Filter state
+  const [filters, setFilters] = useState<FilterState>({
+    dietary: [],
+    spiceLevel: [],
+    priceRange: { min: 0, max: 100 },
+    showFavoritesOnly: false
+  })
+
+  // Modal state
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
   const [showItemModal, setShowItemModal] = useState(false)
   const [showCartDrawer, setShowCartDrawer] = useState(false)
 
-  const restaurantId = searchParams.get('restaurant')
-  const tableId = searchParams.get('table')
+  // Voice search state
+  const [isListening, setIsListening] = useState(false)
+  const [voiceSearchSupported, setVoiceSearchSupported] = useState(false)
 
-  // Refresh function for pull-to-refresh
-  const refreshData = async () => {
-    if (!restaurantId || !tableId) return
+  // Pull to refresh
+  const pullToRefresh = usePullToRefresh({
+    onRefresh: async () => {
+      await loadMenuData()
+      toast.success('Menu refreshed!', { icon: '🔄' })
+    }
+  })
+
+  // WebSocket for real-time updates
+  const { client, isConnected } = useWebSocket({
+    url: process.env.NEXT_PUBLIC_WS_BASE_URL || 'http://localhost:5001',
+    autoConnect: true,
+    auth: {
+      namespace: 'customer' as const,
+      tableId: tableId || undefined,
+      restaurantId: restaurantId || undefined
+    }
+  })
+
+  // Load favorites from localStorage
+  const loadFavoritesFromStorage = useCallback((): Set<string> => {
+    try {
+      const stored = localStorage.getItem(`tabsy-favorites-${restaurantId}`)
+      return stored ? new Set(JSON.parse(stored)) : new Set()
+    } catch (error) {
+      console.error('Failed to load favorites:', error)
+      return new Set()
+    }
+  }, [restaurantId])
+
+  // Save favorites to localStorage
+  const saveFavoritesToStorage = useCallback((favSet: Set<string>) => {
+    try {
+      localStorage.setItem(`tabsy-favorites-${restaurantId}`, JSON.stringify(Array.from(favSet)))
+    } catch (error) {
+      console.error('Failed to save favorites:', error)
+    }
+  }, [restaurantId])
+
+  // Load recent searches
+  const loadRecentSearches = useCallback((): string[] => {
+    try {
+      const stored = localStorage.getItem(`tabsy-recent-searches-${restaurantId}`)
+      return stored ? JSON.parse(stored) : []
+    } catch (error) {
+      console.error('Failed to load recent searches:', error)
+      return []
+    }
+  }, [restaurantId])
+
+  // Save recent search
+  const saveRecentSearch = useCallback((query: string) => {
+    if (!query.trim()) return
+
+    try {
+      const recent = loadRecentSearches()
+      const filtered = recent.filter(item => item !== query)
+      const updated = [query, ...filtered].slice(0, 5)
+      localStorage.setItem(`tabsy-recent-searches-${restaurantId}`, JSON.stringify(updated))
+      setRecentSearches(updated)
+    } catch (error) {
+      console.error('Failed to save recent search:', error)
+    }
+  }, [restaurantId, loadRecentSearches])
+
+  // Main data loading function
+  const loadMenuData = useCallback(async () => {
+    if (!restaurantId || !tableId) {
+      setError('Missing restaurant or table information')
+      setLoading(false)
+      return
+    }
 
     try {
       setError(null)
 
-      // Reload menu items
-      const menuResponse = await api.menu.getActiveMenu(restaurantId)
-      if (menuResponse.success && menuResponse.data) {
-        const menuData = menuResponse.data
+      // 1. Get restaurant and table info from QR code endpoint (if QR available)
+      // or use direct session creation if accessed via URL parameters
+      let restaurantData: Restaurant | null = null
+      let tableData: Table | null = null
 
-        // API returns an array of menus, get the first active menu or just the first menu
-        const menus = Array.isArray(menuData) ? menuData : [menuData]
-        const activeMenu = menus.find((menu: any) => menu.active) || menus[0]
+      if (qrCode) {
+        console.log('Getting table info from QR code:', qrCode)
+        const qrResponse = await api.qr.getTableInfo(qrCode)
 
-        if (activeMenu && activeMenu.categories && Array.isArray(activeMenu.categories)) {
-          // Filter for active categories and map fields correctly
-          const activeCategories = activeMenu.categories
-            .filter((cat: any) => cat.active)
-            .map((cat: any) => ({
-              ...cat,
-              // Map database fields to frontend expected fields
-              isActive: cat.active,
-              items: cat.items?.map((item: any) => ({
-                ...item,
-                // Map database fields to frontend expected fields
-                basePrice: typeof item.price === 'object' ? Number(item.price) : item.price,
-                imageUrl: item.image,
-                status: item.active ? 'AVAILABLE' : 'OUT_OF_STOCK', // Convert boolean to enum
-                allergens: Array.isArray(item.allergyInfo?.other) ? item.allergyInfo.other : [],
-                dietaryTypes: Array.isArray(item.dietaryIndicators) ? item.dietaryIndicators : []
-              })) || []
-            }))
-
-          setMenuCategories(activeCategories)
-
-          // Extract unique category names
-          const categoryNames = activeCategories.map((cat: any) => cat.name)
-          setCategories(categoryNames)
-
-          if (categoryNames.length > 0 && !selectedCategory) {
-            setSelectedCategory(categoryNames[0] || null)
-          }
+        if (qrResponse.success && qrResponse.data) {
+          restaurantData = qrResponse.data.restaurant
+          tableData = qrResponse.data.table
+          console.log('QR data loaded:', { restaurant: restaurantData.name, table: tableData.number })
+        } else {
+          throw new Error('Invalid QR code or table not found')
         }
       }
 
-      toast.success('Menu refreshed!', { icon: '✅' })
-    } catch (err) {
-      console.error('Failed to refresh menu data:', err)
-      toast.error('Failed to refresh menu')
-      setError('Failed to refresh menu')
+      // 2. Create or validate guest session
+      let sessionCreated = false
+      const existingSessionId = api.getGuestSessionId()
+
+      if (!existingSessionId) {
+        console.log('Creating new guest session...')
+        const sessionResponse = await api.session.createGuest({
+          tableId,
+          restaurantId,
+          qrCode: qrCode || undefined
+        })
+
+        if (sessionResponse.success && sessionResponse.data) {
+          sessionCreated = true
+          console.log('Guest session created:', sessionResponse.data.sessionId)
+        } else {
+          throw new Error('Failed to create guest session')
+        }
+      } else {
+        console.log('Using existing guest session:', existingSessionId)
+      }
+
+      // 3. Load menu data (this uses customer-facing endpoint with guest session)
+      const menuResponse = await api.menu.getActiveMenu(restaurantId)
+
+      if (menuResponse.success && menuResponse.data) {
+        console.log('Menu response structure:', menuResponse.data)
+
+        // Handle different possible menu response structures
+        let categories = []
+
+        // If response is an array of menus, get categories from the first menu
+        if (Array.isArray(menuResponse.data)) {
+          const firstMenu = menuResponse.data[0]
+          categories = firstMenu?.categories || []
+          console.log('Found array of menus, using first menu:', firstMenu?.name)
+        }
+        // If response is a single menu object with categories
+        else if (menuResponse.data.categories) {
+          categories = menuResponse.data.categories
+        }
+        // If response has a different structure, log for debugging
+        else {
+          console.warn('Unexpected menu response structure:', menuResponse.data)
+          categories = []
+        }
+
+        setMenuCategories(categories)
+        console.log('Menu loaded:', categories.length, 'categories')
+      } else {
+        console.error('Menu API failed:', menuResponse)
+        throw new Error('Failed to load menu data')
+      }
+
+      // 4. Set restaurant and table data from API responses
+      if (restaurantData) {
+        setRestaurant(restaurantData)
+      }
+
+      if (tableData) {
+        setTable(tableData)
+      }
+
+      if (sessionCreated) {
+        toast.success('Connected to restaurant!', { icon: '🔗' })
+      }
+
+    } catch (error) {
+      console.error('Error loading menu data:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load menu. Please try again.'
+      setError(errorMessage)
+      toast.error(errorMessage)
+    } finally {
+      setLoading(false)
     }
-  }
+  }, [api, restaurantId, tableId, qrCode])
 
-  // Pull-to-refresh hook
-  const pullToRefresh = usePullToRefresh({
-    onRefresh: refreshData,
-    threshold: 80,
-    enabled: !loading && !error
-  })
-
-  // WebSocket integration for real-time menu updates using Socket.IO
-  // Get session from sessionStorage for WebSocket auth
-  const [sessionId, setSessionId] = useState<string | undefined>()
-
+  // Load data on mount
   useEffect(() => {
-    const sessionStr = sessionStorage.getItem('tabsy-session')
-    if (sessionStr) {
-      const session = JSON.parse(sessionStr)
-      setSessionId(session.sessionId)
+    loadMenuData()
+  }, [loadMenuData])
+
+  // Load favorites and recent searches
+  useEffect(() => {
+    if (restaurantId) {
+      setFavorites(loadFavoritesFromStorage())
+      setRecentSearches(loadRecentSearches())
+    }
+  }, [restaurantId, loadFavoritesFromStorage, loadRecentSearches])
+
+  // Voice search setup
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      setVoiceSearchSupported(!!SpeechRecognition)
     }
   }, [])
 
-  // Memoize auth config to prevent unnecessary reconnections
-  const authConfig = useMemo(() => ({
-    namespace: 'customer' as const,
-    restaurantId: restaurantId || undefined,
-    tableId: tableId || undefined,
-    sessionId: sessionId
-  }), [restaurantId, tableId, sessionId])
+  // Process categories for display
+  const processedCategories = useMemo((): Category[] => {
+    // Ensure menuCategories is defined and is an array
+    const safeCategories = menuCategories || []
 
-  const {
-    isConnected: wsConnected,
-    connect: wsConnect,
-    disconnect: wsDisconnect,
-    client: wsClient
-  } = useWebSocket({
-    auth: authConfig,
-    autoConnect: false, // Don't auto-connect, we'll control it
-    onConnect: () => {
-      console.log('Connected to menu updates')
-    },
-    onDisconnect: () => {
-      console.log('Disconnected from menu updates')
-    },
-    onError: (error) => {
-      console.error('Menu WebSocket error:', error)
-    }
-  })
-
-  // Connect WebSocket when component mounts with valid parameters
-  useEffect(() => {
-    if (restaurantId && tableId && sessionId && !loading) {
-      console.log('Connecting WebSocket with:', { restaurantId, tableId, sessionId })
-      wsConnect()
+    const allCategory: Category = {
+      id: 'all',
+      name: 'All',
+      itemCount: safeCategories.reduce((total, cat) => total + (cat.items?.length || 0), 0),
+      isActive: selectedCategory === 'all'
     }
 
-    return () => {
-      wsDisconnect()
-    }
-  }, [restaurantId, tableId, loading]) // Removed sessionId from dependencies
+    const categoryItems: Category[] = safeCategories.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      description: cat.description,
+      itemCount: cat.items?.length || 0,
+      isActive: selectedCategory === cat.id,
+      icon: cat.name
+    }))
 
-  // Listen for session info and menu updates
-  useEffect(() => {
-    if (!wsClient) return
+    return [allCategory, ...categoryItems]
+  }, [menuCategories, selectedCategory])
 
-    const handleSessionInfo = (data: any) => {
-      console.log('Received session info:', data)
-      if (data.sessionId && data.sessionId !== sessionId) {
-        // Update sessionId and sessionStorage with new session
-        setSessionId(data.sessionId)
-        const sessionStr = sessionStorage.getItem('tabsy-session')
-        if (sessionStr) {
-          const session = JSON.parse(sessionStr)
-          session.sessionId = data.sessionId
-          sessionStorage.setItem('tabsy-session', JSON.stringify(session))
-          console.log('Updated sessionId in storage:', data.sessionId)
-        }
-      }
-    }
+  // Filter and search menu items
+  const filteredMenuItems = useMemo(() => {
+    let items: MenuItem[] = []
 
-    const handleMenuUpdate = (data: any) => {
-      if (data.type === 'menu_update' && data.updatedItems) {
-        // Update menu items in real-time
-        setMenuCategories(prevCategories => {
-          return prevCategories.map(category => ({
-            ...category,
-            items: category.items.map(item => {
-              const updatedItem = data.updatedItems.find((updated: any) => updated.id === item.id)
-              if (updatedItem) {
-                // Show toast for significant changes
-                if (updatedItem.status !== item.status) {
-                  if (updatedItem.status === MenuItemStatus.OUT_OF_STOCK) {
-                    toast.warning(`${item.name} is now out of stock`, { icon: '⚠️' })
-                  } else if (updatedItem.status === MenuItemStatus.AVAILABLE && item.status === MenuItemStatus.OUT_OF_STOCK) {
-                    toast.success(`${item.name} is back in stock!`, { icon: '✅' })
-                  }
-                }
-                return { ...item, ...updatedItem }
-              }
-              return item
-            })
-          }))
-        })
-      }
+    // Get items from selected category or all categories
+    const safeMenuCategories = menuCategories || []
+    if (selectedCategory === 'all') {
+      items = safeMenuCategories.flatMap(cat => cat.items || [])
+    } else {
+      const category = safeMenuCategories.find(cat => cat.id === selectedCategory)
+      items = category?.items || []
     }
 
-    wsClient.on('session:info', handleSessionInfo)
-    wsClient.on('menu:update', handleMenuUpdate)
-
-    return () => {
-      wsClient.off('session:info', handleSessionInfo)
-      wsClient.off('menu:update', handleMenuUpdate)
-    }
-  }, [wsClient, sessionId])
-
-  useEffect(() => {
-    const loadData = async () => {
-      if (!restaurantId || !tableId) {
-        setError('Missing restaurant or table information')
-        setLoading(false)
-        return
-      }
-
-      try {
-        // Load and set guest session if available
-        const sessionStr = sessionStorage.getItem('tabsy-session')
-        if (sessionStr) {
-          const session = JSON.parse(sessionStr)
-          if (session.sessionId) {
-            api.setGuestSession(session.sessionId)
-          }
-        } else {
-          // If no session exists, create a guest session without QR code validation
-          console.log('MenuView: No session found, creating new guest session for direct access')
-          try {
-            // Don't send QR code for direct menu access - backend will skip validation
-            const guestSessionResponse = await api.session.createGuest({
-              tableId: tableId,
-              restaurantId: restaurantId
-              // Removed qrCode - backend only validates if provided
-            })
-
-            if (guestSessionResponse.success && guestSessionResponse.data?.sessionId) {
-              const sessionData = {
-                sessionId: guestSessionResponse.data.sessionId,
-                restaurantId: restaurantId,
-                tableId: tableId,
-                createdAt: new Date().toISOString()
-              }
-
-              sessionStorage.setItem('tabsy-session', JSON.stringify(sessionData))
-              api.setGuestSession(sessionData.sessionId) // Ensure session ID is set in API client
-              console.log('MenuView: Created and stored guest session:', sessionData)
-            } else {
-              throw new Error('Failed to create guest session')
-            }
-          } catch (sessionError) {
-            console.error('Failed to create guest session:', sessionError)
-            // Set error state and exit entire function
-            setError('Failed to create session. Please scan the QR code again.')
-            setLoading(false)
-            return // Exit entire useEffect, don't continue with menu loading
-          }
-        }
-
-        // Validate session exists before proceeding
-        const currentSessionId = api.getGuestSessionId()
-        if (!currentSessionId) {
-          console.error('MenuView: No valid session available after creation attempt')
-          setError('Authentication required. Please scan the QR code to access the menu.')
-          setLoading(false)
-          return
-        }
-        console.log('MenuView: Valid session confirmed:', currentSessionId)
-
-        // Load restaurant and table info from sessionStorage (stored by TableSessionInitializer)
-        const tableInfoStr = sessionStorage.getItem('tabsy-table-info')
-        if (tableInfoStr) {
-          const tableInfo = JSON.parse(tableInfoStr)
-          if (tableInfo.restaurant) {
-            setRestaurant({
-              id: tableInfo.restaurant.id,
-              name: tableInfo.restaurant.name,
-              description: tableInfo.restaurant.description || ''
-            })
-          }
-          if (tableInfo.table) {
-            setTable({
-              id: tableInfo.table.id,
-              number: tableInfo.table.number
-            })
-          }
-        } else {
-          // If not in sessionStorage, try to load from QR endpoint (public, no auth required)
-          const qrCode = sessionStorage.getItem('tabsy-qr-code')
-          if (qrCode) {
-            const qrResponse = await api.qr.getTableInfo(qrCode)
-            if (qrResponse.success && qrResponse.data) {
-              const { restaurant, table } = qrResponse.data
-              setRestaurant({
-                id: restaurant.id,
-                name: restaurant.name,
-                description: restaurant.description || ''
-              })
-              setTable({
-                id: table.id,
-                number: table.number
-              })
-            }
-          }
-        }
-
-        // Load menu items (this endpoint already supports guest access)
-        const menuResponse = await api.menu.getActiveMenu(restaurantId)
-        if (menuResponse.success && menuResponse.data) {
-          const menuData = menuResponse.data
-
-          // API returns an array of menus, get the first active menu or just the first menu
-          const menus = Array.isArray(menuData) ? menuData : [menuData]
-          const activeMenu = menus.find((menu: any) => menu.active) || menus[0]
-
-          // Check if categories exist and is an array
-          if (activeMenu && activeMenu.categories && Array.isArray(activeMenu.categories)) {
-            // Filter for active categories and map fields correctly
-            const activeCategories = activeMenu.categories
-              .filter((cat: any) => cat.active)
-              .map((cat: any) => ({
-                ...cat,
-                // Map database fields to frontend expected fields
-                isActive: cat.active,
-                items: cat.items?.map((item: any) => ({
-                  ...item,
-                  // Map database fields to frontend expected fields
-                  basePrice: typeof item.price === 'object' ? Number(item.price) : item.price,
-                  imageUrl: item.image,
-                  status: item.active ? 'AVAILABLE' : 'OUT_OF_STOCK', // Convert boolean to enum
-                  allergens: Array.isArray(item.allergyInfo?.other) ? item.allergyInfo.other : [],
-                  dietaryTypes: Array.isArray(item.dietaryIndicators) ? item.dietaryIndicators : []
-                })) || []
-              }))
-
-            setMenuCategories(activeCategories)
-
-            // Extract unique category names
-            const categoryNames = activeCategories.map((cat: any) => cat.name)
-            setCategories(categoryNames)
-
-            if (categoryNames.length > 0) {
-              setSelectedCategory(categoryNames[0] || null)
-            }
-          } else {
-            console.warn('Menu data does not contain valid categories array:', activeMenu)
-            setMenuCategories([])
-            setCategories([])
-          }
-        }
-
-        setLoading(false)
-      } catch (err) {
-        console.error('Failed to load menu data:', err)
-        setError('Failed to load menu')
-        setLoading(false)
-      }
-    }
-
-    loadData()
-  }, [restaurantId, tableId, api])
-
-  const handleItemClick = (item: MenuItem) => {
-    haptics.selectItem()
-    setSelectedItem(item)
-    setShowItemModal(true)
-  }
-
-  const handleCloseModal = () => {
-    setShowItemModal(false)
-    setSelectedItem(null)
-  }
-
-  const addToCart = (item: MenuItem, categoryName: string, quantity: number = 1, customizations?: Record<string, any>) => {
-    // Haptic feedback for adding to cart
-    haptics.addToCart()
-
-    // Animate the add to cart action
-    setCartAnimations(prev => ({ ...prev, [item.id]: true }))
-    setTimeout(() => {
-      setCartAnimations(prev => ({ ...prev, [item.id]: false }))
-    }, 600)
-
-    setCart(prevCart => {
-      const existingItem = prevCart.find(cartItem => cartItem.id === item.id)
-
-      if (existingItem && !customizations) {
-        // Simple quantity increase for existing items without customizations
-        return prevCart.map(cartItem =>
-          cartItem.id === item.id
-            ? { ...cartItem, quantity: cartItem.quantity + quantity }
-            : cartItem
-        )
-      } else {
-        const cartItem: CartItem = {
-          id: item.id,
-          name: item.name,
-          description: item.description,
-          basePrice: item.basePrice,
-          imageUrl: item.imageUrl,
-          categoryName,
-          quantity,
-          customizations,
-          allergens: item.allergens,
-          dietaryTypes: item.dietaryTypes,
-        }
-        return [...prevCart, cartItem]
-      }
-    })
-
-    toast.success(`Added ${item.name} to cart`, {
-      duration: 2000,
-      icon: '🛒'
-    })
-  }
-
-  const removeFromCart = (itemId: string) => {
-    haptics.removeFromCart()
-
-    setCart(prevCart => {
-      const existingItem = prevCart.find(cartItem => cartItem.id === itemId)
-      
-      if (existingItem && existingItem.quantity > 1) {
-        return prevCart.map(cartItem =>
-          cartItem.id === itemId
-            ? { ...cartItem, quantity: cartItem.quantity - 1 }
-            : cartItem
-        )
-      } else {
-        return prevCart.filter(cartItem => cartItem.id !== itemId)
-      }
-    })
-  }
-
-  const getCartItemQuantity = (itemId: string): number => {
-    const cartItem = cart.find(item => item.id === itemId)
-    return cartItem ? cartItem.quantity : 0
-  }
-
-  const getTotalPrice = (): number => {
-    return cart.reduce((total, item) => total + (Number(item.basePrice) * item.quantity), 0)
-  }
-
-  const handleCheckout = () => {
-    if (cart.length === 0) {
-      haptics.error()
-      toast.error('Your cart is empty')
-      return
-    }
-
-    haptics.modal()
-    // Open cart drawer instead of navigating to full page
-    setShowCartDrawer(true)
-  }
-
-  const handleUpdateCart = (updatedCart: CartItem[]) => {
-    setCart(updatedCart)
-    // Store cart in sessionStorage
-    sessionStorage.setItem('tabsy-cart', JSON.stringify(updatedCart))
-  }
-
-  // Scroll to category function
-  const scrollToCategory = (categoryName: string) => {
-    setSelectedCategory(categoryName)
-    const element = categoryRefs.current[categoryName]
-    if (element) {
-      const headerOffset = 140 // Account for sticky header + category tabs
-      const elementPosition = element.offsetTop - headerOffset
-      window.scrollTo({
-        top: elementPosition,
-        behavior: 'smooth'
-      })
-    }
-  }
-
-  // Get items for selected category or search
-  const getFilteredItems = (): { category: string; items: MenuItem[] }[] => {
+    // Apply search filter
     if (searchQuery.trim()) {
-      // Search across all categories
-      const searchResults: { category: string; items: MenuItem[] }[] = []
-      menuCategories.forEach(category => {
-        const matchingItems = category.items.filter(item =>
-          item.status === MenuItemStatus.AVAILABLE &&
-          (item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           item.description.toLowerCase().includes(searchQuery.toLowerCase()))
-        )
-        if (matchingItems.length > 0) {
-          searchResults.push({ category: category.name, items: matchingItems })
+      const query = searchQuery.toLowerCase().trim()
+      items = items.filter(item =>
+        item.name.toLowerCase().includes(query) ||
+        item.description.toLowerCase().includes(query) ||
+        item.allergens?.some(allergy => allergy.toLowerCase().includes(query)) ||
+        item.dietaryTypes?.some(diet => diet.toLowerCase().includes(query))
+      )
+    }
+
+    // Apply dietary filters
+    if (filters.dietary.length > 0) {
+      items = items.filter(item =>
+        item.dietaryTypes?.some(diet => filters.dietary.includes(diet as DietaryType))
+      )
+    }
+
+    // Apply spice level filters
+    if (filters.spiceLevel.length > 0) {
+      items = items.filter(item =>
+        item.spiceLevel && filters.spiceLevel.includes(item.spiceLevel)
+      )
+    }
+
+    // Apply price range filter
+    items = items.filter(item =>
+      (item.price ?? item.basePrice) >= filters.priceRange.min && (item.price ?? item.basePrice) <= filters.priceRange.max
+    )
+
+    // Apply favorites filter
+    if (filters.showFavoritesOnly) {
+      items = items.filter(item => favorites.has(item.id))
+    }
+
+    return items
+  }, [menuCategories, selectedCategory, searchQuery, filters, favorites])
+
+  // Cart operations
+  const addToCart = useCallback((item: MenuItem, quantity: number = 1) => {
+    const cartItem: CartItem = {
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      basePrice: item.price ?? item.basePrice,
+      imageUrl: item.image,
+      categoryName: item.categoryId, // This should be resolved to category name
+      quantity,
+      allergens: item.allergens || [],
+      dietaryTypes: item.dietaryTypes || []
+    }
+
+    setCart(prev => {
+      const existingIndex = prev.findIndex(cartItem => cartItem.id === item.id)
+      if (existingIndex >= 0) {
+        const updated = [...prev]
+        if (updated[existingIndex]) {
+          updated[existingIndex].quantity += quantity
         }
-      })
-      return searchResults
+        return updated
+      } else {
+        return [...prev, cartItem]
+      }
+    })
+
+    toast.success(`Added ${item.name} to cart`, { icon: '🛒' })
+  }, [])
+
+  const updateCartItemQuantity = useCallback((itemId: string, quantity: number) => {
+    if (quantity <= 0) {
+      setCart(prev => prev.filter(item => item.id !== itemId))
+    } else {
+      setCart(prev => prev.map(item =>
+        item.id === itemId ? { ...item, quantity } : item
+      ))
+    }
+  }, [])
+
+  const toggleFavorite = useCallback((itemId: string) => {
+    setFavorites(prev => {
+      const newFavorites = new Set(prev)
+      if (newFavorites.has(itemId)) {
+        newFavorites.delete(itemId)
+        toast.success('Removed from favorites', { icon: '💔' })
+      } else {
+        newFavorites.add(itemId)
+        toast.success('Added to favorites', { icon: '❤️' })
+      }
+      saveFavoritesToStorage(newFavorites)
+      return newFavorites
+    })
+  }, [saveFavoritesToStorage])
+
+  // Search handlers
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query)
+    if (query.trim()) {
+      saveRecentSearch(query)
+    }
+  }, [saveRecentSearch])
+
+  const handleVoiceSearch = useCallback(() => {
+    if (!voiceSearchSupported) return
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const recognition = new SpeechRecognition()
+
+    recognition.continuous = false
+    recognition.interimResults = false
+    recognition.lang = 'en-US'
+
+    recognition.onstart = () => {
+      setIsListening(true)
+      toast.info('Listening...', { icon: '🎤' })
     }
 
-    // Show all categories or just selected one
-    if (selectedCategory) {
-      const category = menuCategories.find(cat => cat.name === selectedCategory)
-      return category ? [{
-        category: category.name,
-        items: category.items.filter(item => item.status === MenuItemStatus.AVAILABLE)
-      }] : []
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0]?.[0]?.transcript
+      if (transcript) {
+        setSearchQuery(transcript)
+        setShowSearch(true)
+        saveRecentSearch(transcript)
+        toast.success(`Voice search: "${transcript}"`, { icon: '🎤' })
+      }
     }
 
-    // Show all categories
-    return menuCategories.map(category => ({
-      category: category.name,
-      items: category.items.filter(item => item.status === MenuItemStatus.AVAILABLE)
-    })).filter(cat => cat.items.length > 0)
-  }
-
-  // Get dietary icon
-  const getDietaryIcon = (dietary: DietaryType) => {
-    switch (dietary) {
-      case DietaryType.VEGAN:
-      case DietaryType.VEGETARIAN:
-        return <Leaf className="w-3 h-3" />
-      case DietaryType.GLUTEN_FREE:
-        return <Zap className="w-3 h-3" />
-      default:
-        return <Utensils className="w-3 h-3" />
+    recognition.onerror = () => {
+      setIsListening(false)
+      toast.error('Voice search failed. Please try again.')
     }
-  }
 
-  const filteredData = getFilteredItems()
+    recognition.onend = () => {
+      setIsListening(false)
+    }
 
+    recognition.start()
+  }, [voiceSearchSupported, saveRecentSearch])
+
+  // Filter handlers
+  const toggleFilter = useCallback(() => {
+    setShowFilters(!showFilters)
+  }, [showFilters])
+
+  const clearFilters = useCallback(() => {
+    setFilters({
+      dietary: [],
+      spiceLevel: [],
+      priceRange: { min: 0, max: 100 },
+      showFavoritesOnly: false
+    })
+  }, [])
+
+  const hasActiveFilters = useMemo(() => {
+    return filters.dietary.length > 0 ||
+           filters.spiceLevel.length > 0 ||
+           filters.priceRange.min > 0 ||
+           filters.priceRange.max < 100 ||
+           filters.showFavoritesOnly
+  }, [filters])
+
+  // Calculate cart total
+  const cartTotal = useMemo(() => {
+    return cart.reduce((total, item) => total + (item.basePrice * item.quantity), 0)
+  }, [cart])
+
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        {/* Header Skeleton */}
-        <HeaderSkeleton />
-
-        {/* Categories Skeleton */}
-        <div className="bg-surface border-b">
-          <div className="max-w-4xl mx-auto px-4 py-3">
-            <div className="flex space-x-2 overflow-x-auto pb-1">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-8 w-24 bg-gray-200 rounded animate-pulse flex-shrink-0" />
-              ))}
-            </div>
+        {/* Loading Header */}
+        <div className="px-6 py-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-surface-secondary rounded-lg w-48 mb-4"></div>
+            <div className="h-4 bg-surface-secondary rounded w-32"></div>
           </div>
         </div>
 
-        {/* Menu Content Skeleton */}
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div className="space-y-8">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <MenuCategorySkeleton key={i} />
+        {/* Loading Search */}
+        <div className="px-6 mb-6">
+          <div className="h-12 bg-surface-secondary rounded-2xl animate-pulse"></div>
+        </div>
+
+        {/* Loading Categories */}
+        <div className="px-6 mb-6">
+          <div className="flex gap-3 overflow-hidden">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-12 bg-surface-secondary rounded-full w-24 animate-pulse flex-shrink-0"></div>
             ))}
           </div>
+        </div>
+
+        {/* Loading Grid */}
+        <div className="px-6 grid grid-cols-2 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="bg-surface rounded-xl overflow-hidden animate-pulse">
+              <div className="aspect-[4/3] bg-surface-secondary"></div>
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-surface-secondary rounded w-3/4"></div>
+                <div className="h-3 bg-surface-secondary rounded w-1/2"></div>
+                <div className="h-6 bg-surface-secondary rounded w-16"></div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     )
   }
 
+  // Error state
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-status-error mb-2">Error</h1>
-          <p className="text-content-secondary mb-4">{error}</p>
-          <Button onClick={() => router.push('/')}>
-            <ArrowLeft className="w-4 h-4 mr-2" />
+          <h1 className="text-h1 font-bold text-error mb-4">Oops!</h1>
+          <p className="text-body text-content-secondary mb-6">{error}</p>
+          <Button
+            onClick={() => router.push('/')}
+            className="btn-food bg-primary text-primary-foreground"
+          >
+            <ArrowLeft size={16} className="mr-2" />
             Back to Home
           </Button>
         </div>
@@ -591,7 +565,7 @@ export function MenuView() {
   }
 
   return (
-    <div className="min-h-screen gradient-mesh" ref={pullToRefresh.bind}>
+    <div className="min-h-screen bg-background pb-20" ref={pullToRefresh.bind}>
       {/* Pull-to-refresh indicator */}
       <PullToRefreshIndicator
         isPulling={pullToRefresh.isPulling}
@@ -601,468 +575,341 @@ export function MenuView() {
         progress={pullToRefresh.progress}
       />
 
-      {/* Header */}
-      <div className="glass-header sticky top-0 z-20 shadow-soft">
-        <div className="max-w-4xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            {/* Restaurant Info */}
+      {/* Restaurant Header */}
+      <motion.header
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-surface border-b border-border sticky top-0 z-40 backdrop-blur-lg bg-opacity-95"
+      >
+        <div className="px-6 py-6">
+          <div className="flex items-center justify-between mb-4">
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-content-primary mb-1">
+              <h1 className="text-h1 font-bold text-content-primary mb-2">
                 {restaurant?.name || 'Menu'}
               </h1>
-              <div className="flex items-center space-x-2">
-                <div className="bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-medium">
-                  Table {table?.number}
-                </div>
-                <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span>
-                <span className="text-sm text-content-secondary font-medium">
+              <div className="flex items-center gap-3">
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-full"
+                >
+                  <div className="flex items-center gap-2">
+                    <MapPin size={14} />
+                    <span className="text-caption font-semibold">
+                      Table {table?.number}
+                    </span>
+                  </div>
+                </motion.div>
+                <motion.div
+                  animate={{
+                    scale: [1, 1.2, 1],
+                    opacity: [1, 0.7, 1],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  }}
+                  className="w-2 h-2 bg-secondary rounded-full"
+                />
+                <span className="text-caption text-content-secondary font-medium">
                   Now serving
                 </span>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="flex items-center space-x-3">
-              {/* Search Button */}
-              <motion.div
-                whileHover={{ scale: 1.05 }}
+            <div className="flex items-center gap-2">
+              <motion.button
                 whileTap={{ scale: 0.95 }}
+                onClick={toggleFilter}
+                className={`p-3 rounded-full transition-all duration-200 ${
+                  hasActiveFilters
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-surface-secondary text-content-secondary hover:bg-interactive-hover'
+                }`}
               >
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSearch(!showSearch)}
-                  className="w-12 h-12 p-0 rounded-full btn-glass"
-                >
-                  {showSearch ? (
-                    <X className="w-5 h-5" />
-                  ) : (
-                    <Search className="w-5 h-5" />
-                  )}
-                </Button>
-              </motion.div>
+                <Filter size={20} />
+                {hasActiveFilters && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-accent rounded-full"></div>
+                )}
+              </motion.button>
 
-              {/* Cart Button */}
-              <motion.div
-                whileHover={{ scale: 1.05 }}
+              <motion.button
                 whileTap={{ scale: 0.95 }}
+                onClick={() => setLayout(layout === 'grid' ? 'list' : 'grid')}
+                className="p-3 rounded-full bg-surface-secondary text-content-secondary hover:bg-interactive-hover transition-all duration-200"
               >
-                <Button
-                  onClick={() => setShowCartDrawer(true)}
-                  disabled={cart.length === 0}
-                  className={`relative px-6 py-3 rounded-full transition-all duration-200 ${
-                    cart.length > 0
-                      ? 'btn-gradient text-white shadow-medium'
-                      : 'btn-glass text-content-secondary'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <div className="relative">
-                      <ShoppingCart className="w-4 h-4" />
-                      {cart.length > 0 && (
-                        <div className="absolute -top-2 -right-2 bg-accent text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
-                          {cart.length}
-                        </div>
-                      )}
-                    </div>
-                    <span className="font-medium">
-                      {cart.length > 0 ? `$${getTotalPrice().toFixed(2)}` : 'Cart'}
-                    </span>
-                  </div>
-                </Button>
-              </motion.div>
+                {layout === 'grid' ? <List size={20} /> : <Grid size={20} />}
+              </motion.button>
             </div>
           </div>
 
           {/* Search Bar */}
-          <AnimatePresence>
-            {showSearch && (
-              <motion.div
-                initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                animate={{ opacity: 1, height: 'auto', marginTop: 24 }}
-                exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                transition={{ duration: 0.3, ease: 'easeInOut' }}
-              >
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-content-tertiary w-5 h-5" />
-                  <input
-                    type="text"
-                    placeholder="Search for dishes..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-12 pr-12 py-4 rounded-2xl search-glass focus:ring-2 focus:ring-primary/20 transition-all duration-300 text-content-primary placeholder-content-tertiary font-medium shadow-soft"
-                    autoFocus
-                  />
-                  {searchQuery && (
-                    <motion.button
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-content-tertiary/10 hover:bg-content-tertiary/20 rounded-full flex items-center justify-center transition-colors"
-                    >
-                      <X className="w-3 h-3 text-content-tertiary" />
-                    </motion.button>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* Categories */}
-      {!searchQuery && categories.length > 1 && (
-        <div className="glass-surface sticky top-[112px] z-10 shadow-soft">
-          <div className="max-w-4xl mx-auto px-6 py-4">
-            <div className="flex space-x-3 overflow-x-auto pb-2 scrollbar-hide">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSelectedCategory(null)}
-                className={`px-6 py-3 rounded-full font-medium text-sm whitespace-nowrap flex-shrink-0 transition-all duration-200 ${
-                  !selectedCategory
-                    ? 'category-pill-active'
-                    : 'category-pill'
-                }`}
-              >
-                All Categories
-              </motion.button>
-              {categories.map(category => (
-                <motion.button
-                  key={category}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => scrollToCategory(category)}
-                  className={`px-6 py-3 rounded-full font-medium text-sm whitespace-nowrap flex-shrink-0 transition-all duration-200 ${
-                    selectedCategory === category
-                      ? 'category-pill-active'
-                      : 'category-pill'
-                  }`}
-                >
-                  {category}
-                </motion.button>
-              ))}
-            </div>
+          <div ref={searchBarRef}>
+            <SearchBar
+              placeholder="Search for delicious food..."
+              onSearch={handleSearch}
+              onFilter={toggleFilter}
+              onVoiceSearch={voiceSearchSupported ? handleVoiceSearch : undefined}
+              showRecentSearches={true}
+              recentSearches={recentSearches}
+              autoFocus={showSearch}
+            />
           </div>
         </div>
-      )}
+      </motion.header>
 
-      <div className="max-w-4xl mx-auto px-6 py-8">
-        {/* Search Results Header */}
-        {searchQuery && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8 glass-card rounded-2xl p-6 shadow-medium"
-          >
-            <h2 className="text-xl font-bold text-content-primary mb-2">
-              Search results for "<span className="text-primary">{searchQuery}</span>"
-            </h2>
-            <p className="text-content-secondary">
-              Found <span className="font-semibold text-primary">{filteredData.reduce((total, cat) => total + cat.items.length, 0)}</span> delicious dishes
-            </p>
-          </motion.div>
-        )}
-
-        {/* Menu Categories and Items */}
-        <div className="space-y-12">
-          {filteredData.map(({ category, items }) => (
+      {/* Categories */}
+      <motion.section
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.1 }}
+        className="px-6 py-4"
+      >
+        <div className="flex gap-3 overflow-x-auto scrollbar-hide">
+          {processedCategories.map((category, index) => (
             <motion.div
-              key={category}
-              ref={el => { categoryRefs.current[category] = el }}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
+              key={category.id}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.05 }}
             >
-              {/* Category Header */}
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-content-primary mb-2">{category}</h2>
-                <div className="w-20 h-1 bg-gradient-to-r from-primary to-secondary rounded-full" />
-              </div>
-
-              {/* Category Items */}
-              <div className="grid gap-6">
-                {items.map(item => {
-                  const quantity = getCartItemQuantity(item.id)
-                  const isAnimating = cartAnimations[item.id]
-
-                  return (
-                    <motion.div
-                      key={item.id}
-                      layout
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.4, ease: 'easeOut' }}
-                      className="card-modern rounded-3xl shadow-medium group overflow-hidden relative"
-                    >
-                      {/* Make entire card clickable for item details */}
-                      <div
-                        className="absolute inset-0 cursor-pointer z-10"
-                        onClick={() => handleItemClick(item)}
-                      />
-
-                      <div className="p-6 relative z-20">
-                        <div className="flex gap-6">
-                          {/* Item Image */}
-                          {item.imageUrl && (
-                            <div className="flex-shrink-0">
-                              <div className="relative overflow-hidden rounded-2xl shadow-md">
-                                <img
-                                  src={item.imageUrl}
-                                  alt={item.name}
-                                  className="w-24 h-24 sm:w-28 sm:h-28 object-cover group-hover:scale-110 transition-transform duration-500 ease-out"
-                                />
-                                {quantity > 0 && (
-                                  <motion.div
-                                    initial={{ scale: 0 }}
-                                    animate={{ scale: 1 }}
-                                    className="absolute -top-2 -right-2 bg-primary text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold shadow-lg"
-                                  >
-                                    {quantity}
-                                  </motion.div>
-                                )}
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Item Details */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between mb-3">
-                              <h3 className="text-xl font-bold text-content-primary truncate pr-2 group-hover:text-primary transition-colors duration-200">
-                                {item.name}
-                              </h3>
-                              <div className="flex flex-col items-end">
-                                <span className="text-2xl font-bold text-primary">
-                                  ${Number(item.basePrice).toFixed(2)}
-                                </span>
-                              </div>
-                            </div>
-
-                            <p className="text-content-secondary text-base mb-4 line-clamp-2 leading-relaxed">
-                              {item.description}
-                            </p>
-
-                            {/* Dietary and Allergen Info */}
-                            <div className="space-y-3 mb-4">
-                              {item.dietaryTypes && item.dietaryTypes.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                  {item.dietaryTypes.map(diet => (
-                                    <span
-                                      key={diet}
-                                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs rounded-full font-semibold border border-primary/20"
-                                    >
-                                      {getDietaryIcon(diet)}
-                                      <span>{diet.replace('_', ' ')}</span>
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-
-                              {item.allergens && item.allergens.length > 0 && (
-                                <div className="text-xs text-status-warning-dark bg-status-warning-light px-3 py-2 rounded-xl border border-status-warning-border">
-                                  <span className="font-semibold">Contains:</span> {item.allergens.map(allergen => allergen.replace('_', ' ')).join(', ')}
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Add to Cart Controls */}
-                            <div className="flex items-center justify-between">
-                              <div>
-                                {item.status !== MenuItemStatus.AVAILABLE && (
-                                  <span className="text-status-error-dark text-sm font-semibold bg-status-error-light px-3 py-2 rounded-full border border-status-error-border">
-                                    {item.status === MenuItemStatus.OUT_OF_STOCK ? 'Out of Stock' : 'Currently unavailable'}
-                                  </span>
-                                )}
-                              </div>
-
-                              {item.status === MenuItemStatus.AVAILABLE && (
-                                <div className="flex items-center space-x-3">
-                                  {quantity > 0 ? (
-                                    <div className="flex items-center space-x-3 bg-primary/5 rounded-2xl p-2 border border-primary/20">
-                                      <motion.button
-                                        whileHover={{ scale: 1.1 }}
-                                        whileTap={{ scale: 0.9 }}
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          removeFromCart(item.id)
-                                        }}
-                                        className="w-10 h-10 btn-glass rounded-full flex items-center justify-center shadow-soft"
-                                      >
-                                        <Minus className="w-4 h-4" />
-                                      </motion.button>
-
-                                      <span className="text-xl font-bold min-w-[2rem] text-center text-primary">
-                                        {quantity}
-                                      </span>
-
-                                      <motion.button
-                                        whileHover={{ scale: 1.1 }}
-                                        whileTap={{ scale: 0.9 }}
-                                        animate={isAnimating ? { scale: [1, 1.3, 1] } : {}}
-                                        transition={{ duration: 0.3 }}
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          addToCart(item, category)
-                                        }}
-                                        className="w-10 h-10 btn-gradient text-white rounded-full flex items-center justify-center shadow-medium"
-                                      >
-                                        <Plus className="w-4 h-4" />
-                                      </motion.button>
-                                    </div>
-                                  ) : (
-                                    <motion.button
-                                      whileHover={{ scale: 1.05 }}
-                                      whileTap={{ scale: 0.95 }}
-                                      onClick={(e) => {
-                                        e.stopPropagation()
-                                        addToCart(item, category)
-                                      }}
-                                      className="btn-gradient text-white px-6 py-3 rounded-2xl font-semibold shadow-medium hover:shadow-strong transition-all duration-200 flex items-center space-x-2"
-                                    >
-                                      <Plus className="w-5 h-5" />
-                                      <span>Add to Cart</span>
-                                    </motion.button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )
-                })}
-              </div>
+              <CategoryCard
+                category={category}
+                onClick={setSelectedCategory}
+                layout="horizontal"
+                showItemCount={true}
+                className="min-w-max"
+              />
             </motion.div>
           ))}
         </div>
+      </motion.section>
 
-        {filteredData.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-center py-16"
-          >
-            <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-primary/10 to-secondary/10 rounded-3xl flex items-center justify-center">
-              {searchQuery ? (
-                <Search className="w-10 h-10 text-primary" />
-              ) : (
-                <Utensils className="w-10 h-10 text-primary" />
-              )}
-            </div>
-            <h3 className="text-2xl font-bold text-content-primary mb-3">
-              {searchQuery ? 'No dishes found' : 'No items available'}
-            </h3>
-            <p className="text-content-secondary text-lg max-w-md mx-auto mb-6">
-              {searchQuery ? `We couldn't find any dishes matching "${searchQuery}". Try a different search term.` : 'Check back later for delicious options!'}
-            </p>
-            {searchQuery && (
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSearchQuery('')}
-                className="bg-primary hover:bg-primary-hover text-white px-8 py-3 rounded-2xl font-semibold shadow-lg transition-all duration-200"
-              >
-                Clear search
-              </motion.button>
-            )}
-          </motion.div>
-        )}
-      </div>
-
-      {/* Floating Cart Button (Mobile) */}
+      {/* Filter Panel */}
       <AnimatePresence>
-        {cart.length > 0 && (
+        {showFilters && (
           <motion.div
-            initial={{ opacity: 0, y: 100, scale: 0.8 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 100, scale: 0.8 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-8 left-6 right-6 md:hidden z-50"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="border-t border-border bg-surface-secondary"
           >
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setShowCartDrawer(true)}
-              className="w-full floating-cart text-white font-bold py-5 px-6 rounded-3xl transition-all duration-300"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                      <ShoppingCart className="w-6 h-6" />
-                    </div>
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      className="absolute -top-2 -right-2 bg-accent text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow-lg"
-                    >
-                      {cart.length}
-                    </motion.div>
-                  </div>
-                  <div className="text-left">
-                    <div className="text-lg font-bold">View Cart</div>
-                    <div className="text-sm text-white/80">{cart.length} {cart.length === 1 ? 'item' : 'items'}</div>
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-h3 font-semibold">Filters</h3>
+                <Button
+                  onClick={clearFilters}
+                  variant="ghost"
+                  size="sm"
+                  className="text-primary"
+                >
+                  Clear All
+                </Button>
+              </div>
+
+              {/* Quick Filters */}
+              <div className="space-y-4">
+                {/* Favorites Toggle */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setFilters(prev => ({ ...prev, showFavoritesOnly: !prev.showFavoritesOnly }))}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 ${
+                      filters.showFavoritesOnly
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-surface border border-border hover:bg-interactive-hover'
+                    }`}
+                  >
+                    <Star size={16} />
+                    <span className="text-body-sm font-medium">Favorites Only</span>
+                  </button>
+                </div>
+
+                {/* Dietary Filters */}
+                <div>
+                  <h4 className="text-body-sm font-medium text-content-secondary mb-2">Dietary</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {['VEGETARIAN', 'VEGAN', 'GLUTEN_FREE', 'DAIRY_FREE'].map((diet) => (
+                      <button
+                        key={diet}
+                        onClick={() => {
+                          setFilters(prev => ({
+                            ...prev,
+                            dietary: prev.dietary.includes(diet as DietaryType)
+                              ? prev.dietary.filter(d => d !== diet)
+                              : [...prev.dietary, diet as DietaryType]
+                          }))
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-caption transition-all duration-200 ${
+                          filters.dietary.includes(diet as DietaryType)
+                            ? 'bg-secondary text-secondary-foreground'
+                            : 'bg-surface border border-border hover:bg-interactive-hover'
+                        }`}
+                      >
+                        {diet.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                      </button>
+                    ))}
                   </div>
                 </div>
-                <div className="bg-white/10 px-4 py-2 rounded-2xl backdrop-blur-sm">
-                  <span className="text-xl font-bold">
-                    ${getTotalPrice().toFixed(2)}
-                  </span>
+
+                {/* Spice Level */}
+                <div>
+                  <h4 className="text-body-sm font-medium text-content-secondary mb-2">Spice Level</h4>
+                  <div className="flex gap-2">
+                    {[1, 2, 3].map((level) => (
+                      <button
+                        key={level}
+                        onClick={() => {
+                          setFilters(prev => ({
+                            ...prev,
+                            spiceLevel: prev.spiceLevel.includes(level)
+                              ? prev.spiceLevel.filter(l => l !== level)
+                              : [...prev.spiceLevel, level]
+                          }))
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-caption transition-all duration-200 ${
+                          filters.spiceLevel.includes(level)
+                            ? 'bg-accent text-accent-foreground'
+                            : 'bg-surface border border-border hover:bg-interactive-hover'
+                        }`}
+                      >
+                        {'🌶️'.repeat(level)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </motion.button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Item Detail Modal */}
+      {/* Results Summary */}
+      {(searchQuery || hasActiveFilters) && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="px-6 py-3 border-b border-border bg-surface-secondary"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-body-sm text-content-secondary">
+              {filteredMenuItems.length} item{filteredMenuItems.length !== 1 ? 's' : ''} found
+              {searchQuery && ` for "${searchQuery}"`}
+            </span>
+            {(searchQuery || hasActiveFilters) && (
+              <button
+                onClick={() => {
+                  setSearchQuery('')
+                  clearFilters()
+                }}
+                className="text-primary text-body-sm font-medium hover:underline"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Menu Items Grid */}
+      <main className="px-6 py-6">
+        {filteredMenuItems.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-12"
+          >
+            <div className="w-16 h-16 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search size={24} className="text-content-tertiary" />
+            </div>
+            <h3 className="text-h3 font-semibold text-content-primary mb-2">
+              No items found
+            </h3>
+            <p className="text-body text-content-secondary mb-4">
+              {searchQuery
+                ? `No items match "${searchQuery}"`
+                : 'Try adjusting your filters or search terms'
+              }
+            </p>
+            <Button
+              onClick={() => {
+                setSearchQuery('')
+                clearFilters()
+                setSelectedCategory('all')
+              }}
+              variant="outline"
+              className="btn-food"
+            >
+              Show All Items
+            </Button>
+          </motion.div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className={`grid gap-4 ${
+              layout === 'grid'
+                ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
+                : 'grid-cols-1'
+            }`}
+          >
+            {filteredMenuItems.map((item, index) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                <MenuItemCard
+                  item={{
+                    id: item.id,
+                    name: item.name,
+                    description: item.description,
+                    price: item.price ?? item.basePrice,
+                    image: item.image,
+                    category: '', // This would need to be resolved
+                    dietaryIndicators: item.dietaryTypes,
+                    allergyInfo: item.allergens,
+                    spicyLevel: item.spiceLevel,
+                    rating: 4.5, // Mock rating - this would come from the API
+                    reviewCount: 127, // Mock review count
+                    preparationTime: 15, // Mock prep time
+                    isPopular: index < 3, // Mock popular items
+                    isNew: index > filteredMenuItems.length - 3 // Mock new items
+                  }}
+                  quantity={cart.find(cartItem => cartItem.id === item.id)?.quantity || 0}
+                  onQuantityChange={updateCartItemQuantity}
+                  onAddToCart={(menuItem, quantity) => addToCart(item, quantity)}
+                  onToggleFavorite={toggleFavorite}
+                  isFavorite={favorites.has(item.id)}
+                  layout={layout}
+                  showQuickAdd={true}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
+      </main>
+
+      {/* Bottom Navigation */}
+      <BottomNav cartItemCount={cart.length} />
+
+      {/* Modals */}
       <ItemDetailModal
         item={selectedItem}
         isOpen={showItemModal}
-        onClose={handleCloseModal}
-        onAddToCart={(item, quantity, customizations) => {
-          const categoryName = menuCategories.find(cat =>
-            cat.items.some(catItem => catItem.id === item.id)
-          )?.name || 'Menu Item'
-          addToCart(item, categoryName, quantity, customizations)
-          handleCloseModal()
-        }}
+        onClose={() => setShowItemModal(false)}
+        onAddToCart={(item, quantity, customizations) => addToCart(item, quantity)}
       />
 
-      {/* Cart Drawer */}
       <CartDrawer
         isOpen={showCartDrawer}
         onClose={() => setShowCartDrawer(false)}
         cart={cart}
-        onUpdateCart={handleUpdateCart}
+        onUpdateCart={setCart}
       />
     </div>
   )
-}
-
-// Add custom styles for hiding scrollbar
-const styles = `
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-
-  .line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-`
-
-if (typeof document !== 'undefined') {
-  const styleSheet = document.createElement('style')
-  styleSheet.textContent = styles
-  document.head.appendChild(styleSheet)
 }

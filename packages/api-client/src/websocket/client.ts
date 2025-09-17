@@ -29,7 +29,7 @@ export class TabsyWebSocketClient {
 
   constructor(config: TabsyWebSocketConfig = {}) {
     this.config = {
-      url: config.url || 'ws://localhost:5001',
+      url: config.url || 'http://localhost:5001',
       autoConnect: config.autoConnect ?? true,
       reconnectAttempts: config.reconnectAttempts ?? 5,
       reconnectDelay: config.reconnectDelay ?? 1000,
@@ -37,6 +37,8 @@ export class TabsyWebSocketClient {
         token: config.auth?.token,
         restaurantId: config.auth?.restaurantId,
         namespace: config.auth?.namespace || 'restaurant',
+        tableId: config.auth?.tableId,
+        sessionId: config.auth?.sessionId,
       },
     };
 
@@ -237,7 +239,16 @@ export class TabsyWebSocketClient {
    */
   on(event: string, callback: (data: any) => void): void {
     if (this.socket) {
-      this.socket.on(event, callback);
+      this.socket.on(event, (...args: any[]) => {
+        console.log(`🔌 WebSocket event received: ${event}`, args);
+        if (args.length === 1) {
+          callback(args[0]);
+        } else if (args.length > 1) {
+          callback(args as any);
+        } else {
+          callback(undefined);
+        }
+      });
     }
   }
 
