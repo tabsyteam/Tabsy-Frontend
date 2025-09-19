@@ -119,8 +119,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
             placeholder={placeholder}
             className={`w-full h-12 pl-12 pr-20 rounded-2xl bg-surface border transition-all duration-200 text-body placeholder:text-content-tertiary outline-none ${
               isFocused
-                ? 'border-border-focus shadow-lg bg-surface-elevated focus:ring-2 focus:ring-primary/20 focus:border-primary'
-                : 'border-border shadow-sm hover:border-border-secondary'
+                ? 'border-focus-subtle shadow-lg bg-surface-elevated'
+                : 'border-default shadow-sm hover:border-secondary'
             }`}
             style={{
               WebkitAppearance: 'none',
@@ -191,11 +191,11 @@ const SearchBar: React.FC<SearchBarProps> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="absolute top-full left-0 right-0 mt-2 bg-surface-elevated border border-border rounded-2xl shadow-lg z-50 overflow-hidden"
+            className="absolute top-full left-0 right-0 mt-2 bg-surface-elevated border border-default rounded-2xl shadow-lg z-50 overflow-hidden"
           >
             {/* Recent Searches */}
             {showRecentSearches && recentSearches.length > 0 && query.length === 0 && (
-              <div className="p-4 border-b border-border">
+              <div className="p-4 border-b border-default">
                 <div className="flex items-center gap-2 mb-3">
                   <Clock size={16} className="text-content-tertiary" />
                   <span className="text-caption font-medium text-content-secondary">

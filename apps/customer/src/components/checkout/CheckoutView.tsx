@@ -325,7 +325,7 @@ export function CheckoutView() {
                     value={guestInfo.name}
                     onChange={(e) => setGuestInfo(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="Enter your name"
-                    className="w-full p-3 border border-border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                    className="w-full p-3 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                     required
                   />
                 </div>
@@ -339,7 +339,7 @@ export function CheckoutView() {
                     value={guestInfo.phone}
                     onChange={(e) => setGuestInfo(prev => ({ ...prev, phone: e.target.value }))}
                     placeholder="+1 (555) 123-4567"
-                    className="w-full p-3 border border-border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                    className="w-full p-3 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                   />
                 </div>
 
@@ -352,7 +352,7 @@ export function CheckoutView() {
                     value={guestInfo.email}
                     onChange={(e) => setGuestInfo(prev => ({ ...prev, email: e.target.value }))}
                     placeholder="your@email.com"
-                    className="w-full p-3 border border-border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                    className="w-full p-3 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                   />
                 </div>
               </div>

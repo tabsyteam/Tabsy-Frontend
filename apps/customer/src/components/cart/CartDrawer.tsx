@@ -127,7 +127,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             className="fixed right-0 top-0 h-full w-full max-w-md bg-surface shadow-2xl z-50 flex flex-col"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border-default">
+            <div className="flex items-center justify-between p-4 border-b border-default">
               <div className="flex items-center space-x-3">
                 <ShoppingBag className="w-5 h-5 text-primary" />
                 <h2 className="text-lg font-semibold text-content-primary">Your Cart</h2>
@@ -288,7 +288,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                   ))}
 
                   {/* Special Instructions */}
-                  <div className="pt-4 border-t border-border-default">
+                  <div className="pt-4 border-t border-default">
                     <label className="block text-sm font-medium text-content-primary mb-2">
                       Special Instructions (Optional)
                     </label>
@@ -296,7 +296,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                       value={specialInstructions}
                       onChange={(e) => setSpecialInstructions(e.target.value)}
                       placeholder="Any special requests for your order..."
-                      className="w-full p-3 border border-border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
+                      className="w-full p-3 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
                       rows={3}
                       maxLength={250}
                     />
@@ -322,7 +322,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
             {/* Footer */}
             {cart.length > 0 && (
-              <div className="border-t border-border-default p-4 space-y-4">
+              <div className="border-t border-default p-4 space-y-4">
                 {/* Total */}
                 <div className="flex items-center justify-between text-lg font-semibold">
                   <span className="text-content-primary">Total</span>

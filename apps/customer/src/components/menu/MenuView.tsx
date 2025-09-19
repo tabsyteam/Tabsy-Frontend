@@ -599,7 +599,7 @@ export function MenuView() {
     if (!container) return
 
     const { scrollLeft, scrollWidth, clientWidth } = container
-    const scrollThreshold = 10 // Minimum scroll distance to show shadow
+    const scrollThreshold = 5 // Minimum scroll distance to show fade
 
     setShowLeftShadow(scrollLeft > scrollThreshold)
     setShowRightShadow(scrollLeft < scrollWidth - clientWidth - scrollThreshold)
@@ -691,7 +691,7 @@ export function MenuView() {
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-surface border-b border-border sticky top-0 z-40 backdrop-blur-lg bg-opacity-95"
+        className="bg-surface border-b border-default sticky top-0 z-40 backdrop-blur-lg bg-opacity-95"
       >
         <div className="px-4 py-6">
           <div className="flex items-center justify-between mb-4">
@@ -776,30 +776,35 @@ export function MenuView() {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.1 }}
-        className="relative px-4 py-3"
+        className="relative py-3"
       >
-        {/* Left Shadow */}
+        {/* Subtle scroll fade indicators */}
         <AnimatePresence>
           {showLeftShadow && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="absolute left-0 top-3 bottom-3 w-8 bg-gradient-to-r from-stone-50 via-stone-50/60 to-transparent z-10 pointer-events-none"
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="absolute left-0 top-0 bottom-0 w-6 z-10 pointer-events-none"
+              style={{
+                background: 'linear-gradient(to right, rgba(var(--background), 0.9) 0%, rgba(var(--background), 0) 100%)'
+              }}
             />
           )}
         </AnimatePresence>
 
-        {/* Right Shadow */}
         <AnimatePresence>
           {showRightShadow && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="absolute right-0 top-3 bottom-3 w-8 bg-gradient-to-l from-stone-50 via-stone-50/60 to-transparent z-10 pointer-events-none"
+              transition={{ duration: 0.2, ease: "easeInOut" }}
+              className="absolute right-0 top-0 bottom-0 w-6 z-10 pointer-events-none"
+              style={{
+                background: 'linear-gradient(to left, rgba(var(--background), 0.9) 0%, rgba(var(--background), 0) 100%)'
+              }}
             />
           )}
         </AnimatePresence>
@@ -808,6 +813,14 @@ export function MenuView() {
           ref={categoriesScrollRef}
           className="flex gap-2 overflow-x-auto scrollbar-hide py-2"
           onScroll={updateScrollShadows}
+          style={{
+            scrollSnapType: 'x mandatory',
+            WebkitOverflowScrolling: 'touch',
+            paddingLeft: '1rem',
+            paddingRight: '1rem',
+            marginLeft: '0.5rem',
+            marginRight: '0.5rem'
+          }}
         >
           {processedCategories.map((category, index) => (
             <motion.div
@@ -816,6 +829,7 @@ export function MenuView() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.03 }}
               className="flex-shrink-0"
+              style={{ scrollSnapAlign: 'start' }}
             >
               <CategoryCard
                 category={category}
@@ -835,7 +849,7 @@ export function MenuView() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="border-t border-border bg-surface-secondary"
+            className="border-t border-default bg-surface-secondary"
           >
             <div className="px-4 py-4">
               <div className="flex items-center justify-between mb-4">
@@ -859,7 +873,7 @@ export function MenuView() {
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 ${
                       filters.showFavoritesOnly
                         ? 'bg-primary text-primary-foreground'
-                        : 'bg-surface border border-border hover:bg-interactive-hover'
+                        : 'bg-surface border border-default hover:bg-interactive-hover'
                     }`}
                   >
                     <Star size={16} />
@@ -885,7 +899,7 @@ export function MenuView() {
                         className={`px-3 py-1.5 rounded-full text-caption transition-all duration-200 ${
                           filters.dietary.includes(diet as DietaryType)
                             ? 'bg-secondary text-secondary-foreground'
-                            : 'bg-surface border border-border hover:bg-interactive-hover'
+                            : 'bg-surface border border-default hover:bg-interactive-hover'
                         }`}
                       >
                         {diet.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
@@ -912,7 +926,7 @@ export function MenuView() {
                         className={`px-3 py-1.5 rounded-full text-caption transition-all duration-200 ${
                           filters.spiceLevel.includes(level)
                             ? 'bg-accent text-accent-foreground'
-                            : 'bg-surface border border-border hover:bg-interactive-hover'
+                            : 'bg-surface border border-default hover:bg-interactive-hover'
                         }`}
                       >
                         {'🌶️'.repeat(level)}
@@ -931,7 +945,7 @@ export function MenuView() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="px-4 py-3 border-b border-border bg-surface-secondary"
+          className="px-4 py-3 border-b border-default bg-surface-secondary"
         >
           <div className="flex items-center justify-between">
             <span className="text-body-sm text-content-secondary">

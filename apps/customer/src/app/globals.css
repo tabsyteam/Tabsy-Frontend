@@ -89,7 +89,7 @@ body {
 
   /* Custom focus styles only */
   :where(input:not([type="checkbox"]):not([type="radio"]), textarea, select):focus {
-    box-shadow: 0 0 0 2px rgb(var(--border-focus)) !important;
+    box-shadow: 0 0 0 2px rgb(var(--border-focus-subtle)) !important;
   }
 
   /* Ultra-strong override for all interactive elements */
@@ -198,7 +198,7 @@ input[type="button"] {
 /* Custom scrollbar */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--border)) transparent;
+  scrollbar-color: rgb(var(--border)) transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -211,12 +211,12 @@ input[type="button"] {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
+  background: rgb(var(--border));
   border-radius: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--border) / 0.8);
+  background: rgba(var(--border) / 0.8);
 }
 
 /* Loading shimmer effect */
@@ -463,7 +463,7 @@ input[type="button"] {
 .card-food:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  border-color: rgb(var(--border-focus));
+  border-color: rgb(var(--border-focus-subtle));
 }
 
 .card-category {
@@ -522,8 +522,8 @@ input[type="button"] {
 
 .input-modern:focus {
   outline: none;
-  border-color: rgb(var(--border-focus));
-  box-shadow: 0 0 0 3px rgba(var(--border-focus), 0.1);
+  border-color: rgb(var(--border-focus-subtle));
+  box-shadow: 0 0 0 3px rgba(var(--border-focus-subtle), 0.1);
 }
 
 .input-modern::placeholder {
@@ -557,8 +557,8 @@ input[type="button"] {
 /* High contrast mode support */
 @media (prefers-contrast: high) {
   .glass-effect {
-    background: hsl(var(--background));
-    border: 2px solid hsl(var(--border));
+    background: rgb(var(--background));
+    border: 2px solid rgb(var(--border));
   }
 }
 

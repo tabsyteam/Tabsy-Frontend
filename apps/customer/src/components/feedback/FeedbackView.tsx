@@ -485,7 +485,7 @@ export function FeedbackView() {
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             placeholder="Share any additional thoughts about your experience..."
-            className="w-full p-4 border border-border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
+            className="w-full p-4 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
             rows={4}
             maxLength={500}
             disabled={submitting}

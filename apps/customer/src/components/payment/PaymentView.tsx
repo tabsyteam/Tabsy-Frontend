@@ -363,7 +363,7 @@ export function PaymentView() {
                     value={customTip}
                     onChange={(e) => handleCustomTipChange(e.target.value)}
                     placeholder="Custom tip amount"
-                    className="flex-1 p-3 border border-border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                    className="flex-1 p-3 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                     min="0"
                     step="0.01"
                     disabled={processing}

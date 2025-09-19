@@ -714,7 +714,7 @@ export function ItemDetailModal({
                         onChange={(e) => handleTextInputChange(option.id, e.target.value)}
                         onFocus={() => haptics.inputFocus()}
                         placeholder={option.description || "Enter text..."}
-                        className="w-full p-3 border border-border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                        className="w-full p-3 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                         maxLength={200}
                       />
                     ) : option.type === OptionType.NUMBER_INPUT ? (
@@ -731,7 +731,7 @@ export function ItemDetailModal({
                               }
                             }}
                             disabled={(numberInputs[option.id] || 0) <= option.minSelections}
-                            className="w-10 h-10 btn-circle bg-surface border border-border-default hover:border-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all duration-200 hover:bg-interactive-hover disabled:hover:bg-surface"
+                            className="w-10 h-10 btn-circle bg-surface border border-default hover:border-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all duration-200 hover:bg-interactive-hover disabled:hover:bg-surface"
                           >
                             <Minus className="w-4 h-4 text-content-primary" />
                           </button>
@@ -776,7 +776,7 @@ export function ItemDetailModal({
                               className={`flex items-center justify-between p-3 border-2 rounded-lg cursor-pointer transition-all ${
                                 isSelected
                                   ? 'border-primary bg-primary/5'
-                                  : 'border-border-default hover:border-primary/50'
+                                  : 'border-default hover:border-primary/50'
                               }`}
                             >
                               <div className="flex items-center space-x-3">
@@ -828,7 +828,7 @@ export function ItemDetailModal({
                     onChange={(e) => setSpecialInstructions(e.target.value)}
                     onFocus={() => haptics.inputFocus()}
                     placeholder="Any special requests or modifications for this item..."
-                    className="w-full p-3 border border-border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
+                    className="w-full p-3 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
                     rows={3}
                     maxLength={200}
                   />
@@ -939,7 +939,7 @@ export function ItemDetailModal({
                         }
                       }}
                       disabled={quantity <= 1}
-                      className="w-10 h-10 btn-circle bg-surface border border-border-default hover:border-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all duration-200 hover:bg-interactive-hover disabled:hover:bg-surface"
+                      className="w-10 h-10 btn-circle bg-surface border border-default hover:border-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all duration-200 hover:bg-interactive-hover disabled:hover:bg-surface"
                     >
                       <Minus className="w-4 h-4 text-content-primary" />
                     </button>

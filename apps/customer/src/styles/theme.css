@@ -46,10 +46,11 @@
   --content-brand: 255 107 107; /* Coral for brand highlights */
 
   /* Border Colors - Subtle, modern */
-  --border: 231 229 228; /* #E7E5E4 - Light border */
+  --border: 229 231 235; /* #E5E7EB - Neutral light gray border */
   --border-secondary: 214 211 209; /* #D6D3D1 - Darker border */
   --border-tertiary: 245 244 240; /* Slightly darker off-white border */
-  --border-focus: 255 107 107; /* Coral focus */
+  --border-focus: 156 163 175; /* #9CA3AF - Subtle gray focus for light mode */
+  --border-focus-subtle: 209 213 219; /* #D1D5DB - Very subtle focus border */
   --border-error: 239 68 68; /* Error red */
 
   /* Status Colors - Updated for food app */
@@ -142,6 +143,7 @@
   --border-secondary: 87 83 78; /* Lighter dark border */
   --border-tertiary: 51 47 44; /* Darkest border */
   --border-focus: 255 139 139; /* Coral focus */
+  --border-focus-subtle: 120 113 108; /* Subtle focus border for inputs in dark mode */
   --border-error: 255 139 139; /* Light coral for errors */
 
   /* shadcn/ui dark mode variables in HSL */
@@ -181,6 +183,7 @@
   .border-secondary { border-color: rgb(var(--border-secondary)); }
   .border-tertiary { border-color: rgb(var(--border-tertiary)); }
   .border-focus { border-color: rgb(var(--border-focus)); }
+  .border-focus-subtle { border-color: rgb(var(--border-focus-subtle)); }
   .border-error { border-color: rgb(var(--border-error)); }
 
   /* Button variants */
@@ -439,6 +442,56 @@
       rgba(255, 247, 237, 0.4) 50%,
       rgba(252, 248, 243, 0.4) 75%,
       rgba(239, 246, 255, 0.4) 100%);
+  }
+
+  /* Modern Horizontal Scroll Indicators */
+  .scroll-container {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .scroll-fade-left {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 1.5rem;
+    background: linear-gradient(to right, rgb(var(--background)) 0%, transparent 100%);
+    z-index: 10;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  .scroll-fade-right {
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 1.5rem;
+    background: linear-gradient(to left, rgb(var(--background)) 0%, transparent 100%);
+    z-index: 10;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  /* Hide scrollbar while maintaining functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Smooth scroll snap */
+  .scroll-snap-x {
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .scroll-snap-start {
+    scroll-snap-align: start;
   }
 
   /* Dark mode glassmorphism */

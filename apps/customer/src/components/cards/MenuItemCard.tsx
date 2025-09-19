@@ -278,7 +278,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
                           onClick={() => handleQuantityChange(localQuantity - 1)}
                           whileTap={{ scale: 0.9 }}
                           whileHover={{ scale: 1.1 }}
-                          className="w-8 h-8 btn-circle bg-surface border-2 border-border flex items-center justify-center hover:bg-interactive-hover hover:border-primary transition-all duration-200 shadow-sm"
+                          className="w-8 h-8 btn-circle bg-surface-secondary border-2 border-secondary flex items-center justify-center hover:bg-interactive-hover hover:border-primary transition-all duration-200 shadow-sm"
                         >
                           <Minus size={14} className="text-content-primary" />
                         </motion.button>
@@ -475,12 +475,12 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
                       onClick={() => handleQuantityChange(localQuantity - 1)}
                       whileTap={{ scale: 0.9 }}
                       whileHover={{ scale: 1.1 }}
-                      className="w-8 h-8 sm:w-10 sm:h-10 btn-circle bg-surface border-2 border-border flex items-center justify-center hover:bg-interactive-hover hover:border-primary transition-all duration-200 shadow-sm"
+                      className="w-8 h-8 sm:w-10 sm:h-10 btn-circle bg-surface border-2 border-default flex items-center justify-center hover:bg-interactive-hover hover:border-primary transition-all duration-200 shadow-sm"
                     >
                       <Minus size={14} className="sm:w-4 sm:h-4 text-content-primary" />
                     </motion.button>
 
-                    <span className="w-10 sm:w-12 text-center font-bold text-base sm:text-h3 text-content-primary px-2 sm:px-3 py-1.5 sm:py-2 bg-surface rounded-lg border border-border">
+                    <span className="w-10 sm:w-12 text-center font-bold text-base sm:text-h3 text-content-primary px-2 sm:px-3 py-1.5 sm:py-2 bg-surface-secondary rounded-lg border">
                       {localQuantity}
                     </span>
 

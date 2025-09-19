@@ -100,7 +100,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
           relative flex-shrink-0 px-4 py-2.5 rounded-full border transition-all duration-200 min-w-max
           ${category.isActive
             ? 'bg-primary text-primary-foreground border-primary shadow-md scale-105'
-            : 'bg-surface border-border hover:bg-surface-secondary hover:border-primary/50 hover:shadow-sm'
+            : 'bg-surface border-default hover:bg-surface-secondary hover:border-focus-subtle hover:shadow-sm'
           }
           ${className}
         `}
@@ -174,7 +174,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
         card-category p-6 text-center
         ${category.isActive
           ? 'bg-primary text-primary-foreground border-primary shadow-lg'
-          : 'bg-surface-secondary hover:bg-surface hover:border-primary'
+          : 'bg-surface-secondary hover:bg-surface hover:border-focus-subtle'
         }
         ${className}
       `}

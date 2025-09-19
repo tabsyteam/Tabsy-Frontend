@@ -149,7 +149,7 @@ export function TabsySplash({ restaurant, table }: TabsySplashProps) {
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-              className="w-16 h-16 mx-auto bg-surface rounded-full flex items-center justify-center border border-border-default"
+              className="w-16 h-16 mx-auto bg-surface rounded-full flex items-center justify-center border border-default"
             >
               {steps[currentStep] && React.createElement(steps[currentStep].icon, {
                 className: "w-8 h-8 text-primary"
@@ -229,7 +229,7 @@ export function TabsySplash({ restaurant, table }: TabsySplashProps) {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="bg-surface border border-border-default rounded-xl p-4 shadow-sm"
+            className="bg-surface border border-default rounded-xl p-4 shadow-sm"
           >
             <div className="flex items-center space-x-3">
               {restaurant.logo ? (
