@@ -4,6 +4,8 @@ import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@/components/theme/theme-provider'
 import { ApiProvider } from '@/components/providers/api-provider'
+import { CartProvider } from '@/hooks/useCart'
+import { NavigationProvider } from '@/components/providers/navigation-provider'
 
 // Create a client
 const queryClient = new QueryClient({
@@ -42,8 +44,12 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <QueryClientProvider client={queryClient}>
         <ApiProvider>
-          {children}
-          {/* Dev tools temporarily disabled due to type conflicts */}
+          <CartProvider>
+            <NavigationProvider>
+              {children}
+              {/* Dev tools temporarily disabled due to type conflicts */}
+            </NavigationProvider>
+          </CartProvider>
         </ApiProvider>
       </QueryClientProvider>
     </ThemeProvider>

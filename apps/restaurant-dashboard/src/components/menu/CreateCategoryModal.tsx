@@ -67,7 +67,6 @@ export function CreateCategoryModal({ open, onClose, restaurantId, onSuccess, ed
       } else {
         // Create new category
         const requestBody = {
-          menuId: restaurantId,
           name: data.name.trim(),
           displayOrder: data.displayOrder,
           active: true,

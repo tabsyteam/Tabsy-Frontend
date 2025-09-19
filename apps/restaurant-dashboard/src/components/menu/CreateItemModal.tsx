@@ -19,9 +19,34 @@ import {
   Tag,
   Plus,
   Minus,
+  Wheat,
+  Milk,
+  Shield,
+  Nut,
 } from 'lucide-react';
 import type { MenuCategory, MenuItem } from '@tabsy/shared-types';
-import { MenuItemStatus, DietaryType, AllergenType, SpiceLevel } from '@tabsy/shared-types';
+import { MenuItemStatus, DietaryType, AllergenType, AllergyInfo, SpiceLevel } from '@tabsy/shared-types';
+
+const getDietaryIcon = (dietaryType: DietaryType) => {
+  switch (dietaryType) {
+    case DietaryType.VEGETARIAN:
+    case DietaryType.VEGAN:
+      return <Leaf className="h-4 w-4 text-green-600" />
+    case DietaryType.GLUTEN_FREE:
+      return <Wheat className="h-4 w-4 text-amber-600" />
+    case DietaryType.DAIRY_FREE:
+      return <Milk className="h-4 w-4 text-blue-600" />
+    case DietaryType.NUT_FREE:
+      return <Nut className="h-4 w-4 text-orange-600" />
+    case DietaryType.HALAL:
+    case DietaryType.KOSHER:
+      return <Shield className="h-4 w-4 text-emerald-600" />
+    case DietaryType.KETO:
+      return <Zap className="h-4 w-4 text-purple-600" />
+    default:
+      return <Leaf className="h-4 w-4 text-green-600" />
+  }
+}
 
 interface CreateItemModalProps {
   open: boolean;
@@ -34,6 +59,16 @@ interface CreateItemModalProps {
   initialData?: MenuItem | null;
 }
 
+interface NutritionalInfo {
+  calories?: number;
+  protein?: number;
+  carbohydrates?: number;
+  fat?: number;
+  fiber?: number;
+  sugar?: number;
+  sodium?: number;
+}
+
 interface ItemFormData {
   name: string;
   description: string;
@@ -43,11 +78,12 @@ interface ItemFormData {
   active: boolean;
   dietaryTypes: DietaryType[];
   allergens: AllergenType[];
-  spiceLevel: SpiceLevel;
+  spicyLevel: SpiceLevel;
   calories: number;
   preparationTime: number;
   tags: string[];
   image?: string; // Changed from imageUrl to match backend
+  nutritionalInfo?: NutritionalInfo;
 }
 
 interface ImageUploadState {
@@ -77,8 +113,8 @@ export function CreateItemModal({
   editMode = false,
   initialData,
 }: CreateItemModalProps) {
-  // Utility function to convert backend allergyInfo object to frontend allergens array
-  const convertAllergyInfoToAllergens = (allergyInfo: any): AllergenType[] => {
+  // Utility functions to convert between backend AllergyInfo and frontend AllergenType array
+  const convertAllergyInfoToAllergens = (allergyInfo: AllergyInfo): AllergenType[] => {
     if (!allergyInfo) return [];
 
     const allergens: AllergenType[] = [];
@@ -90,28 +126,59 @@ export function CreateItemModal({
       allergens.push(AllergenType.FISH);
       allergens.push(AllergenType.SHELLFISH);
     }
-    if (allergyInfo.containsSoy) allergens.push(AllergenType.SOY);
+    // Note: SOY and SESAME are not in the backend AllergyInfo structure
 
     return allergens;
+  };
+
+  const convertAllergensToAllergyInfo = (allergens: AllergenType[]): AllergyInfo => {
+    const allergyInfo: AllergyInfo = {
+      containsEggs: allergens.includes(AllergenType.EGGS),
+      containsNuts: allergens.includes(AllergenType.NUTS),
+      containsDairy: allergens.includes(AllergenType.DAIRY),
+      containsGluten: allergens.includes(AllergenType.GLUTEN),
+      containsSeafood: allergens.includes(AllergenType.FISH) || allergens.includes(AllergenType.SHELLFISH),
+      other: []
+    };
+
+    // Handle allergens not mapped to specific boolean fields
+    const otherAllergens = allergens.filter(allergen =>
+      ![AllergenType.EGGS, AllergenType.NUTS, AllergenType.DAIRY, AllergenType.GLUTEN, AllergenType.FISH, AllergenType.SHELLFISH].includes(allergen)
+    );
+
+    if (otherAllergens.length > 0) {
+      allergyInfo.other = otherAllergens.map(a => a.toString());
+    }
+
+    return allergyInfo;
   };
 
   const [formData, setFormData] = useState<ItemFormData>({
     name: initialData?.name || '',
     description: initialData?.description || '',
-    basePrice: initialData ? (initialData.basePrice || initialData.price || 0) / 100 : 0,
+    basePrice: initialData ? (initialData.basePrice || initialData.price || 0) : 0,
     categoryId: initialData?.categoryId || selectedCategory?.id || '',
     displayOrder: initialData?.displayOrder || 0,
     active: (initialData as any)?.active ?? true,
     dietaryTypes: (initialData as any)?.dietaryIndicators || initialData?.dietaryTypes || [],
     allergens:
-      convertAllergyInfoToAllergens((initialData as any)?.allergyInfo) ||
-      initialData?.allergens ||
-      [],
-    spiceLevel: (initialData as any)?.spicyLevel ?? initialData?.spiceLevel ?? SpiceLevel.NONE,
-    calories: initialData?.calories || 0,
+      initialData?.allergyInfo
+        ? convertAllergyInfoToAllergens(initialData.allergyInfo)
+        : [],
+    spicyLevel: (initialData as any)?.spicyLevel ?? initialData?.spicyLevel ?? SpiceLevel.NONE,
+    calories: initialData?.calories || (initialData as any)?.nutritionalInfo?.calories || 0,
     preparationTime: (initialData as any)?.preparationTime || 15,
     tags: (initialData as any)?.tags || [],
     image: initialData?.image || initialData?.imageUrl, // Handle both field names
+    nutritionalInfo: (initialData as any)?.nutritionalInfo || {
+      calories: initialData?.calories || 0,
+      protein: 0,
+      carbohydrates: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      sodium: 0,
+    },
   });
 
   const [errors, setErrors] = useState<ItemFormErrors>({});
@@ -128,20 +195,29 @@ export function CreateItemModal({
       setFormData({
         name: initialData?.name || '',
         description: initialData?.description || '',
-        basePrice: initialData ? (initialData.basePrice || initialData.price || 0) / 100 : 0,
+        basePrice: initialData ? (initialData.basePrice || initialData.price || 0) : 0,
         categoryId: initialData?.categoryId || selectedCategory?.id || '',
         displayOrder: initialData?.displayOrder || 0,
         active: (initialData as any)?.active ?? true,
         dietaryTypes: (initialData as any)?.dietaryIndicators || initialData?.dietaryTypes || [],
         allergens:
           convertAllergyInfoToAllergens((initialData as any)?.allergyInfo) ||
-          initialData?.allergens ||
+          initialData?.allergyInfo ||
           [],
-        spiceLevel: (initialData as any)?.spicyLevel ?? initialData?.spiceLevel ?? SpiceLevel.NONE,
-        calories: initialData?.calories || 0,
+        spicyLevel: (initialData as any)?.spicyLevel ?? initialData?.spicyLevel ?? SpiceLevel.NONE,
+        calories: initialData?.calories || (initialData as any)?.nutritionalInfo?.calories || 0,
         preparationTime: (initialData as any)?.preparationTime || 15,
         tags: (initialData as any)?.tags || [],
         image: initialData?.image || initialData?.imageUrl, // Handle both field names
+        nutritionalInfo: (initialData as any)?.nutritionalInfo || {
+          calories: initialData?.calories || 0,
+          protein: 0,
+          carbohydrates: 0,
+          fat: 0,
+          fiber: 0,
+          sugar: 0,
+          sodium: 0,
+        },
       });
       setErrors({});
       // Reset image upload state
@@ -166,62 +242,47 @@ export function CreateItemModal({
           throw error;
         }
       }
-      // Convert allergens array to allergyInfo object for backend compatibility
-      const allergyInfo =
-        data.allergens.length > 0
-          ? {
-              containsNuts: data.allergens.includes(AllergenType.NUTS),
-              containsDairy: data.allergens.includes(AllergenType.DAIRY),
-              containsGluten: data.allergens.includes(AllergenType.GLUTEN),
-              containsEggs: data.allergens.includes(AllergenType.EGGS),
-              containsSeafood:
-                data.allergens.includes(AllergenType.SHELLFISH) ||
-                data.allergens.includes(AllergenType.FISH),
-              containsSoy: data.allergens.includes(AllergenType.SOY),
-              other: data.allergens.filter(
-                (a) =>
-                  ![
-                    AllergenType.NUTS,
-                    AllergenType.DAIRY,
-                    AllergenType.GLUTEN,
-                    AllergenType.EGGS,
-                    AllergenType.SHELLFISH,
-                    AllergenType.FISH,
-                    AllergenType.SOY,
-                  ].includes(a),
-              ),
-            }
-          : null;
+      // Backend now uses allergens array directly, no conversion needed
 
       if (editMode && initialData) {
         // Update existing item - include only fields that exist in current database schema
         const updateData = {
           name: data.name.trim(),
           description: data.description.trim(),
-          price: Math.round(data.basePrice * 100), // Convert to cents
-          active: data.active,
+          basePrice: typeof data.basePrice === 'string' ? parseFloat(data.basePrice) : Number(data.basePrice), // Ensure it's a number
+          status: data.active ? MenuItemStatus.AVAILABLE : MenuItemStatus.UNAVAILABLE,
           displayOrder: data.displayOrder,
-          dietaryIndicators: data.dietaryTypes, // Backend expects dietaryIndicators
-          allergyInfo: allergyInfo, // Backend expects allergyInfo object
-          spicyLevel: data.spiceLevel, // Backend expects spicyLevel
-          image: imageUrl, // Backend expects 'image' not 'imageUrl'
+          dietaryTypes: data.dietaryTypes, // Use dietaryTypes to match shared types
+          allergyInfo: convertAllergensToAllergyInfo(data.allergens), // Convert to backend format
+          spicyLevel: data.spicyLevel, // Match backend schema
+          image: imageUrl,
+          preparationTime: data.preparationTime || 15,
+          nutritionalInfo: data.nutritionalInfo && Object.values(data.nutritionalInfo).some(v => v !== null && v !== undefined && v !== 0)
+            ? data.nutritionalInfo
+            : undefined,
+          tags: data.tags || [],
         };
+        console.log('Form data basePrice type:', typeof data.basePrice, 'value:', data.basePrice);
         console.log('Updating item with enhanced data:', updateData);
         return await tabsyClient.menu.updateItem(restaurantId, initialData.id, updateData as any);
       } else {
         // Create new item - include only fields that exist in current database schema
-        const priceInCents = Math.round(data.basePrice * 100);
         const createData = {
           name: data.name.trim(),
           description: data.description.trim(),
-          price: priceInCents, // Convert to cents
+          basePrice: typeof data.basePrice === 'string' ? parseFloat(data.basePrice) : Number(data.basePrice), // Ensure it's a number
           categoryId: data.categoryId,
           displayOrder: data.displayOrder,
-          active: data.active,
-          dietaryIndicators: data.dietaryTypes, // Backend expects dietaryIndicators
-          allergyInfo: allergyInfo, // Backend expects allergyInfo object
-          spicyLevel: data.spiceLevel, // Backend expects spicyLevel
-          image: imageUrl, // Backend expects 'image' not 'imageUrl'
+          status: data.active ? MenuItemStatus.AVAILABLE : MenuItemStatus.UNAVAILABLE,
+          dietaryTypes: data.dietaryTypes, // Use dietaryTypes to match shared types
+          allergyInfo: convertAllergensToAllergyInfo(data.allergens), // Convert to backend format
+          spicyLevel: data.spicyLevel, // Match backend schema
+          image: imageUrl,
+          preparationTime: data.preparationTime || 15,
+          nutritionalInfo: data.nutritionalInfo && Object.values(data.nutritionalInfo).some(v => v !== null && v !== undefined && v !== 0)
+            ? data.nutritionalInfo
+            : undefined,
+          tags: data.tags || [],
         };
         console.log('Creating item with enhanced data:', createData);
         return await tabsyClient.menu.createItem(restaurantId, createData as any);
@@ -237,11 +298,20 @@ export function CreateItemModal({
         active: true,
         dietaryTypes: [],
         allergens: [],
-        spiceLevel: SpiceLevel.NONE,
+        spicyLevel: SpiceLevel.NONE,
         calories: 0,
         preparationTime: 15,
         tags: [],
         image: undefined,
+        nutritionalInfo: {
+          calories: 0,
+          protein: 0,
+          carbohydrates: 0,
+          fat: 0,
+          fiber: 0,
+          sugar: 0,
+          sodium: 0,
+        },
       });
       setErrors({});
       onSuccess();
@@ -308,11 +378,20 @@ export function CreateItemModal({
         active: true,
         dietaryTypes: [],
         allergens: [],
-        spiceLevel: SpiceLevel.NONE,
+        spicyLevel: SpiceLevel.NONE,
         calories: 0,
         preparationTime: 15,
         tags: [],
         image: undefined,
+        nutritionalInfo: {
+          calories: 0,
+          protein: 0,
+          carbohydrates: 0,
+          fat: 0,
+          fiber: 0,
+          sugar: 0,
+          sodium: 0,
+        },
       });
       setErrors({});
       onClose();
@@ -335,12 +414,40 @@ export function CreateItemModal({
     const isSelected = currentTypes.includes(dietaryType);
 
     if (isSelected) {
-      handleInputChange(
-        'dietaryTypes',
-        currentTypes.filter((type) => type !== dietaryType),
-      );
+      // Check if we're trying to remove DAIRY_FREE while VEGAN is selected
+      if (dietaryType === DietaryType.DAIRY_FREE && currentTypes.includes(DietaryType.VEGAN)) {
+        // Don't allow removing DAIRY_FREE when VEGAN is selected (since vegan implies dairy-free)
+        return;
+      }
+
+      // Remove the selected dietary type
+      let newTypes = currentTypes.filter((type) => type !== dietaryType);
+
+      // If removing VEGAN, also remove the auto-added DAIRY_FREE (unless manually selected)
+      if (dietaryType === DietaryType.VEGAN) {
+        // Remove DAIRY_FREE only if it was auto-added by vegan selection
+        // We can't easily track this, so we'll leave DAIRY_FREE as-is for user choice
+      }
+
+      handleInputChange('dietaryTypes', newTypes);
     } else {
-      handleInputChange('dietaryTypes', [...currentTypes, dietaryType]);
+      let newTypes = [...currentTypes, dietaryType];
+
+      // Handle mutual exclusivity and implications for Vegan/Vegetarian
+      // Note: Halal and Kosher are certification standards, not diet types, so they can coexist with Vegan/Vegetarian
+      if (dietaryType === DietaryType.VEGAN) {
+        // If selecting VEGAN, remove VEGETARIAN (since vegan is a stricter form of vegetarian)
+        newTypes = newTypes.filter((type) => type !== DietaryType.VEGETARIAN);
+        // VEGAN automatically implies DAIRY_FREE, so add it if not already present
+        if (!newTypes.includes(DietaryType.DAIRY_FREE)) {
+          newTypes.push(DietaryType.DAIRY_FREE);
+        }
+      } else if (dietaryType === DietaryType.VEGETARIAN) {
+        // If selecting VEGETARIAN, remove VEGAN (they are mutually exclusive choices)
+        newTypes = newTypes.filter((type) => type !== DietaryType.VEGAN);
+      }
+
+      handleInputChange('dietaryTypes', newTypes);
     }
   };
 
@@ -369,6 +476,16 @@ export function CreateItemModal({
       'tags',
       formData.tags.filter((tag) => tag !== tagToRemove),
     );
+  };
+
+  const handleNutritionalInfoChange = (field: keyof NutritionalInfo, value: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      nutritionalInfo: {
+        ...prev.nutritionalInfo,
+        [field]: value,
+      },
+    }));
   };
 
   // Image upload functionality
@@ -817,7 +934,7 @@ export function CreateItemModal({
                             disabled={createItemMutation.isPending}
                           />
                           <div className="flex items-center space-x-2">
-                            <Leaf className="h-4 w-4 text-green-600" />
+                            {getDietaryIcon(dietaryType)}
                             <span className="text-sm font-medium capitalize">
                               {dietaryType.toLowerCase().replace('_', ' ')}
                             </span>
@@ -881,19 +998,19 @@ export function CreateItemModal({
                             <label
                               key={numericValue}
                               className={`flex flex-col items-center p-3 rounded-lg border cursor-pointer transition-all ${
-                                formData.spiceLevel === numericValue
+                                formData.spicyLevel === numericValue
                                   ? 'border-primary bg-primary/10 text-primary'
                                   : 'border-border hover:bg-muted/20'
                               }`}
                             >
                               <input
                                 type="radio"
-                                name="spiceLevel"
+                                name="spicyLevel"
                                 value={numericValue}
-                                checked={formData.spiceLevel === numericValue}
+                                checked={formData.spicyLevel === numericValue}
                                 onChange={(e) =>
                                   handleInputChange(
-                                    'spiceLevel',
+                                    'spicyLevel',
                                     parseInt(e.target.value) as SpiceLevel,
                                   )
                                 }
@@ -939,97 +1056,226 @@ export function CreateItemModal({
                     </p>
                   </div>
 
-                  {/* Additional Details */}
-                  <div className="grid grid-cols-2 gap-4">
-                    {/* Preparation Time */}
-                    <div className="form-group">
-                      <label
-                        htmlFor="preparationTime"
-                        className="block text-sm font-semibold text-foreground mb-3"
-                      >
-                        Prep Time (minutes)
-                      </label>
-                      <div className="relative">
-                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-blue-100 rounded-lg">
-                          <Clock className="h-4 w-4 text-blue-600" />
-                        </div>
-                        <input
-                          id="preparationTime"
-                          type="number"
-                          min="1"
-                          max="240"
-                          value={formData.preparationTime}
-                          onChange={(e) =>
-                            handleInputChange('preparationTime', parseInt(e.target.value) || 15)
-                          }
-                          placeholder="15"
-                          className={`form-input pl-16 ${
-                            errors.preparationTime
-                              ? 'border-destructive focus:border-destructive focus:ring-destructive/20'
-                              : ''
-                          }`}
-                          disabled={createItemMutation.isPending}
-                        />
+                  {/* Preparation Time */}
+                  <div className="form-group">
+                    <label
+                      htmlFor="preparationTime"
+                      className="block text-sm font-semibold text-foreground mb-3"
+                    >
+                      Prep Time (minutes)
+                    </label>
+                    <div className="relative">
+                      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-blue-100 rounded-lg">
+                        <Clock className="h-4 w-4 text-blue-600" />
                       </div>
-                      {errors.preparationTime ? (
-                        <div className="flex items-center mt-2 text-sm text-destructive">
-                          <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
-                          <span>{errors.preparationTime}</span>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground mt-2 flex items-start">
-                          <span className="inline-block w-1 h-1 bg-blue-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                          Kitchen planning estimate
-                        </p>
-                      )}
+                      <input
+                        id="preparationTime"
+                        type="number"
+                        min="1"
+                        max="240"
+                        value={formData.preparationTime}
+                        onChange={(e) =>
+                          handleInputChange('preparationTime', parseInt(e.target.value) || 15)
+                        }
+                        placeholder="15"
+                        className={`form-input pl-16 ${
+                          errors.preparationTime
+                            ? 'border-destructive focus:border-destructive focus:ring-destructive/20'
+                            : ''
+                        }`}
+                        disabled={createItemMutation.isPending}
+                      />
                     </div>
+                    {errors.preparationTime ? (
+                      <div className="flex items-center mt-2 text-sm text-destructive">
+                        <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span>{errors.preparationTime}</span>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-2 flex items-start">
+                        <span className="inline-block w-1 h-1 bg-blue-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                        Kitchen planning estimate
+                      </p>
+                    )}
+                  </div>
 
-                    {/* Calories */}
-                    <div className="form-group">
-                      <label
-                        htmlFor="calories"
-                        className="block text-sm font-semibold text-foreground mb-3"
-                      >
-                        Calories
-                        <span className="text-muted-foreground font-normal ml-1">(Optional)</span>
-                      </label>
-                      <div className="relative">
-                        <div className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-green-100 rounded-lg">
-                          <Zap className="h-4 w-4 text-green-600" />
+                  {/* Nutritional Information */}
+                  <div className="form-group">
+                    <label className="block text-sm font-semibold text-foreground mb-3">
+                      Nutritional Information
+                      <span className="text-muted-foreground font-normal ml-1">(Optional)</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Calories */}
+                      <div>
+                        <label htmlFor="nutrition-calories" className="block text-xs font-medium text-muted-foreground mb-2">
+                          Calories
+                        </label>
+                        <div className="relative">
+                          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 p-1 bg-green-100 rounded">
+                            <Zap className="h-3 w-3 text-green-600" />
+                          </div>
+                          <input
+                            id="nutrition-calories"
+                            type="number"
+                            min="0"
+                            max="5000"
+                            value={formData.nutritionalInfo?.calories || ''}
+                            onChange={(e) =>
+                              handleNutritionalInfoChange(
+                                'calories',
+                                e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                              )
+                            }
+                            placeholder="0"
+                            className="form-input pl-10 text-sm h-10"
+                            disabled={createItemMutation.isPending}
+                          />
                         </div>
+                      </div>
+
+                      {/* Protein */}
+                      <div>
+                        <label htmlFor="nutrition-protein" className="block text-xs font-medium text-muted-foreground mb-2">
+                          Protein (g)
+                        </label>
                         <input
-                          id="calories"
+                          id="nutrition-protein"
                           type="number"
                           min="0"
-                          max="5000"
-                          value={formData.calories || ''}
+                          max="200"
+                          value={formData.nutritionalInfo?.protein || ''}
                           onChange={(e) =>
-                            handleInputChange(
-                              'calories',
-                              e.target.value === '' ? 0 : parseInt(e.target.value) || 0,
+                            handleNutritionalInfoChange(
+                              'protein',
+                              e.target.value === '' ? 0 : parseInt(e.target.value) || 0
                             )
                           }
-                          placeholder="Optional"
-                          className={`form-input pl-16 ${
-                            errors.calories
-                              ? 'border-destructive focus:border-destructive focus:ring-destructive/20'
-                              : ''
-                          }`}
+                          placeholder="0"
+                          className="form-input text-sm h-10"
                           disabled={createItemMutation.isPending}
                         />
                       </div>
-                      {errors.calories ? (
-                        <div className="flex items-center mt-2 text-sm text-destructive">
-                          <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
-                          <span>{errors.calories}</span>
-                        </div>
-                      ) : (
-                        <p className="text-xs text-muted-foreground mt-2 flex items-start">
-                          <span className="inline-block w-1 h-1 bg-green-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
-                          Nutritional information
-                        </p>
-                      )}
+
+                      {/* Carbohydrates */}
+                      <div>
+                        <label htmlFor="nutrition-carbs" className="block text-xs font-medium text-muted-foreground mb-2">
+                          Carbs (g)
+                        </label>
+                        <input
+                          id="nutrition-carbs"
+                          type="number"
+                          min="0"
+                          max="500"
+                          value={formData.nutritionalInfo?.carbohydrates || ''}
+                          onChange={(e) =>
+                            handleNutritionalInfoChange(
+                              'carbohydrates',
+                              e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                            )
+                          }
+                          placeholder="0"
+                          className="form-input text-sm h-10"
+                          disabled={createItemMutation.isPending}
+                        />
+                      </div>
+
+                      {/* Fat */}
+                      <div>
+                        <label htmlFor="nutrition-fat" className="block text-xs font-medium text-muted-foreground mb-2">
+                          Fat (g)
+                        </label>
+                        <input
+                          id="nutrition-fat"
+                          type="number"
+                          min="0"
+                          max="200"
+                          value={formData.nutritionalInfo?.fat || ''}
+                          onChange={(e) =>
+                            handleNutritionalInfoChange(
+                              'fat',
+                              e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                            )
+                          }
+                          placeholder="0"
+                          className="form-input text-sm h-10"
+                          disabled={createItemMutation.isPending}
+                        />
+                      </div>
+
+                      {/* Fiber */}
+                      <div>
+                        <label htmlFor="nutrition-fiber" className="block text-xs font-medium text-muted-foreground mb-2">
+                          Fiber (g)
+                        </label>
+                        <input
+                          id="nutrition-fiber"
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={formData.nutritionalInfo?.fiber || ''}
+                          onChange={(e) =>
+                            handleNutritionalInfoChange(
+                              'fiber',
+                              e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                            )
+                          }
+                          placeholder="0"
+                          className="form-input text-sm h-10"
+                          disabled={createItemMutation.isPending}
+                        />
+                      </div>
+
+                      {/* Sugar */}
+                      <div>
+                        <label htmlFor="nutrition-sugar" className="block text-xs font-medium text-muted-foreground mb-2">
+                          Sugar (g)
+                        </label>
+                        <input
+                          id="nutrition-sugar"
+                          type="number"
+                          min="0"
+                          max="200"
+                          value={formData.nutritionalInfo?.sugar || ''}
+                          onChange={(e) =>
+                            handleNutritionalInfoChange(
+                              'sugar',
+                              e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                            )
+                          }
+                          placeholder="0"
+                          className="form-input text-sm h-10"
+                          disabled={createItemMutation.isPending}
+                        />
+                      </div>
+
+                      {/* Sodium */}
+                      <div className="col-span-2">
+                        <label htmlFor="nutrition-sodium" className="block text-xs font-medium text-muted-foreground mb-2">
+                          Sodium (mg)
+                        </label>
+                        <input
+                          id="nutrition-sodium"
+                          type="number"
+                          min="0"
+                          max="10000"
+                          value={formData.nutritionalInfo?.sodium || ''}
+                          onChange={(e) =>
+                            handleNutritionalInfoChange(
+                              'sodium',
+                              e.target.value === '' ? 0 : parseInt(e.target.value) || 0
+                            )
+                          }
+                          placeholder="0"
+                          className="form-input text-sm h-10"
+                          disabled={createItemMutation.isPending}
+                        />
+                      </div>
                     </div>
+                    <p className="text-xs text-muted-foreground mt-2 flex items-start">
+                      <span className="inline-block w-1 h-1 bg-green-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                      Provide detailed nutritional information to help customers make informed choices
+                    </p>
                   </div>
 
                   {/* Tags */}

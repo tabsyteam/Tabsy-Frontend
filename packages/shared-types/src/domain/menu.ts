@@ -35,6 +35,15 @@ export enum AllergenType {
   SESAME = 'SESAME'
 }
 
+export interface AllergyInfo {
+  containsEggs: boolean
+  containsNuts: boolean
+  containsDairy: boolean
+  containsGluten: boolean
+  containsSeafood: boolean
+  other: string[]
+}
+
 export interface Menu {
   id: string
   restaurantId: string
@@ -73,8 +82,8 @@ export interface MenuItem {
   image?: string // Backend returns 'image' field, not 'imageUrl'
   imageUrl?: string // Keep for backward compatibility during transition
   dietaryTypes: DietaryType[]
-  allergens: AllergenType[]
-  spiceLevel?: SpiceLevel
+  allergyInfo?: AllergyInfo
+  spicyLevel?: SpiceLevel
   calories?: number
   preparationTime: number // in minutes
   nutritionalInfo?: NutritionalInfo
@@ -167,8 +176,8 @@ export interface CreateMenuItemRequest {
   status?: MenuItemStatus
   image?: string // Backend expects 'image' not 'imageUrl'
   dietaryTypes?: DietaryType[]
-  allergens?: AllergenType[]
-  spiceLevel?: SpiceLevel
+  allergyInfo?: AllergyInfo
+  spicyLevel?: SpiceLevel
   calories?: number
   preparationTime: number
   nutritionalInfo?: NutritionalInfo
@@ -183,8 +192,8 @@ export interface UpdateMenuItemRequest {
   status?: MenuItemStatus
   image?: string // Backend expects 'image' not 'imageUrl'
   dietaryTypes?: DietaryType[]
-  allergens?: AllergenType[]
-  spiceLevel?: SpiceLevel
+  allergyInfo?: AllergyInfo
+  spicyLevel?: SpiceLevel
   calories?: number
   preparationTime?: number
   nutritionalInfo?: NutritionalInfo

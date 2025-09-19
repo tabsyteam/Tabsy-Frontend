@@ -16,8 +16,8 @@
   --secondary-dark: 102 139 61; /* Dark sage */
   --secondary-foreground: 255 255 255;
 
-  /* Accent Colors - Warm Amber for highlights */
-  --accent: 251 191 36; /* #FBBF24 - Warm amber */
+  /* Accent Colors - Warm Golden Amber for highlights */
+  --accent: 251 191 36; /* #FBBF24 - Warm golden amber */
   --accent-hover: 245 158 11; /* #F59E0B - Darker amber */
   --accent-active: 217 119 6; /* #D97706 - Active amber */
   --accent-light: 255 251 235; /* #FFFBEB - Light amber tint */

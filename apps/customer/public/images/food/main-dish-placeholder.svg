@@ -1,0 +1,65 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff8e1;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffecb3;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="plate" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5f5f5;stop-opacity:1" />
+    </radialGradient>
+    <linearGradient id="steak" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8d4004;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#bf360c;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5d4037;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="300" fill="url(#bg)"/>
+
+  <!-- Plate shadow -->
+  <ellipse cx="200" cy="220" rx="130" ry="15" fill="#000000" opacity="0.1"/>
+
+  <!-- Main plate -->
+  <ellipse cx="200" cy="210" rx="125" ry="125" fill="url(#plate)" stroke="#e0e0e0" stroke-width="2"/>
+
+  <!-- Main protein (steak) -->
+  <ellipse cx="200" cy="180" rx="40" ry="25" fill="url(#steak)"/>
+  <ellipse cx="195" cy="175" rx="35" ry="20" fill="#a0522d" opacity="0.8"/>
+
+  <!-- Grill marks -->
+  <line x1="170" y1="170" x2="230" y2="185" stroke="#3e2723" stroke-width="2" opacity="0.6"/>
+  <line x1="170" y1="180" x2="230" y2="195" stroke="#3e2723" stroke-width="2" opacity="0.6"/>
+
+  <!-- Vegetables -->
+  <!-- Carrots -->
+  <ellipse cx="160" cy="200" rx="12" ry="4" fill="#ff9800" transform="rotate(45 160 200)"/>
+  <ellipse cx="170" cy="210" rx="10" ry="3" fill="#ff9800" transform="rotate(45 170 210)"/>
+
+  <!-- Broccoli -->
+  <circle cx="250" cy="190" r="8" fill="#4caf50"/>
+  <circle cx="245" cy="185" r="6" fill="#66bb6a"/>
+  <circle cx="255" cy="185" r="5" fill="#81c784"/>
+  <rect x="248" y="195" width="4" height="8" fill="#2e7d32"/>
+
+  <!-- Potatoes -->
+  <ellipse cx="180" cy="220" rx="15" ry="10" fill="#8d6e63"/>
+  <ellipse cx="220" cy="215" rx="12" ry="8" fill="#a1887f"/>
+
+  <!-- Herb garnish -->
+  <path d="M190 150 Q200 140 210 150 L205 155 Q200 160 195 155 Z" fill="#388e3c"/>
+  <path d="M205 145 Q210 135 215 145 L212 150 Q210 155 208 150 Z" fill="#4caf50"/>
+
+  <!-- Sauce drizzle -->
+  <path d="M160 190 Q170 185 180 190 Q190 195 200 190" stroke="#8bc34a" stroke-width="3" fill="none" opacity="0.7"/>
+
+  <!-- Steam -->
+  <g opacity="0.5">
+    <path d="M180 130 Q185 120 180 110" stroke="#bdbdbd" stroke-width="2" fill="none"/>
+    <path d="M200 125 Q205 115 200 105" stroke="#bdbdbd" stroke-width="2" fill="none"/>
+    <path d="M220 130 Q225 120 220 110" stroke="#bdbdbd" stroke-width="2" fill="none"/>
+  </g>
+
+  <text x="200" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#f57c00">Main Dishes</text>
+</svg>

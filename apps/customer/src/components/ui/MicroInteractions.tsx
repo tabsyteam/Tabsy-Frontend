@@ -277,32 +277,52 @@ interface AnimatedCounterProps {
 }
 
 export function AnimatedCounter({ value, className = '', duration = 0.5 }: AnimatedCounterProps) {
-  const [displayValue, setDisplayValue] = useState(0)
+  const [displayValue, setDisplayValue] = useState(value)
+  const [previousValue, setPreviousValue] = useState(value)
 
   useEffect(() => {
-    const increment = value / (duration * 60) // 60 FPS
-    let current = 0
+    // If this is the first render or value hasn't changed, set immediately
+    if (previousValue === value) {
+      setDisplayValue(value)
+      return
+    }
 
-    const timer = setInterval(() => {
-      current += increment
-      if (current >= value) {
-        setDisplayValue(value)
-        clearInterval(timer)
-      } else {
-        setDisplayValue(Math.floor(current))
-      }
-    }, 1000 / 60)
+    const startValue = previousValue
+    const endValue = value
+    const difference = endValue - startValue
 
-    return () => clearInterval(timer)
-  }, [value, duration])
+    // If difference is small, animate quickly or skip animation
+    if (Math.abs(difference) <= 1) {
+      const increment = difference / (duration * 30) // 30 FPS for small changes
+      let current = startValue
+
+      const timer = setInterval(() => {
+        current += increment
+        if ((difference > 0 && current >= endValue) || (difference < 0 && current <= endValue)) {
+          setDisplayValue(endValue)
+          clearInterval(timer)
+        } else {
+          setDisplayValue(Math.round(current))
+        }
+      }, 1000 / 30)
+
+      setPreviousValue(value)
+      return () => clearInterval(timer)
+    } else {
+      // For larger changes, set immediately
+      setDisplayValue(value)
+      setPreviousValue(value)
+      return
+    }
+  }, [value, duration, previousValue])
 
   return (
     <motion.span
       className={className}
-      key={value}
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      key={`${value}-${previousValue}`}
+      initial={{ scale: 1 }}
+      animate={{ scale: [1, 1.1, 1] }}
+      transition={{ duration: 0.2, times: [0, 0.5, 1] }}
     >
       {displayValue}
     </motion.span>

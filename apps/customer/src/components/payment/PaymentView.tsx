@@ -257,7 +257,7 @@ export function PaymentView() {
   const tipOptions = getTipOptions()
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header */}
       <div className="bg-surface shadow-sm border-b sticky top-0 z-10 backdrop-blur-sm bg-surface/95">
         <div className="max-w-4xl mx-auto px-4 py-4">

@@ -1,0 +1,52 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8f9fa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e3f2fd;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="plate" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5f5f5;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="300" fill="url(#bg)"/>
+
+  <!-- Main plate -->
+  <ellipse cx="200" cy="180" rx="120" ry="120" fill="url(#plate)" stroke="#e0e0e0" stroke-width="2"/>
+
+  <!-- Appetizer items -->
+  <!-- Shrimp -->
+  <ellipse cx="170" cy="150" rx="15" ry="8" fill="#ff7043" transform="rotate(-20 170 150)"/>
+  <circle cx="165" cy="145" r="3" fill="#d84315"/>
+
+  <!-- Bruschetta -->
+  <rect x="190" y="140" width="25" height="15" rx="3" fill="#8d6e63"/>
+  <rect x="192" y="138" width="21" height="4" fill="#c8e6c9"/>
+  <circle cx="200" cy="135" r="2" fill="#f44336"/>
+
+  <!-- Olives -->
+  <circle cx="220" cy="160" r="6" fill="#2e7d32"/>
+  <circle cx="215" cy="170" r="5" fill="#388e3c"/>
+  <circle cx="225" cy="175" r="5" fill="#43a047"/>
+
+  <!-- Cheese cubes -->
+  <rect x="160" y="180" width="12" height="12" fill="#fff3e0"/>
+  <rect x="175" y="185" width="10" height="10" fill="#ffe0b2"/>
+
+  <!-- Crackers -->
+  <ellipse cx="210" cy="190" rx="18" ry="12" fill="#d7ccc8"/>
+  <ellipse cx="230" cy="185" rx="15" ry="10" fill="#bcaaa4"/>
+
+  <!-- Garnish -->
+  <path d="M180 120 Q190 110 200 120 Q190 130 180 120" fill="#4caf50"/>
+  <path d="M200 125 Q210 115 220 125 Q210 135 200 125" fill="#66bb6a"/>
+
+  <!-- Decorative dots on crackers -->
+  <circle cx="205" cy="188" r="1" fill="#8d6e63"/>
+  <circle cx="212" cy="190" r="1" fill="#8d6e63"/>
+  <circle cx="208" cy="194" r="1" fill="#8d6e63"/>
+
+  <text x="200" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#1565c0">Appetizers</text>
+</svg>

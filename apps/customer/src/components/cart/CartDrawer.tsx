@@ -17,69 +17,63 @@ import {
   Utensils
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { DietaryType, AllergenType } from '@tabsy/shared-types'
+import { DietaryType, AllergyInfo } from '@tabsy/shared-types'
 import { haptics } from '@/lib/haptics'
+import { useCart } from '@/hooks/useCart'
 
-interface CartItem {
-  id: string
-  name: string
-  description: string
-  basePrice: number
-  imageUrl?: string
-  categoryName: string
-  quantity: number
-  customizations?: Record<string, any>
-  allergens: AllergenType[]
-  dietaryTypes: DietaryType[]
-}
 
 interface CartDrawerProps {
   isOpen: boolean
   onClose: () => void
-  cart: CartItem[]
-  onUpdateCart: (cart: CartItem[]) => void
 }
 
-export function CartDrawer({ isOpen, onClose, cart, onUpdateCart }: CartDrawerProps) {
+const getAllergensList = (allergyInfo?: AllergyInfo): string[] => {
+  if (!allergyInfo) return []
+
+  const allergens: string[] = []
+
+  if (allergyInfo.containsEggs) allergens.push('Eggs')
+  if (allergyInfo.containsNuts) allergens.push('Nuts')
+  if (allergyInfo.containsDairy) allergens.push('Dairy')
+  if (allergyInfo.containsGluten) allergens.push('Gluten')
+  if (allergyInfo.containsSeafood) allergens.push('Seafood')
+  if (allergyInfo.other && allergyInfo.other.length > 0) {
+    allergens.push(...allergyInfo.other)
+  }
+
+  return allergens
+}
+
+export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { cart, cartCount, cartTotal, updateQuantity, removeFromCart, clearCart } = useCart()
   const [specialInstructions, setSpecialInstructions] = useState('')
 
   const restaurantId = searchParams.get('restaurant')
   const tableId = searchParams.get('table')
 
-  const updateQuantity = (itemId: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeItem(itemId)
-      return
-    }
-
+  const handleUpdateQuantity = (cartItemId: string, newQuantity: number) => {
     haptics.buttonPress()
-    const updatedCart = cart.map(item =>
-      item.id === itemId ? { ...item, quantity: newQuantity } : item
-    )
-    onUpdateCart(updatedCart)
+    updateQuantity(cartItemId, newQuantity)
   }
 
-  const removeItem = (itemId: string) => {
+  const handleRemoveItem = (cartItemId: string) => {
     haptics.removeFromCart()
-    const updatedCart = cart.filter(item => item.id !== itemId)
-    onUpdateCart(updatedCart)
-    toast.success('Item removed from cart')
+    removeFromCart(cartItemId)
   }
 
-  const clearCart = () => {
+  const handleClearCart = () => {
     haptics.warning()
-    onUpdateCart([])
-    toast.success('Cart cleared')
+    clearCart()
   }
 
   const getTotalPrice = (): number => {
-    return cart.reduce((total, item) => total + (Number(item.basePrice) * item.quantity), 0)
+    return cartTotal
   }
 
   const getTotalItems = (): number => {
-    return cart.reduce((total, item) => total + item.quantity, 0)
+    return cartCount
   }
 
   const handleCheckout = () => {
@@ -91,8 +85,7 @@ export function CartDrawer({ isOpen, onClose, cart, onUpdateCart }: CartDrawerPr
 
     haptics.buttonPressImportant()
 
-    // Store cart and special instructions in sessionStorage
-    sessionStorage.setItem('tabsy-cart', JSON.stringify(cart))
+    // Store special instructions in sessionStorage (cart is already managed by context)
     sessionStorage.setItem('tabsy-special-instructions', specialInstructions)
 
     // Close drawer and navigate to checkout
@@ -169,7 +162,7 @@ export function CartDrawer({ isOpen, onClose, cart, onUpdateCart }: CartDrawerPr
                     Browse the menu and add some delicious items to get started
                   </p>
                   <Button onClick={onClose} variant="outline">
-                    Continue Shopping
+                    Browse Menu
                   </Button>
                 </div>
               ) : (
@@ -177,7 +170,7 @@ export function CartDrawer({ isOpen, onClose, cart, onUpdateCart }: CartDrawerPr
                 <div className="p-4 space-y-4">
                   {cart.map((item, index) => (
                     <motion.div
-                      key={`${item.id}-${index}`}
+                      key={item.cartItemId}
                       layout
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -212,7 +205,7 @@ export function CartDrawer({ isOpen, onClose, cart, onUpdateCart }: CartDrawerPr
                           </p>
 
                           {/* Dietary and Allergen Info */}
-                          {(item.dietaryTypes?.length > 0 || item.allergens?.length > 0) && (
+                          {(item.dietaryTypes?.length > 0 || getAllergensList(item.allergyInfo).length > 0) && (
                             <div className="space-y-1 mb-3">
                               {item.dietaryTypes && item.dietaryTypes.length > 0 && (
                                 <div className="flex flex-wrap gap-1">
@@ -228,9 +221,9 @@ export function CartDrawer({ isOpen, onClose, cart, onUpdateCart }: CartDrawerPr
                                 </div>
                               )}
 
-                              {item.allergens && item.allergens.length > 0 && (
+                              {getAllergensList(item.allergyInfo).length > 0 && (
                                 <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                                  <span className="font-medium">Contains:</span> {item.allergens.map(allergen => allergen.replace('_', ' ')).join(', ')}
+                                  <span className="font-medium">Contains:</span> {getAllergensList(item.allergyInfo).join(', ')}
                                 </div>
                               )}
                             </div>
@@ -246,13 +239,21 @@ export function CartDrawer({ isOpen, onClose, cart, onUpdateCart }: CartDrawerPr
                             </div>
                           )}
 
+                          {/* Special Instructions */}
+                          {item.specialInstructions && (
+                            <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded mb-2">
+                              <span className="font-medium">Special Instructions:</span>
+                              <div className="mt-1">{item.specialInstructions}</div>
+                            </div>
+                          )}
+
                           {/* Quantity Controls */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2 bg-surface rounded-lg p-1">
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                onClick={() => handleUpdateQuantity(item.cartItemId, item.quantity - 1)}
                                 className="w-7 h-7 p-0"
                               >
                                 <Minus className="w-3 h-3" />
@@ -265,7 +266,7 @@ export function CartDrawer({ isOpen, onClose, cart, onUpdateCart }: CartDrawerPr
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                onClick={() => handleUpdateQuantity(item.cartItemId, item.quantity + 1)}
                                 className="w-7 h-7 p-0"
                               >
                                 <Plus className="w-3 h-3" />
@@ -275,7 +276,7 @@ export function CartDrawer({ isOpen, onClose, cart, onUpdateCart }: CartDrawerPr
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => removeItem(item.id)}
+                              onClick={() => handleRemoveItem(item.cartItemId)}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -308,7 +309,7 @@ export function CartDrawer({ isOpen, onClose, cart, onUpdateCart }: CartDrawerPr
                   {cart.length > 0 && (
                     <Button
                       variant="outline"
-                      onClick={clearCart}
+                      onClick={handleClearCart}
                       className="w-full text-red-600 border-red-200 hover:bg-red-50"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />

@@ -1,13 +1,14 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Poppins } from 'next/font/google'
 import './globals.css'
 import { ClientProviders } from './client-providers'
 import { cn } from '@/lib/utils'
 
-const inter = Inter({ 
+const poppins = Poppins({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-inter',
+  variable: '--font-poppins',
+  weight: ['300', '400', '500', '600', '700'],
 })
 
 export const metadata: Metadata = {
@@ -55,16 +56,14 @@ export default function RootLayout({
   children: React.ReactNode
 }): JSX.Element {
   return (
-    <html lang="en" className={inter.variable} suppressHydrationWarning>
+    <html lang="en" className={poppins.variable} suppressHydrationWarning>
       <head>
         {/* Preconnect for performance */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className={cn(
-        'min-h-screen bg-background font-sans antialiased',
-        'supports-[padding:max(0px)]:px-[max(theme(spacing.4),env(safe-area-inset-left))]',
-        'supports-[padding:max(0px)]:pr-[max(theme(spacing.4),env(safe-area-inset-right))]'
+        'min-h-screen bg-background font-sans antialiased'
       )}>
         <ClientProviders>
           <div className="relative flex min-h-screen flex-col">

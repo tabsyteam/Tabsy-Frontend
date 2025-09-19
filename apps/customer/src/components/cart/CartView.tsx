@@ -7,19 +7,9 @@ import { Button } from '@tabsy/ui-components'
 import { ArrowLeft, Plus, Minus, Trash2, ShoppingBag, Clock, MapPin, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import { DietaryType, AllergenType } from '@tabsy/shared-types'
+import { useCart } from '@/hooks/useCart'
+import { SessionManager } from '@/lib/session'
 
-interface CartItem {
-  id: string
-  name: string
-  description: string
-  basePrice: number
-  imageUrl?: string
-  categoryName: string
-  quantity: number
-  customizations?: Record<string, any>
-  allergens: AllergenType[]
-  dietaryTypes: DietaryType[]
-}
 
 interface TableInfo {
   restaurant: {
@@ -36,26 +26,25 @@ interface TableInfo {
 export function CartView() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [cart, setCart] = useState<CartItem[]>([])
+  const { cart, cartCount, cartTotal, updateQuantity, removeFromCart, clearCart, isLoading } = useCart()
   const [tableInfo, setTableInfo] = useState<TableInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [specialInstructions, setSpecialInstructions] = useState('')
 
-  const restaurantId = searchParams.get('restaurant')
-  const tableId = searchParams.get('table')
+  // Get restaurant and table ID from URL or session
+  const urlRestaurantId = searchParams.get('restaurant')
+  const urlTableId = searchParams.get('table')
+  const session = SessionManager.getDiningSession()
+
+  const hasValidUrlParams = SessionManager.validateUrlParams({
+    restaurant: urlRestaurantId,
+    table: urlTableId
+  })
+
+  const restaurantId = hasValidUrlParams ? urlRestaurantId : session?.restaurantId
+  const tableId = hasValidUrlParams ? urlTableId : session?.tableId
 
   useEffect(() => {
-    // Load cart from sessionStorage
-    const savedCart = sessionStorage.getItem('tabsy-cart')
-    if (savedCart) {
-      try {
-        setCart(JSON.parse(savedCart))
-      } catch (error) {
-        console.error('Failed to parse cart:', error)
-        toast.error('Failed to load cart')
-      }
-    }
-
     // Load table info from sessionStorage
     const savedTableInfo = sessionStorage.getItem('tabsy-table-info')
     if (savedTableInfo) {
@@ -69,50 +58,33 @@ export function CartView() {
     setLoading(false)
   }, [])
 
-  // Save cart to sessionStorage whenever it changes
-  useEffect(() => {
-    if (!loading) {
-      sessionStorage.setItem('tabsy-cart', JSON.stringify(cart))
-    }
-  }, [cart, loading])
 
-  const updateQuantity = (itemId: string, newQuantity: number) => {
-    if (newQuantity <= 0) {
-      removeItem(itemId)
-      return
-    }
-
-    setCart(prevCart =>
-      prevCart.map(item =>
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
-      )
-    )
+  const handleUpdateQuantity = (cartItemId: string, newQuantity: number) => {
+    updateQuantity(cartItemId, newQuantity)
   }
 
-  const removeItem = (itemId: string) => {
-    setCart(prevCart => prevCart.filter(item => item.id !== itemId))
-    toast.success('Item removed from cart')
+  const handleRemoveItem = (cartItemId: string) => {
+    removeFromCart(cartItemId)
   }
 
-  const clearCart = () => {
-    setCart([])
-    toast.success('Cart cleared')
+  const handleClearCart = () => {
+    clearCart()
   }
 
   const getSubtotal = (): number => {
-    return cart.reduce((total, item) => total + (Number(item.basePrice) * item.quantity), 0)
+    return cartTotal
   }
 
   const getTax = (): number => {
-    return getSubtotal() * 0.08 // 8% tax
+    return cartTotal * 0.08 // 8% tax
   }
 
   const getTotal = (): number => {
-    return getSubtotal() + getTax()
+    return cartTotal + getTax()
   }
 
   const getTotalItems = (): number => {
-    return cart.reduce((total, item) => total + item.quantity, 0)
+    return cartCount
   }
 
   const handleCheckout = () => {
@@ -130,11 +102,15 @@ export function CartView() {
     router.push(`/checkout?restaurant=${restaurantId}&table=${tableId}`)
   }
 
-  const handleContinueShopping = () => {
-    router.push(`/menu?restaurant=${restaurantId}&table=${tableId}`)
+  const handleBrowseMenu = () => {
+    if (restaurantId && tableId) {
+      router.push(`/menu?restaurant=${restaurantId}&table=${tableId}`)
+    } else {
+      router.push('/menu')
+    }
   }
 
-  if (loading) {
+  if (loading || isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
@@ -142,8 +118,40 @@ export function CartView() {
     )
   }
 
+  // Show "scan QR" message if no valid session
+  if (!restaurantId || !tableId) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-6 max-w-md mx-auto px-4">
+          <div className="w-16 h-16 mx-auto bg-surface-secondary rounded-full flex items-center justify-center">
+            <ShoppingBag className="w-8 h-8 text-content-tertiary" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold text-content-primary mb-2">
+              Ready to Order?
+            </h1>
+            <p className="text-content-secondary mb-4">
+              Your cart will appear here once you scan the QR code at your table and start adding delicious items.
+            </p>
+            <div className="text-sm text-content-tertiary space-y-1">
+              <p>• Scan the QR code at your table</p>
+              <p>• Browse the menu and add items</p>
+              <p>• Review your order here</p>
+            </div>
+          </div>
+          <Button
+            onClick={() => router.push('/')}
+            className="w-full"
+          >
+            Scan QR Code to Get Started
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header */}
       <div className="bg-surface shadow-sm border-b sticky top-0 z-10 backdrop-blur-sm bg-surface/95">
         <div className="max-w-4xl mx-auto px-4 py-4">
@@ -152,7 +160,7 @@ export function CartView() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleContinueShopping}
+                onClick={handleBrowseMenu}
                 className="p-2"
               >
                 <ArrowLeft className="w-4 h-4" />
@@ -169,7 +177,7 @@ export function CartView() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={clearCart}
+                onClick={handleClearCart}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
               >
                 <Trash2 className="w-4 h-4 mr-1" />
@@ -197,7 +205,7 @@ export function CartView() {
             <p className="text-content-secondary mb-6 max-w-md mx-auto">
               Start adding some delicious items from the menu to get started!
             </p>
-            <Button onClick={handleContinueShopping} size="lg">
+            <Button onClick={handleBrowseMenu} size="lg">
               Browse Menu
             </Button>
           </motion.div>
@@ -243,7 +251,7 @@ export function CartView() {
               <AnimatePresence>
                 {cart.map((item, index) => (
                   <motion.div
-                    key={item.id}
+                    key={item.cartItemId}
                     layout
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
@@ -271,7 +279,7 @@ export function CartView() {
                               {item.name}
                             </h3>
                             <p className="text-sm text-content-secondary mb-2">
-                              {item.categoryName}
+                              Category: {item.categoryName}
                             </p>
 
                             {/* Dietary Types */}
@@ -293,7 +301,7 @@ export function CartView() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => removeItem(item.id)}
+                            onClick={() => handleRemoveItem(item.cartItemId)}
                             className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -306,7 +314,7 @@ export function CartView() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                              onClick={() => handleUpdateQuantity(item.cartItemId, item.quantity - 1)}
                               className="w-8 h-8 p-0 hover:bg-white"
                             >
                               <Minus className="w-4 h-4" />
@@ -319,7 +327,7 @@ export function CartView() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              onClick={() => handleUpdateQuantity(item.cartItemId, item.quantity + 1)}
                               className="w-8 h-8 p-0 hover:bg-white"
                             >
                               <Plus className="w-4 h-4" />
@@ -395,11 +403,11 @@ export function CartView() {
 
                   <Button
                     variant="outline"
-                    onClick={handleContinueShopping}
+                    onClick={handleBrowseMenu}
                     size="lg"
                     className="w-full"
                   >
-                    Continue Shopping
+                    Add More Items
                   </Button>
                 </div>
 

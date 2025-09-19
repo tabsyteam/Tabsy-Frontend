@@ -7,9 +7,12 @@ import { Button } from '@tabsy/ui-components'
 import { ArrowLeft, Clock, CheckCircle, User, Phone, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApi } from '@/components/providers/api-provider'
+import { useCart } from '@/hooks/useCart'
+import { SessionManager } from '@/lib/session'
 
 interface CartItem {
   id: string
+  cartItemId: string
   name: string
   description: string
   basePrice: number
@@ -17,6 +20,7 @@ interface CartItem {
   categoryName: string
   quantity: number
   customizations?: Record<string, any>
+  specialInstructions?: string
 }
 
 interface GuestInfo {
@@ -29,6 +33,7 @@ export function CheckoutView() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { api } = useApi()
+  const { clearCart } = useCart()
 
   const [cart, setCart] = useState<CartItem[]>([])
   const [guestInfo, setGuestInfo] = useState<GuestInfo>({
@@ -41,8 +46,18 @@ export function CheckoutView() {
   const [placing, setPlacing] = useState(false)
   const [estimatedTime, setEstimatedTime] = useState<number>(20)
 
-  const restaurantId = searchParams.get('restaurant')
-  const tableId = searchParams.get('table')
+  const urlRestaurantId = searchParams.get('restaurant')
+  const urlTableId = searchParams.get('table')
+
+  // Validate URL parameters and fall back to session if invalid
+  const session = SessionManager.getDiningSession()
+  const hasValidUrlParams = SessionManager.validateUrlParams({
+    restaurant: urlRestaurantId,
+    table: urlTableId
+  })
+
+  const restaurantId = hasValidUrlParams ? urlRestaurantId : session?.restaurantId
+  const tableId = hasValidUrlParams ? urlTableId : session?.tableId
 
   useEffect(() => {
     // Load cart from sessionStorage
@@ -94,29 +109,71 @@ export function CheckoutView() {
   }
 
   const handlePlaceOrder = async () => {
+    console.log('handlePlaceOrder called')
+    console.log('Cart:', cart)
+    console.log('Guest info:', guestInfo)
+    console.log('Restaurant ID:', restaurantId)
+    console.log('Table ID:', tableId)
+
+    // Clear any invalid temporary sessions for fresh start
+    const existingSession = sessionStorage.getItem('tabsy-session')
+    if (existingSession) {
+      try {
+        const parsed = JSON.parse(existingSession)
+        if (parsed.sessionId?.startsWith('temp-')) {
+          console.log('Clearing temporary session for fresh API session creation')
+          sessionStorage.removeItem('tabsy-session')
+        }
+      } catch (e) {
+        console.log('Clearing invalid session data')
+        sessionStorage.removeItem('tabsy-session')
+      }
+    }
+
     if (cart.length === 0) {
+      console.log('Cart is empty - returning early')
       toast.error('Cart is empty')
       return
     }
 
     // Validate guest info (name is required for orders)
     if (!guestInfo.name.trim()) {
+      console.log('Guest name is missing - returning early')
       toast.error('Please enter your name')
       return
     }
 
+    console.log('Starting order placement...')
     setPlacing(true)
 
     try {
       // Get session from sessionStorage
       const sessionData = sessionStorage.getItem('tabsy-session')
-      if (!sessionData) {
-        toast.error('Session expired. Please scan the QR code again.')
-        router.push('/')
-        return
-      }
+      console.log('Session data from storage:', sessionData)
 
-      const session = JSON.parse(sessionData)
+      let session
+
+      if (!sessionData) {
+        console.log('No session data found - creating guest session through API')
+
+        // Create a proper guest session through the API
+        const sessionResponse = await api.session.createGuest({
+          tableId: tableId!,
+          restaurantId: restaurantId!,
+          // No QR code needed for development/testing
+        })
+
+        if (!sessionResponse.success || !sessionResponse.data) {
+          throw new Error('Failed to create guest session: ' + (sessionResponse.error || 'Unknown error'))
+        }
+
+        session = sessionResponse.data
+        sessionStorage.setItem('tabsy-session', JSON.stringify(session))
+        console.log('Created guest session:', session)
+      } else {
+        session = JSON.parse(sessionData)
+        console.log('Parsed session:', session)
+      }
 
       // Prepare order data according to backend OrderRequest type
       const orderData = {
@@ -129,7 +186,7 @@ export function CheckoutView() {
             optionId,
             valueId: String(valueId)
           })) : undefined,
-          specialInstructions: undefined
+          specialInstructions: item.specialInstructions?.trim() || undefined
         })),
         specialInstructions: specialInstructions.trim() || undefined,
         customerName: guestInfo.name.trim() || undefined,
@@ -142,24 +199,43 @@ export function CheckoutView() {
         return value === undefined ? undefined : value;
       }))
 
+      console.log('Order data to send:', cleanOrderData)
+      console.log('API client:', api)
+
       // Place the order
+      console.log('Making API call to api.order.create...')
       const response = await api.order.create(cleanOrderData)
+      console.log('API response:', response)
 
       if (response.success && response.data) {
-        // Clear cart and instructions from sessionStorage
-        sessionStorage.removeItem('tabsy-cart')
+        // Clear cart using useCart hook and clear special instructions
+        clearCart()
         sessionStorage.removeItem('tabsy-special-instructions')
 
-        // Store order info for tracking
+        // Store order info for tracking in sessionStorage
         sessionStorage.setItem('tabsy-current-order', JSON.stringify(response.data))
+
+        // Save order to SessionManager for navigation access
+        SessionManager.setCurrentOrder({
+          orderId: response.data.id,
+          orderNumber: response.data.orderNumber,
+          status: response.data.status,
+          createdAt: Date.now()
+        })
+
+        // Add order to history for tracking multiple orders
+        SessionManager.addOrderToHistory(response.data.id)
 
         toast.success('Order placed successfully!', {
           description: `Order #${response.data.orderNumber} has been sent to the kitchen`,
-          duration: 4000
+          duration: 3000
         })
 
-        // Navigate to order tracking
-        router.push(`/order/${response.data.id}?restaurant=${restaurantId}&table=${tableId}`)
+        // Add a small delay to ensure the toast is visible before navigation
+        setTimeout(() => {
+          // Navigate to order tracking (use replace to prevent back navigation to checkout)
+          router.replace(`/order/${response.data!.id}?restaurant=${restaurantId}&table=${tableId}`)
+        }, 500)
       } else {
         throw new Error(
           typeof response.error === 'string'
@@ -200,7 +276,7 @@ export function CheckoutView() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-24">
       {/* Header */}
       <div className="bg-surface shadow-sm border-b sticky top-0 z-10 backdrop-blur-sm bg-surface/95">
         <div className="max-w-4xl mx-auto px-4 py-4">
@@ -299,7 +375,7 @@ export function CheckoutView() {
 
               <div className="space-y-3">
                 {cart.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center py-3 border-b last:border-b-0">
+                  <div key={item.cartItemId} className="flex justify-between items-start py-3 border-b last:border-b-0">
                     <div className="flex-1">
                       <h4 className="font-medium text-content-primary">{item.name}</h4>
                       <p className="text-sm text-content-secondary">{item.categoryName}</p>
@@ -308,6 +384,14 @@ export function CheckoutView() {
                         <span>•</span>
                         <span>Qty: {item.quantity}</span>
                       </div>
+
+                      {/* Per-item Special Instructions */}
+                      {item.specialInstructions && (
+                        <div className="mt-2 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                          <span className="font-medium">Special Instructions:</span>
+                          <div className="mt-1">{item.specialInstructions}</div>
+                        </div>
+                      )}
                     </div>
                     <div className="text-right">
                       <div className="font-semibold text-content-primary">

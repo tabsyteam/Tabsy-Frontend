@@ -22,7 +22,7 @@ import {
   Star,
   TrendingUp,
 } from 'lucide-react';
-import type { MenuCategory, MenuItem } from '@tabsy/shared-types';
+import type { MenuCategory, MenuItem, AllergyInfo } from '@tabsy/shared-types';
 import { MenuItemStatus } from '@tabsy/shared-types';
 
 interface MenuDetailSlidePanelProps {
@@ -48,6 +48,23 @@ export function MenuDetailSlidePanel({
 }: MenuDetailSlidePanelProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
+
+  const getAllergensList = (allergyInfo?: AllergyInfo): string[] => {
+    if (!allergyInfo) return [];
+
+    const allergens: string[] = [];
+
+    if (allergyInfo.containsEggs) allergens.push('Eggs');
+    if (allergyInfo.containsNuts) allergens.push('Nuts');
+    if (allergyInfo.containsDairy) allergens.push('Dairy');
+    if (allergyInfo.containsGluten) allergens.push('Gluten');
+    if (allergyInfo.containsSeafood) allergens.push('Seafood');
+    if (allergyInfo.other && allergyInfo.other.length > 0) {
+      allergens.push(...allergyInfo.other);
+    }
+
+    return allergens;
+  };
   const [activeTab, setActiveTab] = useState<'details' | 'analytics' | 'history'>('details');
 
   // Prevent body scroll when modal is open - must be before any returns
@@ -95,7 +112,7 @@ export function MenuDetailSlidePanel({
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2,
-    }).format(numPrice / 100); // Assuming price is in cents
+    }).format(numPrice); // Backend sends decimal numbers, not cents
   };
 
   const tabs = [
@@ -306,6 +323,157 @@ export function MenuDetailSlidePanel({
                           </div>
                         )}
                       </div>
+
+                      {/* Nutritional Information */}
+                      {(item as any)?.nutritionalInfo && (
+                        <div className="space-y-3 mt-6">
+                          <h4 className="text-md font-semibold text-foreground flex items-center">
+                            <span className="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
+                            Nutritional Information
+                          </h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            {(item as any).nutritionalInfo.calories > 0 && (
+                              <div className="stat-card">
+                                <div className="text-center">
+                                  <p className="text-muted-foreground text-xs">Calories</p>
+                                  <p className="text-lg font-bold text-green-600">{(item as any).nutritionalInfo.calories}</p>
+                                </div>
+                              </div>
+                            )}
+                            {(item as any).nutritionalInfo.protein > 0 && (
+                              <div className="stat-card">
+                                <div className="text-center">
+                                  <p className="text-muted-foreground text-xs">Protein</p>
+                                  <p className="text-lg font-bold text-blue-600">{(item as any).nutritionalInfo.protein}g</p>
+                                </div>
+                              </div>
+                            )}
+                            {(item as any).nutritionalInfo.carbohydrates > 0 && (
+                              <div className="stat-card">
+                                <div className="text-center">
+                                  <p className="text-muted-foreground text-xs">Carbs</p>
+                                  <p className="text-lg font-bold text-orange-600">{(item as any).nutritionalInfo.carbohydrates}g</p>
+                                </div>
+                              </div>
+                            )}
+                            {(item as any).nutritionalInfo.fat > 0 && (
+                              <div className="stat-card">
+                                <div className="text-center">
+                                  <p className="text-muted-foreground text-xs">Fat</p>
+                                  <p className="text-lg font-bold text-yellow-600">{(item as any).nutritionalInfo.fat}g</p>
+                                </div>
+                              </div>
+                            )}
+                            {(item as any).nutritionalInfo.fiber > 0 && (
+                              <div className="stat-card">
+                                <div className="text-center">
+                                  <p className="text-muted-foreground text-xs">Fiber</p>
+                                  <p className="text-lg font-bold text-green-500">{(item as any).nutritionalInfo.fiber}g</p>
+                                </div>
+                              </div>
+                            )}
+                            {(item as any).nutritionalInfo.sodium > 0 && (
+                              <div className="stat-card">
+                                <div className="text-center">
+                                  <p className="text-muted-foreground text-xs">Sodium</p>
+                                  <p className="text-lg font-bold text-red-600">{(item as any).nutritionalInfo.sodium}mg</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Additional Item Details */}
+                      {(item as any)?.dietaryIndicators && (item as any).dietaryIndicators.length > 0 && (
+                        <div className="space-y-3 mt-6">
+                          <h4 className="text-md font-semibold text-foreground flex items-center">
+                            <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
+                            Dietary Information
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {(item as any).dietaryIndicators.map((dietary: string, index: number) => (
+                              <span key={index} className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">
+                                {dietary.replace('_', ' ')}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {(item as any)?.allergyInfo && (
+                        <div className="space-y-3 mt-6">
+                          <h4 className="text-md font-semibold text-foreground flex items-center">
+                            <span className="w-2 h-2 bg-orange-500 rounded-full mr-3"></span>
+                            Allergy Information
+                          </h4>
+                          <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                            <div className="text-sm text-orange-800">
+                              {getAllergensList(item.allergyInfo).join(', ') || 'No specific allergens listed'}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {(item as any)?.spicyLevel > 0 && (
+                        <div className="space-y-3 mt-6">
+                          <h4 className="text-md font-semibold text-foreground flex items-center">
+                            <span className="w-2 h-2 bg-red-500 rounded-full mr-3"></span>
+                            Spice Level
+                          </h4>
+                          <div className="flex items-center gap-2">
+                            {[...Array(5)].map((_, i) => (
+                              <div
+                                key={i}
+                                className={`w-4 h-4 rounded-full ${
+                                  i < (item as any).spicyLevel ? 'bg-red-500' : 'bg-gray-200'
+                                }`}
+                              />
+                            ))}
+                            <span className="ml-2 text-sm text-muted-foreground">
+                              Level {(item as any).spicyLevel} of 5
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {(item as any)?.image && (
+                        <div className="space-y-3 mt-6">
+                          <h4 className="text-md font-semibold text-foreground flex items-center">
+                            <span className="w-2 h-2 bg-purple-500 rounded-full mr-3"></span>
+                            Item Image
+                          </h4>
+                          <div className="relative w-full h-48 bg-gray-100 rounded-xl overflow-hidden">
+                            <img
+                              src={(item as any).image}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/images/food/dish-placeholder.svg';
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {(item as any)?.archived && (
+                        <div className="space-y-3 mt-6">
+                          <h4 className="text-md font-semibold text-foreground flex items-center">
+                            <span className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></span>
+                            Archive Status
+                          </h4>
+                          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                            <div className="text-sm text-yellow-800">
+                              This item is archived
+                              {(item as any).archivedAt && (
+                                <span className="block text-xs mt-1">
+                                  Archived on: {new Date((item as any).archivedAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

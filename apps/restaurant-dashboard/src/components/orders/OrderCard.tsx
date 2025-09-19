@@ -130,7 +130,7 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
 
   return (
     <div
-      className={`group flex flex-col bg-card rounded-lg border p-4 shadow-sm transition-all duration-300 ease-out hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.02] min-h-[320px] cursor-pointer relative overflow-hidden ${order.status === OrderStatus.RECEIVED ? 'ring-2 ring-primary/50 border-primary/40 m-0.5 hover:ring-primary/70' : 'hover:border-primary/30'
+      className={`group flex flex-col bg-card rounded-lg border p-4 shadow-sm transition-all duration-300 ease-out hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.02] cursor-pointer relative overflow-hidden ${order.status === OrderStatus.RECEIVED ? 'ring-2 ring-primary/50 border-primary/40 m-0.5 hover:ring-primary/70' : 'hover:border-primary/30'
         }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -182,9 +182,9 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
       </div>
 
 
-      {/* Order Items Preview - Now with flex-1 to take remaining space */}
-      <div className="flex-1 mb-4 min-h-[80px]">
-        <div className="bg-muted/30 rounded-md p-3 space-y-2 h-full group-hover:bg-muted/40 transition-colors duration-200">
+      {/* Order Items Preview */}
+      <div className="mb-3">
+        <div className="bg-muted/30 rounded-md p-3 space-y-2 group-hover:bg-muted/40 transition-colors duration-200">
             {order.items.slice(0, 2).map((item: OrderItem, index: number) => (
               <div key={index} className="flex justify-between items-center text-sm">
                 <span className="text-card-foreground font-medium truncate flex-1 mr-2">
@@ -204,8 +204,8 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
       </div>
 
 
-      {/* Action Buttons - Always at bottom */}
-      <div className="flex justify-center gap-2 mt-auto">
+      {/* Action Buttons */}
+      <div className="flex justify-center gap-2">
           <Button
             variant="outline"
             size="sm"

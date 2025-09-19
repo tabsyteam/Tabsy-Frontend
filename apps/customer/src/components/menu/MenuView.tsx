@@ -20,12 +20,14 @@ import {
   Search
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { MenuItem, MenuCategory, MenuItemStatus, DietaryType, AllergenType, SpiceLevel, Restaurant, Table } from '@tabsy/shared-types'
+import { MenuItem, MenuCategory, MenuItemStatus, DietaryType, AllergyInfo, SpiceLevel, Restaurant, Table } from '@tabsy/shared-types'
 import { ItemDetailModal } from './ItemDetailModal'
 import { CartDrawer } from '../cart/CartDrawer'
 import { useWebSocket } from '@tabsy/api-client'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator'
+import { useCart } from '@/hooks/useCart'
+import { SessionManager } from '@/lib/session'
 
 // Import our new modern components
 import SearchBar from '@/components/navigation/SearchBar'
@@ -33,18 +35,6 @@ import BottomNav from '@/components/navigation/BottomNav'
 import MenuItemCard from '@/components/cards/MenuItemCard'
 import CategoryCard from '@/components/cards/CategoryCard'
 
-interface CartItem {
-  id: string
-  name: string
-  description: string
-  basePrice: number
-  imageUrl?: string
-  categoryName: string
-  quantity: number
-  customizations?: Record<string, any>
-  allergens: AllergenType[]
-  dietaryTypes: DietaryType[]
-}
 
 interface Category {
   id: string
@@ -63,22 +53,77 @@ interface FilterState {
   showFavoritesOnly: boolean
 }
 
+const convertAllergyInfoToArray = (allergyInfo?: AllergyInfo): string[] | undefined => {
+  if (!allergyInfo) return undefined
+
+  const allergies: string[] = []
+
+  if (allergyInfo.containsEggs) allergies.push('Eggs')
+  if (allergyInfo.containsNuts) allergies.push('Nuts')
+  if (allergyInfo.containsDairy) allergies.push('Dairy')
+  if (allergyInfo.containsGluten) allergies.push('Gluten')
+  if (allergyInfo.containsSeafood) allergies.push('Seafood')
+
+  if (allergyInfo.other && allergyInfo.other.length > 0) {
+    allergies.push(...allergyInfo.other)
+  }
+
+  return allergies.length > 0 ? allergies : undefined
+}
+
+const searchAllergyInfo = (query: string, allergyInfo?: AllergyInfo): boolean => {
+  if (!allergyInfo) return false
+
+  const lowerQuery = query.toLowerCase()
+
+  if (allergyInfo.containsEggs && 'eggs'.includes(lowerQuery)) return true
+  if (allergyInfo.containsNuts && 'nuts'.includes(lowerQuery)) return true
+  if (allergyInfo.containsDairy && 'dairy'.includes(lowerQuery)) return true
+  if (allergyInfo.containsGluten && 'gluten'.includes(lowerQuery)) return true
+  if (allergyInfo.containsSeafood && 'seafood'.includes(lowerQuery)) return true
+
+  return allergyInfo.other?.some(allergen => allergen.toLowerCase().includes(lowerQuery)) || false
+}
+
+const isItemNew = (createdAt: string): boolean => {
+  try {
+    const createdDate = new Date(createdAt)
+    const now = new Date()
+    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000))
+
+    return createdDate >= thirtyDaysAgo
+  } catch (error) {
+    console.warn('[MenuView] Invalid createdAt date:', createdAt)
+    return false
+  }
+}
+
 export function MenuView() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { api } = useApi()
+  const { cart, cartCount, addToCart, updateQuantity, getItemQuantity, removeFromCart } = useCart()
   const searchBarRef = useRef<HTMLDivElement>(null)
 
-  // URL parameters
-  const restaurantId = searchParams.get('restaurant')
-  const tableId = searchParams.get('table')
+  // URL parameters with validation
+  const urlRestaurantId = searchParams.get('restaurant')
+  const urlTableId = searchParams.get('table')
   const qrCode = searchParams.get('qr')
+
+  // Validate URL parameters and fall back to session if invalid
+  const session = SessionManager.getDiningSession()
+  const hasValidUrlParams = SessionManager.validateUrlParams({
+    restaurant: urlRestaurantId,
+    table: urlTableId
+  })
+
+  const restaurantId = hasValidUrlParams ? urlRestaurantId : session?.restaurantId
+  const tableId = hasValidUrlParams ? urlTableId : session?.tableId
 
   // Core state
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
   const [table, setTable] = useState<Table | null>(null)
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([])
-  const [cart, setCart] = useState<CartItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -108,6 +153,11 @@ export function MenuView() {
   const [isListening, setIsListening] = useState(false)
   const [voiceSearchSupported, setVoiceSearchSupported] = useState(false)
 
+  // Scroll shadow state
+  const [showLeftShadow, setShowLeftShadow] = useState(false)
+  const [showRightShadow, setShowRightShadow] = useState(false)
+  const categoriesScrollRef = useRef<HTMLDivElement>(null)
+
   // Pull to refresh
   const pullToRefresh = usePullToRefresh({
     onRefresh: async () => {
@@ -116,10 +166,13 @@ export function MenuView() {
     }
   })
 
-  // WebSocket for real-time updates
+  // Session state
+  const [sessionReady, setSessionReady] = useState(false)
+
+  // WebSocket for real-time updates - only connect when session is ready
   const { client, isConnected } = useWebSocket({
     url: process.env.NEXT_PUBLIC_WS_BASE_URL || 'http://localhost:5001',
-    autoConnect: true,
+    autoConnect: sessionReady && !!tableId && !!restaurantId,
     auth: {
       namespace: 'customer' as const,
       tableId: tableId || undefined,
@@ -175,9 +228,19 @@ export function MenuView() {
 
   // Main data loading function
   const loadMenuData = useCallback(async () => {
+    // Ensure minimum loading duration for better UX
+    const startTime = Date.now()
+    const minLoadingDuration = 800 // 800ms minimum loading
+
     if (!restaurantId || !tableId) {
-      setError('Missing restaurant or table information')
-      setLoading(false)
+      // Wait for minimum duration before showing error
+      const elapsed = Date.now() - startTime
+      const remainingTime = Math.max(0, minLoadingDuration - elapsed)
+
+      setTimeout(() => {
+        setError('Missing restaurant or table information')
+        setLoading(false)
+      }, remainingTime)
       return
     }
 
@@ -204,9 +267,9 @@ export function MenuView() {
 
       // 2. Create or validate guest session
       let sessionCreated = false
-      const existingSessionId = api.getGuestSessionId()
+      let currentSessionId = api.getGuestSessionId()
 
-      if (!existingSessionId) {
+      if (!currentSessionId) {
         console.log('Creating new guest session...')
         const sessionResponse = await api.session.createGuest({
           tableId,
@@ -216,18 +279,50 @@ export function MenuView() {
 
         if (sessionResponse.success && sessionResponse.data) {
           sessionCreated = true
-          console.log('Guest session created:', sessionResponse.data.sessionId)
+          currentSessionId = sessionResponse.data.sessionId
+          console.log('Guest session created:', currentSessionId)
+
+          // Ensure session is properly set in API client
+          api.setGuestSession(currentSessionId)
+
+          // Wait a moment for session to be fully set
+          await new Promise(resolve => setTimeout(resolve, 100))
+
+          // Mark session as ready
+          setSessionReady(true)
         } else {
           throw new Error('Failed to create guest session')
         }
       } else {
-        console.log('Using existing guest session:', existingSessionId)
+        console.log('Using existing guest session:', currentSessionId)
+        // Mark session as ready since it already exists
+        setSessionReady(true)
       }
 
       // 3. Load menu data (this uses customer-facing endpoint with guest session)
-      const menuResponse = await api.menu.getActiveMenu(restaurantId)
+      // Retry logic in case session isn't ready yet
+      let menuResponse
+      let retryCount = 0
+      const maxRetries = 3
 
-      if (menuResponse.success && menuResponse.data) {
+      while (retryCount < maxRetries) {
+        try {
+          menuResponse = await api.menu.getActiveMenu(restaurantId)
+          break // Success, exit retry loop
+        } catch (error: any) {
+          retryCount++
+          console.warn(`Menu API attempt ${retryCount} failed:`, error.message)
+
+          if (retryCount >= maxRetries) {
+            throw new Error(`Failed to load menu after ${maxRetries} attempts`)
+          }
+
+          // Wait before retry, with exponential backoff
+          await new Promise(resolve => setTimeout(resolve, 500 * retryCount))
+        }
+      }
+
+      if (menuResponse && menuResponse.success && menuResponse.data) {
         console.log('Menu response structure:', menuResponse.data)
 
         // Handle different possible menu response structures
@@ -275,7 +370,13 @@ export function MenuView() {
       setError(errorMessage)
       toast.error(errorMessage)
     } finally {
-      setLoading(false)
+      // Ensure minimum loading duration
+      const elapsed = Date.now() - startTime
+      const remainingTime = Math.max(0, minLoadingDuration - elapsed)
+
+      setTimeout(() => {
+        setLoading(false)
+      }, remainingTime)
     }
   }, [api, restaurantId, tableId, qrCode])
 
@@ -299,6 +400,19 @@ export function MenuView() {
       setVoiceSearchSupported(!!SpeechRecognition)
     }
   }, [])
+
+  // Initialize dining session when valid URL parameters are present
+  useEffect(() => {
+    if (hasValidUrlParams && urlRestaurantId && urlTableId) {
+      // Save dining session to SessionManager for navigation
+      SessionManager.setDiningSession({
+        restaurantId: urlRestaurantId,
+        tableId: urlTableId,
+        restaurantName: restaurant?.name,
+        tableName: table?.number
+      })
+    }
+  }, [hasValidUrlParams, urlRestaurantId, urlTableId, restaurant?.name, table?.number])
 
   // Process categories for display
   const processedCategories = useMemo((): Category[] => {
@@ -343,7 +457,7 @@ export function MenuView() {
       items = items.filter(item =>
         item.name.toLowerCase().includes(query) ||
         item.description.toLowerCase().includes(query) ||
-        item.allergens?.some(allergy => allergy.toLowerCase().includes(query)) ||
+        searchAllergyInfo(query, item.allergyInfo) ||
         item.dietaryTypes?.some(diet => diet.toLowerCase().includes(query))
       )
     }
@@ -358,7 +472,7 @@ export function MenuView() {
     // Apply spice level filters
     if (filters.spiceLevel.length > 0) {
       items = items.filter(item =>
-        item.spiceLevel && filters.spiceLevel.includes(item.spiceLevel)
+        item.spicyLevel && filters.spiceLevel.includes(item.spicyLevel)
       )
     }
 
@@ -375,45 +489,27 @@ export function MenuView() {
     return items
   }, [menuCategories, selectedCategory, searchQuery, filters, favorites])
 
-  // Cart operations
-  const addToCart = useCallback((item: MenuItem, quantity: number = 1) => {
-    const cartItem: CartItem = {
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      basePrice: item.price ?? item.basePrice,
-      imageUrl: item.image,
-      categoryName: item.categoryId, // This should be resolved to category name
-      quantity,
-      allergens: item.allergens || [],
-      dietaryTypes: item.dietaryTypes || []
-    }
+  // Cart operations using context
+  const handleAddToCart = useCallback((item: MenuItem, quantity: number = 1) => {
+    console.log('[MenuView] -- Adding to cart:', { item, quantity })
+    // Find the category name for this item
+    const categoryName = menuCategories
+      ?.find(category => category.items?.some(categoryItem => categoryItem.id === item.id))
+      ?.name || 'Unknown Category'
 
-    setCart(prev => {
-      const existingIndex = prev.findIndex(cartItem => cartItem.id === item.id)
-      if (existingIndex >= 0) {
-        const updated = [...prev]
-        if (updated[existingIndex]) {
-          updated[existingIndex].quantity += quantity
-        }
-        return updated
-      } else {
-        return [...prev, cartItem]
+    addToCart(item, quantity, {}, categoryName)
+  }, [addToCart, menuCategories])
+
+  const handleUpdateQuantity = useCallback((itemId: string, quantity: number) => {
+    // Find the first cart item for this menu item (without special instructions for basic quantity updates)
+    const cartItems = cart.filter(item => item.id === itemId)
+    if (cartItems.length > 0) {
+      const cartItem = cartItems[0] // Update the first matching item
+      if (cartItem) {
+        updateQuantity(cartItem.cartItemId, quantity)
       }
-    })
-
-    toast.success(`Added ${item.name} to cart`, { icon: '🛒' })
-  }, [])
-
-  const updateCartItemQuantity = useCallback((itemId: string, quantity: number) => {
-    if (quantity <= 0) {
-      setCart(prev => prev.filter(item => item.id !== itemId))
-    } else {
-      setCart(prev => prev.map(item =>
-        item.id === itemId ? { ...item, quantity } : item
-      ))
     }
-  }, [])
+  }, [updateQuantity, cart])
 
   const toggleFavorite = useCallback((itemId: string) => {
     setFavorites(prev => {
@@ -497,17 +593,33 @@ export function MenuView() {
            filters.showFavoritesOnly
   }, [filters])
 
-  // Calculate cart total
-  const cartTotal = useMemo(() => {
-    return cart.reduce((total, item) => total + (item.basePrice * item.quantity), 0)
-  }, [cart])
+  // Check scroll shadows
+  const updateScrollShadows = useCallback(() => {
+    const container = categoriesScrollRef.current
+    if (!container) return
+
+    const { scrollLeft, scrollWidth, clientWidth } = container
+    const scrollThreshold = 10 // Minimum scroll distance to show shadow
+
+    setShowLeftShadow(scrollLeft > scrollThreshold)
+    setShowRightShadow(scrollLeft < scrollWidth - clientWidth - scrollThreshold)
+  }, [])
+
+  // Update shadows on categories change and mount
+  useEffect(() => {
+    updateScrollShadows()
+    // Small delay to ensure proper calculation after render
+    const timeout = setTimeout(updateScrollShadows, 100)
+    return () => clearTimeout(timeout)
+  }, [processedCategories, updateScrollShadows])
+
 
   // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
         {/* Loading Header */}
-        <div className="px-6 py-8">
+        <div className="px-4 py-8">
           <div className="animate-pulse">
             <div className="h-8 bg-surface-secondary rounded-lg w-48 mb-4"></div>
             <div className="h-4 bg-surface-secondary rounded w-32"></div>
@@ -515,12 +627,12 @@ export function MenuView() {
         </div>
 
         {/* Loading Search */}
-        <div className="px-6 mb-6">
+        <div className="px-4 mb-6">
           <div className="h-12 bg-surface-secondary rounded-2xl animate-pulse"></div>
         </div>
 
         {/* Loading Categories */}
-        <div className="px-6 mb-6">
+        <div className="px-4 mb-6">
           <div className="flex gap-3 overflow-hidden">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="h-12 bg-surface-secondary rounded-full w-24 animate-pulse flex-shrink-0"></div>
@@ -529,7 +641,7 @@ export function MenuView() {
         </div>
 
         {/* Loading Grid */}
-        <div className="px-6 grid grid-cols-2 gap-4">
+        <div className="px-4 grid grid-cols-2 gap-4">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="bg-surface rounded-xl overflow-hidden animate-pulse">
               <div className="aspect-[4/3] bg-surface-secondary"></div>
@@ -565,7 +677,7 @@ export function MenuView() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20" ref={pullToRefresh.bind}>
+    <div className="min-h-screen bg-background pb-24" ref={pullToRefresh.bind}>
       {/* Pull-to-refresh indicator */}
       <PullToRefreshIndicator
         isPulling={pullToRefresh.isPulling}
@@ -581,7 +693,7 @@ export function MenuView() {
         animate={{ opacity: 1, y: 0 }}
         className="bg-surface border-b border-border sticky top-0 z-40 backdrop-blur-lg bg-opacity-95"
       >
-        <div className="px-6 py-6">
+        <div className="px-4 py-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex-1">
               <h1 className="text-h1 font-bold text-content-primary mb-2">
@@ -650,7 +762,6 @@ export function MenuView() {
             <SearchBar
               placeholder="Search for delicious food..."
               onSearch={handleSearch}
-              onFilter={toggleFilter}
               onVoiceSearch={voiceSearchSupported ? handleVoiceSearch : undefined}
               showRecentSearches={true}
               recentSearches={recentSearches}
@@ -665,22 +776,52 @@ export function MenuView() {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.1 }}
-        className="px-6 py-4"
+        className="relative px-4 py-3"
       >
-        <div className="flex gap-3 overflow-x-auto scrollbar-hide">
+        {/* Left Shadow */}
+        <AnimatePresence>
+          {showLeftShadow && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="absolute left-0 top-3 bottom-3 w-8 bg-gradient-to-r from-stone-50 via-stone-50/60 to-transparent z-10 pointer-events-none"
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Right Shadow */}
+        <AnimatePresence>
+          {showRightShadow && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="absolute right-0 top-3 bottom-3 w-8 bg-gradient-to-l from-stone-50 via-stone-50/60 to-transparent z-10 pointer-events-none"
+            />
+          )}
+        </AnimatePresence>
+
+        <div
+          ref={categoriesScrollRef}
+          className="flex gap-2 overflow-x-auto scrollbar-hide py-2"
+          onScroll={updateScrollShadows}
+        >
           {processedCategories.map((category, index) => (
             <motion.div
               key={category.id}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.05 }}
+              transition={{ delay: index * 0.03 }}
+              className="flex-shrink-0"
             >
               <CategoryCard
                 category={category}
                 onClick={setSelectedCategory}
                 layout="horizontal"
                 showItemCount={true}
-                className="min-w-max"
               />
             </motion.div>
           ))}
@@ -696,7 +837,7 @@ export function MenuView() {
             exit={{ opacity: 0, height: 0 }}
             className="border-t border-border bg-surface-secondary"
           >
-            <div className="px-6 py-4">
+            <div className="px-4 py-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-h3 font-semibold">Filters</h3>
                 <Button
@@ -790,7 +931,7 @@ export function MenuView() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="px-6 py-3 border-b border-border bg-surface-secondary"
+          className="px-4 py-3 border-b border-border bg-surface-secondary"
         >
           <div className="flex items-center justify-between">
             <span className="text-body-sm text-content-secondary">
@@ -813,7 +954,7 @@ export function MenuView() {
       )}
 
       {/* Menu Items Grid */}
-      <main className="px-6 py-6">
+      <main className="px-4 py-6">
         {filteredMenuItems.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -849,10 +990,10 @@ export function MenuView() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2 }}
-            className={`grid gap-4 ${
+            className={`grid ${
               layout === 'grid'
-                ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
-                : 'grid-cols-1'
+                ? 'grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+                : 'grid-cols-1 gap-4'
             }`}
           >
             {filteredMenuItems.map((item, index) => (
@@ -867,22 +1008,65 @@ export function MenuView() {
                     id: item.id,
                     name: item.name,
                     description: item.description,
-                    price: item.price ?? item.basePrice,
+                    price: (() => {
+                      // Smart price handling: detect if price is in cents and convert to dollars
+                      const rawPrice = item.price ?? item.basePrice;
+                      let finalPrice = rawPrice;
+
+                      // If price looks like it's in cents (e.g., 1499 for $14.99), convert it
+                      if (rawPrice > 100 && rawPrice % 1 === 0) {
+                        // Whole number over 100 - likely cents, convert to dollars
+                        finalPrice = rawPrice / 100;
+                      }
+
+                      console.log(`[MenuView] Item ${item.name}: raw=${rawPrice}, final=${finalPrice}`);
+                      return finalPrice;
+                    })(),
                     image: item.image,
                     category: '', // This would need to be resolved
                     dietaryIndicators: item.dietaryTypes,
-                    allergyInfo: item.allergens,
-                    spicyLevel: item.spiceLevel,
-                    rating: 4.5, // Mock rating - this would come from the API
-                    reviewCount: 127, // Mock review count
-                    preparationTime: 15, // Mock prep time
-                    isPopular: index < 3, // Mock popular items
-                    isNew: index > filteredMenuItems.length - 3 // Mock new items
+                    allergyInfo: convertAllergyInfoToArray(item.allergyInfo),
+                    spicyLevel: item.spicyLevel,
+                    preparationTime: item.preparationTime, // Use real preparation time from backend
+                    isPopular: index < 3, // Mock popular items - could be replaced with real data later
+                    isNew: isItemNew(item.createdAt)
                   }}
-                  quantity={cart.find(cartItem => cartItem.id === item.id)?.quantity || 0}
-                  onQuantityChange={updateCartItemQuantity}
-                  onAddToCart={(menuItem, quantity) => addToCart(item, quantity)}
+                  quantity={getItemQuantity(item.id)}
+                  onQuantityChange={(itemId, newQuantity) => {
+                    // Set absolute quantity for items without special instructions
+                    const existingItems = cart.filter(cartItem => cartItem.id === itemId)
+                    if (existingItems.length > 0) {
+                      // Update existing item with absolute quantity
+                      handleUpdateQuantity(itemId, newQuantity)
+                    } else {
+                      console.log('[MenuView] No existing cart item found, adding new item with quantity:', newQuantity)
+                      // Add new item with specified quantity
+                      handleAddToCart(item, newQuantity)
+                    }
+                  }}
+                  onAddToCart={(menuItem, quantity) => handleAddToCart(item, quantity)}
                   onToggleFavorite={toggleFavorite}
+                  onItemClick={(menuItem) => {
+                    console.log('[MenuView] onItemClick called with menuItem:', menuItem)
+                    console.log('[MenuView] Original item from API:', item)
+
+                    // Map the data structure to match what ItemDetailModal expects
+                    const modalItem = {
+                      ...item,
+                      basePrice: item.price || item.basePrice || 0,
+                      dietaryTypes: item.dietaryTypes || [],
+                      options: item.options || [],
+                      imageUrl: item.image || item.imageUrl,
+                      spicyLevel: item.spicyLevel || 0,
+                      allergyInfo: item.allergyInfo || undefined,
+                      nutritionalInfo: item.nutritionalInfo || undefined
+                    }
+
+                    console.log('[MenuView] Mapped item for modal:', modalItem)
+                    setSelectedItem(modalItem)
+                    setShowItemModal(true)
+                    console.log('[MenuView] Modal should now be visible')
+                  }}
                   isFavorite={favorites.has(item.id)}
                   layout={layout}
                   showQuickAdd={true}
@@ -894,21 +1078,36 @@ export function MenuView() {
       </main>
 
       {/* Bottom Navigation */}
-      <BottomNav cartItemCount={cart.length} />
+      <BottomNav cartItemCount={cartCount} />
 
       {/* Modals */}
       <ItemDetailModal
         item={selectedItem}
         isOpen={showItemModal}
         onClose={() => setShowItemModal(false)}
-        onAddToCart={(item, quantity, customizations) => addToCart(item, quantity)}
+        existingQuantity={selectedItem ? getItemQuantity(selectedItem.id) : 0}
+        onAddToCart={(item, quantity, customizations) => {
+          console.log('[MenuView] -- onAddToCart from ItemDetailModal:', { item, quantity, customizations })
+
+          if (!item) {
+            console.error('No item provided to add to cart')
+            return
+          }
+          const categoryName = menuCategories
+            ?.find(category => category.items?.some(categoryItem => categoryItem.id === item.id))
+            ?.name || 'Unknown Category'
+
+          // Extract special instructions from customizations
+          const specialInstructions = customizations?.specialInstructions
+
+          // Let the cart hook handle ALL consolidation logic
+          addToCart(item, quantity, customizations, categoryName, specialInstructions)
+        }}
       />
 
       <CartDrawer
         isOpen={showCartDrawer}
         onClose={() => setShowCartDrawer(false)}
-        cart={cart}
-        onUpdateCart={setCart}
       />
     </div>
   )

@@ -117,11 +117,15 @@ const SearchBar: React.FC<SearchBarProps> = ({
             onFocus={handleFocus}
             onBlur={handleBlur}
             placeholder={placeholder}
-            className={`w-full h-12 pl-12 pr-20 rounded-2xl bg-surface border transition-all duration-200 text-body placeholder:text-content-tertiary ${
+            className={`w-full h-12 pl-12 pr-20 rounded-2xl bg-surface border transition-all duration-200 text-body placeholder:text-content-tertiary outline-none ${
               isFocused
-                ? 'border-border-focus shadow-lg bg-surface-elevated'
+                ? 'border-border-focus shadow-lg bg-surface-elevated focus:ring-2 focus:ring-primary/20 focus:border-primary'
                 : 'border-border shadow-sm hover:border-border-secondary'
             }`}
+            style={{
+              WebkitAppearance: 'none',
+              WebkitTapHighlightColor: 'transparent'
+            }}
           />
 
           {/* Search Icon */}

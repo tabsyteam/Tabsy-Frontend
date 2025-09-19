@@ -8,7 +8,9 @@ module.exports = {
     './app/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     '../../packages/ui-components/src/**/*.{js,ts,jsx,tsx}',
-    '../../packages/**/*.{js,ts,jsx,tsx}',
+    '../../packages/shared-types/src/**/*.{js,ts,jsx,tsx}',
+    '../../packages/shared-utils/src/**/*.{js,ts,jsx,tsx}',
+    '../../packages/theme-system/src/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     ...sharedConfig.theme,

@@ -1,0 +1,66 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#fce4ec;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f8bbd9;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="plate" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#fafafa;stop-opacity:1" />
+    </radialGradient>
+    <linearGradient id="cake" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" style="stop-color:#8d6e63;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#d7ccc8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f5f5f5;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="300" fill="url(#bg)"/>
+
+  <!-- Plate shadow -->
+  <ellipse cx="200" cy="230" rx="110" ry="12" fill="#000000" opacity="0.1"/>
+
+  <!-- Main plate -->
+  <ellipse cx="200" cy="220" rx="100" ry="100" fill="url(#plate)" stroke="#e0e0e0" stroke-width="2"/>
+
+  <!-- Cake slice -->
+  <path d="M200 220 L170 190 Q200 160 230 190 Z" fill="url(#cake)"/>
+
+  <!-- Frosting -->
+  <path d="M170 190 Q200 175 230 190 Q215 185 200 185 Q185 185 170 190" fill="#fff3e0"/>
+
+  <!-- Cake layers -->
+  <line x1="175" y1="200" x2="225" y2="180" stroke="#bcaaa4" stroke-width="1" opacity="0.6"/>
+  <line x1="180" y1="210" x2="220" y2="195" stroke="#bcaaa4" stroke-width="1" opacity="0.6"/>
+
+  <!-- Cherry on top -->
+  <circle cx="200" cy="175" r="5" fill="#e53935"/>
+  <ellipse cx="198" cy="173" rx="2" ry="1" fill="#ffcdd2"/>
+
+  <!-- Cherry stem -->
+  <path d="M200 170 Q202 165 205 162" stroke="#2e7d32" stroke-width="1.5" fill="none"/>
+  <ellipse cx="206" cy="161" rx="1.5" ry="3" fill="#4caf50"/>
+
+  <!-- Decorative berries -->
+  <circle cx="180" cy="200" r="3" fill="#3f51b5"/>
+  <circle cx="220" cy="195" r="3" fill="#9c27b0"/>
+  <circle cx="190" cy="210" r="2.5" fill="#e91e63"/>
+
+  <!-- Mint leaves -->
+  <path d="M210 185 Q215 180 220 185 Q215 190 210 185" fill="#4caf50"/>
+  <path d="M185 195 Q190 190 195 195 Q190 200 185 195" fill="#66bb6a"/>
+
+  <!-- Powdered sugar effect -->
+  <g opacity="0.4">
+    <circle cx="175" cy="185" r="1" fill="#ffffff"/>
+    <circle cx="210" cy="190" r="1.5" fill="#ffffff"/>
+    <circle cx="195" cy="180" r="1" fill="#ffffff"/>
+    <circle cx="225" cy="185" r="1" fill="#ffffff"/>
+  </g>
+
+  <!-- Decorative pattern on plate -->
+  <path d="M140 220 Q200 210 260 220" stroke="#e1bee7" stroke-width="1" fill="none" opacity="0.5"/>
+
+  <text x="200" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#ad1457">Desserts</text>
+</svg>

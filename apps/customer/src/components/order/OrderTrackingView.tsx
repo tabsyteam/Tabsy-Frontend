@@ -25,6 +25,7 @@ import { useWebSocket, useWebSocketEvent } from '@tabsy/api-client'
 import { OrderStatusSkeleton, OrderTimelineSkeleton, OrderSummarySkeleton, HeaderSkeleton } from '../ui/Skeleton'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator'
+import { SessionManager } from '@/lib/session'
 
 interface OrderTrackingViewProps {
   orderId: string
@@ -145,6 +146,14 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
         const orderData = transformApiOrderToLocal(response.data)
         setOrder(orderData)
 
+        // Save order to SessionManager for navigation access
+        SessionManager.setCurrentOrder({
+          orderId: response.data.id,
+          orderNumber: response.data.orderNumber,
+          status: response.data.status,
+          createdAt: Date.now()
+        })
+
         if (response.data.status === OrderStatus.DELIVERED) {
           setShowPaymentOption(true)
         }
@@ -242,6 +251,14 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
             }
           }
 
+          // Update SessionManager with the updated order
+          SessionManager.setCurrentOrder({
+            orderId: updatedOrder.id,
+            orderNumber: updatedOrder.orderNumber,
+            status: updatedOrder.status,
+            createdAt: Date.now()
+          })
+
           return updatedOrder
         })
       }
@@ -277,6 +294,15 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
           }
 
           updatedOrder.updatedAt = new Date().toISOString()
+
+          // Update SessionManager with the updated order
+          SessionManager.setCurrentOrder({
+            orderId: updatedOrder.id,
+            orderNumber: updatedOrder.orderNumber,
+            status: updatedOrder.status,
+            createdAt: Date.now()
+          })
+
           return updatedOrder
         })
       }
@@ -305,6 +331,14 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
         if (response.success && response.data) {
           const orderData = transformApiOrderToLocal(response.data)
           setOrder(orderData)
+
+          // Save order to SessionManager for navigation access
+          SessionManager.setCurrentOrder({
+            orderId: response.data.id,
+            orderNumber: response.data.orderNumber,
+            status: response.data.status,
+            createdAt: Date.now()
+          })
 
           // Show payment option if order is delivered but not completed
           if (response.data.status === OrderStatus.DELIVERED) {
@@ -488,8 +522,7 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
   const currentStatusIndex = getCurrentStatusIndex()
 
   return (
-    <div className="min-h-screen bg-background" ref={pullToRefresh.bind}>
-      {/* Pull-to-refresh indicator */}
+    <div className="min-h-screen bg-background pb-24" ref={pullToRefresh.bind}>
       <PullToRefreshIndicator
         isPulling={pullToRefresh.isPulling}
         isRefreshing={pullToRefresh.isRefreshing}
@@ -498,26 +531,32 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
         progress={pullToRefresh.progress}
       />
 
-      {/* Header */}
       <div className="bg-surface shadow-sm border-b sticky top-0 z-10 backdrop-blur-sm bg-surface/95">
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.back()}
-                className="p-2"
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <ArrowLeft className="w-4 h-4" />
-              </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    const queryParams = SessionManager.getDiningQueryParams()
+                    router.push(`/orders${queryParams}`)
+                  }}
+                  className="p-2 hover:bg-interactive-hover transition-colors duration-200"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+              </motion.div>
               <div>
                 <h1 className="text-xl font-semibold">Order #{order.orderNumber}</h1>
                 <div className="flex items-center space-x-3">
                   <p className="text-sm text-content-tertiary">
                     {order.guestInfo.name} • {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
                   </p>
-                  {/* WebSocket Connection Status */}
                   <div className="flex items-center space-x-1">
                     <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-orange-500'}`} />
                     <span className="text-xs text-content-tertiary">
@@ -527,277 +566,19 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                 </div>
               </div>
             </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              className="p-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Order Status and Timeline */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Current Status */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-surface rounded-xl border p-6"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <div className="flex items-center space-x-4 mb-4">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                  ORDER_STATUSES[currentStatusIndex]?.color === 'text-green-600' ? 'bg-green-100' :
-                  ORDER_STATUSES[currentStatusIndex]?.color === 'text-orange-600' ? 'bg-orange-100' :
-                  ORDER_STATUSES[currentStatusIndex]?.color === 'text-purple-600' ? 'bg-purple-100' :
-                  ORDER_STATUSES[currentStatusIndex]?.color === 'text-blue-600' ? 'bg-blue-100' : 'bg-gray-100'
-                }`}>
-                  {React.createElement(ORDER_STATUSES[currentStatusIndex]?.icon || Clock, {
-                    className: `w-6 h-6 ${ORDER_STATUSES[currentStatusIndex]?.color || 'text-gray-600'}`
-                  })}
-                </div>
-                <div>
-                  <h2 className="text-xl font-semibold text-content-primary">
-                    {ORDER_STATUSES[currentStatusIndex]?.label || 'Processing'}
-                  </h2>
-                  <p className="text-content-secondary">
-                    {ORDER_STATUSES[currentStatusIndex]?.description || 'Please wait'}
-                  </p>
-                </div>
-              </div>
-
-              {timeElapsed > 0 && order.status !== OrderStatus.DELIVERED && (
-                <div className="flex items-center space-x-2 text-sm text-content-tertiary">
-                  <Clock className="w-4 h-4" />
-                  <span>Time elapsed: {timeElapsed} minute{timeElapsed !== 1 ? 's' : ''}</span>
-                </div>
-              )}
-            </motion.div>
-
-            {/* Progress Timeline */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-surface rounded-xl border p-6"
-            >
-              <h3 className="text-lg font-semibold text-content-primary mb-4">
-                Order Progress
-              </h3>
-
-              <div className="space-y-4">
-                {ORDER_STATUSES.map((status, index) => {
-                  const isCompleted = index <= currentStatusIndex
-                  const isCurrent = index === currentStatusIndex
-
-                  return (
-                    <div key={status.key} className="flex items-center space-x-4">
-                      <div className={`relative flex-shrink-0 w-8 h-8 rounded-full border-2 transition-colors ${
-                        isCompleted
-                          ? 'bg-primary border-primary'
-                          : 'border-gray-300 bg-background'
-                      }`}>
-                        {isCompleted && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            className="absolute inset-0 flex items-center justify-center"
-                          >
-                            <CheckCircle className="w-4 h-4 text-white" />
-                          </motion.div>
-                        )}
-
-                        {isCurrent && !isCompleted && (
-                          <motion.div
-                            animate={{ scale: [1, 1.2, 1] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                            className="absolute inset-1 bg-primary rounded-full"
-                          />
-                        )}
-
-                        {index < ORDER_STATUSES.length - 1 && (
-                          <div className={`absolute top-8 left-1/2 transform -translate-x-1/2 w-0.5 h-6 ${
-                            isCompleted ? 'bg-primary' : 'bg-gray-300'
-                          }`} />
-                        )}
-                      </div>
-
-                      <div className="flex-1">
-                        <h4 className={`font-medium ${
-                          isCompleted ? 'text-content-primary' : 'text-content-tertiary'
-                        }`}>
-                          {status.label}
-                        </h4>
-                        <p className={`text-sm ${
-                          isCompleted ? 'text-content-secondary' : 'text-content-tertiary'
-                        }`}>
-                          {status.description}
-                        </p>
-                      </div>
-
-                      {isCurrent && (
-                        <motion.div
-                          animate={{ opacity: [0.5, 1, 0.5] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                          className="flex-shrink-0"
-                        >
-                          <div className="w-2 h-2 bg-primary rounded-full" />
-                        </motion.div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </motion.div>
-
-            {/* Order Items */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-surface rounded-xl border p-6"
-            >
-              <h3 className="text-lg font-semibold text-content-primary mb-4">
-                Order Items
-              </h3>
-
-              <div className="space-y-3">
-                {order.items.map((item) => (
-                  <div key={item.id} className="flex justify-between items-center py-2 border-b last:border-b-0">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-content-primary">{item.name}</h4>
-                      <div className="text-sm text-content-secondary">
-                        ${(item.unitPrice || 0).toFixed(2)} × {item.quantity}
-                      </div>
-                    </div>
-                    <div className="font-semibold text-content-primary">
-                      ${(item.totalPrice || 0).toFixed(2)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {order.specialInstructions && (
-                <div className="mt-4 pt-4 border-t">
-                  <h4 className="font-medium text-content-primary mb-2">Special Instructions</h4>
-                  <p className="text-content-secondary text-sm bg-gray-50 p-3 rounded-lg">
-                    {order.specialInstructions}
-                  </p>
-                </div>
-              )}
-            </motion.div>
-          </div>
-
-          {/* Actions and Summary */}
-          <div className="lg:col-span-1">
-            <div className="space-y-6">
-              {/* Quick Actions */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-surface rounded-xl border p-6"
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                className="p-2 transition-all duration-200"
               >
-                <h3 className="text-lg font-semibold text-content-primary mb-4">
-                  Quick Actions
-                </h3>
-
-                <div className="space-y-3">
-                  <Button
-                    onClick={handleCallWaiter}
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
-                    <Bell className="w-4 h-4 mr-2" />
-                    Call Waiter
-                  </Button>
-
-                  <Button
-                    onClick={handleBackToMenu}
-                    variant="outline"
-                    className="w-full justify-start"
-                  >
-                    <Utensils className="w-4 h-4 mr-2" />
-                    Order More Items
-                  </Button>
-
-                  {order.guestInfo.phone && (
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      onClick={() => window.open(`tel:${order.guestInfo.phone}`)}
-                    >
-                      <Phone className="w-4 h-4 mr-2" />
-                      Contact Restaurant
-                    </Button>
-                  )}
-                </div>
-              </motion.div>
-
-              {/* Payment Option */}
-              <AnimatePresence>
-                {showPaymentOption && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-primary/5 border border-primary/20 rounded-xl p-6"
-                  >
-                    <div className="text-center space-y-4">
-                      <div className="w-12 h-12 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
-                        <CreditCard className="w-6 h-6 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-content-primary mb-2">
-                          Ready to Pay?
-                        </h3>
-                        <p className="text-sm text-content-secondary">
-                          Your meal is served! You can now pay for your order.
-                        </p>
-                      </div>
-                      <Button onClick={handlePayment} className="w-full">
-                        <CreditCard className="w-4 h-4 mr-2" />
-                        Pay Now - ${(order.total || 0).toFixed(2)}
-                      </Button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Order Summary */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-surface rounded-xl border p-6"
-              >
-                <h3 className="text-lg font-semibold text-content-primary mb-4">
-                  Order Total
-                </h3>
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-content-secondary">
-                    <span>Subtotal</span>
-                    <span>${(order.subtotal || 0).toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-content-secondary">
-                    <span>Tax</span>
-                    <span>${(order.tax || 0).toFixed(2)}</span>
-                  </div>
-                  <div className="border-t pt-2">
-                    <div className="flex justify-between text-lg font-semibold text-content-primary">
-                      <span>Total</span>
-                      <span>${(order.total || 0).toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+            </motion.div>
           </div>
         </div>
       </div>

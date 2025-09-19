@@ -39,7 +39,7 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
 }) => {
   const getCategoryIcon = (iconName?: string) => {
     const iconProps = {
-      size: layout === 'horizontal' ? 20 : 24,
+      size: layout === 'horizontal' ? 16 : 24,
       className: `${category.isActive ? 'text-primary-foreground' : 'text-content-secondary'}`
     }
 
@@ -97,29 +97,29 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
         whileTap="tap"
         onClick={handleClick}
         className={`
-          card-category flex-shrink-0 min-w-max
+          relative flex-shrink-0 px-4 py-2.5 rounded-full border transition-all duration-200 min-w-max
           ${category.isActive
-            ? 'bg-primary text-primary-foreground border-primary shadow-lg'
-            : 'bg-surface-secondary hover:bg-surface hover:border-primary'
+            ? 'bg-primary text-primary-foreground border-primary shadow-md scale-105'
+            : 'bg-surface border-border hover:bg-surface-secondary hover:border-primary/50 hover:shadow-sm'
           }
           ${className}
         `}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* Icon or Image */}
           <div className={`
-            flex items-center justify-center w-10 h-10 rounded-full
+            flex items-center justify-center w-6 h-6 rounded-full transition-colors duration-200
             ${category.isActive
-              ? 'bg-primary-foreground bg-opacity-20'
-              : 'bg-background-secondary'
+              ? 'bg-primary-foreground/20'
+              : 'bg-primary/10'
             }
           `}>
             {category.image ? (
               <Image
                 src={category.image}
                 alt={category.name}
-                width={24}
-                height={24}
+                width={16}
+                height={16}
                 className="object-cover rounded-full"
               />
             ) : (
@@ -128,26 +128,35 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
           </div>
 
           {/* Content */}
-          <div className="text-left">
+          <div className="flex items-center gap-1.5">
             <h3 className={`
-              text-body font-semibold
+              text-sm font-medium leading-none
               ${category.isActive ? 'text-primary-foreground' : 'text-content-primary'}
             `}>
               {category.name}
             </h3>
             {showItemCount && category.itemCount !== undefined && (
-              <p className={`
-                text-caption
+              <span className={`
+                text-xs px-1.5 py-0.5 rounded-full font-medium leading-none
                 ${category.isActive
-                  ? 'text-primary-foreground text-opacity-80'
-                  : 'text-content-tertiary'
+                  ? 'bg-primary-foreground/20 text-primary-foreground'
+                  : 'bg-primary/10 text-primary'
                 }
               `}>
-                {category.itemCount} item{category.itemCount !== 1 ? 's' : ''}
-              </p>
+                {category.itemCount}
+              </span>
             )}
           </div>
         </div>
+
+        {/* Active indicator dot */}
+        {category.isActive && (
+          <motion.div
+            layoutId="activeCategoryDot"
+            className="absolute -top-1 -right-1 w-2 h-2 bg-accent rounded-full"
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          />
+        )}
       </motion.button>
     )
   }

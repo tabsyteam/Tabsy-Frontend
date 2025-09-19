@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -26,7 +26,7 @@
   --space-12: 6rem;  /* 96px */
 
   /* Font Families */
-  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-ui: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-display: 'Playfair Display', Georgia, serif;
 }
 
@@ -50,15 +50,140 @@ body {
 
 /* Prevent zoom on focus for iOS */
 @media screen and (max-width: 768px) {
+  /* Comprehensive form control reset */
   input[type="text"],
   input[type="email"],
   input[type="number"],
   input[type="tel"],
   input[type="password"],
   input[type="search"],
+  input[type="url"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="week"],
+  input[type="time"],
   select,
   textarea {
-    font-size: 16px;
+    font-size: 16px !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0) !important;
+    -webkit-focus-ring-color: transparent !important;
+  }
+
+  /* Complete removal of ALL focus styles */
+  :where(input, textarea, select, button, a, [role="button"], [tabindex]):focus,
+  :where(input, textarea, select, button, a, [role="button"], [tabindex]):focus-visible,
+  :where(input, textarea, select, button, a, [role="button"], [tabindex]):focus-within,
+  :where(input, textarea, select, button, a, [role="button"], [tabindex]):active {
+    outline: none !important;
+    outline-width: 0 !important;
+    outline-style: none !important;
+    outline-color: transparent !important;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0) !important;
+    -webkit-focus-ring-color: rgba(0, 0, 0, 0) !important;
+    -webkit-user-select: text;
+  }
+
+  /* Custom focus styles only */
+  :where(input:not([type="checkbox"]):not([type="radio"]), textarea, select):focus {
+    box-shadow: 0 0 0 2px rgb(var(--border-focus)) !important;
+  }
+
+  /* Ultra-strong override for all interactive elements */
+  *,
+  *::before,
+  *::after {
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0) !important;
+  }
+
+  /* Nuclear option - remove ALL possible focus/active states */
+  * {
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  /* Allow text selection for inputs */
+  input,
+  textarea,
+  [contenteditable] {
+    -webkit-user-select: text;
+  }
+
+  /* Button-specific overrides */
+  button,
+  [role="button"],
+  [tabindex="0"] {
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    -webkit-user-select: none !important;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0) !important;
+    -webkit-touch-callout: none !important;
+    outline: none !important;
+  }
+
+  /* Override any webkit autofill styling */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 100px rgb(var(--surface)) inset !important;
+    -webkit-text-fill-color: rgb(var(--content-primary)) !important;
+    transition: background-color 5000s ease-in-out 0s;
+  }
+
+  /* Remove all browser-specific focus ring colors */
+  :focus-visible {
+    outline: none !important;
+  }
+
+  /* Force round buttons to stay round */
+  .rounded-full {
+    border-radius: 9999px !important;
+  }
+
+  /* Aggressive focus state removal for motion components */
+  [data-framer-component] {
+    -webkit-tap-highlight-color: transparent !important;
+    outline: none !important;
+  }
+
+  /* Remove any possible yellow/amber borders or highlights */
+  *:focus,
+  *:active,
+  *:hover {
+    box-shadow: none !important;
+    border-color: inherit !important;
+    outline: none !important;
+    -webkit-tap-highlight-color: transparent !important;
+  }
+
+  /* Override any motion component tap highlights */
+  .motion-component,
+  [data-framer] {
+    -webkit-tap-highlight-color: transparent !important;
+  }
+}
+
+/* Perfect circular button styles */
+.btn-circle {
+  border-radius: 50% !important;
+  aspect-ratio: 1 !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Mobile-specific button overrides */
+@media screen and (max-width: 768px) {
+  .btn-circle {
+    border-radius: 50% !important;
+    aspect-ratio: 1 !important;
   }
 }
 
@@ -330,6 +455,9 @@ input[type="button"] {
   border: 1px solid rgb(var(--border));
   transition: all 0.2s ease-in-out;
   overflow: hidden;
+  width: 100%;
+  min-width: 0; /* Prevents flex/grid items from overflowing */
+  box-sizing: border-box;
 }
 
 .card-food:hover {
@@ -431,5 +559,57 @@ input[type="button"] {
   .glass-effect {
     background: hsl(var(--background));
     border: 2px solid hsl(var(--border));
+  }
+}
+
+/* Mobile-specific grid and card optimizations */
+@media screen and (max-width: 640px) {
+  /* Ensure grid items don't overflow on mobile */
+  .grid-cols-2 > * {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Optimize card spacing for mobile */
+  .card-food {
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 4px -1px rgba(0, 0, 0, 0.08), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+  }
+
+  .card-food:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Ensure proper text truncation on mobile */
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    word-break: break-word;
+  }
+
+  /* Badge optimizations for mobile */
+  .card-food .absolute {
+    font-size: 10px;
+    line-height: 1;
+  }
+
+  /* Prevent badge text overflow */
+  .card-food .bg-accent,
+  .card-food .bg-secondary {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 45px;
+  }
+
+  /* Improve backdrop blur for better visibility */
+  .card-food .bg-surface {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 }

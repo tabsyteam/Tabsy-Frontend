@@ -28,23 +28,18 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Restore guest session from sessionStorage if available
     const sessionStr = sessionStorage.getItem('tabsy-session')
-    console.log('ApiProvider: Checking for stored session:', sessionStr)
     if (sessionStr) {
       try {
         const session = JSON.parse(sessionStr)
-        console.log('ApiProvider: Parsed session:', session)
         if (session.sessionId) {
           console.log('ApiProvider: Restoring session ID:', session.sessionId)
           api.setGuestSession(session.sessionId)
-          console.log('ApiProvider: Session restored in API client')
-        } else {
-          console.log('ApiProvider: No sessionId in session object')
         }
       } catch (error) {
         console.error('Failed to restore session:', error)
+        // Clear invalid session data
+        sessionStorage.removeItem('tabsy-session')
       }
-    } else {
-      console.log('ApiProvider: No session found in sessionStorage')
     }
 
     // Health check on mount with better error handling
@@ -53,7 +48,10 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
         await api.health.check()
         setIsConnected(true)
       } catch (error) {
-        console.warn('API health check failed - running in offline mode:', error)
+        // Only log in development
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('API health check failed - running in offline mode:', error)
+        }
         setIsConnected(false)
       }
     }
