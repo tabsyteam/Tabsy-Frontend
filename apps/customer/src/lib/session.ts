@@ -4,6 +4,7 @@ interface DiningSession {
   restaurantName?: string
   tableName?: string
   sessionId?: string
+  tableSessionId?: string
   createdAt: number
   lastActivity: number
 }
@@ -264,8 +265,15 @@ export class SessionManager {
   }
 
   static getOrdersUrl(): string {
-    // Always navigate to the general orders list to show all orders
+    const session = this.getDiningSession()
     const queryParams = this.getDiningQueryParams()
+
+    // If user is in a table session, show shared table session orders
+    if (session) {
+      return `/table/orders${queryParams}`
+    }
+
+    // Otherwise show individual order history
     return `/orders${queryParams}`
   }
 

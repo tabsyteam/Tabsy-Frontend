@@ -113,9 +113,9 @@ export function OrderDetailModal({ order, onClose, onStatusUpdate }: OrderDetail
                 <div className="flex items-center space-x-3">
                   <User className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="text-sm text-gray-600">Customer</p>
+                    <p className="text-sm text-gray-600">Guest</p>
                     <p className="font-medium">
-                      {order.customerId ? 'Registered Customer' : 'Guest'}
+                      {order.customerName || 'Guest User'}
                     </p>
                   </div>
                 </div>
@@ -161,6 +161,11 @@ export function OrderDetailModal({ order, onClose, onStatusUpdate }: OrderDetail
                         <h4 className="font-medium text-gray-900">
                           {item.quantity}x {item.menuItem?.name || (item as any).name || 'Unknown Item'}
                         </h4>
+                        {item.menuItem?.categoryName && (
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Category: {item.menuItem.categoryName}
+                          </p>
+                        )}
                         <p className="text-sm text-gray-600 mt-1">
                           {item.menuItem?.description || ''}
                         </p>

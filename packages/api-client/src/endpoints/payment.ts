@@ -6,6 +6,7 @@ import type {
   PaymentIntent,
   PaymentMethod
 } from '@tabsy/shared-types'
+import { createQueryString, createFilterParams } from '@tabsy/shared-utils'
 
 export interface CreatePaymentIntentRequest {
   orderId: string
@@ -58,6 +59,22 @@ export interface StripeWebhookEvent {
 
 export class PaymentAPI {
   constructor(private client: TabsyApiClient) {}
+
+  /**
+   * GET /payments - List all payments (admin only)
+   */
+  async list(filters?: {
+    page?: number
+    limit?: number
+    dateFrom?: string
+    dateTo?: string
+    status?: PaymentStatus
+    restaurantId?: string
+  }): Promise<ApiResponse<Payment[]>> {
+    const queryString = createQueryString(createFilterParams(filters || {}))
+    const url = `/payments${queryString ? `?${queryString}` : ''}`
+    return this.client.get(url)
+  }
 
   /**
    * POST /payments/intent - Create payment intent
@@ -156,17 +173,8 @@ export class PaymentAPI {
       limit?: number
     }
   ): Promise<ApiResponse<Payment[]>> {
-    const params = new URLSearchParams()
-    
-    if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined) {
-          params.append(key, value.toString())
-        }
-      })
-    }
-    
-    const url = `/restaurants/${restaurantId}/payments${params.toString() ? `?${params.toString()}` : ''}`
+    const queryString = createQueryString(createFilterParams(filters || {}))
+    const url = `/restaurants/${restaurantId}/payments${queryString ? `?${queryString}` : ''}`
     return this.client.get(url)
   }
 }

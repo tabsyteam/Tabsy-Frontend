@@ -34,12 +34,10 @@ export function useCurrentRestaurant() {
     ? (user as any)?.restaurantOwner?.restaurantId || (user as any)?.restaurantStaff?.restaurantId
     : undefined
 
-  // TEMPORARY FIX: If user has restaurant role but no restaurant relationships in database,
-  // use a hardcoded restaurant ID for testing purposes
+  // Handle missing restaurant relationships properly
   if (isRestaurantUser && !restaurantId) {
-    console.warn('⚠️ Restaurant user found but no restaurant relationships in database. Using hardcoded restaurant ID for testing.')
-    // You should replace this with your actual restaurant ID from the backend
-    restaurantId = 'test-restaurant-id'
+    console.error('❌ Restaurant user found but no restaurant relationships in database. User needs to be properly associated with a restaurant.')
+    // Don't use a hardcoded fallback - this indicates a data integrity issue that should be resolved
   }
   
   // Fetch restaurant details if we have a restaurant ID
@@ -57,8 +55,8 @@ export function useCurrentRestaurant() {
     restaurantId,
     restaurant,
     isLoading: restaurantLoading,
-    error: restaurantError,
+    error: restaurantError || (isRestaurantUser && !restaurantId ? 'User not associated with any restaurant' : null),
     refetch: refetchRestaurant,
-    hasRestaurantAccess: isRestaurantUser
+    hasRestaurantAccess: isRestaurantUser && !!restaurantId
   }
 }

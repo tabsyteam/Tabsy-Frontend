@@ -147,33 +147,32 @@ export function CheckoutView() {
     setPlacing(true)
 
     try {
-      // Get session from sessionStorage
-      const sessionData = sessionStorage.getItem('tabsy-session')
-      console.log('Session data from storage:', sessionData)
+      // Get existing session ID from API client (created by TableSessionManager)
+      let existingSessionId = api.getGuestSessionId()
+      console.log('Existing session ID from API client:', existingSessionId)
 
-      let session
+      // If not in API client memory, try to restore from sessionStorage
+      if (!existingSessionId) {
+        const storedSessionId = sessionStorage.getItem(`guestSession-${tableId}`)
+        console.log('Stored session ID from sessionStorage:', storedSessionId)
 
-      if (!sessionData) {
-        console.log('No session data found - creating guest session through API')
-
-        // Create a proper guest session through the API
-        const sessionResponse = await api.session.createGuest({
-          tableId: tableId!,
-          restaurantId: restaurantId!,
-          // No QR code needed for development/testing
-        })
-
-        if (!sessionResponse.success || !sessionResponse.data) {
-          throw new Error('Failed to create guest session: ' + (sessionResponse.error || 'Unknown error'))
+        if (storedSessionId) {
+          // Restore session to API client
+          api.setGuestSession(storedSessionId)
+          existingSessionId = storedSessionId
+          console.log('Restored session to API client:', existingSessionId)
+        } else {
+          throw new Error('No guest session available. Please refresh the page and try again.')
         }
-
-        session = sessionResponse.data
-        sessionStorage.setItem('tabsy-session', JSON.stringify(session))
-        console.log('Created guest session:', session)
-      } else {
-        session = JSON.parse(sessionData)
-        console.log('Parsed session:', session)
       }
+
+      // Use the existing session instead of creating a new one
+      const session = {
+        sessionId: existingSessionId,
+        tableId: tableId!,
+        restaurantId: restaurantId!
+      }
+      console.log('Using existing guest session:', session)
 
       // Prepare order data according to backend OrderRequest type
       const orderData = {

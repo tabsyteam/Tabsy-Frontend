@@ -48,7 +48,7 @@ interface MenuItemCardProps {
   showQuickAdd?: boolean
 }
 
-const MenuItemCard: React.FC<MenuItemCardProps> = ({
+const MenuItemCard = React.memo<MenuItemCardProps>(({
   item,
   quantity = 0,
   onQuantityChange,
@@ -528,6 +528,6 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
       </div>
     </motion.div>
   )
-}
+})
 
 export default MenuItemCard

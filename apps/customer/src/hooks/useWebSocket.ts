@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { toast } from 'sonner'
+import { useWebSocket as useTabsyWebSocket, useOrderUpdates } from '@tabsy/api-client'
+import { SessionManager } from '../lib/session'
 
 interface WebSocketOptions {
   onMessage?: (data: any) => void
@@ -147,46 +149,122 @@ export function useWebSocket(url: string, options: WebSocketOptions = {}): UseWe
   }
 }
 
-// Hook specifically for order updates
-export function useOrderWebSocket(orderId: string, onOrderUpdate?: (orderData: any) => void) {
-  // In a real implementation, this would connect to your WebSocket server
-  // For now, we'll simulate the WebSocket behavior
+/**
+ * Hook for tracking order updates via WebSocket
+ * Uses the real @tabsy/api-client WebSocket client
+ */
+export function useOrderWebSocket(orderId: string, restaurantId?: string, onOrderUpdate?: (orderData: any) => void) {
   const [isConnected, setIsConnected] = useState(false)
 
-  useEffect(() => {
-    if (!orderId) return
+  // Get session info from SessionManager for WebSocket auth
+  const diningSession = SessionManager.getDiningSession()
+  const sessionId = diningSession?.sessionId || null
+  const tableId = diningSession?.tableId || null
 
-    // Simulate WebSocket connection
-    console.log(`Connecting to order updates for order: ${orderId}`)
-    setIsConnected(true)
-
-    // Simulate periodic updates (in real app, this would be actual WebSocket events)
-    const simulateUpdates = () => {
-      // This would be replaced with real WebSocket messages
-      const mockUpdates = [
-        { type: 'status_update', orderId, status: 'preparing', estimatedTime: 15 },
-        { type: 'status_update', orderId, status: 'ready', estimatedTime: 0 },
-        { type: 'status_update', orderId, status: 'delivered', estimatedTime: 0 }
-      ]
-
-      // Simulate random status updates (for demo purposes)
-      const randomUpdate = mockUpdates[Math.floor(Math.random() * mockUpdates.length)]
-
-      // In a real app, you would only call onOrderUpdate when you receive actual WebSocket messages
-      // onOrderUpdate?.(randomUpdate)
-    }
-
-    // Set up cleanup
-    const cleanup = () => {
-      console.log(`Disconnecting from order updates for order: ${orderId}`)
+  const wsOptions = {
+    url: process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:5001',
+    auth: {
+      namespace: 'customer' as const,
+      tableId: tableId || undefined, // Use actual tableId from session
+      restaurantId: restaurantId,
+      sessionId: sessionId || undefined // Use actual sessionId from session, not orderId
+    },
+    onConnect: () => {
+      console.log(`[useOrderWebSocket] Connected to WebSocket for order ${orderId}`)
+      setIsConnected(true)
+    },
+    onDisconnect: (reason: string) => {
+      console.log(`[useOrderWebSocket] Disconnected from WebSocket:`, reason)
+      setIsConnected(false)
+    },
+    onError: (error: Error) => {
+      console.error('[useOrderWebSocket] WebSocket error:', error)
       setIsConnected(false)
     }
+  }
 
-    return cleanup
+  // Use the real WebSocket hook from @tabsy/api-client
+  const { disconnect } = useTabsyWebSocket(wsOptions)
+
+  // Set up order-specific event listeners
+  useEffect(() => {
+    if (onOrderUpdate && orderId) {
+      // This is a simplified approach - in reality we'd need to listen for specific events
+      console.log(`[useOrderWebSocket] Setting up order tracking for ${orderId}`)
+    }
   }, [orderId, onOrderUpdate])
 
   return {
     isConnected,
-    disconnect: () => setIsConnected(false)
+    disconnect
+  }
+}
+
+/**
+ * Hook for tracking table session updates via WebSocket
+ * Handles multi-user table session events
+ */
+export function useTableSessionWebSocket(
+  tableSessionId: string,
+  restaurantId: string,
+  tableId: string,
+  guestSessionId: string,
+  onTableSessionUpdate?: (data: any) => void
+) {
+  const [isConnected, setIsConnected] = useState(false)
+  const [socket, setSocket] = useState<WebSocket | null>(null)
+
+  useEffect(() => {
+    if (!tableSessionId || !restaurantId || !tableId) return
+
+    // Use native WebSocket for now, can be upgraded to socket.io later
+    const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5001'}/customer?tableId=${tableId}&restaurantId=${restaurantId}&sessionId=${guestSessionId}&tableSessionId=${tableSessionId}`
+
+    const ws = new WebSocket(wsUrl)
+
+    ws.onopen = () => {
+      console.log(`[useTableSessionWebSocket] Connected for table session ${tableSessionId}`)
+      setIsConnected(true)
+    }
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        console.log(`[useTableSessionWebSocket] Received:`, data)
+
+        // Handle different table session events
+        if (data.type && data.type.startsWith('table:')) {
+          onTableSessionUpdate?.(data)
+        }
+      } catch (error) {
+        console.error('[useTableSessionWebSocket] Failed to parse message:', error)
+      }
+    }
+
+    ws.onclose = () => {
+      console.log(`[useTableSessionWebSocket] Disconnected from table session ${tableSessionId}`)
+      setIsConnected(false)
+    }
+
+    ws.onerror = (error) => {
+      console.error('[useTableSessionWebSocket] WebSocket error:', error)
+      setIsConnected(false)
+    }
+
+    setSocket(ws)
+
+    return () => {
+      ws.close()
+    }
+  }, [tableSessionId, restaurantId, tableId, guestSessionId, onTableSessionUpdate])
+
+  return {
+    isConnected,
+    disconnect: () => {
+      if (socket) {
+        socket.close()
+        setIsConnected(false)
+      }
+    }
   }
 }

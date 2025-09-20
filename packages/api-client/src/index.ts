@@ -9,6 +9,8 @@ export * from "./endpoints/payment"
 export * from "./endpoints/user"
 export * from "./endpoints/notification"
 export * from "./endpoints/session"
+export * from "./endpoints/table-session"
+export * from "./endpoints/restaurant-table-session"
 export * from "./endpoints/qr-access"
 export * from "./endpoints/health"
 export * from "./endpoints/feedback"
@@ -28,6 +30,8 @@ import { PaymentAPI } from './endpoints/payment'
 import { UserAPI } from './endpoints/user'
 import { NotificationAPI } from './endpoints/notification'
 import { SessionAPI } from './endpoints/session'
+import { TableSessionAPI } from './endpoints/table-session'
+import { RestaurantTableSessionAPI } from './endpoints/restaurant-table-session'
 import { QRAccessAPI } from './endpoints/qr-access'
 import { HealthAPI } from './endpoints/health'
 import { FeedbackAPI } from './endpoints/feedback'
@@ -49,6 +53,8 @@ export class TabsyAPI {
   public user: UserAPI
   public notification: NotificationAPI
   public session: SessionAPI
+  public tableSession: TableSessionAPI
+  public restaurantTableSession: RestaurantTableSessionAPI
   public qr: QRAccessAPI
   public health: HealthAPI
   public feedback: FeedbackAPI
@@ -67,6 +73,8 @@ export class TabsyAPI {
     this.user = new UserAPI(this.client)
     this.notification = new NotificationAPI(this.client)
     this.session = new SessionAPI(this.client)
+    this.tableSession = new TableSessionAPI(this.client)
+    this.restaurantTableSession = new RestaurantTableSessionAPI(this.client)
     this.qr = new QRAccessAPI(this.client)
     this.health = new HealthAPI(this.client)
     this.feedback = new FeedbackAPI(this.client)
@@ -96,6 +104,7 @@ export class TabsyAPI {
   getGuestSessionId(): string | null {
     return this.client.getGuestSessionId()
   }
+
 
   async healthCheck(): Promise<boolean> {
     return this.client.healthCheck()

@@ -32,3 +32,5 @@ export interface CreateGuestSessionRequest {
     email?: string;
   };
 }
+
+// Note: Multi-User Table Session types have been moved to domain/table.ts for proper organization

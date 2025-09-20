@@ -79,14 +79,19 @@ export class TabsyApiClient {
         if (this.authToken && config.headers) {
           config.headers.Authorization = `Bearer ${this.authToken}`
         }
-        // Add guest session header if available
-        if (this.guestSessionId && config.headers) {
+
+        // Only add guest session header for non-admin endpoints and when available
+        const isAdminEndpoint = config.url?.includes('/admin/')
+        const isPublicEndpoint = config.url?.includes('/health') || config.url?.includes('/auth')
+
+        if (this.guestSessionId && config.headers && !isAdminEndpoint && !isPublicEndpoint) {
           console.log('API Client: Adding x-session-id header:', this.guestSessionId)
           config.headers['x-session-id'] = this.guestSessionId
-        } else {
+        } else if (!isAdminEndpoint && !isPublicEndpoint) {
           console.log('API Client: No guestSessionId available', {
             guestSessionId: this.guestSessionId,
-            hasHeaders: !!config.headers
+            hasHeaders: !!config.headers,
+            url: config.url
           })
         }
         return config
@@ -218,6 +223,7 @@ export class TabsyApiClient {
   getGuestSessionId(): string | null {
     return this.guestSessionId
   }
+
 
   // Generic request methods
   async get<T = any>(

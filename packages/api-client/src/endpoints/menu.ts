@@ -9,6 +9,7 @@ import type {
   CreateMenuItemRequest,
   UpdateMenuItemRequest
 } from '@tabsy/shared-types'
+import { createQueryString, createFilterParams } from '@tabsy/shared-utils'
 
 export interface MenuFilters {
   available?: boolean
@@ -59,21 +60,8 @@ export class MenuAPI {
    * GET /restaurants/:restaurantId/menu - Get active menu (public endpoint for customers)
    */
   async getActiveMenu(restaurantId: string, filters?: MenuFilters): Promise<ApiResponse<Menu>> {
-    const params = new URLSearchParams()
-    
-    if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined) {
-          if (Array.isArray(value)) {
-            value.forEach(v => params.append(key, v.toString()))
-          } else {
-            params.append(key, value.toString())
-          }
-        }
-      })
-    }
-    
-    const url = `/restaurants/${restaurantId}/menu${params.toString() ? `?${params.toString()}` : ''}`
+    const queryString = createQueryString(createFilterParams(filters || {}))
+    const url = `/restaurants/${restaurantId}/menu${queryString ? `?${queryString}` : ''}`
     return this.client.get(url)
   }
 
@@ -115,21 +103,8 @@ export class MenuAPI {
    * GET /restaurants/:restaurantId/menu/items - Get menu items
    */
   async getItems(restaurantId: string, filters?: MenuFilters): Promise<ApiResponse<MenuItem[]>> {
-    const params = new URLSearchParams()
-    
-    if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined) {
-          if (Array.isArray(value)) {
-            value.forEach(v => params.append(key, v.toString()))
-          } else {
-            params.append(key, value.toString())
-          }
-        }
-      })
-    }
-    
-    const url = `/restaurants/${restaurantId}/menu/items${params.toString() ? `?${params.toString()}` : ''}`
+    const queryString = createQueryString(createFilterParams(filters || {}))
+    const url = `/restaurants/${restaurantId}/menu/items${queryString ? `?${queryString}` : ''}`
     return this.client.get(url)
   }
 

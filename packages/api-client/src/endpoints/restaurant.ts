@@ -7,6 +7,7 @@ import type {
   UpdateRestaurantRequest,
   User
 } from '@tabsy/shared-types'
+import { createQueryString, createFilterParams } from '@tabsy/shared-utils'
 
 export interface RestaurantListFilters {
   status?: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'SUSPENDED'
@@ -23,17 +24,8 @@ export class RestaurantAPI {
    * GET /restaurants/ - List restaurants
    */
   async list(filters?: RestaurantListFilters): Promise<ApiResponse<Restaurant[]>> {
-    const params = new URLSearchParams()
-    
-    if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined) {
-          params.append(key, value.toString())
-        }
-      })
-    }
-    
-    const url = `/restaurants${params.toString() ? `?${params.toString()}` : ''}`
+    const queryString = createQueryString(createFilterParams(filters || {}))
+    const url = `/restaurants${queryString ? `?${queryString}` : ''}`
     return this.client.get(url)
   }
 

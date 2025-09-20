@@ -8,8 +8,10 @@ import {
   Filter,
   Mic,
   TrendingUp,
-  Clock
+  Clock,
+  Hash
 } from 'lucide-react'
+import { MenuItem } from '@tabsy/shared-types'
 
 interface SearchBarProps {
   placeholder?: string
@@ -18,42 +20,63 @@ interface SearchBarProps {
   onVoiceSearch?: () => void
   showRecentSearches?: boolean
   recentSearches?: string[]
+  menuSuggestions?: MenuItem[]
+  onGetSuggestions?: (query: string) => void
+  onSuggestionSelect?: (item: MenuItem) => void
   className?: string
   autoFocus?: boolean
 }
 
-const SearchBar: React.FC<SearchBarProps> = ({
+const SearchBar = React.memo<SearchBarProps>(({
   placeholder = "Search delicious food...",
   onSearch,
   onFilter,
   onVoiceSearch,
   showRecentSearches = true,
   recentSearches = [],
+  menuSuggestions = [],
+  onGetSuggestions,
+  onSuggestionSelect,
   className = '',
   autoFocus = false
 }) => {
   const [query, setQuery] = useState('')
   const [isFocused, setIsFocused] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [userInteracted, setUserInteracted] = useState(false)
+  const [isInitialLoad, setIsInitialLoad] = useState(true)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const popularSearches = [
-    'Pizza', 'Burger', 'Pasta', 'Salad', 'Dessert', 'Coffee'
+    'Pizza', 'Burger', 'Pasta', 'Salad', 'Dessert', 'Coffee', 'Appetizer', 'Drinks'
   ]
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
       inputRef.current.focus()
     }
+    // Mark initial load as complete after a brief delay
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false)
+    }, 100)
+
+    return () => clearTimeout(timer)
   }, [autoFocus])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setQuery(value)
+    setUserInteracted(true)
+    setIsInitialLoad(false) // User is actively typing
     setShowSuggestions(true)
 
     if (onSearch) {
       onSearch(value)
+    }
+
+    // Get menu suggestions when user types
+    if (onGetSuggestions && value.length > 0) {
+      onGetSuggestions(value)
     }
   }
 
@@ -68,6 +91,15 @@ const SearchBar: React.FC<SearchBarProps> = ({
 
   const handleFocus = () => {
     setIsFocused(true)
+    // Only show suggestions if it's not the initial auto-focus
+    if (!isInitialLoad && query.length === 0) {
+      setShowSuggestions(true)
+    }
+  }
+
+  const handleClick = () => {
+    setUserInteracted(true)
+    setIsInitialLoad(false) // Ensure we're past initial load
     if (query.length === 0) {
       setShowSuggestions(true)
     }
@@ -116,6 +148,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
             onChange={handleInputChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
+            onClick={handleClick}
             placeholder={placeholder}
             className={`w-full h-12 pl-12 pr-20 rounded-2xl bg-surface border transition-all duration-200 text-body placeholder:text-content-tertiary outline-none ${
               isFocused
@@ -235,9 +268,46 @@ const SearchBar: React.FC<SearchBarProps> = ({
                       className="flex items-center gap-2 p-3 rounded-xl hover:bg-interactive-hover transition-colors duration-200 text-left"
                     >
                       <Search size={14} className="text-content-tertiary flex-shrink-0" />
-                      <span className="text-body-sm text-content-primary truncate">
+                      <span className="text-body-sm text-content-primary">
                         {search}
                       </span>
+                    </motion.button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Menu Item Suggestions */}
+            {query.length > 0 && menuSuggestions && menuSuggestions.length > 0 && (
+              <div className="p-4 border-b border-default">
+                <div className="flex items-center gap-2 mb-3">
+                  <Hash size={16} className="text-content-tertiary" />
+                  <span className="text-caption font-medium text-content-secondary">
+                    Menu Items
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {menuSuggestions.slice(0, 5).map((item, index) => (
+                    <motion.button
+                      key={item.id}
+                      onClick={() => onSuggestionSelect?.(item)}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-interactive-hover transition-colors duration-200 text-left"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-surface-secondary flex items-center justify-center">
+                        <Hash size={14} className="text-content-tertiary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-body-sm font-medium text-content-primary truncate">
+                          {item.name}
+                        </div>
+                        <div className="text-caption text-content-tertiary truncate">
+                          {item.description || 'Delicious menu item'}
+                        </div>
+                      </div>
+                      <div className="text-body-sm font-semibold text-content-primary">
+                        ${(item.price || item.basePrice || 0).toFixed(2)}
+                      </div>
                     </motion.button>
                   ))}
                 </div>
@@ -276,6 +346,6 @@ const SearchBar: React.FC<SearchBarProps> = ({
       </AnimatePresence>
     </div>
   )
-}
+})
 
 export default SearchBar

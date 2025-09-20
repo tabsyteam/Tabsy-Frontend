@@ -4,6 +4,7 @@ import type {
   Notification,
   NotificationPreferences
 } from '@tabsy/shared-types'
+import { createQueryString, createFilterParams } from '@tabsy/shared-utils'
 
 export interface SendNotificationRequest {
   recipientId?: string
@@ -59,17 +60,8 @@ export class NotificationAPI {
       }
     }
   }>> {
-    const params = new URLSearchParams()
-
-    if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined) {
-          params.append(key, value.toString())
-        }
-      })
-    }
-
-    const url = `/notifications${params.toString() ? `?${params.toString()}` : ''}`
+    const queryString = createQueryString(createFilterParams(filters || {}))
+    const url = `/notifications${queryString ? `?${queryString}` : ''}`
     return this.client.get(url)
   }
 

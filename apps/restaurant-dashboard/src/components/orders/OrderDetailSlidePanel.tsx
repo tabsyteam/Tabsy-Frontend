@@ -246,9 +246,9 @@ export function OrderDetailSlidePanel({
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-xs font-medium text-foreground/80">Customer</p>
+                  <p className="text-xs font-medium text-foreground/80">Guest</p>
                   <p className="font-semibold text-sm text-foreground">
-                    {order.customerId ? 'Registered' : 'Guest'}
+                    {order.customerName || 'Guest User'}
                   </p>
                 </div>
               </div>

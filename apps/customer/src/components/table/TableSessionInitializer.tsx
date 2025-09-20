@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { TabsySplash } from '@/components/splash/TabsySplash'
+import { TableSessionManager } from '@/components/table/TableSessionManager'
 import { useApi } from '@/components/providers/api-provider'
 import { toast } from 'sonner'
 
@@ -35,65 +36,92 @@ export function TableSessionInitializer({ restaurantId, tableId }: TableSessionI
   const router = useRouter()
   const { api } = useApi()
 
+  // Track if validation has been completed to prevent React Strict Mode duplicate execution
+  const hasValidated = useRef(false)
+
+  // Get QR code from URL parameters
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+  const qrCode = searchParams.get('qr')
+
   useEffect(() => {
-    const initializeSession = async () => {
+    const validateTableAccess = async () => {
+      // Prevent duplicate execution in React Strict Mode
+      if (hasValidated.current) {
+        return
+      }
+
       try {
         setIsLoading(true)
         setError(null)
 
-        // Try to fetch restaurant and table data, but handle gracefully if not found (for testing)
-        console.log('TableSessionInitializer: Attempting to fetch table info for:', { restaurantId, tableId })
-
-        let restaurant = null
-        let table = null
-
-        try {
-          // Try to get restaurant information
-          const restaurantResponse = await api.restaurant.getById(restaurantId)
-          if (restaurantResponse.success && restaurantResponse.data) {
-            restaurant = restaurantResponse.data
-          }
-
-          // Try to get table information
-          const tableResponse = await api.table.getById(restaurantId, tableId)
-          if (tableResponse.success && tableResponse.data) {
-            table = tableResponse.data
-
-            // Verify table belongs to restaurant if both exist
-            if (restaurant && table.restaurantId !== restaurantId) {
-              throw new Error('Table does not belong to this restaurant')
-            }
-
-            // Check if table is available for ordering
-            if (table.status !== 'AVAILABLE' && table.status !== 'OCCUPIED') {
-              console.warn(`TableSessionInitializer: Table status is ${table.status}, but continuing for development`)
-            }
-          }
-        } catch (fetchError) {
-          console.warn('TableSessionInitializer: Could not fetch restaurant/table data from database:', fetchError)
-          console.log('TableSessionInitializer: This is normal for development with test data')
+        // QR code is required for table access
+        if (!qrCode) {
+          throw new Error('QR code is required to access this table')
         }
 
-        // Use real data if available, otherwise create development placeholders
-        if (!restaurant) {
-          restaurant = {
-            id: restaurantId,
-            name: 'Development Restaurant',
-            description: 'Test restaurant for development',
-            logo: undefined,
-            theme: undefined
+        // First, check if we have cached QR access data from the QR processing page
+        const cachedQRData = sessionStorage.getItem('tabsy-qr-access')
+        if (cachedQRData) {
+          try {
+            const qrAccessData = JSON.parse(cachedQRData)
+
+            // Validate that cached data matches current URL parameters
+            if (qrAccessData.qrCode === qrCode &&
+                qrAccessData.restaurant?.id === restaurantId &&
+                qrAccessData.table?.id === tableId) {
+
+              setTableInfo({
+                restaurant: {
+                  id: qrAccessData.restaurant.id,
+                  name: qrAccessData.restaurant.name,
+                  logo: qrAccessData.restaurant.logo || undefined,
+                  theme: undefined
+                },
+                table: {
+                  id: qrAccessData.table.id,
+                  number: qrAccessData.table.number,
+                  qrCode: qrAccessData.table.qrCode || qrCode
+                },
+                isActive: true // Assume active if we got here from QR processing
+              })
+
+              // Mark as validated to prevent React Strict Mode duplicate execution
+              hasValidated.current = true
+
+              // Clean up cached data after successful use to prevent stale data issues
+              sessionStorage.removeItem('tabsy-qr-access')
+
+              setIsLoading(false)
+              return // Skip API call since we have valid cached data
+            }
+          } catch (parseError) {
+            // Failed to parse cached data, fall back to API validation
           }
         }
 
-        if (!table) {
-          table = {
-            id: tableId,
-            number: tableId.replace('table-', '') || '1',
-            restaurantId: restaurantId,
-            qrCode: undefined, // No QR code for development
-            status: 'AVAILABLE',
-            seats: 4
-          }
+        // Fallback to API validation if no cached data or it doesn't match
+        const tableInfoResponse = await api.qr.getTableInfo(qrCode)
+
+        if (!tableInfoResponse.success || !tableInfoResponse.data) {
+          throw new Error('Invalid QR code or table not found')
+        }
+
+        const tableData = tableInfoResponse.data
+
+        // Backend returns: Table object with nested restaurant property
+        if (!tableData.id || !tableData.restaurant) {
+          throw new Error('Invalid table data structure from API')
+        }
+
+        const table = tableData
+        const restaurant = tableData.restaurant
+
+        // Validate that QR data matches the URL parameters
+        if (restaurant.id !== restaurantId) {
+          throw new Error('QR code does not match this restaurant')
+        }
+        if (table.id !== tableId) {
+          throw new Error('QR code does not match this table')
         }
 
         setTableInfo({
@@ -101,84 +129,28 @@ export function TableSessionInitializer({ restaurantId, tableId }: TableSessionI
             id: restaurant.id,
             name: restaurant.name,
             logo: restaurant.logo || undefined,
-            theme: (restaurant as any).theme
+            theme: undefined
           },
           table: {
             id: table.id,
-            number: table.number,
-            qrCode: table.qrCode || ''
+            number: table.number || table.tableNumber,
+            qrCode: table.qrCode || qrCode
           },
-          isActive: true
+          isActive: tableData.isActive
         })
 
-        // Store table and restaurant info in sessionStorage
-        sessionStorage.setItem('tabsy-table-info', JSON.stringify({
-          restaurant: {
-            id: restaurant.id,
-            name: restaurant.name,
-            logo: restaurant.logo || undefined,
-            theme: (restaurant as any).theme
-          },
-          table: {
-            id: table.id,
-            number: table.number,
-            qrCode: table.qrCode || ''
-          },
-          qrCode: table.qrCode
-        }))
+        // Mark as validated to prevent React Strict Mode duplicate execution
+        hasValidated.current = true
 
-        // Clear any existing session data first
-        sessionStorage.removeItem('tabsy-session')
-
-        // Create a guest session (only include QR code if available)
-        console.log('TableSessionInitializer: Creating guest session')
-        const sessionRequest: any = {
-          tableId: table.id,
-          restaurantId: restaurant.id
-        }
-
-        // Only include QR code if it exists (for production with real tables)
-        if (table.qrCode) {
-          sessionRequest.qrCode = table.qrCode
-          console.log('TableSessionInitializer: Using real QR code for session creation')
-        } else {
-          console.log('TableSessionInitializer: Creating session without QR code (development mode)')
-        }
-
-        const guestSessionResponse = await api.session.createGuest(sessionRequest)
-
-        if (!guestSessionResponse.success || !guestSessionResponse.data) {
-          throw new Error('Failed to create guest session')
-        }
-
-        const sessionData = {
-          sessionId: guestSessionResponse.data.sessionId,
-          restaurantId: restaurant.id,
-          tableId: table.id,
-          expiresAt: guestSessionResponse.data.expiresAt,
-          createdAt: new Date().toISOString()
-        }
-
-        // Store session and set it in the API client
-        console.log('TableSessionInitializer: Storing guest session:', { sessionId: sessionData.sessionId })
-        sessionStorage.setItem('tabsy-session', JSON.stringify(sessionData))
-
-        // Set session in API client
-        api.setGuestSession(sessionData.sessionId)
-        console.log('TableSessionInitializer: Guest session created and stored successfully')
-
-        // Show welcome message
-        toast.success(`Welcome to ${restaurant.name}!`, {
-          description: `Table ${table.number} is ready for ordering`
-        })
-
-        // After a brief delay for the splash animation, navigate to menu
-        setTimeout(() => {
-          router.push(`/menu?restaurant=${restaurant.id}&table=${table.id}`)
-        }, 2500)
+        // Clean up cached data after successful validation
+        sessionStorage.removeItem('tabsy-qr-access')
 
       } catch (error: any) {
-        console.error('Session initialization error:', error)
+        // Mark as validated to prevent React Strict Mode duplicate execution even on error
+        hasValidated.current = true
+
+        // Clean up cached data on error to prevent stale data issues
+        sessionStorage.removeItem('tabsy-qr-access')
 
         let errorMessage = 'Failed to connect to your table. Please try scanning the QR code again.'
 
@@ -186,8 +158,8 @@ export function TableSessionInitializer({ restaurantId, tableId }: TableSessionI
           errorMessage = 'This table was not found. Please check with restaurant staff.'
         } else if (error?.response?.status === 403) {
           errorMessage = 'This table is not available for ordering at the moment.'
-        } else if (error?.message?.includes('mismatch')) {
-          errorMessage = 'Invalid table link. Please scan the QR code at your table.'
+        } else if (error?.message?.includes('QR code')) {
+          errorMessage = error.message
         }
 
         setError(errorMessage)
@@ -205,8 +177,8 @@ export function TableSessionInitializer({ restaurantId, tableId }: TableSessionI
       }
     }
 
-    initializeSession()
-  }, [restaurantId, tableId, api, router])
+    validateTableAccess()
+  }, [restaurantId, tableId, qrCode, api, router])
 
   if (error) {
     return (
@@ -266,10 +238,15 @@ export function TableSessionInitializer({ restaurantId, tableId }: TableSessionI
 
   if (tableInfo) {
     return (
-      <TabsySplash
-        restaurant={tableInfo.restaurant}
-        table={tableInfo.table}
-      />
+      <TableSessionManager
+        restaurantId={restaurantId}
+        tableId={tableId}
+      >
+        <TabsySplash
+          restaurant={tableInfo.restaurant}
+          table={tableInfo.table}
+        />
+      </TableSessionManager>
     )
   }
 

@@ -113,14 +113,6 @@ export function ItemDetailModal({
   // Enhanced image gallery - supports single image with modern UI patterns
   // Future enhancement: backend support for multiple images per item
   const images = item?.image || item?.imageUrl ? [item?.image || item?.imageUrl] : []
-
-  // Mock additional images for demonstration (remove when backend supports multiple images)
-  const enhancedImages = images.length > 0 ? [
-    ...images,
-    // Placeholder for additional angles/variations - replace with real backend data
-  ] : []
-
-  // Use real backend options instead of mock customizations
   const options = item?.options || []
 
   useEffect(() => {

@@ -12,7 +12,10 @@ import {
   Star,
   Info,
   QrCode,
-  Timer
+  Timer,
+  Receipt,
+  ShoppingCart,
+  ClipboardList
 } from 'lucide-react'
 import { Button } from '@tabsy/ui-components'
 import { SessionManager } from '@/lib/session'
@@ -50,6 +53,7 @@ export function TableSessionView() {
     disconnect,
     emit
   } = useWebSocket({
+    url: process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:5001',
     auth: {
       namespace: 'customer',
       sessionId: session?.sessionId,
@@ -144,6 +148,27 @@ export function TableSessionView() {
     const session = SessionManager.getDiningSession()
     if (session) {
       router.push(`/feedback?restaurant=${session.restaurantId}&table=${session.tableId}`)
+    }
+  }
+
+  const handleViewBill = () => {
+    const session = SessionManager.getDiningSession()
+    if (session) {
+      router.push(`/table/bill${SessionManager.getDiningQueryParams()}`)
+    }
+  }
+
+  const handleSharedCart = () => {
+    const session = SessionManager.getDiningSession()
+    if (session) {
+      router.push(`/table/shared-cart${SessionManager.getDiningQueryParams()}`)
+    }
+  }
+
+  const handleOrderTracking = () => {
+    const session = SessionManager.getDiningSession()
+    if (session) {
+      router.push(`/table/orders${SessionManager.getDiningQueryParams()}`)
     }
   }
 
@@ -245,11 +270,50 @@ export function TableSessionView() {
           </div>
         </motion.div>
 
-        {/* Quick Actions */}
+        {/* Table Session Features */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
+          className="bg-surface rounded-xl border p-6"
+        >
+          <h3 className="text-lg font-semibold text-content-primary mb-4">Table Session</h3>
+
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleViewBill}
+            >
+              <Receipt className="w-4 h-4 mr-3" />
+              View Bill & Payment
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleSharedCart}
+            >
+              <ShoppingCart className="w-4 h-4 mr-3" />
+              Shared Cart
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={handleOrderTracking}
+            >
+              <ClipboardList className="w-4 h-4 mr-3" />
+              Track Orders
+            </Button>
+          </div>
+        </motion.div>
+
+        {/* Quick Actions */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
           className="bg-surface rounded-xl border p-6"
         >
           <h3 className="text-lg font-semibold text-content-primary mb-4">Quick Actions</h3>
@@ -279,7 +343,7 @@ export function TableSessionView() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.3 }}
           className="bg-surface rounded-xl border p-6"
         >
           <h3 className="text-lg font-semibold text-content-primary mb-4">Session Information</h3>
@@ -322,7 +386,7 @@ export function TableSessionView() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.4 }}
           className="bg-surface rounded-xl border p-6"
         >
           <h3 className="text-lg font-semibold text-content-primary mb-2">End Session</h3>

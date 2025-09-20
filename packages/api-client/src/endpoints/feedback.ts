@@ -1,5 +1,6 @@
 import { TabsyApiClient } from '../client'
 import { z } from 'zod'
+import { serializeQueryParams, createFilterParams } from '@tabsy/shared-utils'
 
 /**
  * Feedback API endpoint for customer feedback and reviews
@@ -160,17 +161,7 @@ export class FeedbackAPI {
     error?: string
   }> {
     try {
-      const queryParams = new URLSearchParams()
-      queryParams.append('restaurantId', params.restaurantId)
-
-      if (params.page) queryParams.append('page', params.page.toString())
-      if (params.limit) queryParams.append('limit', params.limit.toString())
-      if (params.rating) queryParams.append('rating', params.rating.toString())
-      if (params.startDate) queryParams.append('startDate', params.startDate)
-      if (params.endDate) queryParams.append('endDate', params.endDate)
-      if (params.hasComment !== undefined) queryParams.append('hasComment', params.hasComment.toString())
-      if (params.orderBy) queryParams.append('orderBy', params.orderBy)
-      if (params.order) queryParams.append('order', params.order)
+      const queryParams = serializeQueryParams(createFilterParams(params))
 
       const response = await this.client.get<FeedbackListResponse>(`/feedback?${queryParams}`)
 
@@ -196,9 +187,7 @@ export class FeedbackAPI {
     error?: string
   }> {
     try {
-      const queryParams = new URLSearchParams()
-      queryParams.append('restaurantId', restaurantId)
-      if (period) queryParams.append('period', period)
+      const queryParams = serializeQueryParams({ restaurantId, period })
 
       const response = await this.client.get<FeedbackStatsResponse>(`/feedback/stats?${queryParams}`)
 

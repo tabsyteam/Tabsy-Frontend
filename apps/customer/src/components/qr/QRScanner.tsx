@@ -21,9 +21,16 @@ export function QRScanner() {
     qrbox: { width: 250, height: 250 },
     aspectRatio: 1.0,
     disableFlip: false,
+    videoConstraints: {
+      facingMode: "environment" // Use back camera on mobile
+    },
     experimentalFeatures: {
       useBarCodeDetectorIfSupported: true
-    }
+    },
+    supportedScanTypes: [
+      // @ts-ignore - Html5QrcodeScanType is not properly exported
+      0, 1 // QR Code and Code 128
+    ]
   }
 
   const handleScanSuccess = async (decodedText: string, decodedResult: any) => {
@@ -164,23 +171,68 @@ export function QRScanner() {
     }
   }
 
+  const checkCameraPermissions = async (): Promise<boolean> => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      stream.getTracks().forEach(track => track.stop()) // Stop the stream immediately
+      return true
+    } catch (error) {
+      console.error('Camera permission denied:', error)
+      return false
+    }
+  }
+
   const startScanning = async () => {
     if (!scannerRef.current || isScanning) return
 
     try {
+      // Check camera permissions first
+      const hasPermission = await checkCameraPermissions()
+      if (!hasPermission) {
+        toast.error('Camera access required', {
+          description: 'Please allow camera access to scan QR codes. Check your browser settings and try again.',
+          action: {
+            label: 'Retry',
+            onClick: () => startScanning()
+          }
+        })
+        return
+      }
+
       setIsScanning(true)
-      
+
       const newScanner = new Html5QrcodeScanner(
         'qr-scanner-container',
         config,
         false
       )
-      
+
       newScanner.render(handleScanSuccess, handleScanError)
       setScanner(newScanner)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to start scanner:', error)
-      toast.error('Failed to start camera')
+
+      let errorMessage = 'Failed to start camera'
+      let errorDescription = 'Please try again or use the upload image option.'
+
+      if (error.name === 'NotAllowedError') {
+        errorMessage = 'Camera access denied'
+        errorDescription = 'Please allow camera access in your browser settings and try again.'
+      } else if (error.name === 'NotFoundError') {
+        errorMessage = 'No camera found'
+        errorDescription = 'Please ensure your device has a camera and try again.'
+      } else if (error.name === 'NotSupportedError') {
+        errorMessage = 'Camera not supported'
+        errorDescription = 'Your browser may not support camera access. Try using a different browser.'
+      }
+
+      toast.error(errorMessage, {
+        description: errorDescription,
+        action: {
+          label: 'Try Again',
+          onClick: () => startScanning()
+        }
+      })
       setIsScanning(false)
     }
   }
@@ -250,39 +302,55 @@ export function QRScanner() {
   }
 
   return (
-    <div id="qr-scanner" className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+    <div id="qr-scanner" className="space-y-8">
+      <div className="text-center space-y-3">
+        <h2 className="text-3xl font-bold text-content-primary">
           Scan QR Code
         </h2>
-        <p className="text-gray-600 dark:text-gray-400">
-          Point your camera at the QR code on your table
+        <p className="text-lg text-content-secondary max-w-md mx-auto">
+          Point your camera at the QR code on your table to get started
         </p>
       </div>
 
       {/* Scanner Area */}
-      <div className="relative bg-gray-100 dark:bg-gray-800 rounded-lg max-w-sm mx-auto overflow-hidden">
+      <div className="relative bg-surface border border-default rounded-3xl max-w-sm mx-auto overflow-hidden shadow-xl">
         {isScanning ? (
-          <div>
-            <div className="flex justify-end p-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={stopScanning}
-                className="absolute top-2 right-2 z-10 bg-black/50 text-white hover:bg-black/70"
-              >
-                <X className="w-4 h-4" />
-              </Button>
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={stopScanning}
+              className="absolute top-3 right-3 z-20 bg-black/70 text-white hover:bg-black/80 rounded-full w-10 h-10 p-0 shadow-lg"
+            >
+              <X className="w-5 h-5" />
+            </Button>
+            <div ref={scannerRef} id="qr-scanner-container" className="[&>div]:!border-0 [&>div]:!rounded-3xl" />
+
+            {/* Scanning overlay */}
+            <div className="absolute inset-4 border-2 border-primary rounded-2xl animate-pulse pointer-events-none">
+              <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-primary rounded-tl-lg"></div>
+              <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-primary rounded-tr-lg"></div>
+              <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-primary rounded-bl-lg"></div>
+              <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-lg"></div>
             </div>
-            <div ref={scannerRef} id="qr-scanner-container" />
           </div>
         ) : (
-          <div className="aspect-square flex items-center justify-center">
-            <div className="text-center space-y-4 p-8">
-              <Camera className="w-16 h-16 text-gray-400 mx-auto" />
-              <p className="text-gray-500 text-sm">
-                Camera will appear here
-              </p>
+          <div className="aspect-square flex items-center justify-center bg-gradient-to-br from-surface-secondary to-surface-tertiary">
+            <div className="text-center space-y-6 p-8">
+              <div className="relative">
+                <div className="w-20 h-20 bg-gradient-to-br from-primary/20 to-primary/10 rounded-2xl flex items-center justify-center mx-auto">
+                  <Camera className="w-10 h-10 text-primary" />
+                </div>
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent rounded-2xl animate-pulse"></div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-content-primary font-semibold">
+                  Camera Ready
+                </p>
+                <p className="text-content-secondary text-sm">
+                  Tap "Start Camera" to begin scanning
+                </p>
+              </div>
             </div>
           </div>
         )}
@@ -293,7 +361,7 @@ export function QRScanner() {
         <Button
           size="lg"
           onClick={isScanning ? stopScanning : startScanning}
-          className="flex items-center gap-2"
+          className="flex items-center gap-3 px-8 shadow-lg hover:shadow-xl transition-all duration-300"
         >
           {isScanning ? (
             <>
@@ -307,7 +375,7 @@ export function QRScanner() {
             </>
           )}
         </Button>
-        
+
         <div className="relative">
           <input
             type="file"
@@ -319,7 +387,7 @@ export function QRScanner() {
           <Button
             variant="outline"
             size="lg"
-            className="flex items-center gap-2 w-full"
+            className="flex items-center gap-3 w-full px-8 border-primary/30 hover:bg-primary/5 transition-all duration-300"
             asChild
           >
             <label htmlFor="qr-upload" className="cursor-pointer">
@@ -331,14 +399,17 @@ export function QRScanner() {
       </div>
 
       {/* Help Text */}
-      <div className="text-center text-sm text-gray-500 dark:text-gray-400">
-        <p>Can't scan the code?</p>
-        <button 
-          className="text-primary hover:underline font-medium"
+      <div className="text-center space-y-3">
+        <p className="text-content-secondary">
+          Can't scan the code?
+        </p>
+        <Button
+          variant="ghost"
+          className="text-primary hover:text-primary-hover font-medium"
           onClick={() => router.push('/manual-entry')}
         >
           Enter restaurant code manually
-        </button>
+        </Button>
       </div>
     </div>
   )

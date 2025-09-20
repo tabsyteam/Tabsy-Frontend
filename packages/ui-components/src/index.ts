@@ -2,6 +2,7 @@
 export * from './components/button'
 export * from './components/input'
 export * from './components/card'
+export * from './components/badge'
 
 // Form Components with Validation
 export * from './components/Form'

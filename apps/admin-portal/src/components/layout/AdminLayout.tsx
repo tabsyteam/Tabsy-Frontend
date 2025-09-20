@@ -1,17 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { 
-  LayoutDashboard, Users, Building, BarChart3, 
+import {
+  LayoutDashboard, Users, Building, BarChart3,
   Settings, Bell, Search, Menu, X, LogOut,
-  User, Shield
+  User, Shield, Activity
 } from 'lucide-react'
 import { AnalyticsDashboard } from '../analytics/AnalyticsDashboard'
 import { RestaurantManagement } from '../restaurants/RestaurantManagement'
 import { UserManagement } from '../users/UserManagement'
 import { SystemAdministration } from '../system/SystemAdministration'
+import { SessionMonitoring } from '../sessions/SessionMonitoring'
 
-type AdminSection = 'dashboard' | 'restaurants' | 'users' | 'analytics' | 'system'
+type AdminSection = 'dashboard' | 'restaurants' | 'users' | 'analytics' | 'sessions' | 'system'
 
 interface AdminLayoutProps {
   initialSection?: AdminSection
@@ -27,6 +28,7 @@ export function AdminLayout({ initialSection = 'dashboard' }: AdminLayoutProps) 
     { id: 'restaurants', name: 'Restaurants', icon: Building, href: '#' },
     { id: 'users', name: 'Users', icon: Users, href: '#' },
     { id: 'analytics', name: 'Analytics', icon: BarChart3, href: '#' },
+    { id: 'sessions', name: 'Table Sessions', icon: Activity, href: '#' },
     { id: 'system', name: 'System', icon: Settings, href: '#' },
   ]
 
@@ -57,6 +59,8 @@ export function AdminLayout({ initialSection = 'dashboard' }: AdminLayoutProps) 
         )
       case 'analytics':
         return <AnalyticsDashboard />
+      case 'sessions':
+        return <SessionMonitoring />
       case 'system':
         return <SystemAdministration />
       default:

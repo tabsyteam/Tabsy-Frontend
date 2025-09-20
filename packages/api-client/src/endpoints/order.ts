@@ -9,11 +9,14 @@ import type {
   CreateOrderItemRequest,
   UpdateOrderItemRequest
 } from '@tabsy/shared-types'
+import { createQueryString, createFilterParams } from '@tabsy/shared-utils'
 
 export interface OrderListFilters {
   restaurantId?: string
   tableId?: string
   customerId?: string
+  sessionId?: string        // Guest session ID for filtering user's orders
+  tableSessionId?: string   // Table session ID for filtering table orders
   status?: OrderStatus
   dateFrom?: string
   dateTo?: string
@@ -28,19 +31,17 @@ export class OrderAPI {
    * GET /orders/ - List orders (admin/staff)
    */
   async list(filters?: OrderListFilters): Promise<ApiResponse<Order[]>> {
-    const params = new URLSearchParams()
-    
-    if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined) {
-          // Map restaurantId to restaurant to match server API
-          const paramKey = key === 'restaurantId' ? 'restaurant' : key
-          params.append(paramKey, value.toString())
-        }
-      })
-    }
-    
-    const url = `/orders${params.toString() ? `?${params.toString()}` : ''}`
+    // Map filter parameters to match server API expectations
+    const mappedFilters = filters ? {
+      ...filters,
+      ...(filters.restaurantId && { restaurant: filters.restaurantId }),
+      ...(filters.sessionId && { guestSessionId: filters.sessionId }), // Map sessionId to guestSessionId for backend
+      restaurantId: undefined, // Remove original key after mapping
+      sessionId: undefined // Remove original key after mapping
+    } : {}
+
+    const queryString = createQueryString(createFilterParams(mappedFilters))
+    const url = `/orders${queryString ? `?${queryString}` : ''}`
     return this.client.get(url)
   }
 

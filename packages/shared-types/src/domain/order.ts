@@ -54,6 +54,8 @@ export interface OrderItem {
     price?: string | number // API uses price, not basePrice
     basePrice?: number // Keep for backward compatibility
     imageUrl?: string
+    categoryId?: string // Category ID for grouping and filtering
+    categoryName?: string // Category name for display purposes
   }
   quantity: number
   price?: string | number // API field name

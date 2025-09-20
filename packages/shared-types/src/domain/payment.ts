@@ -39,6 +39,10 @@ export interface Payment {
   transactionId?: string
   receiptUrl?: string
   failureReason?: string
+  refundAmount?: number
+  refundReason?: string
+  refundId?: string
+  refunded?: boolean
   metadata?: Record<string, any>
   createdAt: string
   updatedAt: string

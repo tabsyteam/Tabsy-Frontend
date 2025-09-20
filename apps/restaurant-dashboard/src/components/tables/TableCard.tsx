@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@tabsy/ui-components';
 import { Table, TableStatus, TableShape } from '@tabsy/shared-types';
+import { TableSessionStatus } from './TableSessionStatus';
 import {
   Users,
   MoreVertical,
@@ -287,6 +288,13 @@ export function TableCard({
             </div>
           </div>
 
+          {/* Table Session Status */}
+          <div className="mt-2">
+            <TableSessionStatus
+              table={table}
+            />
+          </div>
+
           {table.notes && (
             <div className="mt-2 text-sm text-content-secondary">
               {table.notes}
@@ -397,18 +405,20 @@ export function TableCard({
           )}
         </div>
 
+        {/* Table Session Status */}
+        <div className="mb-2">
+          <TableSessionStatus
+            table={table}
+          />
+        </div>
+
         {/* Footer with capacity and actions */}
         <div className="flex items-center justify-between pt-3 border-t border-border/50 mt-auto">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1">
-              <Users className="h-3.5 w-3.5 text-primary flex-shrink-0" />
-              <span className="font-semibold text-sm text-primary">
-                {table.capacity} seats
-              </span>
-            </div>
-            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-              <span>#{table.number}</span>
-            </div>
+          <div className="flex items-center space-x-1">
+            <Users className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+            <span className="font-semibold text-sm text-primary">
+              {table.capacity} seats
+            </span>
           </div>
 
           <div className="flex items-center space-x-2">
@@ -434,6 +444,7 @@ export function TableCard({
           </div>
         </div>
       </div>
+
     </div>
   );
 }

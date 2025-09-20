@@ -74,14 +74,14 @@ export interface TableSession {
   restaurantId: string
   sessionToken: string
   guestCount?: number
-  status: TableSessionStatus
+  status: GuestTableSessionStatus
   startedAt: string
   expiresAt: string
   lastActivityAt: string
   metadata?: Record<string, any>
 }
 
-export enum TableSessionStatus {
+export enum GuestTableSessionStatus {
   ACTIVE = 'ACTIVE',
   EXPIRED = 'EXPIRED',
   TERMINATED = 'TERMINATED'
@@ -108,4 +108,74 @@ export interface TableSessionStatusResponse {
   sessionStatus: TableSessionStatusInfo
   activeSessions: ActiveSession[]
   totalActiveSessions: number
+}
+
+// Multi-User Table Session Types (properly organized here)
+export enum TableSessionStatus {
+  ACTIVE = 'ACTIVE',
+  ORDERING_LOCKED = 'ORDERING_LOCKED',
+  PAYMENT_PENDING = 'PAYMENT_PENDING',
+  CLOSED = 'CLOSED'
+}
+
+export interface MultiUserTableSession {
+  id: string;
+  tableId: string;
+  restaurantId: string;
+  sessionCode: string;
+  status: TableSessionStatus;
+  hostUserId?: string;
+  totalAmount: number;
+  paidAmount: number;
+  createdAt: string;
+  expiresAt: string;
+  lastActivity: string;
+}
+
+export interface TableSessionUser {
+  id: string;
+  guestSessionId: string;
+  userName: string;
+  isHost: boolean;
+  createdAt: string;
+  lastActivity: string;
+}
+
+export interface TableSessionBill {
+  sessionId: string;
+  sessionCode: string;
+  billByRound: {
+    [roundNumber: number]: {
+      roundTotal: number;
+      orders: {
+        orderId: string;
+        orderNumber: string;
+        placedBy: string;
+        total: number;
+        items: {
+          id: string;
+          name: string;
+          quantity: number;
+          subtotal: number;
+        }[];
+      }[];
+    };
+  };
+  summary: {
+    subtotal: number;
+    tax: number;
+    tip: number;
+    grandTotal: number;
+    totalPaid: number;
+    remainingBalance: number;
+    isFullyPaid: boolean;
+  };
+}
+
+export interface SplitPaymentOption {
+  type: 'equal' | 'by_items' | 'by_percentage' | 'by_amount';
+  participants: string[]; // Guest session IDs
+  percentages?: { [guestSessionId: string]: number };
+  amounts?: { [guestSessionId: string]: number };
+  itemAssignments?: { [itemId: string]: string }; // itemId -> guestSessionId
 }

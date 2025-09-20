@@ -1,343 +1,500 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Button } from '@tabsy/ui-components';
-import { 
-  Store, 
-  Plus, 
-  Search, 
-  MoreHorizontal, 
-  Edit, 
+import {
+  Store,
+  Plus,
+  Search,
+  Filter,
+  MoreVertical,
+  Edit,
+  Trash2,
+  Eye,
+  Download,
+  Users,
   MapPin,
   Phone,
   Mail,
   Clock,
+  DollarSign,
+  ChevronLeft,
+  ChevronRight,
+  RefreshCw,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  PauseCircle
 } from 'lucide-react';
-import AddRestaurantModal from '../../components/AddRestaurantModal';
+import {
+  useRestaurants,
+  useCreateRestaurant,
+  useUpdateRestaurant,
+  useUpdateRestaurantStatus,
+  useDeleteRestaurant
+} from '@/hooks/api';
+import { formatDistanceToNow } from 'date-fns';
+import AddRestaurantModal from '@/components/restaurants/AddRestaurantModal';
+import RestaurantDetailsModal from '@/components/restaurants/RestaurantDetailsModal';
+import { Restaurant } from '@tabsy/shared-types';
 
-// Mock data for restaurants
-const mockRestaurants = [
-  {
-    id: 1,
-    name: 'Bella Vista Italian',
-    email: 'owner@bellavista.com',
-    phone: '+1 (555) 123-4567',
-    address: '123 Main St, San Francisco, CA 94102',
-    cuisine: 'Italian',
-    status: 'active',
-    dateJoined: '2024-01-15',
-    totalOrders: 1247,
-    revenue: 58420,
-    rating: 4.8,
-    owner: 'Marco Rossi'
-  },
-  {
-    id: 2,
-    name: 'Dragon Palace',
-    email: 'info@dragonpalace.com',
-    phone: '+1 (555) 234-5678',
-    address: '456 Oak Ave, San Francisco, CA 94103',
-    cuisine: 'Chinese',
-    status: 'active',
-    dateJoined: '2024-02-20',
-    totalOrders: 892,
-    revenue: 34210,
-    rating: 4.6,
-    owner: 'Li Wei'
-  },
-  {
-    id: 3,
-    name: 'Burger Junction',
-    email: 'contact@burgerjunction.com',
-    phone: '+1 (555) 345-6789',
-    address: '789 Pine St, San Francisco, CA 94104',
-    cuisine: 'American',
-    status: 'pending',
-    dateJoined: '2024-08-10',
-    totalOrders: 156,
-    revenue: 8750,
-    rating: 4.2,
-    owner: 'John Smith'
-  },
-  {
-    id: 4,
-    name: 'Sushi Zen',
-    email: 'hello@sushizen.com',
-    phone: '+1 (555) 456-7890',
-    address: '321 Beach St, San Francisco, CA 94105',
-    cuisine: 'Japanese',
-    status: 'suspended',
-    dateJoined: '2024-03-05',
-    totalOrders: 623,
-    revenue: 28940,
-    rating: 4.9,
-    owner: 'Takeshi Yamamoto'
+// Status Badge Component
+function StatusBadge({ status, active }: { status?: string; active: boolean }) {
+  if (status === 'SUSPENDED') {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium badge-error">
+        <XCircle className="w-3 h-3 mr-1" />
+        Suspended
+      </span>
+    );
   }
-];
-
-const getStatusIcon = (status: string) => {
-  switch (status) {
-    case 'active':
-      return <CheckCircle className="h-4 w-4 text-green-600" />;
-    case 'pending':
-      return <AlertCircle className="h-4 w-4 text-yellow-600" />;
-    case 'suspended':
-      return <XCircle className="h-4 w-4 text-red-600" />;
-    default:
-      return null;
+  if (status === 'PENDING') {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium badge-warning">
+        <AlertCircle className="w-3 h-3 mr-1" />
+        Pending
+      </span>
+    );
   }
-};
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case 'active':
-      return 'bg-green-100 text-green-800';
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'suspended':
-      return 'bg-red-100 text-red-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
+  if (active) {
+    return (
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium badge-success">
+        <CheckCircle className="w-3 h-3 mr-1" />
+        Active
+      </span>
+    );
   }
-};
+  return (
+    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium badge-secondary">
+      <PauseCircle className="w-3 h-3 mr-1" />
+      Inactive
+    </span>
+  );
+}
 
 export default function RestaurantsPage(): JSX.Element {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'createdAt' | 'revenue'>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showActionMenu, setShowActionMenu] = useState<string | null>(null);
 
-  const filteredRestaurants = mockRestaurants.filter(restaurant => {
-    const matchesSearch = restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          restaurant.cuisine.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          restaurant.owner.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || restaurant.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  const itemsPerPage = 10;
+
+  // API Hooks
+  const {
+    data: restaurantsData,
+    isLoading,
+    refetch
+  } = useRestaurants({
+    search: searchQuery,
+    status: statusFilter,
+    sortBy,
+    sortOrder
   });
 
+  const createRestaurant = useCreateRestaurant();
+  const updateRestaurant = useUpdateRestaurant();
+  const updateStatus = useUpdateRestaurantStatus();
+  const deleteRestaurant = useDeleteRestaurant();
+
+  // Pagination logic
+  const paginatedRestaurants = useMemo(() => {
+    if (!restaurantsData || !Array.isArray(restaurantsData)) return [];
+
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    return restaurantsData.slice(start, end);
+  }, [restaurantsData, currentPage]);
+
+  const totalPages = Math.ceil((restaurantsData?.length || 0) / itemsPerPage);
+
+  // Handlers
+  const handleStatusToggle = async (restaurant: Restaurant) => {
+    await updateStatus.mutateAsync({
+      id: restaurant.id,
+      active: !restaurant.active
+    });
+    setShowActionMenu(null);
+  };
+
+  const handleDelete = async (restaurant: Restaurant) => {
+    if (confirm(`Are you sure you want to delete "${restaurant.name}"? This action cannot be undone.`)) {
+      await deleteRestaurant.mutateAsync(restaurant.id);
+      setShowActionMenu(null);
+    }
+  };
+
+  const handleViewDetails = (restaurant: Restaurant) => {
+    setSelectedRestaurant(restaurant);
+    setShowDetailsModal(true);
+    setShowActionMenu(null);
+  };
+
+  const handleEdit = (restaurant: Restaurant) => {
+    setSelectedRestaurant(restaurant);
+    setShowAddModal(true);
+    setShowActionMenu(null);
+  };
+
+  const handleExport = () => {
+    // Export logic here
+    const csv = restaurantsData?.map(r =>
+      `${r.name},${r.email},${r.phoneNumber},${r.address},${r.active ? 'Active' : 'Inactive'}`
+    ).join('\n');
+
+    const blob = new Blob([`Name,Email,Phone,Address,Status\n${csv}`], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'restaurants.csv';
+    a.click();
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <Store className="h-8 w-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Restaurant Management</h1>
-            </div>
-            <Button onClick={() => setShowAddModal(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Restaurant
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <Store className="h-8 w-8 text-blue-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Restaurants</p>
-                <p className="text-2xl font-bold text-gray-900">{mockRestaurants.length}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Active</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {mockRestaurants.filter(r => r.status === 'active').length}
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gradient-professional">
+        {/* Header */}
+        <div className="bg-surface border-b border-border-tertiary shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-content-primary">Restaurant Management</h1>
+                <p className="text-sm text-content-secondary mt-1">
+                  Manage all restaurants on the platform
                 </p>
               </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <AlertCircle className="h-8 w-8 text-yellow-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Pending</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {mockRestaurants.filter(r => r.status === 'pending').length}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <XCircle className="h-8 w-8 text-red-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Suspended</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {mockRestaurants.filter(r => r.status === 'suspended').length}
-                </p>
+              <div className="flex space-x-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => refetch()}
+                  className="hover-lift"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExport}
+                  className="hover-lift"
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </Button>
+                <Button
+                  onClick={() => {
+                    setSelectedRestaurant(null);
+                    setShowAddModal(true);
+                  }}
+                  className="btn-professional hover-lift"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Restaurant
+                </Button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow mb-8">
-          <div className="p-6">
+        {/* Filters Bar */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="bg-surface rounded-lg shadow-card p-4">
             <div className="flex flex-col sm:flex-row gap-4">
+              {/* Search */}
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-content-tertiary" />
                   <input
                     type="text"
                     placeholder="Search restaurants..."
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-border-tertiary rounded-lg input-professional focus:ring-2 focus:ring-primary"
                   />
                 </div>
               </div>
-              <select
-                className="px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="pending">Pending</option>
-                <option value="suspended">Suspended</option>
-              </select>
+
+              {/* Status Filter */}
+              <div className="flex gap-2">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as any)}
+                  className="px-4 py-2 border border-border-tertiary rounded-lg input-professional"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+
+                {/* Sort */}
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                  className="px-4 py-2 border border-border-tertiary rounded-lg input-professional"
+                >
+                  <option value="name">Name</option>
+                  <option value="createdAt">Date Added</option>
+                  <option value="revenue">Revenue</option>
+                </select>
+
+                <button
+                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                  className="px-3 py-2 border border-border-tertiary rounded-lg hover:bg-surface-secondary transition-colors"
+                >
+                  {sortOrder === 'asc' ? '↑' : '↓'}
+                </button>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="flex gap-6 mt-4 pt-4 border-t border-border-tertiary">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <span className="text-sm text-content-secondary">
+                  Active: {restaurantsData?.filter(r => r.active).length || 0}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                <span className="text-sm text-content-secondary">
+                  Inactive: {restaurantsData?.filter(r => !r.active).length || 0}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Restaurants Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Restaurant
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Owner
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Contact
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Performance
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredRestaurants.map((restaurant) => (
-                  <tr key={restaurant.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <Store className="h-5 w-5 text-blue-600" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
+          <div className="bg-surface rounded-lg shadow-card overflow-hidden">
+            {isLoading ? (
+              <div className="p-8 text-center">
+                <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-primary border-t-transparent rounded-full"></div>
+                <p className="text-content-secondary">Loading restaurants...</p>
+              </div>
+            ) : paginatedRestaurants.length === 0 ? (
+              <div className="p-8 text-center">
+                <Store className="h-12 w-12 mx-auto mb-4 text-content-tertiary" />
+                <p className="text-content-secondary">No restaurants found</p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full table-professional">
+                    <thead>
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">
+                          Restaurant
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">
+                          Contact
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">
+                          Location
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">
+                          Created
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-tertiary">
+                      {paginatedRestaurants.map((restaurant) => (
+                        <tr key={restaurant.id} className="hover:bg-surface-secondary transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div>
+                              <div className="text-sm font-medium text-content-primary">
+                                {restaurant.name}
+                              </div>
+                              {restaurant.description && (
+                                <div className="text-sm text-content-secondary truncate max-w-xs">
+                                  {restaurant.description}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="space-y-1">
+                              <div className="flex items-center text-sm text-content-secondary">
+                                <Mail className="h-3 w-3 mr-1" />
+                                {restaurant.email}
+                              </div>
+                              <div className="flex items-center text-sm text-content-secondary">
+                                <Phone className="h-3 w-3 mr-1" />
+                                {restaurant.phoneNumber}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center text-sm text-content-secondary">
+                              <MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
+                              <span className="truncate max-w-xs">
+                                {restaurant.address}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <StatusBadge active={restaurant.active} />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-content-secondary">
+                            {formatDistanceToNow(new Date(restaurant.createdAt), { addSuffix: true })}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="relative">
+                              <button
+                                onClick={() => setShowActionMenu(showActionMenu === restaurant.id ? null : restaurant.id)}
+                                className="p-2 hover:bg-surface-tertiary rounded-lg transition-colors"
+                              >
+                                <MoreVertical className="h-4 w-4 text-content-secondary" />
+                              </button>
+
+                              {showActionMenu === restaurant.id && (
+                                <div className="absolute right-0 mt-2 w-48 bg-surface rounded-lg shadow-dropdown border border-border-tertiary z-dropdown animate-fadeIn">
+                                  <div className="py-1">
+                                    <button
+                                      onClick={() => handleViewDetails(restaurant)}
+                                      className="flex items-center px-4 py-2 text-sm text-content-primary hover:bg-surface-secondary w-full text-left"
+                                    >
+                                      <Eye className="h-4 w-4 mr-2" />
+                                      View Details
+                                    </button>
+                                    <button
+                                      onClick={() => handleEdit(restaurant)}
+                                      className="flex items-center px-4 py-2 text-sm text-content-primary hover:bg-surface-secondary w-full text-left"
+                                    >
+                                      <Edit className="h-4 w-4 mr-2" />
+                                      Edit
+                                    </button>
+                                    <button
+                                      onClick={() => handleStatusToggle(restaurant)}
+                                      className="flex items-center px-4 py-2 text-sm text-content-primary hover:bg-surface-secondary w-full text-left"
+                                    >
+                                      {restaurant.active ? (
+                                        <>
+                                          <PauseCircle className="h-4 w-4 mr-2" />
+                                          Deactivate
+                                        </>
+                                      ) : (
+                                        <>
+                                          <CheckCircle className="h-4 w-4 mr-2" />
+                                          Activate
+                                        </>
+                                      )}
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(restaurant)}
+                                      className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Delete
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="px-6 py-3 flex items-center justify-between border-t border-border-tertiary">
+                    <div className="text-sm text-content-secondary">
+                      Showing {((currentPage - 1) * itemsPerPage) + 1} to{' '}
+                      {Math.min(currentPage * itemsPerPage, restaurantsData?.length || 0)} of{' '}
+                      {restaurantsData?.length || 0} restaurants
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1 border border-border-tertiary rounded-lg hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter(page =>
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 1 && page <= currentPage + 1)
+                        )
+                        .map((page, index, array) => (
+                          <div key={page} className="flex items-center">
+                            {index > 0 && array[index - 1] !== page - 1 && (
+                              <span className="px-2 text-content-tertiary">...</span>
+                            )}
+                            <button
+                              onClick={() => setCurrentPage(page)}
+                              className={`px-3 py-1 rounded-lg ${
+                                page === currentPage
+                                  ? 'bg-primary text-white'
+                                  : 'hover:bg-surface-secondary'
+                              }`}
+                            >
+                              {page}
+                            </button>
                           </div>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{restaurant.name}</div>
-                          <div className="text-sm text-gray-500 flex items-center">
-                            <MapPin className="h-3 w-3 mr-1" />
-                            {restaurant.address}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{restaurant.owner}</div>
-                      <div className="text-sm text-gray-500">{restaurant.cuisine}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 flex items-center">
-                        <Mail className="h-3 w-3 mr-1" />
-                        {restaurant.email}
-                      </div>
-                      <div className="text-sm text-gray-500 flex items-center">
-                        <Phone className="h-3 w-3 mr-1" />
-                        {restaurant.phone}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        {getStatusIcon(restaurant.status)}
-                        <span className={`ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(restaurant.status)}`}>
-                          {restaurant.status}
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1 flex items-center">
-                        <Clock className="h-3 w-3 mr-1" />
-                        Joined {restaurant.dateJoined}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <div className="text-gray-900 font-semibold">${restaurant.revenue.toLocaleString()}</div>
-                      <div className="text-gray-500">{restaurant.totalOrders} orders</div>
-                      <div className="text-yellow-500">★ {restaurant.rating}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center space-x-2">
-                        <Button variant="outline" size="sm">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        ))}
+                      <button
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1 border border-border-tertiary rounded-lg hover:bg-surface-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 
-        {filteredRestaurants.length === 0 && (
-          <div className="text-center py-12">
-            <Store className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No restaurants found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || statusFilter !== 'all' 
-                ? 'Try adjusting your filters.' 
-                : 'Get started by adding a new restaurant.'}
-            </p>
-            {!searchTerm && statusFilter === 'all' && (
-              <div className="mt-6">
-                <Button onClick={() => setShowAddModal(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Restaurant
-                </Button>
-              </div>
-            )}
-          </div>
+        {/* Modals */}
+        {showAddModal && (
+          <AddRestaurantModal
+            restaurant={selectedRestaurant}
+            onClose={() => {
+              setShowAddModal(false);
+              setSelectedRestaurant(null);
+            }}
+            onSuccess={() => {
+              setShowAddModal(false);
+              setSelectedRestaurant(null);
+              refetch();
+            }}
+          />
         )}
-      </main>
 
-      {/* Add Restaurant Modal */}
-      <AddRestaurantModal 
-        isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onSuccess={() => {
-          // Refresh restaurant list or show success message
-          console.log('Restaurant added successfully!');
-        }}
-      />
-    </div>
+        {showDetailsModal && selectedRestaurant && (
+          <RestaurantDetailsModal
+            restaurant={selectedRestaurant}
+            onClose={() => {
+              setShowDetailsModal(false);
+              setSelectedRestaurant(null);
+            }}
+            onEdit={() => {
+              setShowDetailsModal(false);
+              setShowAddModal(true);
+            }}
+          />
+        )}
+      </div>
+    </ProtectedRoute>
   );
 }

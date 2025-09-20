@@ -320,6 +320,138 @@ export interface NotificationCreatedEvent extends BaseWebSocketEvent {
   };
 }
 
+// Multi-user Table Session Events
+export interface TableSessionCreatedEvent extends BaseWebSocketEvent {
+  type: 'table:session_created';
+  data: {
+    tableSessionId: string;
+    sessionCode: string;
+    tableId: string;
+    hostUser: {
+      guestSessionId: string;
+      userName: string;
+    };
+    expiresAt: string;
+  };
+}
+
+export interface TableSessionUserJoinedEvent extends BaseWebSocketEvent {
+  type: 'table:user_joined';
+  data: {
+    tableSessionId: string;
+    sessionCode: string;
+    tableId: string;
+    user: {
+      guestSessionId: string;
+      userName: string;
+      isHost: boolean;
+    };
+    totalUsers: number;
+  };
+}
+
+export interface TableSessionUserLeftEvent extends BaseWebSocketEvent {
+  type: 'table:user_left';
+  data: {
+    tableSessionId: string;
+    tableId: string;
+    user: {
+      guestSessionId: string;
+      userName: string;
+    };
+    totalUsers: number;
+  };
+}
+
+export interface TableSessionCartUpdatedEvent extends BaseWebSocketEvent {
+  type: 'table:cart_updated';
+  data: {
+    tableSessionId: string;
+    tableId: string;
+    updatedBy: {
+      guestSessionId: string;
+      userName: string;
+    };
+    cartItems: Array<{
+      menuItemId: string;
+      name: string;
+      quantity: number;
+      price: number;
+      subtotal: number;
+      options?: any[];
+    }>;
+    cartTotal: number;
+  };
+}
+
+export interface TableSessionOrderLockedEvent extends BaseWebSocketEvent {
+  type: 'table:order_locked';
+  data: {
+    tableSessionId: string;
+    tableId: string;
+    orderId: string;
+    roundNumber: number;
+    lockedBy: {
+      guestSessionId: string;
+      userName: string;
+    };
+    orderTotal: number;
+  };
+}
+
+export interface TableSessionNewRoundEvent extends BaseWebSocketEvent {
+  type: 'table:new_round';
+  data: {
+    tableSessionId: string;
+    tableId: string;
+    roundNumber: number;
+    previousRoundTotal: number;
+    sessionTotal: number;
+  };
+}
+
+export interface TableSessionBillRequestedEvent extends BaseWebSocketEvent {
+  type: 'table:bill_requested';
+  data: {
+    tableSessionId: string;
+    tableId: string;
+    requestedBy: {
+      guestSessionId: string;
+      userName: string;
+    };
+    totalAmount: number;
+    paidAmount: number;
+    remainingBalance: number;
+  };
+}
+
+export interface TableSessionClosedEvent extends BaseWebSocketEvent {
+  type: 'table:session_closed';
+  data: {
+    tableSessionId: string;
+    tableId: string;
+    closedBy?: {
+      userId?: string;
+      role?: string;
+    };
+    reason: string;
+    finalTotal: number;
+    totalOrders: number;
+  };
+}
+
+export interface TableSessionUpdatedEvent extends BaseWebSocketEvent {
+  type: 'table:session_updated';
+  data: {
+    tableSessionId: string;
+    tableId: string;
+    status: string; // TableSessionStatus
+    totalAmount: number;
+    paidAmount: number;
+    activeUsers: number;
+  };
+}
+
 // Union type for all possible WebSocket events
 export type TabsyWebSocketEvent =
   | OrderCreatedEvent
@@ -346,7 +478,16 @@ export type TabsyWebSocketEvent =
   | UrgentAlertEvent
   | AnalyticsUpdateEvent
   | MenuUpdatedEvent
-  | NotificationCreatedEvent;
+  | NotificationCreatedEvent
+  | TableSessionCreatedEvent
+  | TableSessionUserJoinedEvent
+  | TableSessionUserLeftEvent
+  | TableSessionCartUpdatedEvent
+  | TableSessionOrderLockedEvent
+  | TableSessionNewRoundEvent
+  | TableSessionBillRequestedEvent
+  | TableSessionClosedEvent
+  | TableSessionUpdatedEvent;
 
 // Event type mapping for type safety
 export type WebSocketEventMap = {
@@ -375,6 +516,15 @@ export type WebSocketEventMap = {
   'alert:urgent': UrgentAlertEvent['data'];
   'analytics:update': AnalyticsUpdateEvent['data'];
   'menu:updated': MenuUpdatedEvent['data'];
+  'table:session_created': TableSessionCreatedEvent['data'];
+  'table:user_joined': TableSessionUserJoinedEvent['data'];
+  'table:user_left': TableSessionUserLeftEvent['data'];
+  'table:cart_updated': TableSessionCartUpdatedEvent['data'];
+  'table:order_locked': TableSessionOrderLockedEvent['data'];
+  'table:new_round': TableSessionNewRoundEvent['data'];
+  'table:bill_requested': TableSessionBillRequestedEvent['data'];
+  'table:session_closed': TableSessionClosedEvent['data'];
+  'table:session_updated': TableSessionUpdatedEvent['data'];
 };
 
 // Type-safe event listener

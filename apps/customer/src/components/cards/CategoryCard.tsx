@@ -30,7 +30,7 @@ interface CategoryCardProps {
   showItemCount?: boolean
 }
 
-const CategoryCard: React.FC<CategoryCardProps> = ({
+const CategoryCard = React.memo<CategoryCardProps>(({
   category,
   onClick,
   className = '',
@@ -244,6 +244,6 @@ const CategoryCard: React.FC<CategoryCardProps> = ({
       )}
     </motion.button>
   )
-}
+})
 
 export default CategoryCard

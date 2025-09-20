@@ -7,6 +7,7 @@ import {
   Download
 } from 'lucide-react'
 import { format, subDays } from 'date-fns'
+import { useAnalytics } from '@/hooks/api/useAnalytics'
 
 interface AnalyticsData {
   revenue: {
@@ -55,67 +56,47 @@ interface AnalyticsDashboardProps {
 }
 
 export function AnalyticsDashboard({ onExportData }: AnalyticsDashboardProps) {
-  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null)
   const [dateRange, setDateRange] = useState<'7d' | '30d' | '3m' | '1y'>('30d')
-  const [loading, setLoading] = useState(true)
 
-  // Mock data - replace with real API calls
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      setLoading(true)
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const mockData: AnalyticsData = {
-        revenue: {
-          total: 125000,
-          change: 12.5,
-          trend: 'up'
-        },
-        orders: {
-          total: 2450,
-          change: -3.2,
-          trend: 'down'
-        },
-        customers: {
-          total: 15672,
-          active: 12340,
-          new: 890
-        },
-        restaurants: {
-          total: 45,
-          active: 42,
-          topPerforming: ['Bella Italia', 'Sushi Master', 'BBQ Palace']
-        },
-        dailyMetrics: Array.from({ length: 30 }, (_, i) => ({
-          date: format(subDays(new Date(), 29 - i), 'yyyy-MM-dd'),
-          revenue: Math.floor(Math.random() * 5000) + 2000,
-          orders: Math.floor(Math.random() * 100) + 50,
-          customers: Math.floor(Math.random() * 200) + 100
-        })),
-        categoryBreakdown: [
-          { category: 'Italian', revenue: 45000, percentage: 36 },
-          { category: 'Asian', revenue: 35000, percentage: 28 },
-          { category: 'American', revenue: 25000, percentage: 20 },
-          { category: 'Mexican', revenue: 15000, percentage: 12 },
-          { category: 'Other', revenue: 5000, percentage: 4 }
-        ],
-        restaurantPerformance: [
-          { id: '1', name: 'Bella Italia', revenue: 25000, orders: 450, rating: 4.8, status: 'ACTIVE' },
-          { id: '2', name: 'Sushi Master', revenue: 22000, orders: 380, rating: 4.7, status: 'ACTIVE' },
-          { id: '3', name: 'BBQ Palace', revenue: 18000, orders: 320, rating: 4.6, status: 'ACTIVE' },
-          { id: '4', name: 'Taco Fiesta', revenue: 15000, orders: 280, rating: 4.5, status: 'ACTIVE' },
-          { id: '5', name: 'Green Garden', revenue: 12000, orders: 200, rating: 4.3, status: 'INACTIVE' }
-        ]
-      }
-      
-      setAnalyticsData(mockData)
-      setLoading(false)
-    }
+  // Map dateRange to period for useAnalytics
+  const period = dateRange === '7d' ? 'week' : dateRange === '30d' ? 'month' : dateRange === '3m' ? 'month' : 'year'
 
-    fetchAnalytics()
-  }, [dateRange])
+  // Use real analytics API
+  const { data: analyticsApiData, isLoading: loading, error } = useAnalytics(period)
+
+  // Transform API data to match component interface
+  const analyticsData: AnalyticsData | null = analyticsApiData ? {
+    revenue: {
+      total: analyticsApiData.revenue.total,
+      change: analyticsApiData.revenue.changePercent,
+      trend: analyticsApiData.revenue.changePercent >= 0 ? 'up' : 'down'
+    },
+    orders: {
+      total: analyticsApiData.orders.total,
+      change: analyticsApiData.orders.changePercent,
+      trend: analyticsApiData.orders.changePercent >= 0 ? 'up' : 'down'
+    },
+    customers: {
+      total: analyticsApiData.customers.total,
+      active: analyticsApiData.customers.total - analyticsApiData.customers.new,
+      new: analyticsApiData.customers.new
+    },
+    restaurants: {
+      total: analyticsApiData.restaurants.total,
+      active: analyticsApiData.restaurants.active,
+      topPerforming: analyticsApiData.topRestaurants.slice(0, 3).map(r => r.name)
+    },
+    dailyMetrics: [], // Would need historical daily data from API
+    categoryBreakdown: [], // Would need category data from API
+    restaurantPerformance: analyticsApiData.topRestaurants.map(r => ({
+      id: r.name, // Using name as ID for now
+      name: r.name,
+      revenue: parseFloat(r.revenue),
+      orders: r.orders,
+      rating: 0, // Would need rating data
+      status: 'ACTIVE' as const
+    }))
+  } : null
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {

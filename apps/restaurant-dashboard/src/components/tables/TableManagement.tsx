@@ -26,9 +26,9 @@ import { toast } from 'sonner';
 import { createTableHooks } from '@tabsy/react-query-hooks';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { TableCard } from './TableCard';
-import { TableDetailSlidePanel } from './TableDetailSlidePanel';
 import { CreateTableModal } from './CreateTableModal';
 import { QRCodeManager } from './QRCodeManager';
+import { TableDetailsModal } from './TableDetailsModal';
 import { EmptyState } from '../ui/EmptyState';
 import { LoadingSkeleton } from '../ui/LoadingSkeleton';
 
@@ -344,7 +344,7 @@ export function TableManagement({ restaurantId }: TableManagementProps) {
             </div>
 
             <div className="stat-card transition-all duration-200 hover:scale-105">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <div>
                   <p className="text-muted-foreground text-sm font-medium">Available Seats</p>
                   <p className="text-3xl font-bold text-foreground">{stats.availableCapacity}</p>
@@ -511,21 +511,32 @@ export function TableManagement({ restaurantId }: TableManagementProps) {
         />
       )}
 
-      {selectedTable && (
-        <TableDetailSlidePanel
-          table={selectedTable}
-          restaurantId={restaurantId}
-          onClose={() => setSelectedTable(null)}
-          onEdit={handleEditTable}
-          onUpdate={() => refetchTables()}
-        />
-      )}
 
       {qrCodeTable && (
         <QRCodeManager
           table={qrCodeTable}
           restaurantId={restaurantId}
           onClose={() => setQrCodeTable(null)}
+        />
+      )}
+
+      {selectedTable && (
+        <TableDetailsModal
+          table={selectedTable}
+          restaurantId={restaurantId}
+          onClose={() => setSelectedTable(null)}
+          onEdit={(table) => {
+            setEditingTable(table);
+            setShowCreateModal(true);
+            setSelectedTable(null);
+          }}
+          onQRCode={(table) => {
+            setQrCodeTable(table);
+            setSelectedTable(null);
+          }}
+          onUpdate={() => {
+            refetchTables();
+          }}
         />
       )}
     </div>

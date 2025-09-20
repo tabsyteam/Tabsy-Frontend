@@ -52,9 +52,11 @@ export interface CreateUserRequest {
 }
 
 export interface UpdateUserRequest {
+  email?: string
   firstName?: string
   lastName?: string
   phone?: string
+  role?: UserRole
   profileImageUrl?: string
 }
 

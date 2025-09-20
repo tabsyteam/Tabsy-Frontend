@@ -169,17 +169,6 @@ export function MenuView() {
   // Session state
   const [sessionReady, setSessionReady] = useState(false)
 
-  // WebSocket for real-time updates - only connect when session is ready
-  const { client, isConnected } = useWebSocket({
-    url: process.env.NEXT_PUBLIC_WS_BASE_URL || 'http://localhost:5001',
-    autoConnect: sessionReady && !!tableId && !!restaurantId,
-    auth: {
-      namespace: 'customer' as const,
-      tableId: tableId || undefined,
-      restaurantId: restaurantId || undefined
-    }
-  })
-
   // Load favorites from localStorage
   const loadFavoritesFromStorage = useCallback((): Set<string> => {
     try {
@@ -257,49 +246,26 @@ export function MenuView() {
         const qrResponse = await api.qr.getTableInfo(qrCode)
 
         if (qrResponse.success && qrResponse.data) {
+          // Backend returns Table object with nested restaurant property
+          tableData = qrResponse.data
           restaurantData = qrResponse.data.restaurant
-          tableData = qrResponse.data.table
-          console.log('QR data loaded:', { restaurant: restaurantData.name, table: tableData.number })
+          console.log('QR data loaded:', { restaurant: restaurantData?.name, table: tableData?.number })
         } else {
           throw new Error('Invalid QR code or table not found')
         }
       }
 
-      // 2. Create or validate guest session
-      let sessionCreated = false
+      // 2. Use existing guest session (created by TableSessionManager)
       let currentSessionId = api.getGuestSessionId()
 
       if (!currentSessionId) {
-        console.log('Creating new guest session...')
-        const sessionResponse = await api.session.createGuest({
-          tableId,
-          restaurantId,
-          qrCode: qrCode || undefined
-        })
-
-        if (sessionResponse.success && sessionResponse.data) {
-          sessionCreated = true
-          currentSessionId = sessionResponse.data.sessionId
-          console.log('Guest session created:', currentSessionId)
-
-          // Ensure session is properly set in API client
-          api.setGuestSession(currentSessionId)
-
-          // Wait a moment for session to be fully set
-          await new Promise(resolve => setTimeout(resolve, 100))
-
-          // Mark session as ready
-          setSessionReady(true)
-        } else {
-          throw new Error('Failed to create guest session')
-        }
-      } else {
-        console.log('Using existing guest session:', currentSessionId)
-        // Mark session as ready since it already exists
-        setSessionReady(true)
+        throw new Error('No guest session available. Please refresh the page.')
       }
 
-      // 3. Load menu data (this uses customer-facing endpoint with guest session)
+      console.log('Using existing guest session:', currentSessionId)
+      setSessionReady(true)
+
+      // 2. Load menu data (this uses customer-facing endpoint with guest session)
       // Retry logic in case session isn't ready yet
       let menuResponse
       let retryCount = 0
@@ -351,17 +317,13 @@ export function MenuView() {
         throw new Error('Failed to load menu data')
       }
 
-      // 4. Set restaurant and table data from API responses
+      // 3. Set restaurant and table data from API responses
       if (restaurantData) {
         setRestaurant(restaurantData)
       }
 
       if (tableData) {
         setTable(tableData)
-      }
-
-      if (sessionCreated) {
-        toast.success('Connected to restaurant!', { icon: '🔗' })
       }
 
     } catch (error) {
@@ -1042,7 +1004,7 @@ export function MenuView() {
                     allergyInfo: convertAllergyInfoToArray(item.allergyInfo),
                     spicyLevel: item.spicyLevel,
                     preparationTime: item.preparationTime, // Use real preparation time from backend
-                    isPopular: index < 3, // Mock popular items - could be replaced with real data later
+                    isPopular: item.tags?.includes('popular') || false,
                     isNew: isItemNew(item.createdAt)
                   }}
                   quantity={getItemQuantity(item.id)}

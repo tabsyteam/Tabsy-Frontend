@@ -186,10 +186,17 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
       <div className="mb-3">
         <div className="bg-muted/30 rounded-md p-3 space-y-2 group-hover:bg-muted/40 transition-colors duration-200">
             {order.items.slice(0, 2).map((item: OrderItem, index: number) => (
-              <div key={index} className="flex justify-between items-center text-sm">
-                <span className="text-card-foreground font-medium truncate flex-1 mr-2">
-                  {item.quantity}x {item.menuItem?.name || (item as any).name || 'Unknown Item'}
-                </span>
+              <div key={index} className="flex justify-between items-start text-sm">
+                <div className="flex-1 mr-2">
+                  <span className="text-card-foreground font-medium truncate block">
+                    {item.quantity}x {item.menuItem?.name || (item as any).name || 'Unknown Item'}
+                  </span>
+                  {item.menuItem?.categoryName && (
+                    <span className="text-xs text-content-secondary block mt-0.5 truncate">
+                      {item.menuItem.categoryName}
+                    </span>
+                  )}
+                </div>
                 <span className="font-bold text-card-foreground flex-shrink-0">
                   ${parseFloat(String(item.subtotal || 0)).toFixed(2)}
                 </span>

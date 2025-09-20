@@ -53,6 +53,8 @@ export function SearchView() {
   const [showFilters, setShowFilters] = useState(false)
   const [recentSearches, setRecentSearches] = useState<string[]>([])
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([])
+  const [menuSuggestions, setMenuSuggestions] = useState<MenuItem[]>([])
+  const [allMenuItems, setAllMenuItems] = useState<MenuItem[]>([])
 
   // Popular searches from localStorage or default
   const popularSearches = [
@@ -70,28 +72,39 @@ export function SearchView() {
       }
     }
 
-    // Load menu categories for filtering
-    const loadCategories = async () => {
+    // Load menu categories and all items for auto-completion
+    const loadMenuData = async () => {
       if (!restaurantId) return
 
       try {
         const menuResponse = await api.menu.getActiveMenu(restaurantId)
         if (menuResponse.success && menuResponse.data) {
           let categories = []
+          let allItems: MenuItem[] = []
+
           if (Array.isArray(menuResponse.data)) {
             const firstMenu = menuResponse.data[0]
             categories = firstMenu?.categories || []
           } else if (menuResponse.data.categories) {
             categories = menuResponse.data.categories
           }
+
+          // Extract all menu items from categories for auto-completion
+          categories.forEach((category: MenuCategory) => {
+            if (category.items) {
+              allItems.push(...category.items)
+            }
+          })
+
           setMenuCategories(categories)
+          setAllMenuItems(allItems)
         }
       } catch (error) {
-        console.error('Failed to load categories:', error)
+        console.error('Failed to load menu data:', error)
       }
     }
 
-    loadCategories()
+    loadMenuData()
   }, [restaurantId, api])
 
   // Save search query to recent searches
@@ -150,6 +163,29 @@ export function SearchView() {
     }
   }
 
+  // Handle getting suggestions for auto-completion
+  const handleGetSuggestions = (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      setMenuSuggestions([])
+      return
+    }
+
+    const filtered = allMenuItems.filter(item =>
+      item.name.toLowerCase().includes(query.toLowerCase()) ||
+      (item.description && item.description.toLowerCase().includes(query.toLowerCase()))
+    ).slice(0, 5) // Limit to 5 suggestions
+
+    setMenuSuggestions(filtered)
+  }
+
+  // Handle suggestion selection
+  const handleSuggestionSelect = (item: MenuItem) => {
+    setSearchQuery(item.name)
+    setMenuSuggestions([])
+    handleSearch(item.name)
+    saveRecentSearch(item.name)
+  }
+
   // Handle category filter (placeholder for future implementation)
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category)
@@ -204,6 +240,9 @@ export function SearchView() {
             onFilter={() => setShowFilters(!showFilters)}
             showRecentSearches={true}
             recentSearches={recentSearches}
+            menuSuggestions={menuSuggestions}
+            onGetSuggestions={handleGetSuggestions}
+            onSuggestionSelect={handleSuggestionSelect}
             autoFocus={true}
           />
         </div>

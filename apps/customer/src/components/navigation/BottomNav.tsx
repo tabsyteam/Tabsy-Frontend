@@ -145,9 +145,6 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
           const active = isActive(item)
           const disabled = 'disabled' in item && item.disabled
 
-          // Check if this tab requires session but user doesn't have one
-          const requiresSession = ['search', 'cart', 'orders'].includes(item.id)
-          const needsSession = requiresSession && !hasSession
 
           return (
             <motion.button
@@ -159,8 +156,6 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
               } ${
                 disabled
                   ? 'opacity-50 cursor-not-allowed'
-                  : needsSession
-                  ? 'opacity-70 hover:opacity-90'
                   : active && item.id === 'cart'
                   ? 'bg-primary/10 shadow-lg'
                   : active
@@ -213,16 +208,6 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
                   </motion.div>
                 )}
 
-                {/* Session Required Indicator */}
-                {needsSession && !item.badge && (
-                  <motion.div
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full ring-2 ring-surface shadow-sm"
-                  >
-                    <div className="w-full h-full bg-amber-400 rounded-full animate-pulse" />
-                  </motion.div>
-                )}
               </div>
 
               {/* Label */}

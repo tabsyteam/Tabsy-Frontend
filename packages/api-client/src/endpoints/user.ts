@@ -7,6 +7,7 @@ import type {
   CreateUserRequest,
   UpdateUserRequest
 } from '@tabsy/shared-types'
+import { createQueryString, createFilterParams } from '@tabsy/shared-utils'
 
 export interface UserListFilters {
   role?: UserRole
@@ -31,17 +32,8 @@ export class UserAPI {
    * GET /users/ - List users (admin)
    */
   async list(filters?: UserListFilters): Promise<ApiResponse<User[]>> {
-    const params = new URLSearchParams()
-    
-    if (filters) {
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined) {
-          params.append(key, value.toString())
-        }
-      })
-    }
-    
-    const url = `/user${params.toString() ? `?${params.toString()}` : ''}`
+    const queryString = createQueryString(createFilterParams(filters || {}))
+    const url = `/user${queryString ? `?${queryString}` : ''}`
     return this.client.get(url)
   }
 

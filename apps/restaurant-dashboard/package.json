@@ -4,7 +4,7 @@
   "private": true,
   "description": "Tabsy Restaurant Dashboard - Management interface for restaurant staff and operations",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
