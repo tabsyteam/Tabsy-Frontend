@@ -68,13 +68,27 @@ export function useTableSessionData() {
         console.log('[useTableSessionData] Available users:', users)
         console.log('[useTableSessionData] Looking for guestSessionId:', guestSessionId)
 
-        const currentUser = users.find(user => user.guestSessionId === guestSessionId)
+        let currentUser = users.find(user => user.guestSessionId === guestSessionId)
 
         if (!currentUser) {
-          console.error('[useTableSessionData] Current user not found in table session. Available users:',
+          console.warn('[useTableSessionData] Current user not found in table session. Available users:',
             users.map(u => ({ id: u.id, guestSessionId: u.guestSessionId, userName: u.userName })))
-          throw new Error('You are not part of this table session. Please join the session first.')
+
+          // Instead of throwing an error, create a minimal user object for the current session
+          // This handles cases where the user hasn't been explicitly added to the table session yet
+          currentUser = {
+            id: guestSessionId,
+            guestSessionId: guestSessionId,
+            userName: '', // Empty username - will be set during order
+            isHost: false,
+            createdAt: new Date().toISOString(),
+            lastActivity: new Date().toISOString()
+          }
+
+          console.log('[useTableSessionData] Created fallback user for guest session:', currentUser)
         }
+
+        setCurrentUser(currentUser)
 
         // Create table session object from available data
         const tableSession: MultiUserTableSession = {
@@ -97,7 +111,6 @@ export function useTableSessionData() {
         })
 
         setTableSession(tableSession)
-        setCurrentUser(currentUser)
         setUsers(users)
 
       } catch (error: any) {

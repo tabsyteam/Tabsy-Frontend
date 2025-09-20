@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@tabsy/ui-components'
@@ -17,6 +17,7 @@ import { SessionManager } from '@/lib/session'
 import { useWebSocket, useWebSocketEvent } from '@tabsy/api-client'
 import { OrderFilterPills, FilterStatus, filterOrdersByStatus } from './OrderFilterPills'
 import { OrderCard } from './OrderCard'
+import { processOrderUpdatePayload } from '@/utils/websocket'
 
 // Using Order and OrderItem types from shared-types
 type Order = ApiOrder & {
@@ -56,13 +57,25 @@ export function OrdersView() {
   const session = SessionManager.getDiningSession()
   const canAccess = SessionManager.canAccessOrders()
 
+  // Get guest session ID once and memoize it to prevent infinite re-renders
+  const guestSessionId = useMemo(() => api.getGuestSessionId(), [])
+
+  // Get tableSessionId with fallback - memoized for consistency throughout component
+  const tableSessionId = useMemo(() => {
+    return session?.tableSessionId || sessionStorage.getItem('tabsy-table-session-id')
+  }, [session?.tableSessionId])
+
+  // Track if initial orders have been loaded to prevent unnecessary refetches
+  const ordersLoadedRef = useRef(false)
+  const initialLoadInProgressRef = useRef(false)
+
   // Set up WebSocket connection for real-time updates (only if in table session)
-  const { client: wsClient } = useWebSocket({
+  const { client: wsClient, isConnected: wsConnected } = useWebSocket({
     auth: session ? {
       namespace: 'customer',
       restaurantId: session.restaurantId,
       tableId: session.tableId,
-      sessionId: api.getGuestSessionId() || ''
+      sessionId: guestSessionId || ''
     } : undefined,
     autoConnect: !!session
   })
@@ -76,21 +89,260 @@ export function OrdersView() {
       console.log(`[ViewUpdate] Updating view from ${currentView} to ${newView} based on URL parameter`)
       setCurrentView(newView)
     }
-  }, [searchParams, currentView])
+  }, [searchParams]) // FIXED: Removed currentView from dependencies to prevent infinite loop
 
-  // Load orders
+  // Initial load only - prevent flickering and unnecessary API calls
   useEffect(() => {
+    // Extra protection against infinite loops
+    if (ordersLoadedRef.current || initialLoadInProgressRef.current) {
+      console.log('[OrdersView] Skipping duplicate initial load')
+      return
+    }
+
     if (canAccess) {
-      console.log('=== LOAD ORDERS EFFECT DEBUG ===')
+      console.log('=== INITIAL ORDERS LOAD ===')
       console.log('URL view parameter:', searchParams.get('view'))
       console.log('Current view state:', currentView)
-      console.log('Loading orders...')
-      loadOrders()
-    } else {
+      console.log('Session:', session)
+
+      // Check if we have the minimum required data for loading orders
+      if (!session) {
+        console.log('[OrdersView] No session available, cannot load orders')
+        setLoading(false)
+        setError('No active session found. Please scan the QR code to start a new session.')
+        return
+      }
+
+      if (!guestSessionId || guestSessionId === 'null' || guestSessionId === 'undefined') {
+        console.log('[OrdersView] No guest session ID available, cannot load orders')
+        setLoading(false)
+        setError('Session not properly initialized. Please scan the QR code again.')
+        return
+      }
+
+      console.log('Loading orders for the first time...')
+      console.log('Guest session ID:', guestSessionId)
+      initialLoadInProgressRef.current = true
+      loadOrdersInitial()
+    } else if (!canAccess) {
+      console.log('[OrdersView] Cannot access orders, stopping loading')
+      setLoading(false)
+      setError(null) // Clear any previous errors
+    }
+  }, [canAccess]) // Only depend on canAccess to prevent infinite loops
+
+  // Initial load function - loads orders for the current view only to prevent flickering
+  const loadOrdersInitial = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Add timeout to prevent infinite loading
+      const timeoutId = setTimeout(() => {
+        console.warn('[OrdersView] Initial load timed out after 10 seconds')
+        setError('Loading took too long. Please refresh the page.')
+        ordersLoadedRef.current = true
+        initialLoadInProgressRef.current = false
+        setLoading(false)
+      }, 10000)
+
+      const allOrders: Order[] = []
+
+      console.log('=== INITIAL ORDER LOADING DEBUG ===')
+      console.log('Session:', session)
+      console.log('Guest session ID:', guestSessionId)
+      console.log('Current view:', currentView)
+      console.log('Can access orders:', canAccess)
+
+      if (session) {
+        const currentUserSessionId = guestSessionId
+
+        // Load both personal and table orders, then filter in UI by view
+        // This ensures user can see their orders in both "My Orders" and "Table Orders"
+
+        // Load personal orders
+        if (currentUserSessionId && currentUserSessionId !== 'null' && currentUserSessionId !== 'undefined') {
+          try {
+            const response = await api.order.list({ sessionId: currentUserSessionId })
+            console.log('Personal orders API response:', response)
+
+            if (response.success && response.data) {
+              let ordersArray: ApiOrder[] = []
+              if (Array.isArray(response.data)) {
+                ordersArray = response.data
+              } else if (isPaginatedResponse(response.data)) {
+                ordersArray = response.data.orders
+              }
+
+              if (ordersArray.length > 0) {
+                const apiOrders: Order[] = ordersArray.map((order: ApiOrder) => ({
+                  ...order,
+                  restaurantName: session.restaurantName
+                }))
+                allOrders.push(...apiOrders)
+                console.log(`Loaded ${apiOrders.length} personal orders`)
+              }
+            }
+          } catch (apiError) {
+            console.warn('Failed to load personal orders from API:', apiError)
+          }
+        }
+
+        // Load table orders (all orders for this table session)
+        if (tableSessionId && tableSessionId !== 'null' && tableSessionId !== 'undefined') {
+          try {
+            const response = await api.order.list({ tableSessionId: tableSessionId })
+            console.log('Table orders API response:', response)
+
+            if (response.success && response.data) {
+              let ordersArray: ApiOrder[] = []
+              if (Array.isArray(response.data)) {
+                ordersArray = response.data
+              } else if (isPaginatedResponse(response.data)) {
+                ordersArray = response.data.orders
+              }
+
+              if (ordersArray.length > 0) {
+                const apiOrders: Order[] = ordersArray.map((order: ApiOrder) => ({
+                  ...order,
+                  restaurantName: session.restaurantName
+                }))
+
+                // Merge table orders, avoiding duplicates with personal orders
+                apiOrders.forEach(tableOrder => {
+                  const exists = allOrders.some(existingOrder => existingOrder.id === tableOrder.id)
+                  if (!exists) {
+                    allOrders.push(tableOrder)
+                  }
+                })
+                console.log(`Loaded ${apiOrders.length} table orders (${allOrders.length} total after dedup)`)
+              }
+            }
+          } catch (apiError) {
+            console.warn('Failed to load table orders from API:', apiError)
+          }
+        }
+      }
+
+      // Sort orders by creation date (newest first)
+      allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+      setOrders(allOrders)
+      console.log(`=== INITIAL LOAD COMPLETE: ${allOrders.length} orders for '${currentView}' view ===`)
+      console.log('Loaded orders details:', allOrders.map(o => ({
+        id: o.id,
+        orderNumber: o.orderNumber,
+        guestSessionId: o.guestSessionId,
+        tableSessionId: o.tableSessionId
+      })))
+
+      // Clear timeout and mark as loaded
+      clearTimeout(timeoutId)
+      ordersLoadedRef.current = true
+      initialLoadInProgressRef.current = false
+      setLoading(false)
+    } catch (err: any) {
+      console.error('Failed to load orders:', err)
+      setError('Failed to load orders. Please check your connection and try again.')
+
+      // Clear timeout and mark as loaded, even on error
+      clearTimeout(timeoutId)
+      ordersLoadedRef.current = true
+      initialLoadInProgressRef.current = false
       setLoading(false)
     }
-  }, [canAccess, currentView, searchParams])
+  }
 
+  // Load orders for a specific view (used during view switching)
+  const loadOrdersForView = async (view: 'my' | 'table') => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const viewOrders: Order[] = []
+
+      if (session) {
+        const currentUserSessionId = guestSessionId
+
+        // Load both personal and table orders for the view, then let UI filtering handle display
+        console.log(`[loadOrdersForView] Loading all orders for '${view}' view`)
+
+        // Load personal orders
+        if (currentUserSessionId && currentUserSessionId !== 'null' && currentUserSessionId !== 'undefined') {
+          try {
+            const response = await api.order.list({ sessionId: currentUserSessionId })
+            console.log(`[loadOrdersForView] Personal orders:`, response)
+
+            if (response.success && response.data) {
+              let ordersArray: ApiOrder[] = []
+              if (Array.isArray(response.data)) {
+                ordersArray = response.data
+              } else if (isPaginatedResponse(response.data)) {
+                ordersArray = response.data.orders
+              }
+
+              if (ordersArray.length > 0) {
+                const apiOrders: Order[] = ordersArray.map((order: ApiOrder) => ({
+                  ...order,
+                  restaurantName: session.restaurantName
+                }))
+                viewOrders.push(...apiOrders)
+              }
+            }
+          } catch (apiError) {
+            console.warn(`[loadOrdersForView] Failed to load personal orders:`, apiError)
+          }
+        }
+
+        // Load table orders
+        if (tableSessionId && tableSessionId !== 'null' && tableSessionId !== 'undefined') {
+          try {
+            const response = await api.order.list({ tableSessionId: tableSessionId })
+            console.log(`[loadOrdersForView] Table orders:`, response)
+
+            if (response.success && response.data) {
+              let ordersArray: ApiOrder[] = []
+              if (Array.isArray(response.data)) {
+                ordersArray = response.data
+              } else if (isPaginatedResponse(response.data)) {
+                ordersArray = response.data.orders
+              }
+
+              if (ordersArray.length > 0) {
+                const apiOrders: Order[] = ordersArray.map((order: ApiOrder) => ({
+                  ...order,
+                  restaurantName: session.restaurantName
+                }))
+
+                // Merge table orders, avoiding duplicates
+                apiOrders.forEach(tableOrder => {
+                  const exists = viewOrders.some(existingOrder => existingOrder.id === tableOrder.id)
+                  if (!exists) {
+                    viewOrders.push(tableOrder)
+                  }
+                })
+              }
+            }
+          } catch (apiError) {
+            console.warn(`[loadOrdersForView] Failed to load table orders:`, apiError)
+          }
+        }
+      }
+
+      // Sort orders by creation date (newest first)
+      viewOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+      setOrders(viewOrders)
+      console.log(`[loadOrdersForView] Loaded ${viewOrders.length} orders for '${view}' view`)
+    } catch (err: any) {
+      console.error(`[loadOrdersForView] Failed to load orders for '${view}' view:`, err)
+      setError('Failed to load orders for this view')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Hybrid approach: WebSocket primary, API fallback when disconnected
   const loadOrders = async () => {
     try {
       setLoading(true)
@@ -102,46 +354,28 @@ export function OrdersView() {
       const urlView = searchParams.get('view')
       const actualView = urlView === 'table' ? 'table' : 'my'
 
-      // Debug session information
-      console.log('=== ORDER LOADING DEBUG ===')
-      console.log('Current view state:', currentView)
-      console.log('URL view parameter:', urlView)
-      console.log('Actual view to use:', actualView)
-      console.log('Session:', session)
-      console.log('Guest session ID:', api.getGuestSessionId())
-      console.log('Can access orders:', canAccess)
-      console.log('loadOrders() called at:', new Date().toISOString())
-
-      // Update currentView if it doesn't match the URL parameter
-      if (currentView !== actualView) {
-        console.log(`Correcting view state from ${currentView} to ${actualView}`)
-        setCurrentView(actualView)
-      }
+      console.log('[OrdersView] Loading orders via API (WebSocket backup):', {
+        currentView,
+        actualView,
+        wsConnected,
+        reason: !wsConnected ? 'WebSocket disconnected' : 'Manual refresh'
+      })
 
       if (actualView === 'my' && session) {
         // Load personal orders (current user's orders only)
-        const currentUserSessionId = api.getGuestSessionId()
-        console.log('Loading personal orders for session:', currentUserSessionId)
+        const currentUserSessionId = guestSessionId
 
         if (currentUserSessionId && currentUserSessionId !== 'null' && currentUserSessionId !== 'undefined') {
           try {
-            // Filter by guest session ID (maps to guestSessionId in backend)
             const response = await api.order.list({ sessionId: currentUserSessionId })
-            console.log('Personal orders API response:', response)
+            console.log('[OrdersView] Personal orders API response:', response)
 
             if (response.success && response.data) {
-              // Handle both direct array and paginated response structure
               let ordersArray: ApiOrder[] = []
-
               if (Array.isArray(response.data)) {
-                // Direct array response
                 ordersArray = response.data
               } else if (isPaginatedResponse(response.data)) {
-                // Paginated response with {orders: [], totalCount: number} structure
                 ordersArray = response.data.orders
-                console.log(`Found ${response.data.totalCount} personal orders for current user`)
-              } else {
-                console.warn('Personal orders API response.data has unexpected structure:', typeof response.data, response.data)
               }
 
               if (ordersArray.length > 0) {
@@ -150,44 +384,28 @@ export function OrdersView() {
                   restaurantName: session.restaurantName
                 }))
                 allOrders.push(...apiOrders)
-                console.log(`Loaded ${apiOrders.length} personal orders for current user`)
+                console.log(`[OrdersView] Loaded ${apiOrders.length} personal orders via API`)
               }
-            } else {
-              console.warn('Personal orders API response not successful or no data:', response)
             }
           } catch (apiError) {
-            console.warn('Failed to load personal orders from API:', apiError)
+            console.warn('[OrdersView] Failed to load personal orders from API:', apiError)
           }
-        } else {
-          console.warn('No valid guest session ID found for personal orders. guestSessionId:', currentUserSessionId)
         }
       } else if (actualView === 'table' && session) {
         // Load table orders (shared orders for all users at the table session)
         const tableSessionId = session.tableSessionId || sessionStorage.getItem('tabsy-table-session-id')
-        console.log('Loading table orders for table session:', tableSessionId)
-        console.log('Available session keys in sessionStorage:', Object.keys(sessionStorage))
-        console.log('All session storage items:', Object.fromEntries(Object.keys(sessionStorage).map(key => [key, sessionStorage.getItem(key)])))
 
         if (tableSessionId && tableSessionId !== 'null' && tableSessionId !== 'undefined') {
           try {
-            // Use order.list with tableSessionId filter for consistent backend handling
-            console.log('Making API call with tableSessionId:', tableSessionId)
             const response = await api.order.list({ tableSessionId: tableSessionId })
-            console.log('Table orders API response:', response)
+            console.log('[OrdersView] Table orders API response:', response)
 
             if (response.success && response.data) {
-              // Handle both direct array and paginated response structure
               let ordersArray: ApiOrder[] = []
-
               if (Array.isArray(response.data)) {
-                // Direct array response
                 ordersArray = response.data
               } else if (isPaginatedResponse(response.data)) {
-                // Paginated response with {orders: [], totalCount: number} structure
                 ordersArray = response.data.orders
-                console.log(`Found ${response.data.totalCount} table orders for table session`)
-              } else {
-                console.warn('Table orders API response.data has unexpected structure:', typeof response.data, response.data)
               }
 
               if (ordersArray.length > 0) {
@@ -196,28 +414,22 @@ export function OrdersView() {
                   restaurantName: session.restaurantName
                 }))
                 allOrders.push(...apiOrders)
-                console.log(`Loaded ${apiOrders.length} table orders for table session`)
+                console.log(`[OrdersView] Loaded ${apiOrders.length} table orders via API`)
               }
-            } else {
-              console.warn('Table orders API response not successful or no data:', response)
             }
           } catch (apiError) {
-            console.warn('Failed to load table orders from API:', apiError)
+            console.warn('[OrdersView] Failed to load table orders from API:', apiError)
           }
-        } else {
-          console.warn('No valid table session ID found for table orders. tableSessionId:', tableSessionId)
         }
       }
-
-      // No fallback to sessionStorage - rely purely on session-based API filtering
-      console.log(`Loaded ${allOrders.length} orders from API for view: ${actualView} (currentView state: ${currentView})`)
 
       // Sort orders by creation date (newest first)
       allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
       setOrders(allOrders)
+      console.log(`[OrdersView] API fallback complete: ${allOrders.length} orders loaded`)
     } catch (err: any) {
-      console.error('Failed to load orders:', err)
+      console.error('[OrdersView] Failed to load orders via API:', err)
       setError('Failed to load your orders')
     } finally {
       setLoading(false)
@@ -225,79 +437,233 @@ export function OrdersView() {
   }
 
   const handleRefresh = () => {
-    loadOrders()
+    console.log('[OrdersView] Manual refresh triggered, using API fallback')
+    loadOrders() // Always use API for manual refresh to ensure latest data
   }
+
+  // Auto-fallback when WebSocket disconnects - TEMPORARILY DISABLED to prevent infinite API calls
+  const fallbackTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // DISABLED: These effects were causing infinite API calls
+  // useEffect(() => {
+  //   if (!wsConnected && session && ordersLoadedRef.current) {
+  //     console.log('[OrdersView] WebSocket disconnected, setting up API fallback...')
+
+  //     // Debounce fallback to prevent rapid API calls
+  //     if (fallbackTimeoutRef.current) {
+  //       clearTimeout(fallbackTimeoutRef.current)
+  //     }
+
+  //     fallbackTimeoutRef.current = setTimeout(() => {
+  //       console.log('[OrdersView] Executing API fallback due to WebSocket disconnection')
+  //       loadOrders()
+  //     }, 2000) // Wait 2 seconds before falling back to API
+  //   }
+
+  //   // Cleanup timeout on unmount
+  //   return () => {
+  //     if (fallbackTimeoutRef.current) {
+  //       clearTimeout(fallbackTimeoutRef.current)
+  //     }
+  //   }
+  // }, [wsConnected, session])
+
+  // DISABLED: This effect was causing infinite API calls when WebSocket reconnects
+  // useEffect(() => {
+  //   if (wsConnected && session && ordersLoadedRef.current) {
+  //     console.log('[OrdersView] WebSocket reconnected, refreshing data to sync state')
+  //     loadOrders()
+  //   }
+  // }, [wsConnected, session])
 
   const handleOrderClick = (orderId: string) => {
     const queryParams = SessionManager.getDiningQueryParams()
     router.push(`/order/${orderId}${queryParams}`)
   }
 
-  // Debounced version to prevent rapid successive calls
-  const loadOrdersTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const debouncedLoadOrders = useCallback(() => {
-    if (loadOrdersTimeoutRef.current) {
-      clearTimeout(loadOrdersTimeoutRef.current)
-    }
-    loadOrdersTimeoutRef.current = setTimeout(() => {
-      console.log('[OrdersView] Executing debounced loadOrders...')
-      loadOrders()
-    }, 150) // 150ms debounce to prevent rapid calls
-  }, [])
+  // Intelligent debounced API calls - only when WebSocket is down or manual refresh
+  const apiCallTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // const debouncedApiRefresh = useCallback((reason: string) => {
+  //   if (apiCallTimeoutRef.current) {
+  //     clearTimeout(apiCallTimeoutRef.current)
+  //   }
+
+  //   apiCallTimeoutRef.current = setTimeout(() => {
+  //     // Only call API if WebSocket is disconnected or it's a manual refresh
+  //     if (!wsConnected || reason === 'manual') {
+  //       console.log(`[OrdersView] Debounced API call executing - reason: ${reason}`)
+  //       loadOrders()
+  //     } else {
+  //       console.log(`[OrdersView] Skipping API call - WebSocket connected and reason: ${reason}`)
+  //     }
+  //   }, 500) // 500ms debounce
+  // }, [wsConnected])
 
   const handleNewOrder = () => {
     router.push(SessionManager.getMenuUrl())
   }
 
   const handleViewChange = (newView: 'my' | 'table') => {
+    console.log(`[ViewChange] Switching from ${currentView} to ${newView}`)
+
+    // Update current view state directly (no page navigation)
+    setCurrentView(newView)
+
+    // Update URL without navigation to keep URL in sync
     const queryParams = SessionManager.getDiningQueryParams()
-    router.push(`/orders${queryParams}&view=${newView}`)
+    const newUrl = `/orders${queryParams}&view=${newView}`
+    window.history.replaceState({}, '', newUrl)
+
+    // Load orders for the new view to ensure fresh data
+    if (ordersLoadedRef.current) {
+      console.log(`[ViewChange] Loading orders for new view: ${newView}`)
+      loadOrdersForView(newView)
+    }
   }
 
-  // WebSocket event handlers for real-time updates
+  // WebSocket event handlers for real-time updates - PURE STATE UPDATES ONLY
   const handleOrderCreated = (data: any) => {
-    console.log('[OrdersView] New order created:', data)
-    if (data.tableId === session?.tableId) {
-      console.log('[OrdersView] New order at our table - triggering reload to get latest data')
-      // Simple approach: just reload data and let loadOrders() handle the view logic
-      debouncedLoadOrders()
+    console.log('[OrdersView] New order created via WebSocket:', data)
+
+    // Extract order from WebSocket payload (backend sends OrderCreatedPayload)
+    const newOrder = data.order || data
+
+    if (!newOrder || !newOrder.id) {
+      console.warn('[OrdersView] Invalid order data in order:created event:', data)
+      return
     }
+
+    console.log('[OrdersView] Processing new order:', {
+      orderId: newOrder.id,
+      orderGuestSessionId: newOrder.guestSessionId,
+      orderTableSessionId: newOrder.tableSessionId,
+      currentUserSessionId: guestSessionId,
+      currentTableSessionId: tableSessionId,
+      currentView
+    })
+
+    // Add order to state if it belongs to current user OR current table session
+    // The UI filtering will determine which view shows the order
+    const belongsToUser = newOrder.guestSessionId === guestSessionId
+    const belongsToTable = newOrder.tableSessionId === tableSessionId
+    const shouldAddOrder = belongsToUser || belongsToTable
+
+    console.log('[OrdersView] Order belongs to:', {
+      belongsToUser,
+      belongsToTable,
+      shouldAddOrder,
+      willShowInMyOrders: belongsToUser,
+      willShowInTableOrders: belongsToTable
+    })
+
+    if (shouldAddOrder) {
+      console.log('[OrdersView] Adding new order to current view state')
+      setOrders(prevOrders => {
+        // Check if order already exists (prevent duplicates)
+        const exists = prevOrders.some(order => order.id === newOrder.id)
+        if (exists) {
+          console.log('[OrdersView] Order already exists in state, skipping duplicate')
+          return prevOrders
+        }
+
+        // Add new order to beginning of list (most recent first)
+        const orderWithRestaurantName = {
+          ...newOrder,
+          restaurantName: session?.restaurantName
+        }
+        console.log('[OrdersView] Successfully added new order to state')
+        return [orderWithRestaurantName, ...prevOrders]
+      })
+    } else {
+      console.log('[OrdersView] New order does not belong to current view, ignoring')
+    }
+
+    // NO API CALLS! Pure WebSocket state management
   }
 
   const handleOrderStatusUpdate = (data: any) => {
     console.log('[OrdersView] Order status updated:', data)
-    console.log('[OrdersView] Status update details:', {
-      orderId: data.orderId,
-      newStatus: data.newStatus,
-      newStatusType: typeof data.newStatus,
-      currentStatus: data.currentStatus || data.status,
-      fullData: JSON.stringify(data, null, 2)
-    })
 
-    // Validate the new status before updating
-    const newStatus = data.newStatus || data.status
-    if (!newStatus || newStatus === 'undefined') {
-      console.warn('[OrdersView] Invalid status in WebSocket update, skipping status update:', data)
+    // Use utility function to extract and validate order data
+    const extractedData = processOrderUpdatePayload(data, 'OrdersView')
+
+    if (!extractedData) {
+      console.warn('[OrdersView] Failed to extract valid order data, skipping update')
       return
     }
+
+    const { orderId, status: newStatus, updatedAt } = extractedData
 
     // Update the specific order in the list
     setOrders(prevOrders =>
       prevOrders.map(order =>
-        order.id === data.orderId
-          ? { ...order, status: newStatus }
+        order.id === orderId
+          ? {
+              ...order,
+              status: newStatus!,
+              updatedAt: updatedAt || new Date().toISOString()
+            }
           : order
       )
     )
+
+    console.log('[OrdersView] Successfully updated order status:', { orderId, newStatus })
   }
 
   const handleOrderUpdate = (data: any) => {
-    console.log('[OrdersView] Order updated:', data)
-    if (data.tableId === session?.tableId) {
-      console.log('[OrdersView] Order update at our table - triggering reload to get latest data')
-      // Simple approach: just reload data and let loadOrders() handle the view logic
-      debouncedLoadOrders()
+    console.log('[OrdersView] Order updated via WebSocket:', data)
+
+    // Extract order from WebSocket payload (backend sends OrderUpdatedPayload)
+    const updatedOrder = data.order || data
+
+    if (!updatedOrder || !updatedOrder.id) {
+      console.warn('[OrdersView] Invalid order data in order:updated event:', data)
+      return
     }
+
+    console.log('[OrdersView] Processing order update:', {
+      orderId: updatedOrder.id,
+      orderGuestSessionId: updatedOrder.guestSessionId,
+      orderTableSessionId: updatedOrder.tableSessionId,
+      currentUserSessionId: guestSessionId,
+      currentTableSessionId: tableSessionId,
+      currentView
+    })
+
+    // Update order in state if it exists - keep it in current view regardless of payload fields
+    setOrders(prevOrders => {
+      const orderIndex = prevOrders.findIndex(order => order.id === updatedOrder.id)
+
+      if (orderIndex === -1) {
+        console.log('[OrdersView] Order not found in current state, ignoring update')
+        return prevOrders
+      }
+
+      // IMPORTANT: If order exists in current view, keep it there
+      // Don't remove based on potentially missing guestSessionId/tableSessionId in WebSocket payload
+      const existingOrder = prevOrders[orderIndex]
+
+      // Update the order in place, preserving existing fields that might be missing from WebSocket payload
+      const newOrders = [...prevOrders]
+      newOrders[orderIndex] = {
+        ...existingOrder, // Start with existing order data
+        ...updatedOrder,  // Apply updates from WebSocket
+        restaurantName: session?.restaurantName,
+        // Preserve critical fields if missing from WebSocket payload
+        guestSessionId: updatedOrder.guestSessionId || existingOrder.guestSessionId,
+        tableSessionId: updatedOrder.tableSessionId || existingOrder.tableSessionId
+      }
+
+      console.log('[OrdersView] Successfully updated order in state:', {
+        orderId: updatedOrder.id,
+        preservedGuestSessionId: newOrders[orderIndex].guestSessionId,
+        preservedTableSessionId: newOrders[orderIndex].tableSessionId
+      })
+      return newOrders
+    })
+
+    // NO API CALLS! Pure WebSocket state management
   }
 
   // Set up WebSocket event listeners
@@ -305,8 +671,45 @@ export function OrdersView() {
   useWebSocketEvent(wsClient, 'order:status_updated', handleOrderStatusUpdate, [handleOrderStatusUpdate])
   useWebSocketEvent(wsClient, 'order:updated', handleOrderUpdate, [handleOrderUpdate])
 
-  // Filter orders based on selected filters
-  const filteredOrders = filterOrdersByStatus(orders, selectedFilters)
+  // Filter orders by view (My Orders vs Table Orders) - computed from all loaded orders
+  const viewFilteredOrders = useMemo(() => {
+    if (!session) return []
+
+    // Use component-level tableSessionId with fallback
+
+    console.log('[ViewFiltering] Debug info:', {
+      currentView,
+      totalOrders: orders.length,
+      guestSessionId,
+      sessionTableSessionId: session.tableSessionId,
+      fallbackTableSessionId: sessionStorage.getItem('tabsy-table-session-id'),
+      actualTableSessionId: tableSessionId,
+      orders: orders.map(o => ({
+        id: o.id,
+        guestSessionId: o.guestSessionId,
+        tableSessionId: o.tableSessionId
+      }))
+    })
+
+    if (currentView === 'my') {
+      // My Orders: Filter by current user's guest session ID
+      const filtered = orders.filter(order =>
+        order.guestSessionId === guestSessionId
+      )
+      console.log('[ViewFiltering] My Orders filtered:', filtered.length)
+      return filtered
+    } else {
+      // Table Orders: Filter by current table session ID (with fallback)
+      const filtered = orders.filter(order =>
+        order.tableSessionId === tableSessionId
+      )
+      console.log('[ViewFiltering] Table Orders filtered:', filtered.length, 'using tableSessionId:', tableSessionId)
+      return filtered
+    }
+  }, [orders, currentView, tableSessionId, guestSessionId])
+
+  // Filter orders based on selected status filters
+  const filteredOrders = filterOrdersByStatus(viewFilteredOrders, selectedFilters)
 
   // Get counts for different order states
   const activeOrdersCount = orders.filter(order =>
@@ -405,6 +808,22 @@ export function OrdersView() {
                   : 'All orders for your table session'
                 }
               </p>
+              {/* Connection Status */}
+              {session && (
+                <div className="mt-1">
+                  {wsConnected ? (
+                    <div className="flex items-center text-xs text-green-600">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></div>
+                      Live updates active
+                    </div>
+                  ) : (
+                    <div className="flex items-center text-xs text-orange-600">
+                      <div className="w-2 h-2 bg-orange-500 rounded-full mr-1.5"></div>
+                      Using API fallback - Tap refresh to sync
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             <Button onClick={handleRefresh} variant="outline" size="sm">
               <RefreshCw className="w-4 h-4" />
@@ -438,10 +857,10 @@ export function OrdersView() {
           )}
 
           {/* Filter Pills */}
-          {orders.length > 0 && (
+          {viewFilteredOrders.length > 0 && (
             <div className="mt-4">
               <OrderFilterPills
-                orders={orders}
+                orders={viewFilteredOrders}
                 selectedFilters={selectedFilters}
                 onFiltersChange={setSelectedFilters}
               />

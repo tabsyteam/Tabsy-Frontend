@@ -268,13 +268,17 @@ export class SessionManager {
     const session = this.getDiningSession()
     const queryParams = this.getDiningQueryParams()
 
-    // If user is in a table session, show shared table session orders
+    // Always use the unified orders page with view toggle
+    // Users can switch between "My Orders" and "Table Orders" tabs
     if (session) {
-      return `/table/orders${queryParams}`
+      // If in table session, default to table view but allow switching
+      return `/orders${queryParams}&view=table`
     }
 
-    // Otherwise show individual order history
-    return `/orders${queryParams}`
+    // If not in session, show individual order history
+    // Handle empty queryParams properly
+    const separator = queryParams ? '&' : '?'
+    return `/orders${queryParams}${separator}view=my`
   }
 
   static getMenuUrl(): string {

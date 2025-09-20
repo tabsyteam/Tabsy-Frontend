@@ -5,6 +5,17 @@ import { useWebSocket, useWebSocketEvent } from '@tabsy/api-client'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { toast } from 'sonner'
 import { TabsyAPI } from '@tabsy/api-client'
+import { motion } from 'framer-motion'
+import {
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  Package,
+  RefreshCw,
+  Users,
+  Receipt,
+  ChefHat
+} from 'lucide-react'
 import type {
   TableSessionUser,
   MultiUserTableSession,
@@ -32,13 +43,13 @@ const orderStatusLabels: Record<OrderStatus, string> = {
   CANCELLED: 'Cancelled'
 }
 
-const orderStatusColors: Record<OrderStatus, string> = {
-  RECEIVED: 'bg-blue-100 text-blue-800',
-  PREPARING: 'bg-yellow-100 text-yellow-800',
-  READY: 'bg-green-100 text-green-800',
-  DELIVERED: 'bg-purple-100 text-purple-800',
-  COMPLETED: 'bg-gray-100 text-gray-800',
-  CANCELLED: 'bg-red-100 text-red-800'
+const orderStatusConfig: Record<OrderStatus, { bg: string, text: string, icon: any }> = {
+  RECEIVED: { bg: 'bg-blue-50 dark:bg-blue-950/20', text: 'text-blue-700 dark:text-blue-300', icon: Receipt },
+  PREPARING: { bg: 'bg-amber-50 dark:bg-amber-950/20', text: 'text-amber-700 dark:text-amber-300', icon: ChefHat },
+  READY: { bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-700 dark:text-emerald-300', icon: CheckCircle },
+  DELIVERED: { bg: 'bg-purple-50 dark:bg-purple-950/20', text: 'text-purple-700 dark:text-purple-300', icon: Package },
+  COMPLETED: { bg: 'bg-surface-secondary', text: 'text-content-secondary', icon: CheckCircle },
+  CANCELLED: { bg: 'bg-red-50 dark:bg-red-950/20', text: 'text-red-700 dark:text-red-300', icon: AlertCircle }
 }
 
 export function OrderTrackingShared({
@@ -200,141 +211,258 @@ export function OrderTrackingShared({
   const roundNumbers = Object.keys(ordersByRound).map(Number).sort((a, b) => a - b)
 
   return (
-    <div className="p-4 space-y-6">
-      {/* Status Overview */}
-      <div className="bg-surface rounded-lg border border-default p-4">
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h2 className="text-xl font-semibold mb-1">Order Status</h2>
-            <p className="text-content-secondary">Session: {tableSession.sessionCode}</p>
-          </div>
-          <div className="text-right">
-            <div className="text-sm text-content-secondary">Last updated</div>
-            <div className="text-sm">{lastUpdated.toLocaleTimeString()}</div>
+    <div className="min-h-screen bg-background pb-24">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-surface/90 backdrop-blur-xl border-b border-default/50">
+        <div className="p-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold text-content-primary">Order Status</h1>
+              <div className="flex items-center gap-2 text-content-secondary text-sm">
+                <Users size={16} />
+                <span>Session: {tableSession.sessionCode}</span>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-xs text-content-tertiary">Last updated</div>
+              <div className="text-sm text-content-secondary flex items-center gap-1">
+                <Clock size={14} />
+                {lastUpdated.toLocaleTimeString()}
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
+      <div className="p-4 space-y-6">
+        {/* Current Status Banner */}
         {currentStatus && (
-          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mb-4">
-            <div className="font-medium text-primary">{currentStatus}</div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 rounded-2xl p-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
+                <ChefHat className="text-primary" size={24} />
+              </div>
+              <div>
+                <div className="font-semibold text-primary text-lg">{currentStatus}</div>
+                <div className="text-content-secondary text-sm">Your orders are being processed</div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-3 gap-3">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 }}
+            className="bg-surface border border-default rounded-2xl p-4 text-center"
+          >
+            <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Receipt className="text-primary" size={20} />
+            </div>
+            <div className="text-2xl font-bold text-content-primary">{stats.totalOrders}</div>
+            <div className="text-xs text-content-secondary">Total Orders</div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+            className="bg-surface border border-default rounded-2xl p-4 text-center"
+          >
+            <div className="w-10 h-10 bg-amber-100 dark:bg-amber-950/20 rounded-full flex items-center justify-center mx-auto mb-2">
+              <Clock className="text-amber-600 dark:text-amber-400" size={20} />
+            </div>
+            <div className="text-2xl font-bold text-content-primary">{stats.activeOrders}</div>
+            <div className="text-xs text-content-secondary">In Progress</div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3 }}
+            className="bg-surface border border-default rounded-2xl p-4 text-center"
+          >
+            <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-950/20 rounded-full flex items-center justify-center mx-auto mb-2">
+              <CheckCircle className="text-emerald-600 dark:text-emerald-400" size={20} />
+            </div>
+            <div className="text-2xl font-bold text-content-primary">{stats.completedOrders}</div>
+            <div className="text-xs text-content-secondary">Completed</div>
+          </motion.div>
+        </div>
+
+        {/* Orders by Round */}
+        {roundNumbers.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-surface rounded-2xl border border-default p-8 text-center"
+          >
+            <div className="w-16 h-16 bg-surface-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+              <Receipt className="text-content-tertiary" size={32} />
+            </div>
+            <h3 className="font-semibold text-content-primary mb-2">No Orders Yet</h3>
+            <p className="text-content-secondary">
+              Orders placed by your table will appear here
+            </p>
+          </motion.div>
+        ) : (
+          <div className="space-y-4">
+            <h3 className="font-semibold text-content-primary text-lg">Order History</h3>
+            {roundNumbers.map((roundNumber, index) => {
+              const orders = ordersByRound[roundNumber]
+              return (
+                <motion.div
+                  key={roundNumber}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                  className="bg-surface rounded-2xl border border-default overflow-hidden"
+                >
+                  <div className="bg-surface-secondary p-4 border-b border-default">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                        <span className="font-bold text-primary">{roundNumber}</span>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-content-primary">Round {roundNumber}</h4>
+                        <p className="text-sm text-content-secondary">
+                          {orders.length} order{orders.length !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="divide-y divide-default">
+                    {orders.map((order, orderIndex) => {
+                      const statusConfig = orderStatusConfig[order.status as OrderStatus]
+                      const StatusIcon = statusConfig.icon
+
+                      return (
+                        <motion.div
+                          key={order.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: (index * 0.1) + (orderIndex * 0.05) }}
+                          className="p-4 hover:bg-surface-secondary/50 transition-colors"
+                        >
+                          <div className="flex justify-between items-start mb-3">
+                            <div className="flex-1">
+                              <div className="font-semibold text-content-primary">{order.orderNumber}</div>
+                              <div className="text-sm text-content-secondary">
+                                Placed by {getUserName(order.guestSessionId || '')}
+                              </div>
+                              <div className="text-xs text-content-tertiary">
+                                {new Date(order.createdAt).toLocaleString()}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium ${
+                                statusConfig.bg
+                              } ${statusConfig.text}`}>
+                                <StatusIcon size={14} />
+                                {orderStatusLabels[order.status as OrderStatus]}
+                              </div>
+                              <div className="text-lg font-bold text-content-primary mt-2">
+                                ${Number(order.total || 0).toFixed(2)}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Order Items */}
+                          <div className="bg-surface-tertiary rounded-xl p-4">
+                            <div className="space-y-2">
+                              {order.items?.map((item: any, idx: number) => (
+                                <div key={idx} className="flex justify-between items-center">
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-6 h-6 bg-primary/10 text-primary rounded-full text-xs font-bold flex items-center justify-center">
+                                      {item.quantity}
+                                    </span>
+                                    <span className="text-content-primary font-medium">{item.name}</span>
+                                  </div>
+                                  <span className="font-semibold text-content-primary">${Number(item.subtotal || 0).toFixed(2)}</span>
+                                </div>
+                              )) || (
+                                <div className="text-sm text-content-secondary">
+                                  Order details not available
+                                </div>
+                              )}
+                            </div>
+
+                            {order.specialInstructions && (
+                              <div className="mt-3 pt-3 border-t border-default">
+                                <div className="text-xs text-content-secondary mb-1">Special Instructions:</div>
+                                <div className="text-sm text-content-primary bg-surface rounded-lg p-2">
+                                  {order.specialInstructions}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                </motion.div>
+              )
+            })}
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-primary">{stats.totalOrders}</div>
-            <div className="text-sm text-content-secondary">Total Orders</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-warning">{stats.activeOrders}</div>
-            <div className="text-sm text-content-secondary">In Progress</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-success">{stats.completedOrders}</div>
-            <div className="text-sm text-content-secondary">Completed</div>
-          </div>
+        {/* Refresh Button */}
+        <div className="text-center">
+          <motion.button
+            whileTap={{ scale: 0.95 }}
+            onClick={loadOrders}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full font-medium shadow-lg hover:shadow-xl transition-all duration-200"
+          >
+            <RefreshCw size={18} />
+            Refresh Orders
+          </motion.button>
         </div>
-      </div>
 
-      {/* Orders by Round */}
-      {roundNumbers.length === 0 ? (
-        <div className="bg-surface rounded-lg border border-default p-8 text-center">
-          <div className="text-4xl mb-2">📝</div>
-          <h3 className="font-medium mb-1">No Orders Yet</h3>
-          <p className="text-content-secondary">
-            Orders placed by your table will appear here
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <h3 className="font-semibold">Order History</h3>
-          {roundNumbers.map(roundNumber => {
-            const orders = ordersByRound[roundNumber]
-            return (
-              <div key={roundNumber} className="bg-surface rounded-lg border border-default">
-                <div className="p-4 border-b border-default">
-                  <h4 className="font-medium">Round {roundNumber}</h4>
-                  <p className="text-sm text-content-secondary">
-                    {orders.length} order{orders.length !== 1 ? 's' : ''}
-                  </p>
-                </div>
-
-                <div className="divide-y divide-default">
-                  {orders.map(order => (
-                    <div key={order.id} className="p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <div className="font-medium">{order.orderNumber}</div>
-                          <div className="text-sm text-content-secondary">
-                            Placed by {getUserName(order.guestSessionId || '')}
-                          </div>
-                          <div className="text-xs text-content-tertiary">
-                            {new Date(order.createdAt).toLocaleString()}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${
-                            orderStatusColors[order.status as OrderStatus]
-                          }`}>
-                            {orderStatusLabels[order.status as OrderStatus]}
-                          </span>
-                          <div className="text-sm font-medium mt-1">
-                            ${Number(order.total || 0).toFixed(2)}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Order Items */}
-                      <div className="bg-surface-secondary rounded p-3">
-                        <div className="space-y-1">
-                          {order.items?.map((item: any, idx: number) => (
-                            <div key={idx} className="flex justify-between text-sm">
-                              <span>{item.quantity}x {item.name}</span>
-                              <span>${Number(item.subtotal || 0).toFixed(2)}</span>
-                            </div>
-                          )) || (
-                            <div className="text-sm text-content-secondary">
-                              Order details not available
-                            </div>
-                          )}
-                        </div>
-
-                        {order.specialInstructions && (
-                          <div className="mt-2 pt-2 border-t border-default">
-                            <div className="text-xs text-content-secondary">Special Instructions:</div>
-                            <div className="text-sm">{order.specialInstructions}</div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* Refresh Button */}
-      <div className="text-center">
-        <button
-          onClick={loadOrders}
-          className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm"
+        {/* Help Text */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/30 rounded-2xl p-4"
         >
-          Refresh Orders
-        </button>
-      </div>
-
-      {/* Help Text */}
-      <div className="bg-info/10 border border-info/20 rounded-lg p-4">
-        <h4 className="font-medium text-info mb-2">Shared Table Orders</h4>
-        <ul className="text-sm text-content-secondary space-y-1">
-          <li>• All orders for Table {tableSession.table?.number || tableSession.tableId} are shown below</li>
-          <li>• Orders are shared across everyone at your table</li>
-          <li>• Status updates appear in real-time for all users</li>
-          <li>• You can place multiple rounds of orders during your meal</li>
-          <li>• Staff will notify you when orders are ready</li>
-        </ul>
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mt-0.5">
+              <Users className="text-blue-600 dark:text-blue-400" size={20} />
+            </div>
+            <div>
+              <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Shared Table Orders</h4>
+              <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1.5">
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                  All orders for Table {tableSession.table?.number || tableSession.tableId} are shown below
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                  Orders are shared across everyone at your table
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                  Status updates appear in real-time for all users
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                  You can place multiple rounds of orders during your meal
+                </li>
+                <li className="flex items-start gap-2">
+                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                  Staff will notify you when orders are ready
+                </li>
+              </ul>
+            </div>
+          </div>
+        </motion.div>
       </div>
     </div>
   )

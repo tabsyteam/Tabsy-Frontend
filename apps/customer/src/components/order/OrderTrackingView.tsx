@@ -27,6 +27,7 @@ import { SessionManager } from '@/lib/session'
 import { OrderStatusSkeleton, OrderTimelineSkeleton, OrderSummarySkeleton, HeaderSkeleton } from '../ui/Skeleton'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator'
+import { processOrderUpdatePayload } from '@/utils/websocket'
 
 interface OrderTrackingViewProps {
   orderId: string
@@ -216,33 +217,50 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
     wsClient,
     'order:status_updated',
     (payload) => {
-      if (payload.orderId === orderId) {
-        console.log('Order status updated via WebSocket:', payload)
+      console.log('[OrderTrackingView] Raw status update payload:', payload)
+
+      // Use utility function to extract and validate order data
+      const extractedData = processOrderUpdatePayload(payload, 'OrderTrackingView')
+
+      if (!extractedData) {
+        console.warn('[OrderTrackingView] Failed to extract valid order data, skipping update')
+        return
+      }
+
+      const { orderId: payloadOrderId, status: newStatus, updatedAt, estimatedTime } = extractedData
+
+      console.log('[OrderTrackingView] Extracted data:', {
+        payloadOrderId,
+        newStatus,
+        currentOrderId: orderId,
+        isMatchingOrder: payloadOrderId === orderId
+      })
+
+      // Check if this update is for our current order
+      if (payloadOrderId === orderId) {
+        console.log('[OrderTrackingView] Processing status update for matching order:', { payloadOrderId, newStatus })
+
         setOrder(prevOrder => {
-          if (!prevOrder) return prevOrder
-
-          // Extract status from the payload structure - can be in payload.order.status or payload.status
-          const newStatus = (payload as any).order?.status || (payload as any).status || payload.newStatus
-
-          if (!newStatus) {
-            console.warn('No status found in payload:', payload)
+          if (!prevOrder) {
+            console.warn('[OrderTrackingView] No previous order state, skipping update')
             return prevOrder
           }
 
+          console.log('[OrderTrackingView] Updating order status:', {
+            from: prevOrder.status,
+            to: newStatus,
+            orderId: prevOrder.id
+          })
+
           const updatedOrder = {
             ...prevOrder,
-            status: newStatus as OrderStatus,
-            updatedAt: new Date().toISOString()
+            status: newStatus!,
+            updatedAt: updatedAt || new Date().toISOString()
           }
 
-          // If we have a full order object in the payload, use it to update more fields
-          if ((payload as any).order && typeof (payload as any).order === 'object') {
-            Object.assign(updatedOrder, (payload as any).order)
-            updatedOrder.updatedAt = new Date().toISOString()
-          }
-
-          if (payload.estimatedTime || (payload as any).order?.estimatedPreparationTime) {
-            updatedOrder.estimatedTime = payload.estimatedTime || (payload as any).order.estimatedPreparationTime
+          // If we have estimated time in the payload, update it
+          if (estimatedTime) {
+            updatedOrder.estimatedTime = estimatedTime
           }
 
           // Show notification for status change
@@ -254,10 +272,13 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                 duration: 4000,
                 icon: '🔔'
               })
+              console.log('[OrderTrackingView] Showed status notification:', statusInfo.label)
             }
+
             // Show payment option if order is delivered
             if (newStatus === OrderStatus.DELIVERED) {
               setShowPaymentOption(true)
+              console.log('[OrderTrackingView] Order delivered, showing payment option')
             }
           }
 
@@ -269,7 +290,13 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
             createdAt: Date.now()
           })
 
+          console.log('[OrderTrackingView] Successfully updated order state')
           return updatedOrder
+        })
+      } else {
+        console.log('[OrderTrackingView] Status update for different order, ignoring:', {
+          payloadOrderId,
+          currentOrderId: orderId
         })
       }
     },

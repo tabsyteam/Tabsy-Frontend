@@ -118,7 +118,7 @@ export default function QRCodePage({ params }: QRCodePageProps) {
             onClick: () => router.push('/')
           }
         })
-
+        console.error('[QRCodePage] Error processing QR code:', error)
         // Redirect to home with error after showing toast
         setTimeout(() => {
           router.replace('/?error=invalid-qr-code')
