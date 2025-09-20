@@ -335,12 +335,45 @@ export function ItemDetailModal({
   const handleAddToCart = () => {
     haptics.addToCart()
     console.log('[ItemDetailModal] -- Adding to cart:', { item, quantity, selectedCustomizations, textInputs, numberInputs, specialInstructions })
-    onAddToCart(item, quantity, {
-      selectedOptions: selectedCustomizations,
-      textInputs,
-      numberInputs,
-      specialInstructions: specialInstructions.trim() || undefined
+
+    // Transform customizations to flat options format for backend compatibility
+    const options: Array<{ optionId: string; valueId: string }> = []
+
+    // Add selected option values
+    Object.entries(selectedCustomizations).forEach(([optionId, valueIds]) => {
+      if (Array.isArray(valueIds) && valueIds.length > 0) {
+        valueIds.forEach(valueId => {
+          if (valueId && valueId.trim()) {
+            options.push({ optionId, valueId })
+          }
+        })
+      }
     })
+
+    // Add text inputs as options
+    Object.entries(textInputs).forEach(([optionId, value]) => {
+      if (value && value.trim()) {
+        options.push({ optionId, valueId: value.trim() })
+      }
+    })
+
+    // Add number inputs as options
+    Object.entries(numberInputs).forEach(([optionId, value]) => {
+      if (value > 0) {
+        options.push({ optionId, valueId: String(value) })
+      }
+    })
+
+    // Create customizations object with only valid options
+    const customizations = options.length > 0 ? { options } : {}
+
+    // Add special instructions to customizations if provided
+    const finalSpecialInstructions = specialInstructions.trim() || undefined
+    if (finalSpecialInstructions) {
+      customizations.specialInstructions = finalSpecialInstructions
+    }
+
+    onAddToCart(item, quantity, customizations)
     onClose()
   }
 

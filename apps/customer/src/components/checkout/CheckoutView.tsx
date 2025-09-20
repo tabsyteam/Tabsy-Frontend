@@ -181,10 +181,9 @@ export function CheckoutView() {
         items: cart.map(item => ({
           menuItemId: item.id,
           quantity: item.quantity,
-          options: item.customizations ? Object.entries(item.customizations).map(([optionId, valueId]) => ({
-            optionId,
-            valueId: String(valueId)
-          })) : undefined,
+          options: item.customizations?.options ? item.customizations.options.filter((option: any) =>
+            option.optionId && option.valueId && option.valueId.trim()
+          ) : undefined,
           specialInstructions: item.specialInstructions?.trim() || undefined
         })),
         specialInstructions: specialInstructions.trim() || undefined,
