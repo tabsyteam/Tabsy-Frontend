@@ -17,7 +17,8 @@ import {
   Users,
   X,
   Check,
-  Search
+  Search,
+  ShoppingBag
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { MenuItem, MenuCategory, MenuItemStatus, DietaryType, AllergyInfo, SpiceLevel, Restaurant, Table } from '@tabsy/shared-types'
@@ -27,6 +28,7 @@ import { useWebSocket } from '@tabsy/api-client'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator'
 import { useCart } from '@/hooks/useCart'
+import { useMenuItemActions } from '@/hooks/useMenuItemActions'
 import { SessionManager } from '@/lib/session'
 
 // Import our new modern components
@@ -102,7 +104,7 @@ export function MenuView() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { api } = useApi()
-  const { cart, cartCount, addToCart, updateQuantity, getItemQuantity, removeFromCart } = useCart()
+  const { cart, cartCount, addToCart, updateCartItem, updateQuantity, getItemQuantity, removeFromCart } = useCart()
   const searchBarRef = useRef<HTMLDivElement>(null)
 
   // URL parameters with validation
@@ -146,6 +148,7 @@ export function MenuView() {
 
   // Modal state
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null)
+  const [selectedCartItem, setSelectedCartItem] = useState<any>(null)
   const [showItemModal, setShowItemModal] = useState(false)
   const [showCartDrawer, setShowCartDrawer] = useState(false)
 
@@ -312,6 +315,18 @@ export function MenuView() {
 
         setMenuCategories(categories)
         console.log('Menu loaded:', categories.length, 'categories')
+
+        // Cache menu data for edit functionality in cart
+        try {
+          const menuDataToCache = {
+            categories,
+            cachedAt: new Date().toISOString()
+          }
+          sessionStorage.setItem('tabsy-menu-data', JSON.stringify(menuDataToCache))
+          console.log('[MenuView] Menu data cached for cart editing')
+        } catch (error) {
+          console.error('[MenuView] Failed to cache menu data:', error)
+        }
       } else {
         console.error('Menu API failed:', menuResponse)
         throw new Error('Failed to load menu data')
@@ -995,7 +1010,7 @@ export function MenuView() {
                         finalPrice = rawPrice / 100;
                       }
 
-                      console.log(`[MenuView] Item ${item.name}: raw=${rawPrice}, final=${finalPrice}`);
+                      console.log(`[MenuView] Item ${item.name}: raw=${rawPrice}, final=${finalPrice}, options=${item.options ? item.options.length : 'undefined'}`);
                       return finalPrice;
                     })(),
                     image: item.image,
@@ -1005,7 +1020,8 @@ export function MenuView() {
                     spicyLevel: item.spicyLevel,
                     preparationTime: item.preparationTime, // Use real preparation time from backend
                     isPopular: item.tags?.includes('popular') || false,
-                    isNew: isItemNew(item.createdAt)
+                    isNew: isItemNew(item.createdAt),
+                    options: item.options // ✅ ADD THIS - Pass options to MenuItemCard
                   }}
                   quantity={getItemQuantity(item.id)}
                   onQuantityChange={(itemId, newQuantity) => {
@@ -1038,8 +1054,15 @@ export function MenuView() {
                       nutritionalInfo: item.nutritionalInfo || undefined
                     }
 
+                    // Check if this item is already in cart (find first matching item for customization editing)
+                    const existingCartItems = cart.filter(cartItem => cartItem.id === item.id)
+                    const existingCartItem = existingCartItems.length > 0 ? existingCartItems[0] : null
+
                     console.log('[MenuView] Mapped item for modal:', modalItem)
+                    console.log('[MenuView] Existing cart item:', existingCartItem)
+
                     setSelectedItem(modalItem)
+                    setSelectedCartItem(existingCartItem)
                     setShowItemModal(true)
                     console.log('[MenuView] Modal should now be visible')
                   }}
@@ -1053,6 +1076,30 @@ export function MenuView() {
         )}
       </main>
 
+      {/* Floating Cart Button */}
+      {cartCount > 0 && (
+        <motion.button
+          initial={{ scale: 0, y: 100 }}
+          animate={{ scale: 1, y: 0 }}
+          exit={{ scale: 0, y: 100 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setShowCartDrawer(true)}
+          className="fixed bottom-24 right-4 z-40 bg-primary text-primary-foreground p-4 rounded-full shadow-2xl shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 group"
+        >
+          <div className="relative">
+            <ShoppingBag className="w-6 h-6" />
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-5 h-5 flex items-center justify-center px-1 ring-2 ring-primary"
+            >
+              {cartCount > 99 ? '99+' : cartCount}
+            </motion.div>
+          </div>
+          <span className="sr-only">View Cart ({cartCount} items)</span>
+        </motion.button>
+      )}
+
       {/* Bottom Navigation */}
       <BottomNav cartItemCount={cartCount} />
 
@@ -1060,10 +1107,14 @@ export function MenuView() {
       <ItemDetailModal
         item={selectedItem}
         isOpen={showItemModal}
-        onClose={() => setShowItemModal(false)}
+        onClose={() => {
+          setShowItemModal(false)
+          setSelectedCartItem(null)
+        }}
         existingQuantity={selectedItem ? getItemQuantity(selectedItem.id) : 0}
-        onAddToCart={(item, quantity, customizations) => {
-          console.log('[MenuView] -- onAddToCart from ItemDetailModal:', { item, quantity, customizations })
+        existingCartItem={selectedCartItem}
+        onAddToCart={(item, quantity, customizations, options) => {
+          console.log('[MenuView] -- onAddToCart from ItemDetailModal:', { item, quantity, customizations, options })
 
           if (!item) {
             console.error('No item provided to add to cart')
@@ -1076,14 +1127,60 @@ export function MenuView() {
           // Extract special instructions from customizations
           const specialInstructions = customizations?.specialInstructions
 
-          // Let the cart hook handle ALL consolidation logic
-          addToCart(item, quantity, customizations, categoryName, specialInstructions)
+          // Let the cart hook handle ALL consolidation logic with enhanced options
+          addToCart(item, quantity, customizations, categoryName, specialInstructions, options)
+        }}
+        onUpdateCartItem={(cartItemId, item, quantity, customizations, specialInstructions, options) => {
+          console.log('[MenuView] -- onUpdateCartItem from ItemDetailModal:', { cartItemId, item, quantity, customizations, specialInstructions, options })
+
+          if (!item) {
+            console.error('No item provided to update in cart')
+            return
+          }
+
+          // Use the cart hook's updateCartItem function
+          updateCartItem(cartItemId, item, quantity, customizations, specialInstructions, options)
         }}
       />
 
       <CartDrawer
         isOpen={showCartDrawer}
         onClose={() => setShowCartDrawer(false)}
+        onEditItem={(cartItem) => {
+          console.log('[MenuView] Editing cart item:', cartItem)
+
+          // Map cart item back to MenuItem format for the modal
+          const modalItem = {
+            id: cartItem.id,
+            name: cartItem.name,
+            description: cartItem.description,
+            basePrice: cartItem.basePrice,
+            price: cartItem.basePrice,
+            image: cartItem.imageUrl,
+            imageUrl: cartItem.imageUrl,
+            dietaryTypes: cartItem.dietaryTypes || [],
+            options: [], // Will be loaded from the original menu item
+            spicyLevel: cartItem.spicyLevel || 0,
+            allergyInfo: cartItem.allergyInfo,
+            nutritionalInfo: undefined, // Will be loaded from original menu item
+            categoryId: cartItem.categoryId
+          }
+
+          // Find the original menu item to get options and other data
+          const originalMenuItem = menuCategories
+            ?.flatMap(cat => cat.items || [])
+            .find(item => item.id === cartItem.id)
+
+          if (originalMenuItem) {
+            modalItem.options = originalMenuItem.options || []
+            modalItem.nutritionalInfo = originalMenuItem.nutritionalInfo
+          }
+
+          setSelectedItem(modalItem)
+          setSelectedCartItem(cartItem)
+          setShowItemModal(true)
+          setShowCartDrawer(false) // Close cart drawer when opening edit modal
+        }}
       />
     </div>
   )

@@ -24,7 +24,7 @@ interface OrderHistory {
 const DINING_SESSION_KEY = 'tabsy-dining-session'
 const ORDER_SESSION_KEY = 'tabsy-current-order'
 const ORDER_HISTORY_KEY = 'tabsy-order-history'
-const SESSION_DURATION = 24 * 60 * 60 * 1000 // 24 hours
+const SESSION_DURATION = 3 * 60 * 60 * 1000 // 3 hours (matches backend table session expiry)
 
 export class SessionManager {
   // Dining Session Management
@@ -291,6 +291,82 @@ export class SessionManager {
     const session = this.getDiningSession()
     if (!session) {
       this.clearDiningSession()
+    }
+  }
+
+  // Session expiry helpers
+  static getTimeUntilExpiry(): number | null {
+    const session = this.getDiningSession()
+    if (!session) return null
+
+    const now = Date.now()
+    const expiryTime = session.createdAt + SESSION_DURATION
+    return Math.max(0, expiryTime - now)
+  }
+
+  static getMinutesUntilExpiry(): number | null {
+    const timeUntilExpiry = this.getTimeUntilExpiry()
+    if (timeUntilExpiry === null) return null
+
+    return Math.ceil(timeUntilExpiry / (60 * 1000))
+  }
+
+  static isSessionExpiringSoon(warningThresholdMinutes = 30): boolean {
+    const minutesUntilExpiry = this.getMinutesUntilExpiry()
+    if (minutesUntilExpiry === null) return false
+
+    return minutesUntilExpiry <= warningThresholdMinutes && minutesUntilExpiry > 0
+  }
+
+  static isSessionExpired(): boolean {
+    const timeUntilExpiry = this.getTimeUntilExpiry()
+    if (timeUntilExpiry === null) return false
+
+    return timeUntilExpiry <= 0
+  }
+
+  // Get session expiry info for UI display
+  static getSessionExpiryInfo(): {
+    isExpired: boolean
+    isExpiringSoon: boolean
+    minutesRemaining: number | null
+    expiryTime: Date | null
+  } {
+    const session = this.getDiningSession()
+    if (!session) {
+      return {
+        isExpired: true,
+        isExpiringSoon: false,
+        minutesRemaining: null,
+        expiryTime: null
+      }
+    }
+
+    const minutesRemaining = this.getMinutesUntilExpiry()
+    const expiryTime = new Date(session.createdAt + SESSION_DURATION)
+    const isExpired = this.isSessionExpired()
+    const isExpiringSoon = this.isSessionExpiringSoon()
+
+    return {
+      isExpired,
+      isExpiringSoon,
+      minutesRemaining,
+      expiryTime
+    }
+  }
+
+  // Handle session expiry gracefully
+  static handleSessionExpiry(): void {
+    this.clearDiningSession()
+    this.clearCurrentOrder()
+    this.clearOrderHistory()
+
+    // Redirect to home or show expiry message
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname
+      if (currentPath !== '/' && !currentPath.startsWith('/table/')) {
+        window.location.href = '/'
+      }
     }
   }
 }

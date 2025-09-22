@@ -204,6 +204,20 @@ export interface StaffNotificationEvent extends BaseWebSocketEvent {
   };
 }
 
+// Assistance Request Events
+export interface AssistanceRequestedEvent extends BaseWebSocketEvent {
+  type: 'assistance:requested';
+  data: {
+    notificationId: string;
+    tableId: string;
+    orderId?: string;
+    customerName: string;
+    urgency: 'low' | 'normal' | 'high';
+    message?: string;
+    requestTime: string;
+  };
+}
+
 export interface UrgentAlertEvent extends BaseWebSocketEvent {
   type: 'alert:urgent';
   data: {
@@ -241,9 +255,42 @@ export interface MenuUpdatedEvent extends BaseWebSocketEvent {
       description?: string;
       ingredients?: string[];
       allergens?: string[];
+      options?: Array<{
+        id: string;
+        name: string;
+        type: string;
+        values: Array<{
+          id: string;
+          name: string;
+          priceModifier: number;
+        }>;
+      }>;
     };
     updatedBy: string;
     reason?: string;
+  };
+}
+
+export interface MenuCustomizationUpdatedEvent extends BaseWebSocketEvent {
+  type: 'menu:customization_updated';
+  data: {
+    itemId: string;
+    optionId: string;
+    optionName: string;
+    changes: {
+      name?: string;
+      type?: string;
+      isRequired?: boolean;
+      minSelections?: number;
+      maxSelections?: number;
+      values?: Array<{
+        id: string;
+        name: string;
+        priceModifier: number;
+        isDefault: boolean;
+      }>;
+    };
+    updatedBy: string;
   };
 }
 
@@ -475,9 +522,11 @@ export type TabsyWebSocketEvent =
   | KitchenOrderReadyEvent
   | KitchenOrderCancelledEvent
   | StaffNotificationEvent
+  | AssistanceRequestedEvent
   | UrgentAlertEvent
   | AnalyticsUpdateEvent
   | MenuUpdatedEvent
+  | MenuCustomizationUpdatedEvent
   | NotificationCreatedEvent
   | TableSessionCreatedEvent
   | TableSessionUserJoinedEvent
@@ -513,9 +562,11 @@ export type WebSocketEventMap = {
   'kitchen:order-cancelled': KitchenOrderCancelledEvent['data'];
   'notification:created': NotificationCreatedEvent['data'];
   'notification:staff': StaffNotificationEvent['data'];
+  'assistance:requested': AssistanceRequestedEvent['data'];
   'alert:urgent': UrgentAlertEvent['data'];
   'analytics:update': AnalyticsUpdateEvent['data'];
   'menu:updated': MenuUpdatedEvent['data'];
+  'menu:customization_updated': MenuCustomizationUpdatedEvent['data'];
   'table:session_created': TableSessionCreatedEvent['data'];
   'table:user_joined': TableSessionUserJoinedEvent['data'];
   'table:user_left': TableSessionUserLeftEvent['data'];

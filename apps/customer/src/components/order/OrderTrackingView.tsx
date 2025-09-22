@@ -28,6 +28,7 @@ import { OrderStatusSkeleton, OrderTimelineSkeleton, OrderSummarySkeleton, Heade
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator'
 import { processOrderUpdatePayload } from '@/utils/websocket'
+import { CustomizationList } from '@tabsy/ui-components'
 
 interface OrderTrackingViewProps {
   orderId: string
@@ -146,6 +147,12 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
   const [timeElapsed, setTimeElapsed] = useState(0)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const [showPaymentOption, setShowPaymentOption] = useState(false)
+
+  // Call waiter state
+  const [waiterCalled, setWaiterCalled] = useState(false)
+  const [callWaiterCooldown, setCallWaiterCooldown] = useState(0)
+  const [lastCallTime, setLastCallTime] = useState<number | null>(null)
+  const cooldownIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   // Refresh function for pull-to-refresh
   const refreshOrder = async () => {
@@ -435,6 +442,27 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
     // }
   }, [order])
 
+  // Cooldown timer for call waiter feature
+  useEffect(() => {
+    if (callWaiterCooldown > 0) {
+      cooldownIntervalRef.current = setInterval(() => {
+        setCallWaiterCooldown(prev => {
+          if (prev <= 1) {
+            setWaiterCalled(false)
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+
+      return () => {
+        if (cooldownIntervalRef.current) {
+          clearInterval(cooldownIntervalRef.current)
+        }
+      }
+    }
+  }, [callWaiterCooldown])
+
   // Real-time updates via WebSocket only - no fallback polling
   useEffect(() => {
     // console.log('🔌 Customer WebSocket connection status:', {
@@ -480,13 +508,64 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
     router.push(`/payment?order=${orderId}&restaurant=${restaurantId}&table=${tableId}`)
   }
 
-  const handleCallWaiter = () => {
-    toast.success('Waiter called!', {
-      description: 'A member of our staff will be with you shortly',
-      duration: 3000
-    })
+  const handleCallWaiter = async () => {
+    // Prevent multiple calls if already processing or on cooldown
+    if (loading || callWaiterCooldown > 0) return
 
-    // TODO: Implement actual waiter call functionality
+    try {
+      const diningSession = SessionManager.getDiningSession()
+      if (!restaurantId || !tableId) {
+        toast.error('Unable to call waiter - missing restaurant or table information')
+        return
+      }
+
+      // Show loading state
+      toast.loading('Calling waiter...', { id: 'call-waiter' })
+
+      // Call the API
+      const response = await api.restaurant.callWaiter(restaurantId, {
+        tableId,
+        orderId: order?.id,
+        customerName: order?.guestInfo?.name || 'Guest',
+        urgency: 'normal'
+      })
+
+      if (response.success) {
+        // Set waiter called state and start cooldown (2 minutes)
+        setWaiterCalled(true)
+        setLastCallTime(Date.now())
+        setCallWaiterCooldown(120) // 2 minutes cooldown
+
+        toast.success('Waiter called!', {
+          id: 'call-waiter',
+          description: `A member of our staff will be with you shortly (${response.data?.estimatedResponseTime || '2-5 minutes'})`,
+          duration: 4000
+        })
+      } else {
+        throw new Error(response.error?.message || 'Failed to call waiter')
+      }
+    } catch (error: any) {
+      console.error('Failed to call waiter:', error)
+      toast.error('Failed to call waiter', {
+        id: 'call-waiter',
+        description: 'Please try again or contact restaurant staff directly',
+        duration: 4000
+      })
+    }
+  }
+
+  const handleCancelWaiterCall = () => {
+    setWaiterCalled(false)
+    setCallWaiterCooldown(0)
+    setLastCallTime(null)
+
+    if (cooldownIntervalRef.current) {
+      clearInterval(cooldownIntervalRef.current)
+    }
+
+    toast.success('Waiter call cancelled', {
+      duration: 2000
+    })
   }
 
   const handleBackToMenu = () => {
@@ -741,9 +820,14 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                         <span>•</span>
                         <span>Qty: {item.quantity}</span>
                       </div>
-                      {item.customizations && Object.keys(item.customizations).length > 0 && (
-                        <div className="mt-1 text-xs text-content-tertiary">
-                          Customizations: {JSON.stringify(item.customizations)}
+                      {item.customizations && (
+                        <div className="mt-2">
+                          <CustomizationList
+                            customizations={item.customizations}
+                            compact={true}
+                            showPrices={true}
+                            className="text-xs"
+                          />
                         </div>
                       )}
                     </div>
@@ -837,14 +921,49 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                   </motion.div>
                 )}
 
-                <Button
-                  variant="outline"
-                  onClick={handleCallWaiter}
-                  className="w-full"
-                >
-                  <Phone className="w-4 h-4 mr-2" />
-                  Call Waiter
-                </Button>
+                {waiterCalled && callWaiterCooldown > 0 ? (
+                  <div className="space-y-2">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <CheckCircle className="w-4 h-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">
+                            Waiter Called
+                          </span>
+                        </div>
+                        <span className="text-xs text-green-600">
+                          {Math.floor(callWaiterCooldown / 60)}:{(callWaiterCooldown % 60).toString().padStart(2, '0')}
+                        </span>
+                      </div>
+                      <p className="text-xs text-green-600 mt-1">
+                        Staff will be with you shortly
+                      </p>
+                    </div>
+                    {callWaiterCooldown > 90 && (
+                      <Button
+                        variant="ghost"
+                        onClick={handleCancelWaiterCall}
+                        className="w-full text-xs"
+                        size="sm"
+                      >
+                        Cancel Request
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={handleCallWaiter}
+                    disabled={callWaiterCooldown > 0}
+                    className="w-full"
+                  >
+                    <Phone className="w-4 h-4 mr-2" />
+                    {callWaiterCooldown > 0
+                      ? `Call Waiter (${Math.floor(callWaiterCooldown / 60)}:${(callWaiterCooldown % 60).toString().padStart(2, '0')})`
+                      : 'Call Waiter'
+                    }
+                  </Button>
+                )}
 
                 <Button
                   variant="ghost"

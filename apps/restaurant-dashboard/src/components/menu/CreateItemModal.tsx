@@ -245,16 +245,16 @@ export function CreateItemModal({
       // Backend now uses allergens array directly, no conversion needed
 
       if (editMode && initialData) {
-        // Update existing item - include only fields that exist in current database schema
+        // Update existing item - use frontend semantic field names, backend handles transformation
         const updateData = {
           name: data.name.trim(),
           description: data.description.trim(),
-          basePrice: typeof data.basePrice === 'string' ? parseFloat(data.basePrice) : Number(data.basePrice), // Ensure it's a number
-          status: data.active ? MenuItemStatus.AVAILABLE : MenuItemStatus.UNAVAILABLE,
+          basePrice: typeof data.basePrice === 'string' ? parseFloat(data.basePrice) : Number(data.basePrice), // Frontend uses basePrice
+          status: data.active ? MenuItemStatus.AVAILABLE : MenuItemStatus.UNAVAILABLE, // Frontend uses status enum
           displayOrder: data.displayOrder,
-          dietaryTypes: data.dietaryTypes, // Use dietaryTypes to match shared types
+          dietaryTypes: data.dietaryTypes, // Frontend uses dietaryTypes
           allergyInfo: convertAllergensToAllergyInfo(data.allergens), // Convert to backend format
-          spicyLevel: data.spicyLevel, // Match backend schema
+          spicyLevel: data.spicyLevel, // Frontend uses spicyLevel
           image: imageUrl,
           preparationTime: data.preparationTime || 15,
           nutritionalInfo: data.nutritionalInfo && Object.values(data.nutritionalInfo).some(v => v !== null && v !== undefined && v !== 0)
@@ -266,17 +266,17 @@ export function CreateItemModal({
         console.log('Updating item with enhanced data:', updateData);
         return await tabsyClient.menu.updateItem(restaurantId, initialData.id, updateData as any);
       } else {
-        // Create new item - include only fields that exist in current database schema
+        // Create new item - use frontend semantic field names, backend handles transformation
         const createData = {
           name: data.name.trim(),
           description: data.description.trim(),
-          basePrice: typeof data.basePrice === 'string' ? parseFloat(data.basePrice) : Number(data.basePrice), // Ensure it's a number
+          basePrice: typeof data.basePrice === 'string' ? parseFloat(data.basePrice) : Number(data.basePrice), // Frontend uses basePrice
           categoryId: data.categoryId,
           displayOrder: data.displayOrder,
-          status: data.active ? MenuItemStatus.AVAILABLE : MenuItemStatus.UNAVAILABLE,
-          dietaryTypes: data.dietaryTypes, // Use dietaryTypes to match shared types
+          status: data.active ? MenuItemStatus.AVAILABLE : MenuItemStatus.UNAVAILABLE, // Frontend uses status enum
+          dietaryTypes: data.dietaryTypes, // Frontend uses dietaryTypes (backend accepts both formats)
           allergyInfo: convertAllergensToAllergyInfo(data.allergens), // Convert to backend format
-          spicyLevel: data.spicyLevel, // Match backend schema
+          spicyLevel: data.spicyLevel, // Frontend uses spicyLevel
           image: imageUrl,
           preparationTime: data.preparationTime || 15,
           nutritionalInfo: data.nutritionalInfo && Object.values(data.nutritionalInfo).some(v => v !== null && v !== undefined && v !== 0)

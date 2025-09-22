@@ -11,19 +11,21 @@ import { OrderStatus } from '@tabsy/shared-types'
  */
 export function createDashboardHooks(useQuery: any) {
   return {
-    useDashboardMetrics: (restaurantId: string) => {
+    useDashboardMetrics: (restaurantId: string, options?: any) => {
       // Use today from midnight instead of rolling 24 hours for better alignment with orders page
       // This makes the dashboard consistent with what users see in orders management
       const now = new Date()
-      // Today from midnight (more intuitive for business metrics)
+
+      // Use today from midnight to midnight for current day metrics
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
 
       // Yesterday from midnight to midnight for comparison
       const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000)
       const yesterdayEnd = new Date(todayStart.getTime() - 1)
 
       return useQuery({
-        queryKey: ['dashboard-metrics', restaurantId, todayStart.toISOString()],
+        queryKey: ['dashboard-metrics', restaurantId],
         queryFn: async (): Promise<DashboardMetrics> => {
           console.log('useDashboardMetrics - Making API call:', {
             restaurantId,
@@ -33,18 +35,14 @@ export function createDashboardHooks(useQuery: any) {
           const client = tabsyClient
           
           try {
-            // Fetch all orders for restaurant and filter manually on frontend
-            // Note: Backend API requires manual filtering due to date parameter limitations
+            // SIMPLIFIED: Only fetch orders data - dashboard doesn't need live tables/menu data
             const allOrdersResponse = await client.order.getByRestaurant(restaurantId)
-
-            // Filter orders manually on frontend since backend ignores date filters
-            // Extract orders from correct API structure: response.data.orders
-            const allOrders = Array.isArray(allOrdersResponse.data?.orders) ? allOrdersResponse.data.orders : []
+            const allOrders = Array.isArray(allOrdersResponse.data) ? allOrdersResponse.data : []
 
             // Filter today's orders manually
             const todayOrders = allOrders.filter((order: any) => {
               const orderDate = new Date(order.createdAt)
-              return orderDate >= todayStart && orderDate <= now
+              return orderDate >= todayStart && orderDate <= todayEnd
             })
 
             // Filter yesterday's orders manually
@@ -53,27 +51,11 @@ export function createDashboardHooks(useQuery: any) {
               return orderDate >= yesterdayStart && orderDate <= yesterdayEnd
             })
 
-            // Create fake response structure to match expected format
-            const todayOrdersResponse = { data: todayOrders }
-            const yesterdayOrdersResponse = { data: yesterdayOrders }
-            
-            // Fetch restaurant tables (handle 404 gracefully)
-            let tablesResponse
-            try {
-              tablesResponse = await client.table.list(restaurantId)
-            } catch (tableError: any) {
-              console.warn('Tables fetch failed, using empty array:', tableError)
-              tablesResponse = { data: [] }
-            }
-            
-            // Fetch restaurant menu to count items (handle 404 gracefully)
-            let menuResponse
-            try {
-              menuResponse = await client.menu.listMenus(restaurantId)
-            } catch (menuError: any) {
-              console.warn('Menu fetch failed, using empty array:', menuError)
-              menuResponse = { data: [] }
-            }
+            // Fetch tables and menu data for dashboard metrics
+            const [tablesResponse, menuResponse] = await Promise.all([
+              client.table.list(restaurantId).catch(() => ({ data: [] })),
+              client.menu.list(restaurantId).catch(() => ({ data: [] }))
+            ])
             
             console.log('useDashboardMetrics - API responses:', {
               allOrders: allOrdersResponse,
@@ -81,23 +63,38 @@ export function createDashboardHooks(useQuery: any) {
               menus: menuResponse
             })
 
-            // DEBUG: Log the actual orders with restaurant IDs
+            // DEBUG: Log the actual orders with restaurant IDs and dates
             console.log('useDashboardMetrics - DEBUG: Raw order data:', {
-              allOrdersData: allOrdersResponse.data,
+              allOrdersResponseStructure: {
+                success: allOrdersResponse.success,
+                dataType: typeof allOrdersResponse.data,
+                dataIsArray: Array.isArray(allOrdersResponse.data),
+                dataLength: Array.isArray(allOrdersResponse.data) ? allOrdersResponse.data.length : 'not array',
+                dataKeys: allOrdersResponse.data ? Object.keys(allOrdersResponse.data) : 'no data'
+              },
               allOrdersCount: allOrders.length,
               todayOrdersCount: todayOrders.length,
-              sampleAllOrders: allOrders.slice(0, 3).map((order: any) => ({
+              todayStart: todayStart.toISOString(),
+              todayEnd: todayEnd.toISOString(),
+              now: now.toISOString(),
+              timezoneOffset: now.getTimezoneOffset(),
+              localDateInfo: {
+                original: now.toISOString(),
+                todayStartLocal: todayStart.toString(),
+                todayEndLocal: todayEnd.toString()
+              },
+              sampleAllOrders: allOrders.slice(0, 5).map((order: any) => ({
                 id: order.id?.slice(-8),
                 restaurantId: order.restaurantId,
                 createdAt: order.createdAt,
+                createdAtParsed: new Date(order.createdAt).toISOString(),
+                createdAtLocal: new Date(order.createdAt).toString(),
+                isAfterTodayStart: new Date(order.createdAt) >= todayStart,
+                isBeforeTodayEnd: new Date(order.createdAt) <= todayEnd,
+                qualifiesForToday: new Date(order.createdAt) >= todayStart && new Date(order.createdAt) <= todayEnd,
                 total: order.total || order.totalAmount
               })),
-              sampleTodayOrders: todayOrders.slice(0, 3).map((order: any) => ({
-                id: order.id?.slice(-8),
-                restaurantId: order.restaurantId,
-                createdAt: order.createdAt,
-                total: order.total || order.totalAmount
-              }))
+              rawOrdersData: allOrdersResponse.data
             })
             
             // Process data - Use filtered orders from above
@@ -110,9 +107,10 @@ export function createDashboardHooks(useQuery: any) {
 
             console.log('useDashboardMetrics - Date ranges:', {
               todayStart: todayStart.toISOString(),
-              todayEnd: new Date().toISOString(),
+              todayEnd: todayEnd.toISOString(),
               yesterdayStart: yesterdayStart.toISOString(),
-              yesterdayEnd: yesterdayEnd.toISOString()
+              yesterdayEnd: yesterdayEnd.toISOString(),
+              now: now.toISOString()
             })
 
             console.log('useDashboardMetrics - Processed arrays:', {
@@ -160,31 +158,18 @@ export function createDashboardHooks(useQuery: any) {
               }))
             })
             
-            // Calculate active tables - check what statuses actually exist and count non-AVAILABLE tables
+            // Calculate active tables (tables with OCCUPIED status or active sessions)
             const activeTables = tables.filter((table: any) =>
-              table.status && table.status !== 'AVAILABLE'
+              table.status === 'OCCUPIED' || table.status === 'RESERVED'
             ).length
 
-            // Debug: Log table status distribution
-            const tableStatuses = tables.reduce((acc: any, table: any) => {
-              acc[table.status] = (acc[table.status] || 0) + 1
-              return acc
-            }, {})
-            console.log('useDashboardMetrics - Table status distribution:', {
-              totalTables: tables.length,
-              activeTables,
-              statusBreakdown: tableStatuses,
-              sampleTables: tables.slice(0, 3).map((table: any) => ({
-                id: table.id?.slice(-8),
-                name: table.name,
-                status: table.status
-              }))
-            })
-            
-            const totalMenuItems = menus.reduce((sum: number, menu: any) => {
-              return sum + (menu.categories?.reduce((catSum: number, category: any) => {
-                return catSum + (category.items?.length || 0)
-              }, 0) || 0)
+            // Calculate total active menu items
+            const totalMenuItems = menus.reduce((count: number, menu: any) => {
+              const categories = menu.categories || []
+              return count + categories.reduce((itemCount: number, category: any) => {
+                const items = category.items || []
+                return itemCount + items.filter((item: any) => item.active !== false).length
+              }, 0)
             }, 0)
             
             const averageOrderValue = todayOrdersCount > 0 ? todayRevenue / todayOrdersCount : 0
@@ -228,18 +213,25 @@ export function createDashboardHooks(useQuery: any) {
             throw error
           }
         },
-        enabled: !!restaurantId,
-        staleTime: 60000, // 1 minute - dashboard metrics don't need frequent updates
-        refetchOnMount: true,
-        refetchOnWindowFocus: false
-        // Removed refetchInterval - rely on WebSocket for real-time updates
+        enabled: !!restaurantId && (options?.enabled !== false),
+        staleTime: 0, // Always fetch fresh data for debugging
+        cacheTime: 0, // Don't cache for debugging
+        refetchOnMount: true, // Always refetch on mount
+        refetchOnWindowFocus: true, // Refetch when window gets focus
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
+        // Merge with passed options, allowing caller to override defaults
+        ...options
       })
     },
 
     useTodayOrders: (restaurantId: string) => {
       // Use today from midnight for consistency with dashboard metrics
       const now = new Date()
+
+      // Use local time zone properly - don't adjust for timezone offset
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
 
       return useQuery({
         queryKey: ['orders', 'today', restaurantId],
@@ -252,14 +244,14 @@ export function createDashboardHooks(useQuery: any) {
           const result = await tabsyClient.order.getByRestaurant(restaurantId)
 
           // Filter manually for today's orders
-          if (result.data?.orders && Array.isArray(result.data.orders)) {
-            const allOrders = result.data.orders
+          if (result.data && Array.isArray(result.data)) {
+            const allOrders = result.data
             const todayOrders = allOrders.filter((order: any) => {
               const orderDate = new Date(order.createdAt)
-              return orderDate >= todayStart && orderDate <= now
+              return orderDate >= todayStart && orderDate <= todayEnd
             })
-            // Update the result structure to match expected format
-            result.data = { ...result.data, orders: todayOrders, totalCount: todayOrders.length }
+            // Update the result structure to return only the filtered orders array
+            result.data = todayOrders
           }
 
           console.log('useTodayOrders - API result:', result)
@@ -273,7 +265,7 @@ export function createDashboardHooks(useQuery: any) {
       })
     },
 
-    useWeeklyOrderStats: (restaurantId: string) => {
+    useWeeklyOrderStats: (restaurantId: string, options?: any) => {
       // Stabilize date by using day-based timestamp to prevent infinite re-renders
       const now = new Date()
       const currentDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
@@ -294,8 +286,8 @@ export function createDashboardHooks(useQuery: any) {
           console.log('useWeeklyOrderStats - API response:', response)
 
           // Filter orders manually for the last week since backend ignores date filters
-          // Extract orders from correct API structure: response.data.orders
-          const allOrders = Array.isArray(response.data?.orders) ? response.data.orders : []
+          // Extract orders from correct API structure: response.data (already array)
+          const allOrders = Array.isArray(response.data) ? response.data : []
           const orders = allOrders.filter((order: any) => {
             const orderDate = new Date(order.createdAt)
             return orderDate >= startOfWeek && orderDate <= new Date()
@@ -334,10 +326,15 @@ export function createDashboardHooks(useQuery: any) {
           
           return { data: dailyStats }
         },
-        enabled: !!restaurantId,
-        staleTime: 300000, // 5 minutes - weekly stats change infrequently
-        refetchOnMount: true
-        // Removed refetchInterval - weekly stats don't need frequent updates
+        enabled: !!restaurantId && (options?.enabled !== false),
+        staleTime: 0, // Always fetch fresh data for debugging
+        cacheTime: 0, // Don't cache for debugging
+        refetchOnMount: true, // Always refetch on mount
+        refetchOnWindowFocus: true, // Refetch when window gets focus
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
+        // Merge with passed options, allowing caller to override defaults
+        ...options
       })
     },
 
@@ -349,16 +346,34 @@ export function createDashboardHooks(useQuery: any) {
             restaurantId,
             hasToken: !!tabsyClient.getAuthToken()
           })
-          // Use the shared client instance that has the auth token
-          const client = tabsyClient
-          const result = await client.table.list(restaurantId)
-          console.log('useDashboardTables - API result:', result)
-          return result
+          try {
+            // Use the shared client instance that has the auth token
+            const client = tabsyClient
+            const result = await client.table.list(restaurantId)
+            console.log('useDashboardTables - API result:', result)
+            return result
+          } catch (error: any) {
+            console.error('useDashboardTables - Error:', error)
+            // Return empty result on error to prevent infinite retries
+            if (error.status === 429 || error.code === 'RATE_LIMIT_EXCEEDED') {
+              return { data: [], success: true }
+            }
+            throw error
+          }
         },
         enabled: !!restaurantId,
-        staleTime: 120000, // 2 minutes
-        refetchOnMount: true
-        // Removed refetchInterval - rely on WebSocket for real-time updates
+        staleTime: 300000, // 5 minutes - increased to reduce API calls
+        refetchOnMount: false, // Don't refetch on mount to reduce initial load
+        refetchOnWindowFocus: false,
+        retry: (failureCount, error: any) => {
+          // Don't retry rate limit errors
+          if (error?.status === 429 || error?.code === 'RATE_LIMIT_EXCEEDED') {
+            return false
+          }
+          // Only retry up to 2 times for other errors
+          return failureCount < 2
+        },
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000)
       })
     }
   }
@@ -398,6 +413,7 @@ export function useTodayOrders(restaurantId: string) {
   // Use today from midnight for consistency with dashboard metrics
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
+  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
 
   // Import useQuery dynamically if available
   let useQuery: any
@@ -426,14 +442,14 @@ export function useTodayOrders(restaurantId: string) {
       const result = await tabsyClient.order.getByRestaurant(restaurantId)
 
       // Filter manually for today's orders
-      if (result.data?.orders && Array.isArray(result.data.orders)) {
-        const allOrders = result.data.orders
+      if (result.data && Array.isArray(result.data)) {
+        const allOrders = result.data
         const todayOrders = allOrders.filter((order: any) => {
           const orderDate = new Date(order.createdAt)
-          return orderDate >= todayStart && orderDate <= now
+          return orderDate >= todayStart && orderDate <= todayEnd
         })
-        // Update the result structure to match expected format
-        result.data = { ...result.data, orders: todayOrders, totalCount: todayOrders.length }
+        // Update the result structure to return only the filtered orders array
+        result.data = todayOrders
       }
 
       console.log('useTodayOrders - API result:', result)

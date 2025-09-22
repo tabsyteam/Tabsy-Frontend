@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@tabsy/ui-components'
-import { ArrowLeft, Plus, Minus, Trash2, ShoppingBag, Clock, MapPin, Users } from 'lucide-react'
+import { ArrowLeft, Plus, Minus, Trash2, ShoppingBag, Clock, MapPin, Users, Leaf, Zap, Utensils } from 'lucide-react'
 import { toast } from 'sonner'
-import { DietaryType, AllergenType } from '@tabsy/shared-types'
+import { DietaryType, AllergyInfo } from '@tabsy/shared-types'
+import { CustomizationList } from '@tabsy/ui-components'
 import { useCart } from '@/hooks/useCart'
 import { SessionManager } from '@/lib/session'
+import { ItemDetailModal } from '@/components/menu/ItemDetailModal'
 
 
 interface TableInfo {
@@ -23,13 +25,46 @@ interface TableInfo {
   }
 }
 
+const getAllergensList = (allergyInfo?: AllergyInfo): string[] => {
+  if (!allergyInfo) return []
+
+  const allergens: string[] = []
+
+  if (allergyInfo.containsEggs) allergens.push('Eggs')
+  if (allergyInfo.containsNuts) allergens.push('Nuts')
+  if (allergyInfo.containsDairy) allergens.push('Dairy')
+  if (allergyInfo.containsGluten) allergens.push('Gluten')
+  if (allergyInfo.containsSeafood) allergens.push('Seafood')
+  if (allergyInfo.other && allergyInfo.other.length > 0) {
+    allergens.push(...allergyInfo.other)
+  }
+
+  return allergens
+}
+
+const getDietaryIcon = (dietary: DietaryType) => {
+  switch (dietary) {
+    case DietaryType.VEGAN:
+    case DietaryType.VEGETARIAN:
+      return <Leaf className="w-3 h-3" />
+    case DietaryType.GLUTEN_FREE:
+      return <Zap className="w-3 h-3" />
+    default:
+      return <Utensils className="w-3 h-3" />
+  }
+}
+
 export function CartView() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { cart, cartCount, cartTotal, updateQuantity, removeFromCart, clearCart, isLoading } = useCart()
+  const { cart, cartCount, cartTotal, updateQuantity, updateCartItem, removeFromCart, clearCart, isLoading, getCartItem } = useCart()
   const [tableInfo, setTableInfo] = useState<TableInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [specialInstructions, setSpecialInstructions] = useState('')
+
+  // Edit modal state
+  const [editingCartItem, setEditingCartItem] = useState<any>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
 
   // Get restaurant and table ID from URL or session
   const urlRestaurantId = searchParams.get('restaurant')
@@ -65,6 +100,66 @@ export function CartView() {
 
   const handleRemoveItem = (cartItemId: string) => {
     removeFromCart(cartItemId)
+  }
+
+  const handleEditItem = (cartItemId: string) => {
+    const cartItem = getCartItem(cartItemId)
+    if (cartItem) {
+      // Try to get the original menu item with options from session storage
+      let originalMenuItem = null
+      try {
+        const cachedMenuData = sessionStorage.getItem('tabsy-menu-data')
+        if (cachedMenuData) {
+          const menuData = JSON.parse(cachedMenuData)
+          // Find the original menu item
+          for (const category of menuData.categories || []) {
+            const foundItem = category.items?.find((item: any) => item.id === cartItem.id)
+            if (foundItem) {
+              originalMenuItem = foundItem
+              break
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load menu data from cache:', error)
+      }
+
+      // Reconstruct the MenuItem object for the modal
+      const menuItem = originalMenuItem || {
+        id: cartItem.id,
+        categoryId: cartItem.categoryId,
+        name: cartItem.name,
+        description: cartItem.description,
+        basePrice: cartItem.basePrice,
+        price: cartItem.basePrice,
+        image: cartItem.imageUrl,
+        imageUrl: cartItem.imageUrl,
+        dietaryTypes: cartItem.dietaryTypes || [],
+        allergyInfo: cartItem.allergyInfo,
+        spicyLevel: cartItem.spicyLevel,
+        preparationTime: cartItem.preparationTime || 15,
+        options: [], // Fallback if no cached data
+        tags: [],
+        status: 'AVAILABLE',
+        displayOrder: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      console.log('[CartView] Edit item - found original menu item:', !!originalMenuItem, 'options:', menuItem.options?.length || 0)
+
+      setEditingCartItem({
+        menuItem,
+        cartItem: {
+          cartItemId: cartItem.cartItemId,
+          quantity: cartItem.quantity,
+          customizations: cartItem.customizations,
+          options: cartItem.options,
+          specialInstructions: cartItem.specialInstructions
+        }
+      })
+      setShowEditModal(true)
+    }
   }
 
   const handleClearCart = () => {
@@ -282,30 +377,78 @@ export function CartView() {
                               Category: {item.categoryName}
                             </p>
 
-                            {/* Dietary Types */}
-                            {item.dietaryTypes && item.dietaryTypes.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mb-2">
-                                {item.dietaryTypes.map(diet => (
-                                  <span
-                                    key={diet}
-                                    className="inline-flex items-center px-2 py-0.5 bg-green-100 text-green-800 text-xs rounded-full"
-                                  >
-                                    {diet.replace('_', ' ')}
-                                  </span>
-                                ))}
+                            {/* Dietary and Allergen Info */}
+                            {(item.dietaryTypes?.length > 0 || getAllergensList(item.allergyInfo).length > 0) && (
+                              <div className="space-y-1 mb-3">
+                                {item.dietaryTypes && item.dietaryTypes.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {item.dietaryTypes.map(diet => (
+                                      <span
+                                        key={diet}
+                                        className="inline-flex items-center space-x-1 px-1.5 py-0.5 bg-green-100 text-green-800 text-xs rounded-full"
+                                      >
+                                        {getDietaryIcon(diet)}
+                                        <span>{diet.replace('_', ' ')}</span>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {getAllergensList(item.allergyInfo).length > 0 && (
+                                  <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                                    <span className="font-medium">Contains:</span> {getAllergensList(item.allergyInfo).join(', ')}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Customizations */}
+                            {item.options && item.options.length > 0 && (
+                              <div className="mb-2">
+                                <CustomizationList
+                                  customizations={item.options}
+                                  compact={true}
+                                  showPrices={true}
+                                  className="text-sm"
+                                />
+                              </div>
+                            )}
+
+                            {/* Special Instructions */}
+                            {item.specialInstructions && (
+                              <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded mb-2">
+                                <span className="font-medium">Special Instructions:</span>
+                                <div className="mt-1">{item.specialInstructions}</div>
                               </div>
                             )}
                           </div>
 
-                          {/* Remove Button */}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveItem(item.cartItemId)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          {/* Action Buttons */}
+                          <div className="flex gap-1">
+                            {/* Edit Button - only show if item has customizations */}
+                            {(item.options && item.options.length > 0) || item.specialInstructions ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditItem(item.cartItemId)}
+                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-1"
+                                title="Edit customizations"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </Button>
+                            ) : null}
+                            {/* Remove Button */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveItem(item.cartItemId)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
 
                         {/* Quantity Controls and Price */}
@@ -335,12 +478,20 @@ export function CartView() {
                           </div>
 
                           <div className="text-right">
-                            <div className="text-sm text-content-secondary">
-                              ${Number(item.basePrice).toFixed(2)} each
+                            <div className="text-lg font-semibold text-primary">
+                              ${(() => {
+                                const optionsTotal = item.options?.reduce((sum, option) => sum + (option.price || 0), 0) || 0
+                                return ((Number(item.basePrice) + optionsTotal) * item.quantity).toFixed(2)
+                              })()}
                             </div>
-                            <div className="font-semibold text-content-primary">
-                              ${(Number(item.basePrice) * item.quantity).toFixed(2)}
-                            </div>
+                            {item.quantity > 1 && (
+                              <div className="text-xs text-content-tertiary">
+                                ${(() => {
+                                  const optionsTotal = item.options?.reduce((sum, option) => sum + (option.price || 0), 0) || 0
+                                  return (Number(item.basePrice) + optionsTotal).toFixed(2)
+                                })()} each
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -423,6 +574,29 @@ export function CartView() {
           </div>
         )}
       </div>
+
+      {/* Edit Item Modal */}
+      {editingCartItem && (
+        <ItemDetailModal
+          item={editingCartItem.menuItem}
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false)
+            setEditingCartItem(null)
+          }}
+          existingCartItem={editingCartItem.cartItem}
+          mode="edit"
+          onAddToCart={(item, quantity, customizations, options) => {
+            // This won't be called in edit mode
+          }}
+          onUpdateCartItem={(cartItemId, item, quantity, customizations, specialInstructions, options) => {
+            // Update the existing cart item
+            updateCartItem(cartItemId, item, quantity, customizations, specialInstructions, options)
+            setShowEditModal(false)
+            setEditingCartItem(null)
+          }}
+        />
+      )}
     </div>
   )
 }

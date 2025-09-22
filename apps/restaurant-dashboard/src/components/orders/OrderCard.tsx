@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo, useCallback, memo } from 'react'
 import { Button } from '@tabsy/ui-components'
 import { Clock, CheckCircle, XCircle, AlertCircle, Eye, Timer, Users, MapPin } from 'lucide-react'
 import { Order, OrderStatus, OrderItem, OrderItemStatus } from '@tabsy/shared-types'
 import { formatDistanceToNow } from 'date-fns'
+import { CustomizationSummary } from '@tabsy/ui-components'
 
 interface OrderCardProps {
   order: Order
@@ -12,7 +13,7 @@ interface OrderCardProps {
   onViewDetails: (order: Order) => void
 }
 
-export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardProps) {
+function OrderCardComponent({ order, onStatusUpdate, onViewDetails }: OrderCardProps) {
   const [timeAgo, setTimeAgo] = useState('')
   const [isHovered, setIsHovered] = useState(false)
 
@@ -196,6 +197,12 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
                       {item.menuItem.categoryName}
                     </span>
                   )}
+                  {(item as any).options && (
+                    <CustomizationSummary
+                      customizations={(item as any).options}
+                      className="mt-0.5 text-primary"
+                    />
+                  )}
                 </div>
                 <span className="font-bold text-card-foreground flex-shrink-0">
                   ${parseFloat(String(item.subtotal || 0)).toFixed(2)}
@@ -249,3 +256,17 @@ export function OrderCard({ order, onStatusUpdate, onViewDetails }: OrderCardPro
     </div>
   )
 }
+
+// OPTIMIZATION: Memoize OrderCard component to prevent unnecessary re-renders
+export const OrderCard = memo(OrderCardComponent, (prevProps, nextProps) => {
+  // Custom comparison function to prevent re-renders when irrelevant props change
+  return (
+    prevProps.order.id === nextProps.order.id &&
+    prevProps.order.status === nextProps.order.status &&
+    prevProps.order.updatedAt === nextProps.order.updatedAt &&
+    prevProps.order.total === nextProps.order.total &&
+    prevProps.order.items.length === nextProps.order.items.length
+  )
+})
+
+OrderCard.displayName = 'OrderCard'

@@ -80,19 +80,16 @@ export class TabsyApiClient {
           config.headers.Authorization = `Bearer ${this.authToken}`
         }
 
-        // Only add guest session header for non-admin endpoints and when available
+        // Only add guest session header for customer endpoints (not admin/auth)
         const isAdminEndpoint = config.url?.includes('/admin/')
         const isPublicEndpoint = config.url?.includes('/health') || config.url?.includes('/auth')
+        const isAuthenticatedRequest = !!this.authToken
 
-        if (this.guestSessionId && config.headers && !isAdminEndpoint && !isPublicEndpoint) {
+        // Add guest session for customer app endpoints (when no auth token is present)
+        // Customer app needs guest session for all restaurant-related endpoints
+        if (this.guestSessionId && config.headers && !isAdminEndpoint && !isPublicEndpoint && !isAuthenticatedRequest) {
           console.log('API Client: Adding x-session-id header:', this.guestSessionId)
           config.headers['x-session-id'] = this.guestSessionId
-        } else if (!isAdminEndpoint && !isPublicEndpoint) {
-          console.log('API Client: No guestSessionId available', {
-            guestSessionId: this.guestSessionId,
-            hasHeaders: !!config.headers,
-            url: config.url
-          })
         }
         return config
       },
@@ -129,13 +126,25 @@ export class TabsyApiClient {
             }
           }
 
-          // Handle rate limiting (429)
-          if (status === 429) {
+          // Handle rate limiting (429) with max retry limit
+          if (status === 429 && originalRequest._retryCount < this.config.retries) {
+            originalRequest._retryCount = (originalRequest._retryCount || 0) + 1
             const retryAfter = error.response.headers['retry-after']
-            const delay = retryAfter ? parseInt(retryAfter) * 1000 : this.config.retryDelay
-            
+            const delay = retryAfter ? parseInt(retryAfter) * 1000 : this.config.retryDelay * Math.pow(2, originalRequest._retryCount - 1)
+
+            console.warn(`Rate limited (429). Retry ${originalRequest._retryCount}/${this.config.retries} after ${delay}ms`)
             await this.delay(delay)
             return this.axiosInstance(originalRequest)
+          }
+
+          // Reject if max retries exceeded for 429
+          if (status === 429) {
+            throw new ApiError(
+              'Rate limit exceeded - too many requests',
+              429,
+              'RATE_LIMIT_EXCEEDED',
+              { maxRetries: this.config.retries }
+            )
           }
 
           // Handle server errors (5xx) with exponential backoff

@@ -70,11 +70,7 @@ const SearchBar = React.memo<SearchBarProps>(({
     setIsInitialLoad(false) // User is actively typing
     setShowSuggestions(true)
 
-    if (onSearch) {
-      onSearch(value)
-    }
-
-    // Get menu suggestions when user types
+    // Only get menu suggestions when user types, don't trigger search
     if (onGetSuggestions && value.length > 0) {
       onGetSuggestions(value)
     }
@@ -83,6 +79,7 @@ const SearchBar = React.memo<SearchBarProps>(({
   const handleClear = () => {
     setQuery('')
     setShowSuggestions(false)
+    // Clear search results when clearing input
     if (onSearch) {
       onSearch('')
     }

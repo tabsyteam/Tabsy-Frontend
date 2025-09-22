@@ -4,10 +4,16 @@ import type {
   Menu,
   MenuCategory,
   MenuItem,
+  MenuItemOption,
+  MenuItemOptionValue,
   CreateMenuCategoryRequest,
   UpdateMenuCategoryRequest,
   CreateMenuItemRequest,
-  UpdateMenuItemRequest
+  UpdateMenuItemRequest,
+  CreateMenuItemOptionRequest,
+  UpdateMenuItemOptionRequest,
+  OptionValueCreateRequest,
+  OptionValueUpdateRequest
 } from '@tabsy/shared-types'
 import { createQueryString, createFilterParams } from '@tabsy/shared-utils'
 
@@ -29,6 +35,13 @@ export class MenuAPI {
    */
   async listMenus(restaurantId: string): Promise<ApiResponse<Menu[]>> {
     return this.client.get(`/restaurants/${restaurantId}/menus`)
+  }
+
+  /**
+   * Alias for listMenus for backward compatibility
+   */
+  async list(restaurantId: string): Promise<ApiResponse<Menu[]>> {
+    return this.listMenus(restaurantId)
   }
 
   /**
@@ -138,5 +151,78 @@ export class MenuAPI {
    */
   async getMenuById(id: string): Promise<ApiResponse<Menu>> {
     return this.client.get(`/menu/${id}`)
+  }
+
+  // Menu Item Option Management
+  /**
+   * POST /restaurants/:restaurantId/menu/items/:itemId/options - Create menu item option
+   */
+  async createOption(
+    restaurantId: string,
+    itemId: string,
+    data: CreateMenuItemOptionRequest
+  ): Promise<ApiResponse<MenuItemOption>> {
+    return this.client.post(`/restaurants/${restaurantId}/menu/items/${itemId}/options`, data)
+  }
+
+  /**
+   * PUT /restaurants/:restaurantId/menu/items/:itemId/options/:optionId - Update menu item option
+   */
+  async updateOption(
+    restaurantId: string,
+    itemId: string,
+    optionId: string,
+    data: UpdateMenuItemOptionRequest
+  ): Promise<ApiResponse<MenuItemOption>> {
+    return this.client.put(`/restaurants/${restaurantId}/menu/items/${itemId}/options/${optionId}`, data)
+  }
+
+  /**
+   * DELETE /restaurants/:restaurantId/menu/items/:itemId/options/:optionId - Delete menu item option
+   */
+  async deleteOption(
+    restaurantId: string,
+    itemId: string,
+    optionId: string
+  ): Promise<ApiResponse<void>> {
+    return this.client.delete(`/restaurants/${restaurantId}/menu/items/${itemId}/options/${optionId}`)
+  }
+
+  // Option Value Management
+  /**
+   * POST /restaurants/:restaurantId/menu/items/:itemId/options/:optionId/values - Create option value
+   */
+  async createOptionValue(
+    restaurantId: string,
+    itemId: string,
+    optionId: string,
+    data: OptionValueCreateRequest
+  ): Promise<ApiResponse<MenuItemOptionValue>> {
+    return this.client.post(`/restaurants/${restaurantId}/menu/items/${itemId}/options/${optionId}/values`, data)
+  }
+
+  /**
+   * PUT /restaurants/:restaurantId/menu/items/:itemId/options/:optionId/values/:valueId - Update option value
+   */
+  async updateOptionValue(
+    restaurantId: string,
+    itemId: string,
+    optionId: string,
+    valueId: string,
+    data: OptionValueUpdateRequest
+  ): Promise<ApiResponse<MenuItemOptionValue>> {
+    return this.client.put(`/restaurants/${restaurantId}/menu/items/${itemId}/options/${optionId}/values/${valueId}`, data)
+  }
+
+  /**
+   * DELETE /restaurants/:restaurantId/menu/items/:itemId/options/:optionId/values/:valueId - Delete option value
+   */
+  async deleteOptionValue(
+    restaurantId: string,
+    itemId: string,
+    optionId: string,
+    valueId: string
+  ): Promise<ApiResponse<void>> {
+    return this.client.delete(`/restaurants/${restaurantId}/menu/items/${itemId}/options/${optionId}/values/${valueId}`)
   }
 }

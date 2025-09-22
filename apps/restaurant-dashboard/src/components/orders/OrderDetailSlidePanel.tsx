@@ -12,9 +12,13 @@ import {
   ChefHat,
   CheckCircle2,
   ArrowRight,
+  Printer,
+  Receipt,
 } from 'lucide-react';
 import { Order, OrderStatus, OrderItem } from '@tabsy/shared-types';
 import { format } from 'date-fns';
+import { CustomizationList } from '@tabsy/ui-components';
+import { parseCustomizations, formatPriceModifier } from '@tabsy/shared-utils';
 import { OrderStatusFlow } from './OrderStatusFlow';
 
 interface OrderDetailSlidePanelProps {
@@ -143,6 +147,427 @@ export function OrderDetailSlidePanel({
     }
   };
 
+  const handlePrint = (type: 'kitchen' | 'customer') => {
+    if (!order) return;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      console.error('Failed to open print window');
+      return;
+    }
+
+    const isKitchen = type === 'kitchen';
+    const title = isKitchen ? `Kitchen Ticket - Order #${order.orderNumber}` : `Receipt - Order #${order.orderNumber}`;
+
+    // Generate customizations HTML using the robust parseCustomizations utility
+    const generateCustomizationsHTML = (item: OrderItem) => {
+      const customizations = item.options || item.selectedOptions || (item as any).options;
+      if (!customizations) {
+        return '';
+      }
+
+      // Use the same parseCustomizations utility that CustomizationList uses
+      const parsed = parseCustomizations(customizations);
+
+      if (parsed.details.length === 0) {
+        return '';
+      }
+
+      // Generate HTML for each customization option
+      const customizationHTML = parsed.details.map(option => {
+        const values = option.selectedValues.map(value => {
+          const priceText = !isKitchen && value.priceModifier
+            ? ` (${formatPriceModifier(value.priceModifier)})`
+            : '';
+          return `${value.name}${priceText}`;
+        }).join(', ');
+
+        return `<div class="customization-item"><strong>${option.optionName}:</strong> ${values}</div>`;
+      }).join('');
+
+      return `
+        <div class="customizations">
+          <strong>🔧 Customizations:</strong>
+          ${customizationHTML}
+          ${!isKitchen && parsed.totalPriceModifier !== 0 ? `
+            <div class="customization-total">
+              <strong>Total Customization: ${formatPriceModifier(parsed.totalPriceModifier)}</strong>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    };
+
+    // Generate order items HTML
+    const itemsHTML = order.items.map((item: OrderItem) => `
+      <div class="order-item">
+        <div class="item-header">
+          <span class="item-quantity">${item.quantity}x</span>
+          <span class="item-name">${item.menuItem?.name || (item as any).name || 'Unknown Item'}</span>
+          ${!isKitchen ? `<span class="item-price">$${parseFloat(String(item.subtotal || 0)).toFixed(2)}</span>` : ''}
+        </div>
+        ${item.menuItem?.description ? `<div class="item-description">${item.menuItem.description}</div>` : ''}
+        ${generateCustomizationsHTML(item)}
+        ${item.specialInstructions ? `
+          <div class="special-instructions">
+            <strong>⚠️ Special Instructions:</strong> ${item.specialInstructions}
+          </div>
+        ` : ''}
+      </div>
+    `).join('');
+
+    // Generate pricing section (customer only)
+    const pricingHTML = !isKitchen ? `
+      <div class="pricing-section">
+        <h3>Order Summary</h3>
+        <div class="price-line">
+          <span>Subtotal:</span>
+          <span>$${parseFloat(String(order.subtotal || 0)).toFixed(2)}</span>
+        </div>
+        ${parseFloat(String(order.tax || '0')) > 0 ? `
+          <div class="price-line">
+            <span>Tax:</span>
+            <span>$${parseFloat(String(order.tax || 0)).toFixed(2)}</span>
+          </div>
+        ` : ''}
+        ${(order.serviceChargeAmount || 0) > 0 ? `
+          <div class="price-line">
+            <span>Service Charge:</span>
+            <span>$${(order.serviceChargeAmount || 0).toFixed(2)}</span>
+          </div>
+        ` : ''}
+        ${parseFloat(String(order.tip || '0')) > 0 ? `
+          <div class="price-line">
+            <span>Tip:</span>
+            <span>$${parseFloat(String(order.tip || 0)).toFixed(2)}</span>
+          </div>
+        ` : ''}
+        ${(order.discountAmount || 0) > 0 ? `
+          <div class="price-line discount">
+            <span>Discount:</span>
+            <span>-$${(order.discountAmount || 0).toFixed(2)}</span>
+          </div>
+        ` : ''}
+        <div class="price-line total">
+          <span>TOTAL:</span>
+          <span>$${parseFloat(String(order?.total || '0')).toFixed(2)}</span>
+        </div>
+      </div>
+    ` : '';
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${title}</title>
+          <style>
+            @media print {
+              @page {
+                margin: 0.3in;
+                size: A4;
+              }
+              body {
+                margin: 0;
+                padding: 0;
+              }
+            }
+
+            body {
+              font-family: 'Courier New', monospace;
+              margin: 0;
+              padding: 20px;
+              background: white;
+              color: black;
+              font-size: 12px;
+              line-height: 1.4;
+            }
+
+            .print-container {
+              max-width: 600px;
+              margin: 0 auto;
+            }
+
+            .header {
+              text-align: center;
+              border-bottom: 2px solid black;
+              padding-bottom: 15px;
+              margin-bottom: 20px;
+            }
+
+            .restaurant-name {
+              font-size: 20px;
+              font-weight: bold;
+              margin-bottom: 5px;
+            }
+
+            .ticket-type {
+              font-size: 16px;
+              font-weight: bold;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              ${isKitchen ? 'background: black; color: white; padding: 5px 10px;' : ''}
+            }
+
+            .order-info {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 15px;
+              margin-bottom: 20px;
+              padding-bottom: 15px;
+              border-bottom: 1px solid black;
+            }
+
+            .info-item {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+
+            .info-label {
+              font-weight: bold;
+            }
+
+            ${isKitchen ? `
+              .kitchen-alert {
+                background: black;
+                color: white;
+                padding: 10px;
+                text-align: center;
+                font-weight: bold;
+                margin-bottom: 15px;
+                font-size: 14px;
+              }
+
+              .prep-time {
+                font-size: 16px;
+                font-weight: bold;
+                text-align: center;
+                background: #f0f0f0;
+                padding: 10px;
+                margin: 15px 0;
+                border: 2px solid black;
+              }
+            ` : ''}
+
+            .items-section {
+              margin-bottom: 20px;
+            }
+
+            .section-title {
+              font-size: 14px;
+              font-weight: bold;
+              text-transform: uppercase;
+              margin-bottom: 15px;
+              border-bottom: 1px solid black;
+              padding-bottom: 5px;
+            }
+
+            .order-item {
+              margin-bottom: 15px;
+              padding-bottom: 10px;
+              border-bottom: 1px dashed #ccc;
+            }
+
+            .item-header {
+              display: flex;
+              align-items: center;
+              font-weight: bold;
+              font-size: 13px;
+              margin-bottom: 5px;
+              gap: 10px;
+            }
+
+            .item-quantity {
+              background: black;
+              color: white;
+              padding: 3px 8px;
+              border-radius: 3px;
+              font-weight: bold;
+              min-width: 30px;
+              text-align: center;
+            }
+
+            .item-name {
+              flex: 1;
+            }
+
+            .item-price {
+              font-weight: bold;
+              margin-left: auto;
+            }
+
+            .item-description {
+              font-size: 11px;
+              color: #666;
+              margin: 3px 0 3px 45px;
+              font-style: italic;
+            }
+
+            .customizations {
+              margin: 8px 0 8px 45px;
+              font-size: 11px;
+              line-height: 1.3;
+              background: #f8f8f8;
+              padding: 5px;
+              border-left: 3px solid #333;
+            }
+
+            .customization-item {
+              margin-bottom: 3px;
+            }
+
+            .customization-total {
+              margin-top: 5px;
+              padding-top: 3px;
+              border-top: 1px dashed #666;
+              font-size: 11px;
+            }
+
+            .special-instructions {
+              background: #fff3cd;
+              padding: 8px;
+              margin: 8px 0 8px 45px;
+              border-left: 4px solid #ffc107;
+              font-size: 11px;
+            }
+
+            .pricing-section {
+              margin-top: 20px;
+              padding-top: 15px;
+              border-top: 2px solid black;
+            }
+
+            .pricing-section h3 {
+              font-size: 14px;
+              font-weight: bold;
+              text-transform: uppercase;
+              margin-bottom: 10px;
+            }
+
+            .price-line {
+              display: flex;
+              justify-content: space-between;
+              margin-bottom: 5px;
+              font-size: 12px;
+            }
+
+            .price-line.discount {
+              color: green;
+            }
+
+            .price-line.total {
+              font-weight: bold;
+              font-size: 14px;
+              border-top: 1px solid black;
+              padding-top: 8px;
+              margin-top: 8px;
+            }
+
+            .footer {
+              margin-top: 25px;
+              text-align: center;
+              font-size: 10px;
+              color: #666;
+              border-top: 1px solid #ccc;
+              padding-top: 15px;
+            }
+
+            .powered-by {
+              margin-top: 10px;
+              font-size: 11px;
+              font-weight: bold;
+              color: #F97316;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-container">
+            <!-- Header -->
+            <div class="header">
+              <div class="restaurant-name">Tabsy Restaurant</div>
+              <div class="ticket-type">${isKitchen ? 'Kitchen Ticket' : 'Order Receipt'}</div>
+            </div>
+
+            ${isKitchen && order.status === 'RECEIVED' ? `
+              <div class="kitchen-alert">
+                🔥 NEW ORDER - PREPARE IMMEDIATELY 🔥
+              </div>
+            ` : ''}
+
+            <!-- Order Information -->
+            <div class="order-info">
+              <div class="info-item">
+                <span class="info-label">Order #:</span>
+                <span>${order.orderNumber}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Table:</span>
+                <span>${order.tableId ? `Table ${order.tableId.slice(-2)}` : 'No Table'}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Status:</span>
+                <span>${order.status?.replace('_', ' ')}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Guest:</span>
+                <span>${order.customerName || 'Guest User'}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Order Time:</span>
+                <span>${format(new Date(order.createdAt), 'MMM dd, yyyy - HH:mm')}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Print Time:</span>
+                <span>${format(new Date(), 'MMM dd, yyyy - HH:mm:ss')}</span>
+              </div>
+            </div>
+
+            ${isKitchen && order.estimatedPreparationTime ? `
+              <div class="prep-time">
+                ⏱️ Estimated Prep Time: ${order.estimatedPreparationTime} minutes
+              </div>
+            ` : ''}
+
+            <!-- Order Items -->
+            <div class="items-section">
+              <div class="section-title">Order Items (${order.items.length})</div>
+              ${itemsHTML}
+            </div>
+
+            <!-- Order Special Instructions -->
+            ${order.specialInstructions ? `
+              <div class="special-instructions" style="margin-left: 0; border-left: 4px solid #ffc107;">
+                <strong>📝 Order Instructions:</strong><br>
+                ${order.specialInstructions}
+              </div>
+            ` : ''}
+
+            ${pricingHTML}
+
+            <!-- Footer -->
+            <div class="footer">
+              ${isKitchen ? `
+                <div>Kitchen Copy - Please Prepare Items As Listed</div>
+                <div>Order Status: ${order.status?.replace('_', ' ')} | Printed: ${format(new Date(), 'HH:mm:ss')}</div>
+              ` : `
+                <div>Thank you for your order!</div>
+                <div>Order placed: ${format(new Date(order.createdAt), 'PPpp')}</div>
+              `}
+              <div class="powered-by">Powered by Tabsy | Seamless Dining Experience</div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+
+    printWindow.document.close();
+
+    // Wait a moment for content to render before printing
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
+  };
+
   if (!mounted || !order) return null;
 
   return (
@@ -171,14 +596,39 @@ export function OrderDetailSlidePanel({
               </p>
             </div>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="text-primary-foreground hover:bg-primary-foreground/20 h-8 w-8 p-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Print Buttons */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handlePrint('kitchen')}
+                className="text-primary-foreground hover:bg-primary-foreground/20 h-8 px-2"
+                title="Print Kitchen Ticket"
+              >
+                <ChefHat className="h-4 w-4 mr-1" />
+                <span className="text-xs">Kitchen</span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handlePrint('customer')}
+                className="text-primary-foreground hover:bg-primary-foreground/20 h-8 px-2"
+                title="Print Customer Receipt"
+              >
+                <Receipt className="h-4 w-4 mr-1" />
+                <span className="text-xs">Receipt</span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                className="text-primary-foreground hover:bg-primary-foreground/20 h-8 w-8 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
 
           {/* Status Progress Bar */}
@@ -304,30 +754,18 @@ export function OrderDetailSlidePanel({
                     </div>
                   </div>
 
-                  {/* Selected Options */}
-                  {item.options && Array.isArray(item.options) && item.options.length > 0 && (
+                  {/* Customizations */}
+                  {((item.options && item.options.length > 0) ||
+                    (item.selectedOptions && item.selectedOptions.length > 0) ||
+                    ((item as any).options)) && (
                     <div className="mt-2 p-2 bg-muted/50 rounded border-l-2 border-primary/20">
                       <p className="text-xs font-medium text-foreground/90 mb-1">Customizations:</p>
-                      {item.options.map((option: any, optionIndex: number) => (
-                        <div key={optionIndex} className="text-xs text-foreground/80">
-                          <span className="font-medium">{option.optionName || option.name}:</span>
-                          {(option.selectedValues || option.values || []).map(
-                            (value: any, valueIndex: number) => (
-                              <span key={valueIndex} className="ml-1">
-                                {value.valueName || value.name || value}
-                                {value.priceModifier && value.priceModifier !== 0 && (
-                                  <span className="text-foreground/70">
-                                    ({value.priceModifier > 0 ? '+' : ''}$
-                                    {value.priceModifier.toFixed(2)})
-                                  </span>
-                                )}
-                                {valueIndex <
-                                  (option.selectedValues || option.values || []).length - 1 && ', '}
-                              </span>
-                            ),
-                          )}
-                        </div>
-                      ))}
+                      <CustomizationList
+                        customizations={item.options || item.selectedOptions || (item as any).options}
+                        compact={true}
+                        showPrices={true}
+                        className="text-xs text-foreground/80"
+                      />
                     </div>
                   )}
 
@@ -409,6 +847,29 @@ export function OrderDetailSlidePanel({
 
         {/* Footer Actions */}
         <div className="border-t bg-background p-4 flex-shrink-0">
+          {/* Print Actions Row */}
+          <div className="flex gap-2 mb-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePrint('kitchen')}
+              className="flex-1"
+            >
+              <Printer className="w-4 h-4 mr-2" />
+              Print Kitchen Ticket
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePrint('customer')}
+              className="flex-1"
+            >
+              <Receipt className="w-4 h-4 mr-2" />
+              Print Customer Receipt
+            </Button>
+          </div>
+
+          {/* Status Actions Row */}
           <div className="flex gap-2">
             {canCancelOrder(order.status) && (
               <Button

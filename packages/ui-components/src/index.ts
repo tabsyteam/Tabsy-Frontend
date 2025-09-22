@@ -3,6 +3,7 @@ export * from './components/button'
 export * from './components/input'
 export * from './components/card'
 export * from './components/badge'
+export * from './components/customization-display'
 
 // Form Components with Validation
 export * from './components/Form'
@@ -36,6 +37,7 @@ export * from './components/menu-item-card'
 export * from './components/order-card'
 export * from './components/qr-code-display'
 export * from './components/cart-sidebar'
+export * from './components/cart-item-display'
 
 // Utilities
 export * from './lib/utils'

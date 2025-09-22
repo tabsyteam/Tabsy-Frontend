@@ -186,25 +186,46 @@ POST /api/v1/restaurants/:restaurantId/menu/items
 
 **Authentication**: Required (Restaurant Owner/Admin)
 
-**Request Body**:
+**Frontend-Optimized Request Body** (Recommended):
 ```typescript
 {
-  categoryId: string        // Required - Must be valid category ID
-  name: string             // Required - Item name
-  description: string      // Required - Item description
-  basePrice: number        // Required - Price in cents
-  displayOrder: number     // Required - Display order
-  status?: MenuItemStatus  // Optional - Default: AVAILABLE
-  imageUrl?: string        // Optional - Image URL
-  dietaryTypes?: DietaryType[]
-  allergens?: AllergenType[]
-  spiceLevel?: SpiceLevel
-  calories?: number
-  preparationTime: number  // Required - In minutes
-  nutritionalInfo?: NutritionalInfo
-  tags?: string[]
+  categoryId: string            // Required - Must be valid category ID
+  name: string                 // Required - Item name
+  description?: string         // Optional - Item description
+  basePrice: number            // Required - Price (frontend semantic name)
+  displayOrder?: number        // Optional - Display order (default: 0)
+  status?: MenuItemStatus      // Optional - AVAILABLE/UNAVAILABLE (default: AVAILABLE)
+  image?: string               // Optional - Image URL
+  dietaryTypes?: DietaryType[] // Optional - Array of dietary type enums
+  allergyInfo?: AllergyInfo    // Optional - Structured allergy information
+  spicyLevel?: SpiceLevel      // Optional - Spice level enum (0-4)
+  calories?: number            // Optional - Calorie count
+  preparationTime?: number     // Optional - Time in minutes
+  nutritionalInfo?: NutritionalInfo // Optional - Detailed nutrition data
+  tags?: string[]              // Optional - Searchable tags
 }
 ```
+
+**Backend Compatibility**: The API accepts both frontend semantic field names and backend database field names:
+- `basePrice` OR `price`
+- `status` OR `active`
+- `spicyLevel` OR `spiceLevel`
+- `dietaryTypes` OR `dietaryIndicators`
+
+The backend service layer automatically transforms frontend field names to the appropriate database format.
+
+**Architecture Pattern**:
+```
+Frontend (Semantic) → API Validator (Flexible) → Service (Transform) → Database (Optimized)
+   basePrice       →   accepts both     →    price     →      price
+   status          →   accepts both     →    active    →      active
+```
+
+This approach provides:
+- **Frontend**: Business-friendly, semantic field names
+- **Backend**: Maximum compatibility and automatic transformation
+- **Database**: Optimized storage format
+- **Developer Experience**: Intuitive API contracts
 
 ---
 
@@ -396,7 +417,27 @@ if (sessionStatus.data.sessionStatus.needsAttention) {
 ### Correct Implementation Example
 
 ```typescript
-// ✅ CORRECT - Updated CreateCategoryModal
+// ✅ CORRECT - Frontend uses semantic field names
+const createMenuItem = async (data: MenuItemFormData) => {
+  const requestBody = {
+    name: data.name.trim(),
+    description: data.description.trim(),
+    basePrice: data.basePrice,              // Frontend semantic name
+    categoryId: data.categoryId,
+    displayOrder: data.displayOrder,
+    status: data.active ? 'AVAILABLE' : 'UNAVAILABLE', // Frontend enum
+    dietaryTypes: data.dietaryTypes,        // Frontend typed array
+    allergyInfo: data.allergyInfo,
+    spicyLevel: data.spicyLevel,            // Frontend enum
+    preparationTime: data.preparationTime,
+    nutritionalInfo: data.nutritionalInfo,
+    tags: data.tags
+  }
+
+  return await tabsyClient.menu.createItem(restaurantId, requestBody)
+}
+
+// ✅ CORRECT - Category creation
 const createCategory = async (data: CategoryFormData) => {
   const requestBody = {
     name: data.name.trim(),
@@ -412,18 +453,28 @@ const createCategory = async (data: CategoryFormData) => {
 }
 ```
 
-### Incorrect Implementation (Causes Errors)
+### Legacy Implementation (Not Recommended)
 
 ```typescript
-// ❌ INCORRECT - Will cause validation errors
-const createCategory = async (data: CategoryFormData) => {
-  return await tabsyClient.menu.createCategory(restaurantId, {
-    menuId: '',           // ❌ Not allowed in request body
+// ⚠️ LEGACY - Backend field names (still works but not semantic)
+const createMenuItem = async (data: MenuItemFormData) => {
+  return await tabsyClient.menu.createItem(restaurantId, {
     name: data.name,
-    description: data.description,
-    displayOrder: data.displayOrder,
-    isActive: true        // ❌ Should be 'active'
-    imageUrl: data.image  // ❌ Should be 'image'
+    price: data.basePrice,              // Backend field name
+    active: data.active,                // Backend boolean
+    dietaryIndicators: data.dietaryTypes, // Backend field name
+    spicyLevel: data.spicyLevel,        // Backend field name
+    // Missing: preparationTime, nutritionalInfo, tags (harder to work with)
+  })
+}
+
+// ❌ OLD INCORRECT - Before validator update
+const createMenuItem = async (data: MenuItemFormData) => {
+  return await tabsyClient.menu.createItem(restaurantId, {
+    basePrice: data.basePrice,    // ❌ Old validator rejected this
+    status: 'AVAILABLE',          // ❌ Old validator rejected this
+    preparationTime: 15,          // ❌ Old validator rejected this
+    // Would cause: "basePrice is not allowed, status is not allowed, preparationTime is not allowed"
   })
 }
 ```

@@ -3,6 +3,7 @@ import { Poppins } from 'next/font/google'
 import './globals.css'
 import { ClientProviders } from './client-providers'
 import { cn } from '@/lib/utils'
+import SessionExpiryNotification from '@/components/session/SessionExpiryNotification'
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -67,6 +68,7 @@ export default function RootLayout({
       )}>
         <ClientProviders>
           <div className="relative flex min-h-screen flex-col">
+            <SessionExpiryNotification />
             <main className="flex-1">
               {children}
             </main>

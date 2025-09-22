@@ -124,4 +124,35 @@ export class RestaurantTableSessionAPI {
   }>> {
     return this.client.get('/restaurant/table-sessions/alerts')
   }
+
+  /**
+   * GET /restaurant/table-sessions/:sessionId/payment-summary - Get payment summary for decision making
+   */
+  async getPaymentSummary(sessionId: string): Promise<ApiResponse<{
+    tableSessionId: string
+    status: string
+    totalOwed: number
+    totalPaid: number
+    remainingBalance: number
+    isFullyPaid: boolean
+    orders: Array<{
+      orderId: string
+      orderNumber: string
+      total: number
+      paidAmount: number
+      remainingAmount: number
+      isFullyPaid: boolean
+    }>
+    session: {
+      id: string
+      sessionCode: string
+      status: string
+      createdAt: string
+      expiresAt: string
+      lastActivity: string
+    }
+    recommendations: string[]
+  }>> {
+    return this.client.get(`/restaurant/table-sessions/${sessionId}/payment-summary`)
+  }
 }

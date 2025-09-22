@@ -34,6 +34,7 @@ interface MenuDetailSlidePanelProps {
   onEdit: (data: MenuCategory | MenuItem) => void;
   onDelete: (id: string) => void;
   onToggleStatus: (id: string, type: 'category' | 'item') => void;
+  onManageCustomizations?: (item: MenuItem) => void;
 }
 
 export function MenuDetailSlidePanel({
@@ -45,6 +46,7 @@ export function MenuDetailSlidePanel({
   onEdit,
   onDelete,
   onToggleStatus,
+  onManageCustomizations,
 }: MenuDetailSlidePanelProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
@@ -434,6 +436,98 @@ export function MenuDetailSlidePanel({
                               Level {(item as any).spicyLevel} of 5
                             </span>
                           </div>
+                        </div>
+                      )}
+
+                      {/* Customizations */}
+                      {type === 'item' && item && (
+                        <div className="space-y-3 mt-6">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-md font-semibold text-foreground flex items-center">
+                              <span className="w-2 h-2 bg-primary rounded-full mr-3"></span>
+                              Customizations ({item.options?.length || 0})
+                            </h4>
+                            <Button
+                              onClick={() => {
+                                // This will be handled by parent component
+                                onManageCustomizations?.(item);
+                              }}
+                              size="sm"
+                              variant="outline"
+                              className="hover:scale-105 transition-all duration-200"
+                            >
+                              <Settings className="h-4 w-4 mr-2" />
+                              Manage
+                            </Button>
+                          </div>
+                          {item.options && item.options.length > 0 ? (
+                            <div className="space-y-4">
+                              {item.options.map((option, index) => (
+                              <div key={option.id} className="p-4 bg-primary/5 border border-primary/20 rounded-xl">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1">
+                                    <h5 className="font-medium text-foreground flex items-center gap-2">
+                                      {option.name}
+                                      {(option.isRequired || (option as any).required) && (
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                          Required
+                                        </span>
+                                      )}
+                                    </h5>
+                                    {option.description && (
+                                      <p className="text-sm text-muted-foreground mt-1">{option.description}</p>
+                                    )}
+                                  </div>
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                                    {(option.type || (option as any).optionType)?.replace('_', ' ') || 'N/A'}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-4 text-sm text-muted-foreground mb-3">
+                                  {(option.type || (option as any).optionType) !== 'TEXT_INPUT' && (option.type || (option as any).optionType) !== 'NUMBER_INPUT' && (
+                                    <>
+                                      <span>Min: {option.minSelections}</span>
+                                      <span>Max: {option.maxSelections}</span>
+                                    </>
+                                  )}
+                                  <span>{option.values?.length || 0} options</span>
+                                </div>
+
+                                {/* Option Values */}
+                                {option.values && option.values.length > 0 && (
+                                  <div className="space-y-2">
+                                    <h6 className="text-sm font-medium text-foreground">Available Options:</h6>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                      {option.values.map((value) => (
+                                        <div key={value.id} className="flex items-center justify-between p-2 bg-background border border-border rounded-lg">
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium">{value.name}</span>
+                                            {value.isDefault && (
+                                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                Default
+                                              </span>
+                                            )}
+                                          </div>
+                                          {value.priceModifier !== 0 && (
+                                            <span className="text-sm font-medium text-primary">
+                                              {value.priceModifier > 0 ? '+' : ''}{formatPrice(value.priceModifier)}
+                                            </span>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                            </div>
+                          ) : (
+                            <div className="text-center py-8 text-muted-foreground border border-dashed border-border rounded-lg">
+                              <Settings className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                              <p className="text-sm font-medium">No customization options yet</p>
+                              <p className="text-xs">Click "Manage" above to add customization options</p>
+                            </div>
+                          )}
                         </div>
                       )}
 

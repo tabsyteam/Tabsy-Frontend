@@ -17,6 +17,22 @@ export interface RestaurantListFilters {
   search?: string
 }
 
+export interface CallWaiterRequest {
+  tableId: string
+  orderId?: string
+  customerName?: string
+  urgency?: 'low' | 'normal' | 'high'
+  message?: string
+}
+
+export interface CallWaiterResponse {
+  requestId: string
+  tableId: string
+  orderId?: string
+  message: string
+  estimatedResponseTime: string
+}
+
 export class RestaurantAPI {
   constructor(private client: TabsyApiClient) {}
 
@@ -83,5 +99,12 @@ export class RestaurantAPI {
    */
   async removeStaff(restaurantId: string, userId: string): Promise<ApiResponse<void>> {
     return this.client.delete(`/restaurants/${restaurantId}/staff/${userId}`)
+  }
+
+  /**
+   * POST /restaurants/:id/call-waiter - Request waiter assistance
+   */
+  async callWaiter(restaurantId: string, data: CallWaiterRequest): Promise<ApiResponse<CallWaiterResponse>> {
+    return this.client.post(`/restaurants/${restaurantId}/call-waiter`, data)
   }
 }

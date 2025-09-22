@@ -1,8 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Button } from '@tabsy/ui-components'
-import { useAuth } from '@tabsy/ui-components'
+import { useEffect, useState, useMemo, useCallback } from 'react'
+import { Button, useAuth } from '@tabsy/ui-components'
 import { BarChart3, ShoppingCart, Users, Utensils, TrendingUp, Clock } from 'lucide-react'
 import { OrdersManagement } from '@/components/orders/OrdersManagement'
 import { MenuManagement } from '@/components/menu/MenuManagement'
@@ -11,9 +10,13 @@ import { DynamicWeeklyOverviewChart } from '@/components'
 import { Header } from '@/components/layout'
 import { useRouter } from 'next/navigation'
 import { User as UserType } from '@tabsy/shared-types'
-import { createDashboardHooks } from '@tabsy/react-query-hooks'
+import { createDashboardHooks, createNotificationHooks } from '@tabsy/react-query-hooks'
 import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { AssistanceAlertsContainer } from '@/components/alerts/AssistanceAlert'
+import { useWebSocketContext, useWebSocketEvent } from '@/contexts/WebSocketContext'
+import { type Notification } from '@tabsy/shared-types'
+import { useNotificationSound } from '@/hooks/useNotificationSound'
 
 interface DashboardStats {
   todayOrders: number
@@ -46,6 +49,9 @@ export function DashboardClient(): JSX.Element {
   
   // Get current restaurant
   const { restaurantId, restaurant, hasRestaurantAccess, isLoading: restaurantLoading } = useCurrentRestaurant()
+
+  // Query client for cache invalidation
+  const queryClient = useQueryClient()
   
   // Debug logging for restaurant data
   console.log('🏪 Dashboard - Restaurant data:', {
@@ -61,17 +67,66 @@ export function DashboardClient(): JSX.Element {
   // ===========================
   const dashboardHooks = createDashboardHooks(useQuery)
   
-  // Use the factory hooks - NOW ENABLED!
-  const { 
-    data: metricsData, 
-    isLoading: metricsLoading, 
-    error: metricsError 
-  } = dashboardHooks.useDashboardMetrics(restaurantId || '')
-  
-  const { 
-    data: weeklyData, 
-    isLoading: weeklyLoading 
-  } = dashboardHooks.useWeeklyOrderStats(restaurantId || '')
+  // RE-ENABLE DASHBOARD METRICS WITH ENHANCED SAFEGUARDS
+  const {
+    data: metricsData,
+    isLoading: metricsLoading,
+    error: metricsError
+  } = dashboardHooks.useDashboardMetrics(restaurantId || '', {
+    enabled: !!restaurantId && !!auth.session?.token,
+    retry: (failureCount, error: any) => {
+      // Don't retry rate limit errors or auth errors
+      if (error?.status === 429 || error?.code === 'RATE_LIMIT_EXCEEDED' || error?.status === 401 || error?.status === 403) {
+        return false
+      }
+      return failureCount < 2
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000)
+  })
+
+  // RE-ENABLE WEEKLY STATS WITH ENHANCED SAFEGUARDS
+  const {
+    data: weeklyData,
+    isLoading: weeklyLoading
+  } = dashboardHooks.useWeeklyOrderStats(restaurantId || '', {
+    enabled: !!restaurantId && !!auth.session?.token,
+    staleTime: 600000, // 10 minutes (less frequent updates for weekly data)
+    retry: (failureCount, error: any) => {
+      if (error?.status === 429 || error?.code === 'RATE_LIMIT_EXCEEDED' || error?.status === 401 || error?.status === 403) {
+        return false
+      }
+      return failureCount < 2
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000)
+  })
+
+  // Assistance alerts and notifications
+  const [assistanceNotifications, setAssistanceNotifications] = useState<Notification[]>([])
+
+  // Notification sound for assistance requests
+  const { playSound: playAssistanceSound } = useNotificationSound({
+    enabled: true,
+    volume: 0.7,
+    priority: 'high'
+  })
+
+  // Re-enable notifications with proper configuration
+  const notificationHooks = createNotificationHooks(useQuery)
+  const {
+    data: notificationsData,
+    refetch: refetchNotifications
+  } = notificationHooks.useUserNotifications(
+    { limit: 50, unreadOnly: false },
+    {
+      enabled: !!user?.id,
+      refetchInterval: 60000, // Reduced frequency to 1 minute
+      staleTime: 30000,
+      refetchOnWindowFocus: false
+    }
+  )
+
+  // Use WebSocket from context (singleton pattern)
+  const { client: wsClient, isConnected: wsConnected } = useWebSocketContext()
 
   console.log('Dashboard - State:', {
     restaurantId,
@@ -84,6 +139,16 @@ export function DashboardClient(): JSX.Element {
     authUser: auth.user ? `${auth.user.firstName} ${auth.user.lastName}` : 'no user'
   })
 
+  // Additional debug logging for dashboard data issues
+  console.log('Dashboard - Detailed metrics analysis:', {
+    metricsDataType: typeof metricsData,
+    metricsDataKeys: metricsData ? Object.keys(metricsData) : 'no data',
+    todayOrders: metricsData?.todayOrders,
+    todayRevenue: metricsData?.todayRevenue,
+    activeTables: metricsData?.activeTables,
+    recentActivityCount: metricsData?.recentActivity?.length || 0
+  })
+
   // EFFECT HOOK - ALWAYS CALLED
   useEffect(() => {
     // Check if user has restaurant access
@@ -93,7 +158,141 @@ export function DashboardClient(): JSX.Element {
     }
   }, [hasRestaurantAccess])
 
-  const handleLogout = async () => {
+  // Update assistance notifications from notification data
+  useEffect(() => {
+    if (notificationsData?.notifications) {
+      const assistanceNotifs = notificationsData.notifications.filter(
+        (notif: Notification) => notif.type === 'ASSISTANCE_REQUIRED' && !notif.isRead
+      )
+      setAssistanceNotifications(assistanceNotifs)
+    }
+  }, [notificationsData])
+
+  // WebSocket event listeners for real-time assistance requests
+  useWebSocketEvent(
+    'assistance:requested',
+    (payload) => {
+      console.log('🚨 Assistance requested:', payload)
+
+      // Create a temporary notification object for immediate display
+      const assistanceNotification: Notification = {
+        id: payload.notificationId,
+        recipientId: user?.id || undefined,
+        type: 'ASSISTANCE_REQUIRED',
+        content: `Assistance requested at Table ${payload.tableId}`,
+        metadata: {
+          restaurantId: restaurantId || '',
+          tableId: payload.tableId,
+          orderId: payload.orderId,
+          customerName: payload.customerName,
+          urgency: payload.urgency || 'normal',
+          message: payload.message,
+          requestTime: payload.requestTime,
+          type: 'waiter_assistance'
+        },
+        isRead: false,
+        createdAt: payload.requestTime,
+        updatedAt: payload.requestTime
+      }
+
+      // Add to assistance notifications for immediate display
+      setAssistanceNotifications(prev => [assistanceNotification, ...prev])
+
+      // Play assistance sound immediately
+      playAssistanceSound()
+
+      // Browser notification for background alerts
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new window.Notification('🚨 Assistance Request', {
+          body: `Table ${payload.tableId} needs assistance${payload.message ? ': ' + payload.message : ''}`,
+          icon: '/favicon.ico',
+          tag: 'assistance-request',
+          requireInteraction: true
+        })
+      } else if ('Notification' in window && Notification.permission === 'default') {
+        // Request permission for future notifications
+        Notification.requestPermission()
+      }
+
+      // Refetch notifications to get the latest from server
+      refetchNotifications()
+    },
+    [user?.id, refetchNotifications, playAssistanceSound]
+  )
+
+  // Listen for notification created events
+  useWebSocketEvent(
+    'notification:created',
+    (payload) => {
+      console.log('📢 Notification created:', payload)
+      // Refetch notifications when new ones are created
+      refetchNotifications()
+    },
+    [refetchNotifications]
+  )
+
+  // OPTIMIZATION: Memoize WebSocket event handlers with throttling to prevent excessive API calls
+  const handleOrderCreated = useCallback((payload: any) => {
+    console.log('📦 New order created:', payload)
+    // Throttle invalidation to prevent too many API calls
+    setTimeout(() => {
+      queryClient.invalidateQueries({
+        queryKey: ['dashboard-metrics', restaurantId],
+        exact: false
+      })
+    }, 1000) // 1 second delay to batch multiple events
+  }, [queryClient, restaurantId])
+
+  const handleOrderStatusUpdated = useCallback((payload: any) => {
+    console.log('🔄 Order status updated:', payload)
+    // Only invalidate for certain status changes that affect dashboard metrics
+    if (payload.status === 'COMPLETED' || payload.status === 'CANCELLED') {
+      setTimeout(() => {
+        queryClient.invalidateQueries({
+          queryKey: ['dashboard-metrics', restaurantId],
+          exact: false
+        })
+      }, 1000)
+    }
+  }, [queryClient, restaurantId])
+
+  const handlePaymentCompleted = useCallback((payload: any) => {
+    console.log('💰 Payment completed:', payload)
+    // Only invalidate revenue-related queries with throttling
+    setTimeout(() => {
+      queryClient.invalidateQueries({
+        queryKey: ['dashboard-metrics', restaurantId],
+        exact: false
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['weekly-stats', restaurantId],
+        exact: false
+      })
+    }, 2000) // Longer delay for revenue updates as they're less frequent
+  }, [queryClient, restaurantId])
+
+  // Listen for order events to keep dashboard in sync
+  useWebSocketEvent('order:created', handleOrderCreated, [handleOrderCreated])
+  useWebSocketEvent('order:status_updated', handleOrderStatusUpdated, [handleOrderStatusUpdated])
+  useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted])
+
+  // OPTIMIZATION: Memoize assistance handlers to prevent child re-renders
+  const handleDismissAssistance = useCallback((notificationId: string) => {
+    setAssistanceNotifications(prev =>
+      prev.filter(notif => notif.id !== notificationId)
+    )
+  }, [])
+
+  const handleAcknowledgeAssistance = useCallback((notificationId: string) => {
+    setAssistanceNotifications(prev =>
+      prev.filter(notif => notif.id !== notificationId)
+    )
+    // Refetch notifications to update the overall count
+    refetchNotifications()
+  }, [refetchNotifications])
+
+  // OPTIMIZATION: Memoize event handlers to prevent child re-renders
+  const handleLogout = useCallback(async () => {
     try {
       setIsLoggingOut(true)
       await auth.logout()
@@ -103,17 +302,66 @@ export function DashboardClient(): JSX.Element {
     } finally {
       setIsLoggingOut(false)
     }
-  }
+  }, [auth, router])
+
+  // OPTIMIZATION: Memoize stats calculation to prevent re-computation on every render
+  const stats: DashboardStats = useMemo(() => {
+    const metricsTyped = metricsData as DashboardStats | undefined | null
+    return {
+      todayOrders: metricsTyped?.todayOrders || 0,
+      todayRevenue: metricsTyped?.todayRevenue || 0,
+      activeTables: metricsTyped?.activeTables || 0,
+      totalMenuItems: metricsTyped?.totalMenuItems || 0,
+      averageOrderValue: metricsTyped?.averageOrderValue || 0,
+      ordersTrend: metricsTyped?.ordersTrend || 0,
+      revenueTrend: metricsTyped?.revenueTrend || 0,
+      recentActivity: metricsTyped?.recentActivity || []
+    }
+  }, [metricsData])
+
+  // OPTIMIZATION: Memoize formatting functions to prevent recreation on every render
+  const formatCurrency = useCallback((amount: number): string => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount)
+  }, [])
+
+  const formatTrend = useCallback((trend: number): string => {
+    const sign = trend >= 0 ? '+' : ''
+    return `${sign}${trend.toFixed(1)}%`
+  }, [])
+
+  const getTrendColor = useCallback((trend: number): string => {
+    return trend >= 0 ? 'text-primary' : 'text-accent'
+  }, [])
 
   // RENDER LOADING STATE - AFTER ALL HOOKS
-  if (metricsLoading || restaurantLoading || !restaurantId) {
+  // Only show loading if restaurant data is still loading, not if missing restaurant association
+  if (restaurantLoading && restaurantId) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-          <p className="text-foreground/80">
-            {restaurantLoading ? 'Loading restaurant...' : 'Loading dashboard...'}
+          <p className="text-foreground/80">Loading restaurant...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error if user doesn't have restaurant access
+  if (!hasRestaurantAccess || !restaurantId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-foreground mb-4">Restaurant Access Required</h2>
+          <p className="text-foreground/80 mb-4">
+            Your account is not associated with any restaurant. Please contact your administrator.
           </p>
+          <p className="text-sm text-foreground/60 mb-4">
+            User ID: {user?.id} | Role: {user?.role}
+          </p>
+          <Button onClick={handleLogout} variant="outline">Sign Out</Button>
         </div>
       </div>
     )
@@ -165,35 +413,6 @@ export function DashboardClient(): JSX.Element {
         </div>
       </div>
     )
-  }
-
-  // Get stats from real data
-  const metricsTyped = metricsData as DashboardStats | undefined | null
-  const stats: DashboardStats = {
-    todayOrders: metricsTyped?.todayOrders || 0,
-    todayRevenue: metricsTyped?.todayRevenue || 0,
-    activeTables: metricsTyped?.activeTables || 0,
-    totalMenuItems: metricsTyped?.totalMenuItems || 0,
-    averageOrderValue: metricsTyped?.averageOrderValue || 0,
-    ordersTrend: metricsTyped?.ordersTrend || 0,
-    revenueTrend: metricsTyped?.revenueTrend || 0,
-    recentActivity: metricsTyped?.recentActivity || []
-  }
-
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount)
-  }
-
-  const formatTrend = (trend: number): string => {
-    const sign = trend >= 0 ? '+' : ''
-    return `${sign}${trend.toFixed(1)}%`
-  }
-
-  const getTrendColor = (trend: number): string => {
-    return trend >= 0 ? 'text-primary' : 'text-accent'
   }
 
   return (
@@ -402,6 +621,13 @@ export function DashboardClient(): JSX.Element {
           </div>
         ) : null}
       </main>
+
+      {/* Assistance Alerts Overlay */}
+      <AssistanceAlertsContainer
+        notifications={assistanceNotifications}
+        onDismiss={handleDismissAssistance}
+        onAcknowledge={handleAcknowledgeAssistance}
+      />
     </div>
   )
 }

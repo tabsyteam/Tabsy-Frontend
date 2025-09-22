@@ -1,14 +1,18 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Filter, TrendingUp, Clock, Search } from 'lucide-react'
+import { toast } from 'sonner'
 import SearchBar from '@/components/navigation/SearchBar'
 import MenuItemCard from '@/components/cards/MenuItemCard'
 import CategoryCard from '@/components/cards/CategoryCard'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { ItemDetailModal } from '@/components/menu/ItemDetailModal'
 import { useApi } from '@/components/providers/api-provider'
+import { useCart } from '@/hooks/useCart'
+import { useMenuItemActions } from '@/hooks/useMenuItemActions'
 import { MenuItem, MenuCategory, AllergyInfo } from '@tabsy/shared-types'
 import { SessionManager } from '@/lib/session'
 
@@ -33,6 +37,7 @@ const convertAllergyInfoToArray = (allergyInfo?: AllergyInfo): string[] | undefi
 export function SearchView() {
   const { api } = useApi()
   const searchParams = useSearchParams()
+  const { cart, cartCount, getItemQuantity } = useCart()
 
   // Get restaurantId from URL parameters or session
   const urlRestaurantId = searchParams.get('restaurant')
@@ -55,6 +60,21 @@ export function SearchView() {
   const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([])
   const [menuSuggestions, setMenuSuggestions] = useState<MenuItem[]>([])
   const [allMenuItems, setAllMenuItems] = useState<MenuItem[]>([])
+  const [suggestionTimeout, setSuggestionTimeout] = useState<NodeJS.Timeout | null>(null)
+
+  // Menu item actions (favorites, cart, modal)
+  const {
+    favorites,
+    toggleFavorite,
+    handleAddToCart,
+    handleQuantityChange,
+    selectedItem,
+    showItemModal,
+    selectedCartItem,
+    handleItemClick,
+    closeModal,
+    handleAddToCartFromModal
+  } = useMenuItemActions({ restaurantId, menuCategories })
 
   // Popular searches from localStorage or default
   const popularSearches = [
@@ -107,6 +127,15 @@ export function SearchView() {
     loadMenuData()
   }, [restaurantId, api])
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (suggestionTimeout) {
+        clearTimeout(suggestionTimeout)
+      }
+    }
+  }, [suggestionTimeout])
+
   // Save search query to recent searches
   const saveRecentSearch = (query: string) => {
     if (!query.trim() || query.length < 2) return
@@ -143,11 +172,19 @@ export function SearchView() {
         return
       }
 
-      // Use real API call to search menu items
-      const response = await api.menu.getItems(restaurantId, {
+      // Build filters object with search query and selected category
+      const filters: any = {
         search: query,
         available: true
-      })
+      };
+
+      // Add category filter if a specific category is selected
+      if (selectedCategory !== 'all') {
+        filters.categoryId = selectedCategory;
+      }
+
+      // Use real API call to search menu items
+      const response = await api.menu.getItems(restaurantId, filters)
 
       if (response.success && response.data) {
         setSearchResults(response.data)
@@ -163,20 +200,32 @@ export function SearchView() {
     }
   }
 
-  // Handle getting suggestions for auto-completion
-  const handleGetSuggestions = (query: string) => {
+  // Handle getting suggestions for auto-completion with debouncing
+  const handleGetSuggestions = useCallback((query: string) => {
+    // Clear existing timeout
+    if (suggestionTimeout) {
+      clearTimeout(suggestionTimeout)
+    }
+
     if (!query.trim() || query.length < 2) {
       setMenuSuggestions([])
+      setSuggestionTimeout(null)
       return
     }
 
-    const filtered = allMenuItems.filter(item =>
-      item.name.toLowerCase().includes(query.toLowerCase()) ||
-      (item.description && item.description.toLowerCase().includes(query.toLowerCase()))
-    ).slice(0, 5) // Limit to 5 suggestions
+    // Set new timeout for debouncing
+    const timeout = setTimeout(() => {
+      const filtered = allMenuItems.filter(item =>
+        item.name.toLowerCase().includes(query.toLowerCase()) ||
+        (item.description && item.description.toLowerCase().includes(query.toLowerCase()))
+      ).slice(0, 5) // Limit to 5 suggestions
 
-    setMenuSuggestions(filtered)
-  }
+      setMenuSuggestions(filtered)
+      setSuggestionTimeout(null)
+    }, 300) // 300ms debounce
+
+    setSuggestionTimeout(timeout)
+  }, [allMenuItems, suggestionTimeout])
 
   // Handle suggestion selection
   const handleSuggestionSelect = (item: MenuItem) => {
@@ -186,9 +235,10 @@ export function SearchView() {
     saveRecentSearch(item.name)
   }
 
-  // Handle category filter (placeholder for future implementation)
+  // Handle category filter
   const handleCategoryChange = (category: string) => {
     setSelectedCategory(category)
+    // If there's an active search query, re-run search with new category filter
     if (searchQuery) {
       handleSearch(searchQuery)
     }
@@ -339,17 +389,45 @@ export function SearchView() {
                     id: item.id,
                     name: item.name,
                     description: item.description || '',
-                    price: item.price ?? item.basePrice,
+                    price: (() => {
+                      // Smart price handling: detect if price is in cents and convert to dollars
+                      const rawPrice = item.price ?? item.basePrice;
+                      let finalPrice = rawPrice;
+                      // If price looks like it's in cents (e.g., 1499 for $14.99), convert it
+                      if (rawPrice > 100 && rawPrice % 1 === 0) {
+                        // Whole number over 100 - likely cents, convert to dollars
+                        finalPrice = rawPrice / 100;
+                      }
+                      return finalPrice;
+                    })(),
                     image: item.image || item.imageUrl,
                     category: item.categoryId,
                     dietaryIndicators: item.dietaryTypes?.map(type => type.replace('_', ' ').toLowerCase()),
                     allergyInfo: convertAllergyInfoToArray(item.allergyInfo),
                     spicyLevel: item.spicyLevel,
                     preparationTime: item.preparationTime,
-                    isPopular: false,
-                    isNew: false
+                    isPopular: item.tags?.includes('popular') || false,
+                    isNew: (() => {
+                      if (!item.createdAt) return false;
+                      const createdDate = new Date(item.createdAt);
+                      const now = new Date();
+                      const daysDiff = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+                      return daysDiff <= 7; // Consider items new if created within last 7 days
+                    })(),
+                    options: item.options || []
                   }}
-                  onAddToCart={() => {}}
+                  quantity={getItemQuantity(item.id)}
+                  onQuantityChange={(itemId, newQuantity) => {
+                    handleQuantityChange(itemId, newQuantity, item)
+                  }}
+                  onAddToCart={(menuItem, quantity) => handleAddToCart(item, quantity)}
+                  onToggleFavorite={toggleFavorite}
+                  onItemClick={(menuItem) => {
+                    handleItemClick(menuItem, item)
+                  }}
+                  isFavorite={favorites.has(item.id)}
+                  layout="grid"
+                  showQuickAdd={true}
                 />
               ))}
             </div>
@@ -438,6 +516,16 @@ export function SearchView() {
           </div>
         )}
       </div>
+
+      {/* Item Detail Modal */}
+      <ItemDetailModal
+        item={selectedItem}
+        isOpen={showItemModal}
+        onClose={closeModal}
+        existingQuantity={selectedItem ? getItemQuantity(selectedItem.id) : 0}
+        existingCartItem={selectedCartItem}
+        onAddToCart={handleAddToCartFromModal}
+      />
     </div>
   )
 }

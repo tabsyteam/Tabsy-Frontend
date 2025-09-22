@@ -2,24 +2,36 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { toast } from 'sonner'
-import { DietaryType, AllergyInfo, MenuItem } from '@tabsy/shared-types'
+import { DietaryType, AllergyInfo, MenuItem, OrderItemOption } from '@tabsy/shared-types'
+
+// Type guard to ensure a value is a string
+const isValidString = (value: unknown): value is string => {
+  return typeof value === 'string'
+}
+
+// Utility to safely extract and normalize special instructions
+const normalizeSpecialInstructions = (instructions: unknown): string | undefined => {
+  if (!instructions) return undefined
+  if (!isValidString(instructions)) return undefined
+
+  const trimmed = instructions.trim()
+  return trimmed.length > 0 ? trimmed : undefined
+}
 
 // Simple helper to check if items can be consolidated
-const canConsolidateItems = (existingItem: CartItem, newItem: { specialInstructions?: string }): boolean => {
-  const existingHasInstructions = existingItem.specialInstructions && existingItem.specialInstructions.trim()
-  const newHasInstructions = newItem.specialInstructions && newItem.specialInstructions.trim()
+const canConsolidateItems = (existingItem: CartItem, newItem: { specialInstructions?: unknown }): boolean => {
+  const existingInstructions = normalizeSpecialInstructions(existingItem.specialInstructions)
+  const newInstructions = normalizeSpecialInstructions(newItem.specialInstructions)
 
   console.log('[CART DEBUG] canConsolidateItems:', {
     existingItem: existingItem.name,
     existingCartItemId: existingItem.cartItemId,
-    existingSpecialInstructions: existingItem.specialInstructions,
-    existingHasInstructions,
-    newSpecialInstructions: newItem.specialInstructions,
-    newHasInstructions,
-    canConsolidate: !existingHasInstructions && !newHasInstructions
+    existingSpecialInstructions: existingInstructions,
+    newSpecialInstructions: newInstructions,
+    canConsolidate: !existingInstructions && !newInstructions
   })
 
-  return !existingHasInstructions && !newHasInstructions
+  return !existingInstructions && !newInstructions
 }
 
 export interface CartItem {
@@ -33,6 +45,7 @@ export interface CartItem {
   categoryName: string
   quantity: number
   customizations?: Record<string, any>
+  options?: OrderItemOption[] // Enhanced unified format
   specialInstructions?: string // Per-item special instructions
   allergyInfo?: AllergyInfo
   dietaryTypes: DietaryType[]
@@ -44,12 +57,14 @@ interface CartContextType {
   cart: CartItem[]
   cartCount: number
   cartTotal: number
-  addToCart: (item: MenuItem, quantity?: number, customizations?: Record<string, any>, categoryName?: string, specialInstructions?: string) => void
+  addToCart: (item: MenuItem, quantity?: number, customizations?: Record<string, any>, categoryName?: string, specialInstructions?: string, options?: OrderItemOption[]) => void
+  updateCartItem: (cartItemId: string, item: MenuItem, quantity: number, customizations?: Record<string, any>, specialInstructions?: string, options?: OrderItemOption[]) => void
   updateQuantity: (cartItemId: string, quantity: number) => void
   removeFromCart: (cartItemId: string) => void
   clearCart: () => void
   getItemQuantity: (itemId: string) => number
   findCartItemsForMenuItem: (itemId: string) => CartItem[]
+  getCartItem: (cartItemId: string) => CartItem | undefined
   isLoading: boolean
   error: string | null
 }
@@ -102,7 +117,8 @@ export function CartProvider({ children }: CartProviderProps) {
     quantity: number = 1,
     customizations: Record<string, any> = {},
     categoryName: string = 'Unknown Category',
-    specialInstructions?: string
+    specialInstructions?: string,
+    options?: OrderItemOption[]
   ) => {
     try {
       // Smart price handling: detect if price is in cents and convert to dollars
@@ -115,11 +131,9 @@ export function CartProvider({ children }: CartProviderProps) {
         finalPrice = rawPrice / 100;
       }
 
-      // Extract special instructions from customizations if provided there (for backward compatibility)
-      const extractedSpecialInstructions = specialInstructions || customizations?.specialInstructions
-      const finalSpecialInstructions = extractedSpecialInstructions && extractedSpecialInstructions.trim()
-        ? extractedSpecialInstructions.trim()
-        : undefined
+      // Extract and normalize special instructions with type safety
+      const extractedInstructions = specialInstructions || customizations?.specialInstructions
+      const finalSpecialInstructions = normalizeSpecialInstructions(extractedInstructions)
 
       const cartItem: CartItem = {
         id: item.id,
@@ -132,6 +146,7 @@ export function CartProvider({ children }: CartProviderProps) {
         categoryName: categoryName,
         quantity: Math.max(1, quantity),
         customizations: customizations || {},
+        options: options || [], // Enhanced unified format
         specialInstructions: finalSpecialInstructions?.trim() || undefined,
         allergyInfo: item.allergyInfo,
         dietaryTypes: item.dietaryTypes || [],
@@ -181,6 +196,52 @@ export function CartProvider({ children }: CartProviderProps) {
     }
   }, [])
 
+  // Update entire cart item (for customization editing)
+  const updateCartItem = useCallback((
+    cartItemId: string,
+    item: MenuItem,
+    quantity: number,
+    customizations: Record<string, any> = {},
+    specialInstructions?: string,
+    options?: OrderItemOption[]
+  ) => {
+    try {
+      // Smart price handling: detect if price is in cents and convert to dollars
+      const rawPrice = item.price ?? item.basePrice;
+      let finalPrice = rawPrice;
+
+      if (rawPrice > 100 && rawPrice % 1 === 0) {
+        finalPrice = rawPrice / 100;
+      }
+
+      const finalSpecialInstructions = specialInstructions && specialInstructions.trim()
+        ? specialInstructions.trim()
+        : undefined
+
+      setCart(prev => prev.map(cartItem => {
+        if (cartItem.cartItemId === cartItemId) {
+          return {
+            ...cartItem,
+            quantity: Math.max(1, quantity),
+            customizations: customizations || {},
+            options: options || [],
+            specialInstructions: finalSpecialInstructions,
+            basePrice: finalPrice
+          }
+        }
+        return cartItem
+      }))
+
+      toast.success(`Updated ${item.name}`, {
+        icon: '✏️',
+        duration: 2000
+      })
+    } catch (error) {
+      console.error('Failed to update cart item:', error)
+      toast.error('Failed to update cart item')
+    }
+  }, [])
+
   // Update item quantity
   const updateQuantity = useCallback((cartItemId: string, quantity: number) => {
     try {
@@ -197,6 +258,11 @@ export function CartProvider({ children }: CartProviderProps) {
       toast.error('Failed to update quantity')
     }
   }, [])
+
+  // Get specific cart item by cartItemId
+  const getCartItem = useCallback((cartItemId: string) => {
+    return cart.find(item => item.cartItemId === cartItemId)
+  }, [cart])
 
   // Remove item from cart
   const removeFromCart = useCallback((cartItemId: string) => {
@@ -248,18 +314,25 @@ export function CartProvider({ children }: CartProviderProps) {
 
   // Calculate cart metrics
   const cartCount = cart.reduce((total, item) => total + item.quantity, 0)
-  const cartTotal = cart.reduce((total, item) => total + (item.basePrice * item.quantity), 0)
+  const cartTotal = cart.reduce((total, item) => {
+    // Calculate total option prices for this item
+    const optionsTotal = item.options?.reduce((sum, option) => sum + (option.price || 0), 0) || 0
+    // Item total = (base price + options total) * quantity
+    return total + ((item.basePrice + optionsTotal) * item.quantity)
+  }, 0)
 
   const value: CartContextType = {
     cart,
     cartCount,
     cartTotal,
     addToCart,
+    updateCartItem,
     updateQuantity,
     removeFromCart,
     clearCart,
     getItemQuantity,
     findCartItemsForMenuItem,
+    getCartItem,
     isLoading,
     error
   }

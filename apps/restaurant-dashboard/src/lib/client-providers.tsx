@@ -8,9 +8,28 @@ import { AuthProvider, ToastProvider } from '@tabsy/ui-components'
 import { TabsyAPI, tabsyClient } from '@tabsy/api-client'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { ApiClientProvider } from './api-client-context'
+import { WebSocketProvider } from '@/contexts/WebSocketContext'
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
 
 interface ClientProvidersProps {
   children: React.ReactNode
+}
+
+/**
+ * Inner component that has access to auth context
+ */
+function InnerProviders({ children }: { children: React.ReactNode }) {
+  const { restaurantId } = useCurrentRestaurant()
+
+  return (
+    <WebSocketProvider restaurantId={restaurantId} namespace="restaurant">
+      <ThemeProvider variant="restaurant">
+        <ToastProvider>
+          {children as any}
+        </ToastProvider>
+      </ThemeProvider>
+    </WebSocketProvider>
+  )
 }
 
 /**
@@ -38,23 +57,24 @@ export function ClientProviders({ children }: ClientProvidersProps) {
   // This ensures the AuthProvider and menu hooks use the same client
   const apiClient = tabsyClient
 
-  // Debug logging
-  console.log('🔧 ClientProviders - Rendering with QueryClient:', {
-    queryClient,
-    hasQueryClient: !!queryClient,
-    queryClientType: typeof queryClient,
-    children: !!children
-  })
+  // PERFORMANCE: Remove excessive debug logging in production
+  // Only log in development if needed for debugging
+  if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PROVIDERS) {
+    console.log('🔧 ClientProviders - Rendering with QueryClient:', {
+      queryClient,
+      hasQueryClient: !!queryClient,
+      queryClientType: typeof queryClient,
+      children: !!children
+    })
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
       <ApiClientProvider client={apiClient}>
         <AuthProvider apiClient={apiClient}>
-          <ThemeProvider variant="restaurant">
-            <ToastProvider>
-              {children as any}
-            </ToastProvider>
-          </ThemeProvider>
+          <InnerProviders>
+            {children}
+          </InnerProviders>
           <ReactQueryDevtools initialIsOpen={false} />
         </AuthProvider>
       </ApiClientProvider>

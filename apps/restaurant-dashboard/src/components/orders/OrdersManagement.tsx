@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useWebSocket, tabsyClient } from '@tabsy/api-client'
+import { useEffect, useState, useMemo, useCallback } from 'react'
+import { tabsyClient } from '@tabsy/api-client'
 import { useAuth } from '@tabsy/ui-components'
 import { Button } from '@tabsy/ui-components'
 import { Order, OrderStatus } from '@tabsy/shared-types'
@@ -12,6 +12,7 @@ import { toast } from 'sonner'
 import { createOrderHooks } from '@tabsy/react-query-hooks'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useContext } from 'react'
+import { useWebSocketContext, useWebSocketEvent } from '@/contexts/WebSocketContext'
 
 interface OrdersManagementProps {
   restaurantId: string
@@ -55,6 +56,11 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     isFetching: ordersFetching
   } = orderHooks.useOrdersByRestaurant(restaurantId, undefined, {
     enabled: !!restaurantId && !!session?.token && !authLoading,
+    staleTime: 300000, // 5 minutes
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchInterval: false,
+    refetchIntervalInBackground: false
   })
 
 
@@ -69,63 +75,34 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
   // Final orders to display
   const finalOrders = orders
   
-  const filteredOrders: Order[] = statusFilter === 'ALL' 
-    ? finalOrders 
-    : finalOrders.filter((order: Order) => order.status === statusFilter)
+  // OPTIMIZATION: Memoize filtered orders to prevent unnecessary recalculations
+  const filteredOrders: Order[] = useMemo(() => {
+    return statusFilter === 'ALL'
+      ? finalOrders
+      : finalOrders.filter((order: Order) => order.status === statusFilter)
+  }, [finalOrders, statusFilter])
 
-  // WebSocket connection for real-time updates with authentication
+  // Use WebSocket from context (singleton pattern)
   const {
     isConnected,
-    connect,
-    disconnect,
+    client,
     joinRoom,
-    leaveRoom,
-    client
-  } = useWebSocket({
-    url: process.env.NEXT_PUBLIC_WS_BASE_URL || 'http://localhost:5001',
-    auth: {
-      token: session?.token,
-      restaurantId: restaurantId,
-      namespace: 'restaurant'
-    },
-    onConnect: () => {
-      console.log('WebSocket connected successfully')
-      toast.success('Connected to real-time updates')
-    },
-    onError: (error: Error) => {
-      console.error('WebSocket connection error:', error)
-      toast.error('Failed to connect to real-time updates')
-    }
-  })
+    leaveRoom
+  } = useWebSocketContext()
 
   useEffect(() => {
-    // Initialize WebSocket connection and join restaurant room only if authenticated
-    const initializeRealtime = async () => {
-      if (!session?.token || !user || !restaurantId) {
-        return
-      }
-
-      try {
-        await connect()
-        joinRoom(`restaurant:${restaurantId}`)
-      } catch (err) {
-        console.error('Failed to initialize WebSocket:', err)
-        toast.error('Failed to connect to real-time updates')
-      }
+    // Join restaurant room for real-time updates
+    if (isConnected && restaurantId) {
+      joinRoom(`restaurant:${restaurantId}`)
+      console.log(`Joined restaurant room: restaurant:${restaurantId}`)
     }
-
-    initializeRealtime()
 
     return () => {
       if (restaurantId) {
         leaveRoom(`restaurant:${restaurantId}`)
       }
-      disconnect()
     }
-    // Only depend on essential values to prevent unnecessary reconnections
-    // connect, disconnect, joinRoom, leaveRoom are functions from useWebSocket hook
-    // and should be stable references, but including them causes reconnection loops
-  }, [restaurantId, session?.token, user?.id])
+  }, [isConnected, restaurantId, joinRoom, leaveRoom])
 
   useEffect(() => {
     if (!client) return
@@ -171,7 +148,17 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
         return
       }
 
-      console.log('✅ Valid order found:', order)
+      // Fix customization field mapping: WebSocket sends 'customizations' but UI expects 'options'
+      if (order.items && Array.isArray(order.items)) {
+        order.items = order.items.map((item: any) => {
+          if (item.customizations && !item.options) {
+            return { ...item, options: item.customizations }
+          }
+          return item
+        })
+      }
+
+      console.log('✅ Valid order found with customizations mapped:', order)
 
       toast.success(`New order #${order.id} received`)
 
@@ -268,6 +255,16 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
         // Don't show error toast for empty data - might be a backend issue
         // Just log it and return silently
         return
+      }
+
+      // Fix customization field mapping: WebSocket sends 'customizations' but UI expects 'options'
+      if (order.items && Array.isArray(order.items)) {
+        order.items = order.items.map((item: any) => {
+          if (item.customizations && !item.options) {
+            return { ...item, options: item.customizations }
+          }
+          return item
+        })
       }
 
       // Check if this is a status update that we initiated locally
@@ -425,33 +422,36 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     }
   }, [finalOrders, selectedOrder])
 
-  const handleRefresh = () => {
+  // OPTIMIZATION: Memoize handleRefresh to prevent unnecessary re-renders
+  const handleRefresh = useCallback(() => {
     refetchOrders()
-  }
+  }, [refetchOrders])
 
-  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+  // OPTIMIZATION: Memoize handleStatusChange to prevent unnecessary re-renders
+  const handleStatusChange = useCallback(async (orderId: string, newStatus: OrderStatus) => {
     // Track this as a locally initiated change to avoid processing our own WebSocket event
     const changeKey = `${orderId}:${newStatus}`
     setPendingStatusChanges(prev => new Set([...prev, changeKey]))
 
     console.log('🔄 Locally initiating status change:', { orderId, newStatus, changeKey })
 
-    // Optimistic update: Update the selected order immediately for better UX
-    if (selectedOrder && selectedOrder.id === orderId) {
-      setSelectedOrder({
-        ...selectedOrder,
-        status: newStatus
-      })
-    }
+    // Optimistic update using functional update to avoid stale closures
+    setSelectedOrder(currentOrder => {
+      if (currentOrder && currentOrder.id === orderId) {
+        return { ...currentOrder, status: newStatus }
+      }
+      return currentOrder
+    })
 
     try {
       const response = await tabsyClient.order.updateStatus(orderId, newStatus)
       toast.success('Order status updated successfully')
 
-      // Manually invalidate React Query cache to ensure UI sync
-      queryClient.invalidateQueries({ queryKey: ['orders'] })
-      queryClient.invalidateQueries({ queryKey: ['orders', 'restaurant', restaurantId, undefined] })
-      queryClient.invalidateQueries({ queryKey: ['order', orderId] })
+      // More specific cache invalidation to reduce unnecessary re-fetches
+      queryClient.invalidateQueries({
+        queryKey: ['orders', 'restaurant', restaurantId],
+        exact: false
+      })
 
       // Note: No need to refetch - WebSocket will handle real-time updates
 
@@ -500,7 +500,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
         toast.error(`Failed to update order status: ${err.message || 'Unknown error'}`)
       }
     }
-  }
+  }, [queryClient, restaurantId]) // Dependencies for useCallback
 
   // Show loading state during authentication
   if (authLoading) {

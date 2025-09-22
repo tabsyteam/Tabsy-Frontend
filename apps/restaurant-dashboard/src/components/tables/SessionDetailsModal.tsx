@@ -46,8 +46,10 @@ interface SessionDetails {
 
 export function SessionDetailsModal({ sessionId, onClose, onSessionClosed }: SessionDetailsModalProps) {
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null)
+  const [paymentSummary, setPaymentSummary] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isClosing, setIsClosing] = useState(false)
+  const [loadingPaymentSummary, setLoadingPaymentSummary] = useState(false)
 
   useEffect(() => {
     loadSessionDetails()
@@ -62,6 +64,8 @@ export function SessionDetailsModal({ sessionId, onClose, onSessionClosed }: Ses
 
       if (response.success && response.data) {
         setSessionDetails(response.data)
+        // Also load payment summary for enhanced payment info
+        await loadPaymentSummary()
       } else {
         toast.error('Session details not found')
         onClose()
@@ -72,6 +76,22 @@ export function SessionDetailsModal({ sessionId, onClose, onSessionClosed }: Ses
       onClose()
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const loadPaymentSummary = async () => {
+    try {
+      setLoadingPaymentSummary(true)
+      const response = await tabsyClient.restaurantTableSession.getPaymentSummary(sessionId)
+
+      if (response.success && response.data) {
+        setPaymentSummary(response.data)
+      }
+    } catch (error) {
+      console.error('Error loading payment summary:', error)
+      // Don't show error toast - this is supplementary information
+    } finally {
+      setLoadingPaymentSummary(false)
     }
   }
 
@@ -290,30 +310,91 @@ export function SessionDetailsModal({ sessionId, onClose, onSessionClosed }: Ses
               </div>
             )}
 
-            {/* Payment Status */}
+            {/* Enhanced Payment Status */}
             <div>
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <DollarSign className="w-5 h-5" />
                 Payment Status
+                {loadingPaymentSummary && (
+                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                )}
               </h3>
-              <div className="bg-surface-secondary p-3 sm:p-4 rounded-lg">
+
+              {/* Quick Summary */}
+              <div className="bg-surface-secondary p-3 sm:p-4 rounded-lg mb-4">
                 <div className="flex justify-between items-center mb-2">
                   <span>Total Amount:</span>
-                  <span className="font-medium">${session.totalAmount.toFixed(2)}</span>
+                  <span className="font-medium">${paymentSummary?.totalOwed?.toFixed(2) || session.totalAmount.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center mb-2">
                   <span>Paid Amount:</span>
-                  <span className="font-medium">${Number(session.paidAmount || 0).toFixed(2)}</span>
+                  <span className="font-medium">${paymentSummary?.totalPaid?.toFixed(2) || Number(session.paidAmount || 0).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span>Remaining:</span>
                   <span className={`font-medium ${
-                    session.paidAmount >= session.totalAmount ? 'text-success' : 'text-warning'
+                    (paymentSummary?.isFullyPaid || session.paidAmount >= session.totalAmount) ? 'text-success' : 'text-warning'
                   }`}>
-                    ${(session.totalAmount - session.paidAmount).toFixed(2)}
+                    ${paymentSummary?.remainingBalance?.toFixed(2) || (session.totalAmount - session.paidAmount).toFixed(2)}
                   </span>
                 </div>
+
+                {paymentSummary?.isFullyPaid && (
+                  <div className="mt-3 flex items-center gap-2 text-success">
+                    <CheckCircle className="w-4 h-4" />
+                    <span className="text-sm font-medium">Session is fully paid</span>
+                  </div>
+                )}
               </div>
+
+              {/* Smart Recommendations */}
+              {paymentSummary?.recommendations && paymentSummary.recommendations.length > 0 && (
+                <div className="bg-info/10 border border-info/20 rounded-lg p-3 sm:p-4 mb-4">
+                  <h4 className="font-medium mb-2 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-info" />
+                    Staff Recommendations
+                  </h4>
+                  <ul className="space-y-1">
+                    {paymentSummary.recommendations.map((recommendation: string, index: number) => (
+                      <li key={index} className="text-sm text-content-secondary">
+                        {recommendation}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Detailed Payment Breakdown */}
+              {paymentSummary?.orders && paymentSummary.orders.length > 0 && (
+                <div>
+                  <h4 className="font-medium mb-3 text-sm text-content-secondary">Payment Breakdown by Order</h4>
+                  <div className="space-y-2">
+                    {paymentSummary.orders.map((order: any) => (
+                      <div key={order.orderId} className="flex items-center justify-between p-2 bg-surface-tertiary rounded">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{order.orderNumber}</span>
+                          {order.isFullyPaid ? (
+                            <CheckCircle className="w-3 h-3 text-success" />
+                          ) : (
+                            <XCircle className="w-3 h-3 text-warning" />
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-medium">${order.total.toFixed(2)}</div>
+                          <div className="text-xs text-content-secondary">
+                            Paid: ${order.paidAmount.toFixed(2)}
+                            {!order.isFullyPaid && (
+                              <span className="text-warning ml-1">
+                                (${order.remainingAmount.toFixed(2)} due)
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Timeline */}

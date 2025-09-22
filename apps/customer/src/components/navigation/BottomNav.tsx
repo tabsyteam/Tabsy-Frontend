@@ -107,7 +107,10 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
       // If user has a session, home should only be active on menu page
       // If no session, home is active on root path
       if (hasSession) {
-        return pathname === '/menu' || pathname.startsWith('/menu')
+        return pathname === '/menu' ||
+               pathname.startsWith('/menu') ||
+               pathname.startsWith('/r/') || // Restaurant/table URL pattern
+               pathname.includes('/t/') // Table URL pattern
       } else {
         return pathname === '/' || pathname === '/home'
       }

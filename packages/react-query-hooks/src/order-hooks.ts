@@ -26,9 +26,11 @@ export function createOrderHooks(useQuery: any, useMutation?: any, useQueryClien
           return result
         },
         enabled: !!restaurantId,
-        staleTime: 0,
-        refetchOnMount: true,
+        staleTime: 300000, // 5 minutes - prevent infinite requests
+        refetchOnMount: false,
         refetchOnWindowFocus: false,
+        refetchInterval: false,
+        refetchIntervalInBackground: false,
         ...options
       })
     },
@@ -141,9 +143,11 @@ export function useOrdersByRestaurant(restaurantId: string, filters?: any, optio
       return result
     },
     enabled: !!restaurantId,
-    staleTime: 0,
-    refetchOnMount: true,
+    staleTime: 300000, // 5 minutes - prevent infinite requests
+    refetchOnMount: false,
     refetchOnWindowFocus: false,
+    refetchInterval: false,
+    refetchIntervalInBackground: false,
     ...options
   })
 }

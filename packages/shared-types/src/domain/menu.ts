@@ -170,32 +170,84 @@ export interface UpdateMenuCategoryRequest {
 export interface CreateMenuItemRequest {
   categoryId: string
   name: string
-  description: string
-  basePrice: number
-  displayOrder: number
-  status?: MenuItemStatus
-  image?: string // Backend expects 'image' not 'imageUrl'
-  dietaryTypes?: DietaryType[]
-  allergyInfo?: AllergyInfo
-  spicyLevel?: SpiceLevel
+  description?: string
+  basePrice: number // Frontend uses semantic basePrice field name
+  displayOrder?: number
+  status?: MenuItemStatus // Frontend uses semantic status enum
+  image?: string // Backend expects 'image'
+  imageUrl?: string // Alternative field name for compatibility
+  dietaryTypes?: DietaryType[] // Frontend uses typed enums
+  allergyInfo?: AllergyInfo // Structured allergy information
+  spicyLevel?: SpiceLevel // Frontend uses semantic spice level enum
   calories?: number
-  preparationTime: number
-  nutritionalInfo?: NutritionalInfo
-  tags?: string[]
+  preparationTime?: number // Time in minutes
+  nutritionalInfo?: NutritionalInfo // Detailed nutrition data
+  tags?: string[] // Searchable tags
+  options?: Array<{
+    name: string
+    description?: string
+    optionType: string
+    required?: boolean
+    displayOrder?: number
+    active?: boolean
+    optionValues?: Array<{
+      name: string
+      price?: number
+    }>
+  }>
 }
 
 export interface UpdateMenuItemRequest {
   name?: string
   description?: string
-  basePrice?: number
+  basePrice?: number // Frontend uses semantic basePrice field name
   displayOrder?: number
-  status?: MenuItemStatus
-  image?: string // Backend expects 'image' not 'imageUrl'
-  dietaryTypes?: DietaryType[]
-  allergyInfo?: AllergyInfo
-  spicyLevel?: SpiceLevel
+  status?: MenuItemStatus // Frontend uses semantic status enum
+  image?: string // Backend expects 'image'
+  imageUrl?: string // Alternative field name for compatibility
+  dietaryTypes?: DietaryType[] // Frontend uses typed enums
+  allergyInfo?: AllergyInfo // Structured allergy information
+  spicyLevel?: SpiceLevel // Frontend uses semantic spice level enum
   calories?: number
-  preparationTime?: number
-  nutritionalInfo?: NutritionalInfo
-  tags?: string[]
+  preparationTime?: number // Time in minutes
+  nutritionalInfo?: NutritionalInfo // Detailed nutrition data
+  tags?: string[] // Searchable tags
+}
+
+// Menu Item Option Management Types
+export interface CreateMenuItemOptionRequest {
+  name: string
+  description?: string
+  optionType: OptionType
+  required?: boolean
+  minSelections?: number
+  maxSelections?: number
+  displayOrder?: number
+  values?: OptionValueCreateRequest[]
+}
+
+export interface UpdateMenuItemOptionRequest {
+  name?: string
+  description?: string
+  optionType?: OptionType
+  required?: boolean
+  minSelections?: number
+  maxSelections?: number
+  displayOrder?: number
+}
+
+export interface OptionValueCreateRequest {
+  name: string
+  description?: string
+  priceModifier?: number
+  isDefault?: boolean
+  displayOrder?: number
+}
+
+export interface OptionValueUpdateRequest {
+  name?: string
+  description?: string
+  priceModifier?: number
+  isDefault?: boolean
+  displayOrder?: number
 }

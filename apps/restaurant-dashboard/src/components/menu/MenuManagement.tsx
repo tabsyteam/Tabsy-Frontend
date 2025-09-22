@@ -28,6 +28,7 @@ import { MenuCard } from './MenuCard';
 import { MenuDetailSlidePanel } from './MenuDetailSlidePanel';
 import { CreateCategoryModal } from './CreateCategoryModal';
 import { CreateItemModal } from './CreateItemModal';
+import { ManageCustomizationModal } from './ManageCustomizationModal';
 import { EmptyState } from '../ui/EmptyState';
 import { LoadingSkeleton, MenuCardSkeleton, StatisticsSkeleton } from '../ui/LoadingSkeleton';
 
@@ -50,6 +51,8 @@ export function MenuManagement({ restaurantId }: MenuManagementProps) {
   const [showCreateItemModal, setShowCreateItemModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<MenuCategory | null>(null);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
+  const [showManageCustomizationModal, setShowManageCustomizationModal] = useState(false);
+  const [managingCustomizationItem, setManagingCustomizationItem] = useState<MenuItem | null>(null);
 
   // Create hooks using factory pattern
   const menuHooks = createMenuHooks(useQuery);
@@ -224,6 +227,11 @@ export function MenuManagement({ restaurantId }: MenuManagementProps) {
     } catch (error: any) {
       toast.error(`Failed to update ${type} status: ${error.message}`);
     }
+  };
+
+  const handleManageCustomizations = (item: MenuItem) => {
+    setManagingCustomizationItem(item);
+    setShowManageCustomizationModal(true);
   };
 
   // Show loading state during authentication
@@ -586,6 +594,7 @@ export function MenuManagement({ restaurantId }: MenuManagementProps) {
         onEdit={handleEdit}
         onDelete={(id) => handleDelete(id, 'item')}
         onToggleStatus={(id) => handleToggleStatus(id, 'item')}
+        onManageCustomizations={handleManageCustomizations}
       />
 
       {/* Create/Edit Modals */}
@@ -620,6 +629,34 @@ export function MenuManagement({ restaurantId }: MenuManagementProps) {
           setShowCreateItemModal(false);
           setEditingItem(null);
           handleRefresh();
+        }}
+      />
+
+      <ManageCustomizationModal
+        isOpen={showManageCustomizationModal}
+        onClose={() => {
+          setShowManageCustomizationModal(false);
+          setManagingCustomizationItem(null);
+        }}
+        restaurantId={restaurantId}
+        menuItemId={managingCustomizationItem?.id || ''}
+        menuItemName={managingCustomizationItem?.name || ''}
+        existingOptions={managingCustomizationItem?.options || []}
+        onSuccess={async () => {
+          // Refresh data first to get updated options
+          await Promise.all([refetchCategories(), refetchItems()]);
+
+          // Update the managingCustomizationItem with fresh data
+          if (managingCustomizationItem) {
+            const updatedItems = await refetchItems();
+            const updatedItem = updatedItems.data?.data?.find((item: MenuItem) => item.id === managingCustomizationItem.id);
+            if (updatedItem) {
+              setManagingCustomizationItem(updatedItem);
+            }
+          }
+
+          setShowManageCustomizationModal(false);
+          setManagingCustomizationItem(null);
         }}
       />
     </>

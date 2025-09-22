@@ -63,7 +63,7 @@ export interface OrderItem {
   subtotal: string | number // API field name
   totalPrice?: number // Keep for backward compatibility
   specialInstructions?: string
-  options?: any[] // API uses options, not selectedOptions
+  options?: OrderItemOption[] // Enhanced unified format
   selectedOptions?: SelectedOption[] // Keep for backward compatibility
   status?: OrderItemStatus // Made optional since not in current API
   createdAt: string
@@ -78,6 +78,16 @@ export enum OrderItemStatus {
   CANCELLED = 'CANCELLED'
 }
 
+// Enhanced unified format for order item options
+export interface OrderItemOption {
+  optionId: string      // For validation & referential integrity
+  valueId: string       // For validation & referential integrity
+  optionName: string    // Display name (e.g., "Size")
+  valueName: string     // Selected value (e.g., "Large")
+  price: number         // Price adjustment
+}
+
+// Legacy types - kept for backward compatibility
 export interface SelectedOption {
   optionId: string
   optionName: string
@@ -102,7 +112,8 @@ export interface CreateOrderItemRequest {
   menuItemId: string
   quantity: number
   specialInstructions?: string
-  selectedOptions?: SelectedOption[]
+  options?: OrderItemOption[] // Enhanced unified format
+  selectedOptions?: SelectedOption[] // Keep for backward compatibility
 }
 
 export interface UpdateOrderRequest {

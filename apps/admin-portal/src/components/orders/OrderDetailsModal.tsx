@@ -426,12 +426,18 @@ export default function OrderDetailsModal({
                       )}
                       {item.options && item.options.length > 0 && (
                         <div className="mt-2">
-                          <p className="text-xs text-content-tertiary">Options:</p>
-                          <ul className="text-xs text-content-secondary mt-1">
+                          <p className="text-xs text-content-tertiary mb-1">Options:</p>
+                          <div className="text-xs">
                             {item.options.map((option: any, idx: number) => (
-                              <li key={idx}>• {option.name}: {option.value || option.choice}</li>
+                              <div key={idx} className="text-content-secondary">
+                                • <span className="font-medium">{option.optionName || option.name}:</span>{' '}
+                                <span>{option.valueName || option.value || option.choice}</span>
+                                {option.price > 0 && (
+                                  <span className="ml-1 text-content-tertiary">(+${option.price.toFixed(2)})</span>
+                                )}
+                              </div>
                             ))}
-                          </ul>
+                          </div>
                         </div>
                       )}
                       {item.specialInstructions && (

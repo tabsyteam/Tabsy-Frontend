@@ -34,9 +34,8 @@ export class OrderAPI {
     // Map filter parameters to match server API expectations
     const mappedFilters = filters ? {
       ...filters,
-      ...(filters.restaurantId && { restaurant: filters.restaurantId }),
+      // Keep restaurantId as-is since backend expects it
       ...(filters.sessionId && { guestSessionId: filters.sessionId }), // Map sessionId to guestSessionId for backend
-      restaurantId: undefined, // Remove original key after mapping
       sessionId: undefined // Remove original key after mapping
     } : {}
 

@@ -18,22 +18,7 @@ import {
   Shield,
   Nut
 } from 'lucide-react'
-import { SpiceLevel, DietaryType } from '@tabsy/shared-types'
-
-interface MenuItem {
-  id: string
-  name: string
-  description: string
-  price: number
-  image?: string
-  category: string
-  dietaryIndicators?: string[]
-  allergyInfo?: string[]
-  spicyLevel?: number
-  preparationTime?: number
-  isPopular?: boolean
-  isNew?: boolean
-}
+import { SpiceLevel, DietaryType, MenuItem } from '@tabsy/shared-types'
 
 interface MenuItemCardProps {
   item: MenuItem
@@ -63,6 +48,16 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
   const [localQuantity, setLocalQuantity] = useState(quantity || 0)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
 
+  // Debug logging to check options data
+  React.useEffect(() => {
+    console.log(`🔍 MenuItemCard Debug - Item: ${item.name}`, {
+      hasOptions: !!(item.options && item.options.length > 0),
+      optionsLength: item.options?.length,
+      options: item.options,
+      itemId: item.id
+    })
+  }, [item])
+
   // Sync local state with prop changes (when cart is updated from ItemDetailModal)
   useEffect(() => {
     setLocalQuantity(quantity || 0)
@@ -77,6 +72,19 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
   }
 
   const handleAddToCart = async () => {
+    // Check if item has customization options
+    const hasCustomizations = !!(item.options && item.options.length > 0)
+
+    if (hasCustomizations) {
+      // Show item detail modal for customization instead of directly adding to cart
+      console.log('[MenuItemCard] Item has customizations, opening detail modal instead of adding to cart')
+      if (onItemClick) {
+        onItemClick(item)
+        return
+      }
+    }
+
+    // For items without customizations, proceed with normal add to cart
     if (localQuantity === 0) {
       handleQuantityChange(1)
     }
@@ -200,6 +208,17 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
                 NEW
               </div>
             )}
+            {/* {item.options && item.options.length > 0 && (
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.2, duration: 0.3 }}
+                className="absolute -top-1 -left-1 bg-secondary text-secondary-foreground text-xs font-bold rounded-full px-2 py-0.5 shadow-md border border-secondary/20 flex items-center gap-1"
+              >
+                <span className="text-[10px]">🎨</span>
+                <span>CUSTOMIZABLE</span>
+              </motion.div>
+            )} */}
           </div>
 
           {/* Content */}
@@ -250,6 +269,8 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
                   {formatPrice(item.price)}
                 </span>
 
+                <div className='flex self-end gap-2'>
+                  
                 {/* Info Button */}
                 <motion.button
                   onClick={handleInfoClick}
@@ -260,6 +281,7 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
                 >
                   <Info size={12} className="text-current" />
                 </motion.button>
+                </div>
               </div>
 
               {showQuickAdd && (
@@ -319,7 +341,7 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
                         ) : (
                           <>
                             <Plus size={16} className="text-primary-foreground" />
-                            <span>Add</span>
+                            <span>{!!(item.options && item.options.length > 0) ? 'Select Options' : 'Add'}</span>
                           </>
                         )}
                       </motion.button>
@@ -366,6 +388,17 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
               NEW
             </div>
           )}
+          {/* {item.options && item.options.length > 0 && (
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.3 }}
+              className="bg-secondary text-secondary-foreground text-[10px] sm:text-xs font-bold rounded-full px-1 py-0.5 sm:px-2 sm:py-1 leading-none shadow-md border border-secondary/20 flex items-center gap-1"
+            >
+              <span className="text-[8px] sm:text-[10px]">🎨</span>
+              <span>CUSTOMIZABLE</span>
+            </motion.div>
+          )} */}
         </div>
 
         {/* Favorite Button */}
@@ -516,7 +549,7 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
                     ) : (
                       <>
                         <Plus size={16} className="text-primary-foreground" />
-                        <span>Add to Cart</span>
+                        <span>{!!(item.options && item.options.length > 0) ? 'Select Options' : 'Add to Cart'}</span>
                       </>
                     )}
                   </motion.button>

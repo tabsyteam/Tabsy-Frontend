@@ -14,7 +14,6 @@ import {
   QrCode,
   Timer,
   Receipt,
-  ShoppingCart,
   ClipboardList
 } from 'lucide-react'
 import { Button } from '@tabsy/ui-components'
@@ -158,13 +157,6 @@ export function TableSessionView() {
     }
   }
 
-  const handleSharedCart = () => {
-    const session = SessionManager.getDiningSession()
-    if (session) {
-      router.push(`/table/shared-cart${SessionManager.getDiningQueryParams()}`)
-    }
-  }
-
   const handleOrderTracking = () => {
     const session = SessionManager.getDiningSession()
     if (session) {
@@ -289,14 +281,6 @@ export function TableSessionView() {
               View Bill & Payment
             </Button>
 
-            <Button
-              variant="outline"
-              className="w-full justify-start"
-              onClick={handleSharedCart}
-            >
-              <ShoppingCart className="w-4 h-4 mr-3" />
-              Shared Cart
-            </Button>
 
             <Button
               variant="outline"

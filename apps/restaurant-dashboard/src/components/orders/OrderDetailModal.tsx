@@ -5,6 +5,7 @@ import { Button } from '@tabsy/ui-components'
 import { X, Clock, User, MapPin, FileText, DollarSign } from 'lucide-react'
 import { Order, OrderStatus, OrderItem } from '@tabsy/shared-types'
 import { format } from 'date-fns'
+import { CustomizationList } from '@tabsy/ui-components'
 
 interface OrderDetailModalProps {
   order: Order
@@ -178,26 +179,15 @@ export function OrderDetailModal({ order, onClose, onStatusUpdate }: OrderDetail
                       </div>
                     </div>
 
-                    {/* Selected Options */}
-                    {(item.options && Array.isArray(item.options) && item.options.length > 0) && (
-                      <div className="mt-2 pl-4 border-l-2 border-gray-200">
-                        <p className="text-xs text-gray-600 mb-1">Options:</p>
-                        {item.options.map((option: any, optionIndex: number) => (
-                          <div key={optionIndex} className="text-xs text-gray-700">
-                            <span className="font-medium">{option.optionName || option.name}:</span>
-                            {(option.selectedValues || option.values || []).map((value: any, valueIndex: number) => (
-                              <span key={valueIndex} className="ml-1">
-                                {value.valueName || value.name || value}
-                                {value.priceModifier && value.priceModifier !== 0 && (
-                                  <span className="text-gray-500">
-                                    ({value.priceModifier > 0 ? '+' : ''}${value.priceModifier.toFixed(2)})
-                                  </span>
-                                )}
-                                {valueIndex < (option.selectedValues || option.values || []).length - 1 && ', '}
-                              </span>
-                            ))}
-                          </div>
-                        ))}
+                    {/* Customizations */}
+                    {item.options && (
+                      <div className="mt-2">
+                        <CustomizationList
+                          customizations={item.options}
+                          compact={false}
+                          showPrices={true}
+                          className="text-sm"
+                        />
                       </div>
                     )}
 

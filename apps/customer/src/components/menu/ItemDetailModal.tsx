@@ -21,7 +21,7 @@ import {
   Shield,
   Nut
 } from 'lucide-react'
-import { MenuItem, DietaryType, AllergyInfo, SpiceLevel, MenuItemOption, OptionType } from '@tabsy/shared-types'
+import { MenuItem, DietaryType, AllergyInfo, SpiceLevel, MenuItemOption, OptionType, OrderItemOption } from '@tabsy/shared-types'
 import { formatCurrency } from '@/lib/utils'
 import { haptics } from '@/lib/haptics'
 import { InteractiveButton, InteractiveCard, ToggleSwitch, AnimatedCounter, useShakeAnimation } from '@/components/ui/MicroInteractions'
@@ -30,8 +30,17 @@ interface ItemDetailModalProps {
   item: MenuItem | null
   isOpen: boolean
   onClose: () => void
-  onAddToCart: (item: MenuItem, quantity: number, customizations: Record<string, any>) => void
+  onAddToCart: (item: MenuItem, quantity: number, customizations: Record<string, any>, options?: OrderItemOption[]) => void
+  onUpdateCartItem?: (cartItemId: string, item: MenuItem, quantity: number, customizations: Record<string, any>, specialInstructions?: string, options?: OrderItemOption[]) => void
   existingQuantity?: number
+  existingCartItem?: {
+    cartItemId: string
+    quantity: number
+    customizations?: Record<string, any>
+    options?: OrderItemOption[]
+    specialInstructions?: string
+  } | null
+  mode?: 'add' | 'edit' | 'auto' // Determines if we're adding new item or editing existing, auto detects based on existingCartItem
 }
 
 // Helper function to get spice level display
@@ -93,7 +102,10 @@ export function ItemDetailModal({
   isOpen,
   onClose,
   onAddToCart,
-  existingQuantity = 0
+  onUpdateCartItem,
+  existingQuantity = 0,
+  existingCartItem = null,
+  mode = 'auto'
 }: ItemDetailModalProps) {
   const [quantity, setQuantity] = useState(1) // Always start with 1 for new cart entries
   const [selectedCustomizations, setSelectedCustomizations] = useState<Record<string, string[]>>({})
@@ -116,42 +128,80 @@ export function ItemDetailModal({
   const options = item?.options || []
 
   useEffect(() => {
-    console.log('[ItemDetailModal] Modal state changed - isOpen:', isOpen, 'item:', item)
-    if (isOpen) {
-      setQuantity(existingQuantity || 1)
-      setSelectedCustomizations({})
-      setTextInputs({})
-      setNumberInputs({})
-      setSpecialInstructions('')
+    console.log('[ItemDetailModal] Modal state changed - isOpen:', isOpen, 'item:', item, 'existingCartItem:', existingCartItem, 'mode:', mode)
+    if (isOpen && item) {
+      // Reset UI state
       setCurrentImageIndex(0)
       setShowNutrition(false)
       setImageScale(1)
       setImageLoading(false)
       setShowFullscreen(false)
 
-      // Set default selections from real backend data
-      const defaults: Record<string, string[]> = {}
-      const defaultTexts: Record<string, string> = {}
-      const defaultNumbers: Record<string, number> = {}
+      const isEditMode = mode === 'edit' || (mode === 'auto' && existingCartItem)
 
-      options.forEach(option => {
-        if (option.type === OptionType.TEXT_INPUT) {
-          defaultTexts[option.id] = ''
-        } else if (option.type === OptionType.NUMBER_INPUT) {
-          defaultNumbers[option.id] = option.minSelections || 0
-        } else {
-          const defaultValues = option.values.filter(value => value.isDefault)
-          if (defaultValues.length > 0) {
-            defaults[option.id] = defaultValues.map(value => value.id)
-          }
+      if (isEditMode && existingCartItem) {
+        // Edit mode: Load existing cart item data
+        console.log('[ItemDetailModal] Loading existing cart item data:', existingCartItem)
+        setQuantity(existingCartItem.quantity)
+        setSpecialInstructions(existingCartItem.specialInstructions || '')
+
+        // Parse existing options back to UI state
+        const customizations: Record<string, string[]> = {}
+        const texts: Record<string, string> = {}
+        const numbers: Record<string, number> = {}
+
+        if (existingCartItem.options) {
+          existingCartItem.options.forEach(option => {
+            // Find the menu option this relates to
+            const menuOption = options.find(opt => opt.id === option.optionId)
+            if (menuOption) {
+              if (menuOption.type === OptionType.TEXT_INPUT) {
+                texts[option.optionId] = option.valueName
+              } else if (menuOption.type === OptionType.NUMBER_INPUT) {
+                numbers[option.optionId] = parseInt(option.valueName) || 0
+              } else {
+                // Single/Multi select
+                if (!customizations[option.optionId]) {
+                  customizations[option.optionId] = []
+                }
+                customizations[option.optionId].push(option.valueId)
+              }
+            }
+          })
         }
-      })
 
-      setSelectedCustomizations(defaults)
-      setTextInputs(defaultTexts)
-      setNumberInputs(defaultNumbers)
+        setSelectedCustomizations(customizations)
+        setTextInputs(texts)
+        setNumberInputs(numbers)
+      } else {
+        // Add mode: Set defaults
+        setQuantity(1)
+        setSpecialInstructions('')
+
+        // Set default selections from real backend data
+        const defaults: Record<string, string[]> = {}
+        const defaultTexts: Record<string, string> = {}
+        const defaultNumbers: Record<string, number> = {}
+
+        options.forEach(option => {
+          if (option.type === OptionType.TEXT_INPUT) {
+            defaultTexts[option.id] = ''
+          } else if (option.type === OptionType.NUMBER_INPUT) {
+            defaultNumbers[option.id] = option.minSelections || 0
+          } else {
+            const defaultValues = option.values.filter(value => value.isDefault)
+            if (defaultValues.length > 0) {
+              defaults[option.id] = defaultValues.map(value => value.id)
+            }
+          }
+        })
+
+        setSelectedCustomizations(defaults)
+        setTextInputs(defaultTexts)
+        setNumberInputs(defaultNumbers)
+      }
     }
-  }, [isOpen, existingQuantity, item, options])
+  }, [isOpen, existingQuantity, item, options, existingCartItem, mode])
 
   // Scroll lock functionality - prevents background scrolling when modal is open
   useEffect(() => {
@@ -334,38 +384,68 @@ export function ItemDetailModal({
 
   const handleAddToCart = () => {
     haptics.addToCart()
-    console.log('[ItemDetailModal] -- Adding to cart:', { item, quantity, selectedCustomizations, textInputs, numberInputs, specialInstructions })
+    console.log('[ItemDetailModal] -- Adding/Updating cart:', { item, quantity, selectedCustomizations, textInputs, numberInputs, specialInstructions })
 
-    // Transform customizations to flat options format for backend compatibility
-    const options: Array<{ optionId: string; valueId: string }> = []
+    // Transform customizations to enhanced options format for unified structure
+    const enhancedOptions: OrderItemOption[] = []
 
-    // Add selected option values
+    // Add selected option values with complete information
     Object.entries(selectedCustomizations).forEach(([optionId, valueIds]) => {
       if (Array.isArray(valueIds) && valueIds.length > 0) {
-        valueIds.forEach(valueId => {
-          if (valueId && valueId.trim()) {
-            options.push({ optionId, valueId })
-          }
-        })
+        const option = options.find(o => o.id === optionId)
+        if (option) {
+          valueIds.forEach(valueId => {
+            if (valueId && valueId.trim()) {
+              const value = option.values.find(v => v.id === valueId)
+              if (value) {
+                enhancedOptions.push({
+                  optionId: option.id,
+                  valueId: value.id,
+                  optionName: option.name,
+                  valueName: value.name,
+                  price: value.priceModifier
+                })
+              }
+            }
+          })
+        }
       }
     })
 
-    // Add text inputs as options
+    // Add text inputs as options with enhanced format
     Object.entries(textInputs).forEach(([optionId, value]) => {
       if (value && value.trim()) {
-        options.push({ optionId, valueId: value.trim() })
+        const option = options.find(o => o.id === optionId)
+        if (option) {
+          enhancedOptions.push({
+            optionId: option.id,
+            valueId: value.trim(),
+            optionName: option.name,
+            valueName: value.trim(),
+            price: 0 // Text inputs typically don't have price modifiers
+          })
+        }
       }
     })
 
-    // Add number inputs as options
+    // Add number inputs as options with enhanced format
     Object.entries(numberInputs).forEach(([optionId, value]) => {
       if (value > 0) {
-        options.push({ optionId, valueId: String(value) })
+        const option = options.find(o => o.id === optionId)
+        if (option) {
+          enhancedOptions.push({
+            optionId: option.id,
+            valueId: String(value),
+            optionName: option.name,
+            valueName: String(value),
+            price: (option.values[0]?.priceModifier || 0) * value // Multiply by quantity for number inputs
+          })
+        }
       }
     })
 
-    // Create customizations object with only valid options
-    const customizations = options.length > 0 ? { options } : {}
+    // Create customizations object for backward compatibility (empty for now since we use options)
+    const customizations = {}
 
     // Add special instructions to customizations if provided
     const finalSpecialInstructions = specialInstructions.trim() || undefined
@@ -373,7 +453,16 @@ export function ItemDetailModal({
       customizations.specialInstructions = finalSpecialInstructions
     }
 
-    onAddToCart(item, quantity, customizations)
+    // Check if we're editing an existing cart item
+    const isEditMode = mode === 'edit' || (mode === 'auto' && existingCartItem)
+    if (isEditMode && existingCartItem && onUpdateCartItem) {
+      // Update existing cart item
+      onUpdateCartItem(existingCartItem.cartItemId, item, quantity, customizations, finalSpecialInstructions, enhancedOptions)
+    } else {
+      // Add new item to cart
+      onAddToCart(item, quantity, customizations, enhancedOptions)
+    }
+
     onClose()
   }
 
@@ -472,13 +561,17 @@ export function ItemDetailModal({
             <div className="flex-shrink-0 bg-surface border-b p-4 flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-semibold text-content-primary truncate pr-4">
-                  {item.name}
+                  {(mode === 'edit' || (mode === 'auto' && existingCartItem)) ? 'Edit Item' : item.name}
                 </h2>
-                {existingQuantity > 0 && (
+                {(mode === 'edit' || (mode === 'auto' && existingCartItem)) ? (
+                  <div className="text-xs text-primary font-medium mt-1">
+                    Editing: {item.name}
+                  </div>
+                ) : existingQuantity > 0 ? (
                   <div className="text-xs text-primary font-medium mt-1">
                     Currently in cart: {existingQuantity} {existingQuantity === 1 ? 'item' : 'items'}
                   </div>
-                )}
+                ) : null}
               </div>
               <button
                 onClick={onClose}
@@ -1001,7 +1094,7 @@ export function ItemDetailModal({
                 hapticType="medium"
                 variant="primary"
               >
-                {existingQuantity > 0 ? 'Update Cart' : 'Add to Cart'}
+                {(mode === 'edit' || (mode === 'auto' && existingCartItem)) ? 'Update Cart' : 'Add to Cart'}
               </InteractiveButton>
             </div>
           </motion.div>

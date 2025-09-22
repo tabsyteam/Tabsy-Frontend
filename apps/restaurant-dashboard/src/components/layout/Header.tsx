@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { Button } from '@tabsy/ui-components'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
+import { Button, useAuth } from '@tabsy/ui-components'
 import {
   Bell,
   Settings,
@@ -27,6 +27,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { tabsyClient } from '@tabsy/api-client'
 import { createOrderHooks, createNotificationHooks } from '@tabsy/react-query-hooks'
 import { formatNotificationContent, formatRelativeTime, getNotificationPriorityColor, generateFallbackNotifications } from '@/lib/notificationUtils'
+import { useWebSocketContext, useWebSocketEvent } from '@/contexts/WebSocketContext'
 
 interface HeaderProps {
   user: UserType | null
@@ -54,6 +55,7 @@ export function Header({
   onLogout,
   isLoggingOut = false
 }: HeaderProps) {
+  const auth = useAuth()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [isNotificationOpen, setIsNotificationOpen] = useState(false)
@@ -62,6 +64,10 @@ export function Header({
 
   const userMenuRef = useRef<HTMLDivElement>(null)
   const notificationMenuRef = useRef<HTMLDivElement>(null)
+
+  // Real-time state for notifications and orders
+  const [realtimeNotificationCount, setRealtimeNotificationCount] = useState(0)
+  const [realtimeOrderCount, setRealtimeOrderCount] = useState(0)
 
   // API hooks
   const queryClient = useQueryClient()
@@ -89,7 +95,7 @@ export function Header({
     {
       enabled: !!restaurant?.id,
       staleTime: 300000, // 5 minutes - rely on WebSocket for real-time updates
-      refetchOnMount: true,
+      refetchOnMount: false,
       refetchOnWindowFocus: false
       // Removed refetchInterval - rely on WebSocket events for real-time badge updates
     }
@@ -120,12 +126,71 @@ export function Header({
     }
   })
 
-  // Calculate badge count from real API data
-  const receivedOrdersCount = ordersData?.data?.orders?.length || 0
+  // Calculate badge count from real API data with real-time updates
+  const baseReceivedOrdersCount = ordersData?.data?.orders?.length || 0
+  const receivedOrdersCount = Math.max(baseReceivedOrdersCount, realtimeOrderCount)
 
   // Get notifications with fallback for testing
   const notifications = notificationsData?.notifications || generateFallbackNotifications()
-  const unreadNotificationsCount = notifications.filter((n: Notification) => !n.isRead).length
+  const baseUnreadNotificationsCount = notifications.filter((n: Notification) => !n.isRead).length
+  const unreadNotificationsCount = Math.max(baseUnreadNotificationsCount, realtimeNotificationCount)
+
+  // Use WebSocket from context (singleton pattern)
+  const { client: wsClient, isConnected: wsConnected } = useWebSocketContext()
+
+  // WebSocket event listeners for real-time updates
+  // OPTIMIZATION: Memoize WebSocket event handlers
+  const handleOrderCreated = useCallback((payload: any) => {
+    console.log('Header: New order created:', payload)
+    // Increment the real-time order count immediately
+    setRealtimeOrderCount(prev => prev + 1)
+    // Remove setTimeout delay for better responsiveness
+    queryClient.invalidateQueries({ queryKey: ['orders'] })
+  }, [queryClient])
+
+  useWebSocketEvent('order:created', handleOrderCreated, [handleOrderCreated])
+
+  const handleOrderStatusUpdated = useCallback((payload: any) => {
+    console.log('Header: Order status updated:', payload)
+    // Remove setTimeout delay for better responsiveness
+    queryClient.invalidateQueries({ queryKey: ['orders'] })
+  }, [queryClient])
+
+  useWebSocketEvent('order:status_updated', handleOrderStatusUpdated, [handleOrderStatusUpdated])
+
+  const handleAssistanceRequested = useCallback((payload: any) => {
+    console.log('Header: Assistance requested:', payload)
+    // Increment notification count immediately for assistance requests
+    setRealtimeNotificationCount(prev => prev + 1)
+    // Refetch notifications to sync with backend
+    queryClient.invalidateQueries({ queryKey: ['notifications'] })
+  }, [queryClient])
+
+  useWebSocketEvent('assistance:requested', handleAssistanceRequested, [handleAssistanceRequested])
+
+  const handleNotificationCreated = useCallback((payload: any) => {
+    console.log('Header: Notification created:', payload)
+    // Increment notification count immediately
+    setRealtimeNotificationCount(prev => prev + 1)
+    // Refetch notifications to sync with backend
+    queryClient.invalidateQueries({ queryKey: ['notifications'] })
+  }, [queryClient])
+
+  useWebSocketEvent('notification:created', handleNotificationCreated, [handleNotificationCreated])
+
+  // Sync real-time counts with actual data when queries update
+  useEffect(() => {
+    if (ordersData?.data?.orders) {
+      setRealtimeOrderCount(ordersData.data.orders.length)
+    }
+  }, [ordersData])
+
+  useEffect(() => {
+    if (notificationsData?.notifications) {
+      const unreadCount = notificationsData.notifications.filter((n: Notification) => !n.isRead).length
+      setRealtimeNotificationCount(unreadCount)
+    }
+  }, [notificationsData])
 
   // Handlers
   const handleProfileSettings = () => {
@@ -183,7 +248,8 @@ export function Header({
     return undefined
   }, [isUserMenuOpen, isNotificationOpen])
 
-  const navItems: NavItem[] = [
+  // OPTIMIZATION: Memoize navigation items to prevent recreation on every render
+  const navItems: NavItem[] = useMemo(() => [
     {
       id: 'overview',
       label: 'Overview',
@@ -205,21 +271,23 @@ export function Header({
       label: 'Tables',
       icon: <Users className="w-4 h-4" />
     }
-  ]
+  ], [receivedOrdersCount])
 
-  const quickActions = [
+  // OPTIMIZATION: Memoize quick actions to prevent recreation
+  const quickActions = useMemo(() => [
     { icon: <BarChart3 className="w-4 h-4" />, label: 'Analytics', action: () => {} },
     { icon: <Users className="w-4 h-4" />, label: 'Staff', action: () => {} },
     { icon: <Calendar className="w-4 h-4" />, label: 'Schedule', action: () => {} },
     { icon: <HelpCircle className="w-4 h-4" />, label: 'Help', action: () => {} }
-  ]
+  ], [])
 
-  const getUserInitials = () => {
+  // OPTIMIZATION: Memoize user initials calculation
+  const getUserInitials = useCallback(() => {
     if (!user) return 'U'
     const firstInitial = user.firstName?.[0] || ''
     const lastInitial = user.lastName?.[0] || ''
     return `${firstInitial}${lastInitial}`.toUpperCase() || 'U'
-  }
+  }, [user?.firstName, user?.lastName])
 
   const getUserRole = () => {
     if (!user?.role) return 'Staff'

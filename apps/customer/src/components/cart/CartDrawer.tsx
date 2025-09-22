@@ -14,10 +14,12 @@ import {
   Clock,
   Leaf,
   Zap,
-  Utensils
+  Utensils,
+  Edit3
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { DietaryType, AllergyInfo } from '@tabsy/shared-types'
+import { CompactCartItemDisplay } from '@tabsy/ui-components'
 import { haptics } from '@/lib/haptics'
 import { useCart } from '@/hooks/useCart'
 
@@ -25,6 +27,7 @@ import { useCart } from '@/hooks/useCart'
 interface CartDrawerProps {
   isOpen: boolean
   onClose: () => void
+  onEditItem?: (cartItem: any) => void
 }
 
 const getAllergensList = (allergyInfo?: AllergyInfo): string[] => {
@@ -44,7 +47,7 @@ const getAllergensList = (allergyInfo?: AllergyInfo): string[] => {
   return allergens
 }
 
-export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
+export function CartDrawer({ isOpen, onClose, onEditItem }: CartDrawerProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { cart, cartCount, cartTotal, updateQuantity, removeFromCart, clearCart } = useCart()
@@ -167,7 +170,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                 </div>
               ) : (
                 /* Cart Items */
-                <div className="p-4 space-y-4">
+                <div className="p-4 space-y-3">
                   {cart.map((item, index) => (
                     <motion.div
                       key={item.cartItemId}
@@ -175,113 +178,92 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -20 }}
-                      className="bg-background rounded-lg border p-4"
+                      className="bg-background rounded-lg border p-3"
                     >
-                      <div className="flex gap-3">
-                        {/* Item Image */}
-                        {item.imageUrl && (
-                          <div className="flex-shrink-0">
-                            <img
-                              src={item.imageUrl}
-                              alt={item.name}
-                              className="w-16 h-16 object-cover rounded-lg"
-                            />
-                          </div>
-                        )}
+                      {/* Compact Item Display */}
+                      <CompactCartItemDisplay
+                        name={item.name}
+                        basePrice={Number(item.basePrice)}
+                        quantity={item.quantity}
+                        options={item.options}
+                        className="mb-3"
+                      />
 
-                        {/* Item Details */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="font-medium text-content-primary truncate pr-2">
-                              {item.name}
-                            </h3>
-                            <span className="text-sm font-semibold text-primary flex-shrink-0">
-                              ${(Number(item.basePrice) * item.quantity).toFixed(2)}
+                      {/* Dietary indicators (compact) */}
+                      {item.dietaryTypes && item.dietaryTypes.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {item.dietaryTypes.slice(0, 2).map(diet => (
+                            <span
+                              key={diet}
+                              className="inline-flex items-center space-x-1 px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full"
+                            >
+                              {getDietaryIcon(diet)}
+                              <span>{diet.replace('_', ' ')}</span>
                             </span>
-                          </div>
-
-                          <p className="text-sm text-content-secondary mb-2 line-clamp-2">
-                            {item.description}
-                          </p>
-
-                          {/* Dietary and Allergen Info */}
-                          {(item.dietaryTypes?.length > 0 || getAllergensList(item.allergyInfo).length > 0) && (
-                            <div className="space-y-1 mb-3">
-                              {item.dietaryTypes && item.dietaryTypes.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                  {item.dietaryTypes.map(diet => (
-                                    <span
-                                      key={diet}
-                                      className="inline-flex items-center space-x-1 px-1.5 py-0.5 bg-green-100 text-green-800 text-xs rounded-full"
-                                    >
-                                      {getDietaryIcon(diet)}
-                                      <span>{diet.replace('_', ' ')}</span>
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-
-                              {getAllergensList(item.allergyInfo).length > 0 && (
-                                <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                                  <span className="font-medium">Contains:</span> {getAllergensList(item.allergyInfo).join(', ')}
-                                </div>
-                              )}
-                            </div>
+                          ))}
+                          {item.dietaryTypes.length > 2 && (
+                            <span className="text-xs text-content-tertiary px-1.5 py-0.5">
+                              +{item.dietaryTypes.length - 2} more
+                            </span>
                           )}
+                        </div>
+                      )}
 
-                          {/* Customizations */}
-                          {item.customizations && Object.keys(item.customizations).length > 0 && (
-                            <div className="text-xs text-content-tertiary mb-2 bg-gray-50 p-2 rounded">
-                              <span className="font-medium">Customizations:</span>
-                              {Object.entries(item.customizations).map(([key, value]) => (
-                                <div key={key}>{key}: {String(value)}</div>
-                              ))}
-                            </div>
-                          )}
+                      {/* Special Instructions (compact) */}
+                      {item.specialInstructions && (
+                        <div className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded mb-2">
+                          <span className="font-medium">Note:</span> {item.specialInstructions.length > 50 ? `${item.specialInstructions.slice(0, 50)}...` : item.specialInstructions}
+                        </div>
+                      )}
 
-                          {/* Special Instructions */}
-                          {item.specialInstructions && (
-                            <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded mb-2">
-                              <span className="font-medium">Special Instructions:</span>
-                              <div className="mt-1">{item.specialInstructions}</div>
-                            </div>
-                          )}
+                      {/* Quantity Controls & Action Buttons */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2 bg-surface rounded-lg p-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleUpdateQuantity(item.cartItemId, item.quantity - 1)}
+                            className="w-7 h-7 p-0"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </Button>
 
-                          {/* Quantity Controls */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2 bg-surface rounded-lg p-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleUpdateQuantity(item.cartItemId, item.quantity - 1)}
-                                className="w-7 h-7 p-0"
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
+                          <span className="text-sm font-medium min-w-[2rem] text-center">
+                            {item.quantity}
+                          </span>
 
-                              <span className="text-sm font-medium min-w-[2rem] text-center">
-                                {item.quantity}
-                              </span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleUpdateQuantity(item.cartItemId, item.quantity + 1)}
+                            className="w-7 h-7 p-0"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </Button>
+                        </div>
 
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleUpdateQuantity(item.cartItemId, item.quantity + 1)}
-                                className="w-7 h-7 p-0"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
-                            </div>
-
+                        <div className="flex items-center space-x-1">
+                          {/* Edit Button - only show if item has options or special instructions */}
+                          {((item.options && item.options.length > 0) || item.specialInstructions) && onEditItem && (
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => handleRemoveItem(item.cartItemId)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => onEditItem(item)}
+                              className="text-primary hover:text-primary-hover hover:bg-primary/10"
+                              title="Edit customizations"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Edit3 className="w-4 h-4" />
                             </Button>
-                          </div>
+                          )}
+
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRemoveItem(item.cartItemId)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
                     </motion.div>
@@ -322,7 +304,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
 
             {/* Footer */}
             {cart.length > 0 && (
-              <div className="border-t border-default p-4 space-y-4">
+              <div className="border-t border-default p-4 pb-24 space-y-4">
                 {/* Total */}
                 <div className="flex items-center justify-between text-lg font-semibold">
                   <span className="text-content-primary">Total</span>

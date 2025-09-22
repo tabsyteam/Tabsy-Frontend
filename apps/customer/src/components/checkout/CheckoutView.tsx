@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Button } from '@tabsy/ui-components'
+import { Button, CartItemDisplay } from '@tabsy/ui-components'
 import { ArrowLeft, Clock, CheckCircle, User, Phone, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApi } from '@/components/providers/api-provider'
@@ -20,6 +20,7 @@ interface CartItem {
   categoryName: string
   quantity: number
   customizations?: Record<string, any>
+  options?: { optionId: string; valueId: string; optionName: string; valueName: string; price: number }[]
   specialInstructions?: string
 }
 
@@ -93,7 +94,12 @@ export function CheckoutView() {
   }, [router])
 
   const getSubtotal = (): number => {
-    return cart.reduce((total, item) => total + (Number(item.basePrice) * item.quantity), 0)
+    return cart.reduce((total, item) => {
+      // Calculate options total for this item
+      const optionsTotal = item.options?.reduce((sum, option) => sum + (option.price || 0), 0) || 0
+      // Item total = (base price + options total) * quantity
+      return total + ((Number(item.basePrice) + optionsTotal) * item.quantity)
+    }, 0)
   }
 
   const getTax = (): number => {
@@ -181,7 +187,7 @@ export function CheckoutView() {
         items: cart.map(item => ({
           menuItemId: item.id,
           quantity: item.quantity,
-          options: item.customizations?.options ? item.customizations.options.filter((option: any) =>
+          options: item.options ? item.options.filter(option =>
             option.optionId && option.valueId && option.valueId.trim()
           ) : undefined,
           specialInstructions: item.specialInstructions?.trim() || undefined
@@ -371,32 +377,18 @@ export function CheckoutView() {
                 Order Items
               </h3>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {cart.map((item) => (
-                  <div key={item.cartItemId} className="flex justify-between items-start py-3 border-b last:border-b-0">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-content-primary">{item.name}</h4>
-                      <p className="text-sm text-content-secondary">{item.categoryName}</p>
-                      <div className="flex items-center space-x-2 text-sm text-content-tertiary">
-                        <span>${Number(item.basePrice).toFixed(2)} each</span>
-                        <span>•</span>
-                        <span>Qty: {item.quantity}</span>
-                      </div>
-
-                      {/* Per-item Special Instructions */}
-                      {item.specialInstructions && (
-                        <div className="mt-2 text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
-                          <span className="font-medium">Special Instructions:</span>
-                          <div className="mt-1">{item.specialInstructions}</div>
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-content-primary">
-                        ${(Number(item.basePrice) * item.quantity).toFixed(2)}
-                      </div>
-                    </div>
-                  </div>
+                  <CartItemDisplay
+                    key={item.cartItemId}
+                    name={item.name}
+                    description={item.description}
+                    basePrice={Number(item.basePrice)}
+                    quantity={item.quantity}
+                    categoryName={item.categoryName}
+                    options={item.options}
+                    specialInstructions={item.specialInstructions}
+                  />
                 ))}
               </div>
             </motion.div>
