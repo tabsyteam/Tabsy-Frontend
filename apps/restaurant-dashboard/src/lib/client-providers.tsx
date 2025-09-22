@@ -9,6 +9,7 @@ import { TabsyAPI, tabsyClient } from '@tabsy/api-client'
 import { ThemeProvider } from '@/components/ThemeProvider'
 import { ApiClientProvider } from './api-client-context'
 import { WebSocketProvider } from '@/contexts/WebSocketContext'
+import { NotificationMuteProvider } from '@/contexts/NotificationMuteContext'
 import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
 
 interface ClientProvidersProps {
@@ -23,11 +24,13 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
 
   return (
     <WebSocketProvider restaurantId={restaurantId} namespace="restaurant">
-      <ThemeProvider variant="restaurant">
-        <ToastProvider>
-          {children as any}
-        </ToastProvider>
-      </ThemeProvider>
+      <NotificationMuteProvider>
+        <ThemeProvider variant="restaurant">
+          <ToastProvider>
+            {children as any}
+          </ToastProvider>
+        </ThemeProvider>
+      </NotificationMuteProvider>
     </WebSocketProvider>
   )
 }

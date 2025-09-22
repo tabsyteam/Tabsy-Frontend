@@ -128,28 +128,6 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-/**
- * Share content using Web Share API or fallback
- */
-export async function shareContent(data: {
-  title?: string
-  text?: string
-  url?: string
-}): Promise<boolean> {
-  if (navigator.share && isMobile()) {
-    try {
-      await navigator.share(data)
-      return true
-    } catch (err) {
-      // User cancelled or error occurred
-      return false
-    }
-  } else {
-    // Fallback to copying URL
-    const shareText = data.url || data.text || ''
-    return copyToClipboard(shareText)
-  }
-}
 
 /**
  * Validate email format

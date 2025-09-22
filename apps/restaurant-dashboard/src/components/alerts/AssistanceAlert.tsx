@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button } from '@tabsy/ui-components'
 import {
   Bell,
@@ -16,6 +17,7 @@ import {
 import { Notification } from '@tabsy/shared-types'
 import { tabsyClient } from '@tabsy/api-client'
 import { toast } from 'sonner'
+import { useNotificationMute } from '@/contexts/NotificationMuteContext'
 
 interface AssistanceRequest {
   id: string
@@ -63,6 +65,7 @@ const urgencyConfig = {
 export function AssistanceAlert({ notification, onDismiss, onAcknowledge }: AssistanceAlertProps) {
   const [acknowledging, setAcknowledging] = useState(false)
   const [timeElapsed, setTimeElapsed] = useState<string>('')
+  const queryClient = useQueryClient()
 
   // Parse assistance request data from notification metadata
   const assistanceData = notification.metadata as AssistanceRequest
@@ -100,6 +103,8 @@ export function AssistanceAlert({ notification, onDismiss, onAcknowledge }: Assi
     setAcknowledging(true)
     try {
       await tabsyClient.notification.markAsRead(notification.id)
+      // Invalidate notifications cache to update badge count immediately
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
       onAcknowledge(notification.id)
       toast.success(`Assistance acknowledged for Table ${assistanceData.tableId}`)
     } catch (error) {
@@ -214,6 +219,9 @@ export function AssistanceAlert({ notification, onDismiss, onAcknowledge }: Assi
 }
 
 export function AssistanceAlertsContainer({ notifications, onDismiss, onAcknowledge }: AssistanceAlertsContainerProps) {
+  // Use notification mute context for reactive state
+  const { notificationsMuted } = useNotificationMute()
+
   // Filter for assistance required notifications that haven't been read
   const assistanceNotifications = notifications.filter(
     notification =>
@@ -221,7 +229,14 @@ export function AssistanceAlertsContainer({ notifications, onDismiss, onAcknowle
       !notification.isRead
   )
 
-  if (assistanceNotifications.length === 0) {
+  // Don't show assistance alerts if notifications are muted
+  console.log('🚨 AssistanceAlert: Check visibility', {
+    assistanceCount: assistanceNotifications.length,
+    notificationsMuted,
+    shouldShow: assistanceNotifications.length > 0 && !notificationsMuted
+  })
+
+  if (assistanceNotifications.length === 0 || notificationsMuted) {
     return null
   }
 

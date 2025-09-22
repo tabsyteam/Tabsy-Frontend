@@ -158,78 +158,59 @@ export function DashboardClient(): JSX.Element {
     }
   }, [hasRestaurantAccess])
 
-  // Update assistance notifications from notification data
+  // Update assistance notifications from notification data with deduplication
   useEffect(() => {
     if (notificationsData?.notifications) {
       const assistanceNotifs = notificationsData.notifications.filter(
         (notif: Notification) => notif.type === 'ASSISTANCE_REQUIRED' && !notif.isRead
       )
-      setAssistanceNotifications(assistanceNotifs)
+
+      // Deduplicate notifications by ID to prevent duplicates
+      setAssistanceNotifications(prev => {
+        const existingIds = new Set(prev.map(notif => notif.id))
+        const newNotifs = assistanceNotifs.filter(notif => !existingIds.has(notif.id))
+
+        if (newNotifs.length === 0 && prev.length === assistanceNotifs.length) {
+          // No changes, return previous state to prevent re-renders
+          return prev
+        }
+
+        // Return deduplicated list sorted by creation time (newest first)
+        return assistanceNotifs.sort((a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+      })
     }
   }, [notificationsData])
 
   // WebSocket event listeners for real-time assistance requests
-  useWebSocketEvent(
-    'assistance:requested',
-    (payload) => {
-      console.log('🚨 Assistance requested:', payload)
+  const handleAssistanceRequested = useCallback((payload: any) => {
+    console.log('🚨 Assistance requested:', payload)
 
-      // Create a temporary notification object for immediate display
-      const assistanceNotification: Notification = {
-        id: payload.notificationId,
-        recipientId: user?.id || undefined,
-        type: 'ASSISTANCE_REQUIRED',
-        content: `Assistance requested at Table ${payload.tableId}`,
-        metadata: {
-          restaurantId: restaurantId || '',
-          tableId: payload.tableId,
-          orderId: payload.orderId,
-          customerName: payload.customerName,
-          urgency: payload.urgency || 'normal',
-          message: payload.message,
-          requestTime: payload.requestTime,
-          type: 'waiter_assistance'
-        },
-        isRead: false,
-        createdAt: payload.requestTime,
-        updatedAt: payload.requestTime
-      }
+    // Play assistance sound immediately
+    playAssistanceSound()
 
-      // Add to assistance notifications for immediate display
-      setAssistanceNotifications(prev => [assistanceNotification, ...prev])
+    // Browser notification for background alerts
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new window.Notification('🚨 Assistance Request', {
+        body: `Table ${payload.tableId} needs assistance${payload.message ? ': ' + payload.message : ''}`,
+        icon: '/favicon.ico',
+        tag: 'assistance-request',
+        requireInteraction: true
+      })
+    } else if ('Notification' in window && Notification.permission === 'default') {
+      // Request permission for future notifications
+      Notification.requestPermission()
+    }
 
-      // Play assistance sound immediately
-      playAssistanceSound()
+    // Refetch notifications to get the latest from server (single source of truth)
+    refetchNotifications()
+  }, [playAssistanceSound, refetchNotifications])
 
-      // Browser notification for background alerts
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new window.Notification('🚨 Assistance Request', {
-          body: `Table ${payload.tableId} needs assistance${payload.message ? ': ' + payload.message : ''}`,
-          icon: '/favicon.ico',
-          tag: 'assistance-request',
-          requireInteraction: true
-        })
-      } else if ('Notification' in window && Notification.permission === 'default') {
-        // Request permission for future notifications
-        Notification.requestPermission()
-      }
+  useWebSocketEvent('assistance:requested', handleAssistanceRequested, [handleAssistanceRequested])
 
-      // Refetch notifications to get the latest from server
-      refetchNotifications()
-    },
-    [user?.id, refetchNotifications, playAssistanceSound]
-  )
-
-  // Listen for notification created events
-  useWebSocketEvent(
-    'notification:created',
-    (payload) => {
-      console.log('📢 Notification created:', payload)
-      // Refetch notifications when new ones are created
-      refetchNotifications()
-    },
-    [refetchNotifications]
-  )
+  // Note: notification:created event handler removed to prevent duplicate refetches
+  // since assistance:requested already triggers refetchNotifications()
 
   // OPTIMIZATION: Memoize WebSocket event handlers with throttling to prevent excessive API calls
   const handleOrderCreated = useCallback((payload: any) => {

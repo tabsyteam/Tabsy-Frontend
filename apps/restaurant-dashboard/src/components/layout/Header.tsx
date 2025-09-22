@@ -4,6 +4,9 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Button, useAuth } from '@tabsy/ui-components'
 import {
   Bell,
+  BellOff,
+  Volume2,
+  VolumeX,
   Settings,
   LogOut,
   User,
@@ -28,6 +31,8 @@ import { tabsyClient } from '@tabsy/api-client'
 import { createOrderHooks, createNotificationHooks } from '@tabsy/react-query-hooks'
 import { formatNotificationContent, formatRelativeTime, getNotificationPriorityColor, generateFallbackNotifications } from '@/lib/notificationUtils'
 import { useWebSocketContext, useWebSocketEvent } from '@/contexts/WebSocketContext'
+import { playAssistanceSound, playOrderSound, notificationSoundService } from '@/lib/notificationSound'
+import { useNotificationMute } from '@/contexts/NotificationMuteContext'
 
 interface HeaderProps {
   user: UserType | null
@@ -66,8 +71,16 @@ export function Header({
   const notificationMenuRef = useRef<HTMLDivElement>(null)
 
   // Real-time state for notifications and orders
-  const [realtimeNotificationCount, setRealtimeNotificationCount] = useState(0)
   const [realtimeOrderCount, setRealtimeOrderCount] = useState(0)
+
+  // Use notification mute context
+  const {
+    notificationsMuted,
+    audioMuted,
+    muteEndTime,
+    toggleNotificationsMute,
+    toggleAudioMute
+  } = useNotificationMute()
 
   // API hooks
   const queryClient = useQueryClient()
@@ -130,10 +143,9 @@ export function Header({
   const baseReceivedOrdersCount = ordersData?.data?.orders?.length || 0
   const receivedOrdersCount = Math.max(baseReceivedOrdersCount, realtimeOrderCount)
 
-  // Get notifications with fallback for testing
-  const notifications = notificationsData?.notifications || generateFallbackNotifications()
-  const baseUnreadNotificationsCount = notifications.filter((n: Notification) => !n.isRead).length
-  const unreadNotificationsCount = Math.max(baseUnreadNotificationsCount, realtimeNotificationCount)
+  // Get notifications from API only (no fallback)
+  const notifications = notificationsData?.notifications || []
+  const unreadNotificationsCount = notifications.filter((n: Notification) => !n.isRead).length
 
   // Use WebSocket from context (singleton pattern)
   const { client: wsClient, isConnected: wsConnected } = useWebSocketContext()
@@ -142,11 +154,19 @@ export function Header({
   // OPTIMIZATION: Memoize WebSocket event handlers
   const handleOrderCreated = useCallback((payload: any) => {
     console.log('Header: New order created:', payload)
+
+    // Play order sound for new orders (audio will be muted if notifications OR audio is muted)
+    const shouldPlaySound = !notificationsMuted && !audioMuted
+    console.log('🔊 Header: Sound check', { notificationsMuted, audioMuted, shouldPlay: shouldPlaySound })
+    if (shouldPlaySound) {
+      playOrderSound('normal')
+    }
+
     // Increment the real-time order count immediately
     setRealtimeOrderCount(prev => prev + 1)
     // Remove setTimeout delay for better responsiveness
     queryClient.invalidateQueries({ queryKey: ['orders'] })
-  }, [queryClient])
+  }, [queryClient, notificationsMuted, audioMuted])
 
   useWebSocketEvent('order:created', handleOrderCreated, [handleOrderCreated])
 
@@ -160,23 +180,23 @@ export function Header({
 
   const handleAssistanceRequested = useCallback((payload: any) => {
     console.log('Header: Assistance requested:', payload)
-    // Increment notification count immediately for assistance requests
-    setRealtimeNotificationCount(prev => prev + 1)
-    // Refetch notifications to sync with backend
+
+    // Play assistance sound based on urgency (audio will be muted if notifications OR audio is muted)
+    const shouldPlaySound = !notificationsMuted && !audioMuted
+    console.log('🔊 Header: Assistance sound check', { notificationsMuted, audioMuted, shouldPlay: shouldPlaySound })
+    if (shouldPlaySound) {
+      const urgency = payload.urgency || 'normal'
+      playAssistanceSound(urgency)
+    }
+
+    // Only refetch notifications to sync with backend (no manual counter increment)
     queryClient.invalidateQueries({ queryKey: ['notifications'] })
-  }, [queryClient])
+  }, [queryClient, notificationsMuted, audioMuted])
 
   useWebSocketEvent('assistance:requested', handleAssistanceRequested, [handleAssistanceRequested])
 
-  const handleNotificationCreated = useCallback((payload: any) => {
-    console.log('Header: Notification created:', payload)
-    // Increment notification count immediately
-    setRealtimeNotificationCount(prev => prev + 1)
-    // Refetch notifications to sync with backend
-    queryClient.invalidateQueries({ queryKey: ['notifications'] })
-  }, [queryClient])
-
-  useWebSocketEvent('notification:created', handleNotificationCreated, [handleNotificationCreated])
+  // Note: notification:created handler removed to prevent duplicate refetches
+  // since assistance:requested already triggers notification refetch
 
   // Sync real-time counts with actual data when queries update
   useEffect(() => {
@@ -185,12 +205,7 @@ export function Header({
     }
   }, [ordersData])
 
-  useEffect(() => {
-    if (notificationsData?.notifications) {
-      const unreadCount = notificationsData.notifications.filter((n: Notification) => !n.isRead).length
-      setRealtimeNotificationCount(unreadCount)
-    }
-  }, [notificationsData])
+
 
   // Handlers
   const handleProfileSettings = () => {
@@ -220,6 +235,22 @@ export function Header({
       } catch (error) {
         console.error('Failed to mark notification as read:', error)
       }
+    }
+  }
+
+  const handleClearAllNotifications = async () => {
+    if (!notifications.length) return
+
+    try {
+      // Mark all unread notifications as read
+      const unreadNotifications = notifications.filter(n => !n.isRead)
+      for (const notification of unreadNotifications) {
+        await markAsReadMutation.mutateAsync(notification.id)
+      }
+      // Refresh the notifications list
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    } catch (error) {
+      console.error('Failed to clear all notifications:', error)
     }
   }
 
@@ -390,13 +421,72 @@ export function Header({
                     {isNotificationOpen && (
                       <div className="absolute right-0 mt-2 w-80 bg-surface rounded-lg shadow-lg border border-border py-2 z-50">
                         <div className="px-4 py-2 border-b border-border">
-                          <h3 className="font-semibold text-content-primary">Notifications</h3>
-                          {unreadNotificationsCount > 0 && (
-                            <p className="text-xs text-content-secondary mt-1">
-                              {unreadNotificationsCount} unread notification{unreadNotificationsCount === 1 ? '' : 's'}
-                            </p>
-                          )}
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="font-semibold text-content-primary">Notifications</h3>
+                              {unreadNotificationsCount > 0 && (
+                                <p className="text-xs text-content-secondary mt-1">
+                                  {unreadNotificationsCount} unread notification{unreadNotificationsCount === 1 ? '' : 's'}
+                                </p>
+                              )}
+                              {notificationsMuted && muteEndTime && (
+                                <p className="text-xs text-amber-600 mt-1">
+                                  Muted until {muteEndTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {/* Mute Toggle */}
+                              <button
+                                onClick={toggleNotificationsMute}
+                                className={cn(
+                                  "p-1.5 rounded-lg transition-colors",
+                                  notificationsMuted
+                                    ? "bg-amber-100 text-amber-600 hover:bg-amber-200"
+                                    : "hover:bg-surface-secondary text-content-secondary"
+                                )}
+                                title={notificationsMuted ? "Unmute notifications" : "Mute notifications for 30 minutes"}
+                              >
+                                {notificationsMuted ? (
+                                  <BellOff className="w-4 h-4" />
+                                ) : (
+                                  <Bell className="w-4 h-4" />
+                                )}
+                              </button>
+
+                              {/* Audio Mute Toggle */}
+                              <button
+                                onClick={toggleAudioMute}
+                                className={cn(
+                                  "p-1.5 rounded-lg transition-colors",
+                                  audioMuted
+                                    ? "bg-red-100 text-red-600 hover:bg-red-200"
+                                    : "hover:bg-surface-secondary text-content-secondary"
+                                )}
+                                title={audioMuted ? "Unmute notification sounds" : "Mute notification sounds"}
+                              >
+                                {audioMuted ? (
+                                  <VolumeX className="w-4 h-4" />
+                                ) : (
+                                  <Volume2 className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
                         </div>
+
+                        {/* Clear All Button */}
+                        {notifications.length > 0 && (
+                          <div className="px-4 py-2 border-b border-default">
+                            <button
+                              onClick={handleClearAllNotifications}
+                              className="text-xs text-content-secondary hover:text-content-primary transition-colors"
+                            >
+                              Clear all notifications
+                            </button>
+                          </div>
+                        )}
+
                         <div className="max-h-80 overflow-y-auto">
                           {notificationsLoading ? (
                             <div className="px-4 py-8 text-center">

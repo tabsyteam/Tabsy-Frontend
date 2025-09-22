@@ -13,7 +13,6 @@ import {
   Utensils,
   CreditCard,
   Receipt,
-  MessageCircle,
   Phone,
   HelpCircle,
   RefreshCw,
@@ -525,7 +524,7 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
       // Call the API
       const response = await api.restaurant.callWaiter(restaurantId, {
         tableId,
-        orderId: order?.id,
+        orderId: order?.orderNumber,
         customerName: order?.guestInfo?.name || 'Guest',
         urgency: 'normal'
       })
@@ -974,26 +973,6 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                   Back to Menu
                 </Button>
 
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    // Share order functionality
-                    if (navigator.share) {
-                      navigator.share({
-                        title: `Order #${order.orderNumber}`,
-                        text: `Track order #${order.orderNumber}`,
-                        url: window.location.href
-                      })
-                    } else {
-                      navigator.clipboard.writeText(window.location.href)
-                      toast.success('Order link copied to clipboard!')
-                    }
-                  }}
-                  className="w-full"
-                >
-                  <MessageCircle className="w-4 h-4 mr-2" />
-                  Share Order
-                </Button>
               </div>
 
               {/* Guest Information */}
