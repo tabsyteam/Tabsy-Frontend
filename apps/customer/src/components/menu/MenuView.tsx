@@ -381,13 +381,26 @@ export function MenuView() {
   // Initialize dining session when valid URL parameters are present
   useEffect(() => {
     if (hasValidUrlParams && urlRestaurantId && urlTableId) {
-      // Save dining session to SessionManager for navigation
-      SessionManager.setDiningSession({
-        restaurantId: urlRestaurantId,
-        tableId: urlTableId,
-        restaurantName: restaurant?.name,
-        tableName: table?.number
-      })
+      // Get existing session to preserve sessionId and other important fields
+      const existingSession = SessionManager.getDiningSession()
+
+      // Only update if no existing session, or if restaurant/table changed
+      if (!existingSession ||
+          existingSession.restaurantId !== urlRestaurantId ||
+          existingSession.tableId !== urlTableId) {
+
+        // Preserve existing session data if available
+        SessionManager.setDiningSession({
+          restaurantId: urlRestaurantId,
+          tableId: urlTableId,
+          restaurantName: restaurant?.name,
+          tableName: table?.number,
+          // Preserve critical session fields if they exist
+          sessionId: existingSession?.sessionId,
+          tableSessionId: existingSession?.tableSessionId,
+          createdAt: existingSession?.createdAt || Date.now() // Preserve original creation time or use current
+        })
+      }
     }
   }, [hasValidUrlParams, urlRestaurantId, urlTableId, restaurant?.name, table?.number])
 

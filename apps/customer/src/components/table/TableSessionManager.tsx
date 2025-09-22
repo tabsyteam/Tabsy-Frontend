@@ -269,7 +269,7 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
       // Check for stored tableSessionId from QR code processing
       const tableSessionId = sessionStorage.getItem('tabsy-table-session-id')
 
-      // Save dining session for MenuView with tableSessionId if available
+      // Save dining session for MenuView
       SessionManager.setDiningSession({
         restaurantId,
         tableId,
@@ -305,7 +305,7 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
       // Check for stored tableSessionId from QR code processing
       const tableSessionId = sessionStorage.getItem('tabsy-table-session-id')
 
-      // Save dining session for MenuView with tableSessionId if available
+      // Save dining session for MenuView
       SessionManager.setDiningSession({
         restaurantId,
         tableId,
@@ -406,12 +406,13 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
             // Store the table session ID for later use
             sessionStorage.setItem('tabsy-table-session-id', guestSession.tableSessionId)
 
-            // Save dining session for MenuView to access restaurant/table info
+            // Save dining session for MenuView
             SessionManager.setDiningSession({
               restaurantId,
               tableId,
               sessionId: guestSession.sessionId,
-              tableSessionId: guestSession.tableSessionId
+              tableSessionId: guestSession.tableSessionId,
+              createdAt: guestSession.createdAt ? new Date(guestSession.createdAt).getTime() : Date.now()
             })
 
             // Set up anonymous session state

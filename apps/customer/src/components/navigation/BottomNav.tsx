@@ -104,16 +104,12 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
 
   const isActive = useCallback((item: typeof navItems[0]) => {
     if (item.id === 'home') {
-      // If user has a session, home should only be active on menu page
-      // If no session, home is active on root path
-      if (hasSession) {
-        return pathname === '/menu' ||
-               pathname.startsWith('/menu') ||
-               pathname.startsWith('/r/') || // Restaurant/table URL pattern
-               pathname.includes('/t/') // Table URL pattern
-      } else {
-        return pathname === '/' || pathname === '/home'
-      }
+      // Home/Menu should be active on:
+      // 1. /menu page (when navigated from other pages)
+      // 2. /r/restaurant/t/table pattern (QR code entry point - shows menu)
+      return pathname === '/menu' ||
+             pathname.startsWith('/menu') ||
+             (pathname.startsWith('/r/') && pathname.includes('/t/')) // QR code entry point always shows menu
     }
     if (item.id === 'orders') {
       return pathname.startsWith('/orders') || pathname.startsWith('/order/')
@@ -122,7 +118,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
       return pathname.startsWith('/table') && !pathname.includes('/[tableId]')
     }
     return pathname.startsWith(`/${item.id}`)
-  }, [pathname, hasSession])
+  }, [pathname])
 
   const handleNavigation = useCallback((item: typeof navItems[0]) => {
     if (item.disabled) {

@@ -28,7 +28,7 @@ const SESSION_DURATION = 3 * 60 * 60 * 1000 // 3 hours (matches backend table se
 
 export class SessionManager {
   // Dining Session Management
-  static setDiningSession(session: Omit<DiningSession, 'createdAt' | 'lastActivity'>): void {
+  static setDiningSession(session: Omit<DiningSession, 'lastActivity'> & { createdAt?: number }): void {
     // Check if we're in a browser environment
     if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
       return
@@ -37,7 +37,7 @@ export class SessionManager {
     const now = Date.now()
     const diningSession: DiningSession = {
       ...session,
-      createdAt: now,
+      createdAt: session.createdAt || now,
       lastActivity: now
     }
 

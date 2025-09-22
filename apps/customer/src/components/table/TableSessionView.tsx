@@ -7,7 +7,6 @@ import {
   MapPin,
   Clock,
   Users,
-  LogOut,
   MessageSquare,
   Star,
   Info,
@@ -20,6 +19,7 @@ import { Button } from '@tabsy/ui-components'
 import { SessionManager } from '@/lib/session'
 import { toast } from 'sonner'
 import { useWebSocket, useSessionUpdates } from '@tabsy/api-client'
+import { useSessionDetails } from '@/hooks/useSessionDetails'
 interface TableInfo {
   restaurant: {
     id: string
@@ -42,6 +42,17 @@ export function TableSessionView() {
 
   // Get current session for WebSocket authentication
   const session = SessionManager.getDiningSession()
+
+  // Fetch real session details from backend
+  const {
+    session: sessionDetails,
+    tableSession: tableSessionDetails,
+    users: sessionUsers,
+    orders: sessionOrders,
+    error: sessionError,
+    isLoading: sessionLoading,
+    refreshSessionDetails
+  } = useSessionDetails(session?.sessionId || null, session?.tableSessionId || null)
 
   // WebSocket connection for real-time customer features
   const {
@@ -109,9 +120,18 @@ export function TableSessionView() {
         }
       }
 
-      // Calculate session duration
-      const startTime = new Date(session.createdAt)
+      // Calculate session duration from table session start time (when table was first occupied)
+      const getSessionStartTime = () => {
+        // Use table session timestamp from backend if available, otherwise guest session creation time
+        if (tableSessionDetails?.createdAt) {
+          return new Date(tableSessionDetails.createdAt)
+        }
+        // Fallback to guest session creation time
+        return new Date(session.createdAt)
+      }
+
       const updateSessionTime = () => {
+        const startTime = getSessionStartTime()
         const now = new Date()
         const diff = now.getTime() - startTime.getTime()
         const minutes = Math.floor(diff / 60000)
@@ -132,7 +152,7 @@ export function TableSessionView() {
 
     // Return undefined explicitly if no session
     return undefined
-  }, [])
+  }, [tableSessionDetails])
 
   const handleEndSession = () => {
     SessionManager.clearDiningSession()
@@ -255,8 +275,10 @@ export function TableSessionView() {
             <div className="flex items-center space-x-3">
               <Users className="w-5 h-5 text-content-tertiary" />
               <div>
-                <p className="text-sm text-content-secondary">Session Type</p>
-                <p className="font-medium text-content-primary">Guest</p>
+                <p className="text-sm text-content-secondary">Active Users</p>
+                <p className="font-medium text-content-primary">
+                  {sessionUsers?.totalUsers || 1}
+                </p>
               </div>
             </div>
           </div>
@@ -335,7 +357,16 @@ export function TableSessionView() {
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
               <span className="text-content-secondary">Started:</span>
-              <span className="text-content-primary">{new Date().toLocaleTimeString()}</span>
+              <span className="text-content-primary">
+                {(() => {
+                  // Use table session creation time (when table was first occupied)
+                  if (tableSessionDetails?.createdAt) {
+                    return new Date(tableSessionDetails.createdAt).toLocaleTimeString()
+                  }
+                  // Fallback to guest session creation time
+                  return new Date(session?.createdAt || Date.now()).toLocaleTimeString()
+                })()}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-content-secondary">Status:</span>
@@ -349,12 +380,40 @@ export function TableSessionView() {
             </div>
             <div className="flex justify-between">
               <span className="text-content-secondary">Session expires:</span>
-              <span className="text-content-primary">In 2 hours</span>
+              <span className="text-content-primary">
+                {tableSessionDetails?.expiresAt
+                  ? new Date(tableSessionDetails.expiresAt).toLocaleString()
+                  : 'N/A'
+                }
+              </span>
             </div>
-            {lastConnectionTime && (
+            <div className="flex justify-between">
+              <span className="text-content-secondary">Connected at:</span>
+              <span className="text-content-primary">
+                {(() => {
+                  // Use guest session creation time (when this specific guest joined)
+                  if (sessionDetails?.createdAt) {
+                    return new Date(sessionDetails.createdAt).toLocaleTimeString()
+                  }
+                  // Use the session creation time from SessionManager
+                  return new Date(session?.createdAt || Date.now()).toLocaleTimeString()
+                })()}
+              </span>
+            </div>
+            {sessionOrders && (
               <div className="flex justify-between">
-                <span className="text-content-secondary">Connected at:</span>
-                <span className="text-content-primary">{lastConnectionTime.toLocaleTimeString()}</span>
+                <span className="text-content-secondary">Total Orders:</span>
+                <span className="text-content-primary">
+                  {Object.values(sessionOrders.ordersByRound).flat().length}
+                </span>
+              </div>
+            )}
+            {sessionOrders && sessionOrders.totalAmount && Number(sessionOrders.totalAmount) > 0 && (
+              <div className="flex justify-between">
+                <span className="text-content-secondary">Total Amount:</span>
+                <span className="text-content-primary">
+                  ${Number(sessionOrders.totalAmount).toFixed(2)}
+                </span>
               </div>
             )}
             {wsError && (
@@ -363,30 +422,15 @@ export function TableSessionView() {
                 <span className="text-red-600 text-sm">{wsError.message}</span>
               </div>
             )}
+            {sessionError && (
+              <div className="flex justify-between">
+                <span className="text-content-secondary">Session Error:</span>
+                <span className="text-red-600 text-sm">{sessionError}</span>
+              </div>
+            )}
           </div>
         </motion.div>
 
-        {/* End Session */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-surface rounded-xl border p-6"
-        >
-          <h3 className="text-lg font-semibold text-content-primary mb-2">End Session</h3>
-          <p className="text-content-secondary text-sm mb-4">
-            End your dining session when you're ready to leave. This will clear your cart and session data.
-          </p>
-
-          <Button
-            variant="destructive"
-            onClick={handleEndSession}
-            className="w-full"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            End Session
-          </Button>
-        </motion.div>
       </div>
     </div>
   )

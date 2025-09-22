@@ -31,6 +31,14 @@ export interface TableSessionResponse {
 
 export interface TableSessionUsersResponse {
   tableSessionId: string
+  tableSession: {
+    id: string
+    createdAt: string
+    expiresAt: string
+    status: string
+    totalAmount: number
+    paidAmount: number
+  }
   users: TableSessionUser[]
   totalUsers: number
 }

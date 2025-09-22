@@ -18,8 +18,9 @@ export interface GuestSession {
   sessionId: string;  // Primary field - matches backend response
   tableId: string;
   restaurantId: string;
+  tableSessionId: string;  // Link to table session - required from backend
   expiresAt: string;
-  createdAt?: string;
+  createdAt: string;
 }
 
 export interface CreateGuestSessionRequest {
