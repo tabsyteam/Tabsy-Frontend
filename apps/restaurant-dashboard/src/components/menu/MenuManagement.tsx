@@ -646,6 +646,15 @@ export function MenuManagement({ restaurantId }: MenuManagementProps) {
           // Refresh data first to get updated options
           await Promise.all([refetchCategories(), refetchItems()]);
 
+          // Update the selectedItem with fresh data if it's the same item being managed
+          if (selectedItem && managingCustomizationItem && selectedItem.id === managingCustomizationItem.id) {
+            const updatedItems = await refetchItems();
+            const updatedItem = updatedItems.data?.data?.find((item: MenuItem) => item.id === selectedItem.id);
+            if (updatedItem) {
+              setSelectedItem(updatedItem);
+            }
+          }
+
           // Update the managingCustomizationItem with fresh data
           if (managingCustomizationItem) {
             const updatedItems = await refetchItems();

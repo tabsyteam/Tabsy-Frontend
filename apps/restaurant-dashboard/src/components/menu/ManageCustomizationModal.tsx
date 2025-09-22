@@ -150,9 +150,25 @@ export function ManageCustomizationModal({
     },
     onSuccess: () => {
       toast.success('Customization option created successfully');
-      queryClient.invalidateQueries({ queryKey: ['menu', restaurantId] });
+      // Invalidate both menu-items and menu-categories queries to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['menu-items', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['menu-categories', restaurantId] });
       onSuccess();
-      handleClose();
+      // Don't close the modal immediately - let user see the new option
+      setIsCreating(false);
+      setEditingOption(null);
+      // Reset form for creating another option
+      setFormData({
+        name: '',
+        description: '',
+        optionType: OptionType.SINGLE_SELECT,
+        required: false,
+        minSelections: 0,
+        maxSelections: 1,
+        displayOrder: existingOptions.length + 1,
+        values: [],
+      });
+      setErrors({});
     },
     onError: (error: any) => {
       console.error('Failed to create option:', error);
@@ -167,9 +183,13 @@ export function ManageCustomizationModal({
     },
     onSuccess: () => {
       toast.success('Customization option updated successfully');
-      queryClient.invalidateQueries({ queryKey: ['menu', restaurantId] });
+      // Invalidate both menu-items and menu-categories queries to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['menu-items', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['menu-categories', restaurantId] });
       onSuccess();
-      handleClose();
+      // Don't close the modal immediately - let user see the updated option
+      setEditingOption(null);
+      setIsCreating(false);
     },
     onError: (error: any) => {
       console.error('Failed to update option:', error);
@@ -184,7 +204,9 @@ export function ManageCustomizationModal({
     },
     onSuccess: () => {
       toast.success('Customization option deleted successfully');
-      queryClient.invalidateQueries({ queryKey: ['menu', restaurantId] });
+      // Invalidate both menu-items and menu-categories queries to ensure fresh data
+      queryClient.invalidateQueries({ queryKey: ['menu-items', restaurantId] });
+      queryClient.invalidateQueries({ queryKey: ['menu-categories', restaurantId] });
       onSuccess();
     },
     onError: (error: any) => {
