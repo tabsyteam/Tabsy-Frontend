@@ -1,102 +1,65 @@
 import { TabsyApiClient } from '../client'
 import { z } from 'zod'
 import { serializeQueryParams, createFilterParams } from '@tabsy/shared-utils'
+import type {
+  CreateFeedbackRequest,
+  Feedback,
+  FeedbackListResponse,
+  FeedbackStats,
+  FeedbackPhoto,
+  FeedbackListParams,
+  FlagFeedbackRequest
+} from '@tabsy/shared-types'
 
 /**
- * Feedback API endpoint for customer feedback and reviews
+ * Production Feedback API Client
+ *
+ * This client handles all feedback-related API calls with proper error handling,
+ * validation, and type safety. It integrates with the main Tabsy backend.
  */
 
-// Validation schemas
-const FeedbackPhotoSchema = z.object({
-  id: z.string(),
-  filename: z.string(),
-  size: z.number(),
-  type: z.string(),
-  url: z.string().optional()
-})
-
+// Enhanced validation schemas with shared types
 const CreateFeedbackRequestSchema = z.object({
   orderId: z.string().optional(),
-  restaurantId: z.string(),
+  restaurantId: z.string().min(1, 'Restaurant ID is required'),
   tableId: z.string().optional(),
   overallRating: z.number().min(1).max(5),
-  categories: z.record(z.number().min(0).max(5)),
-  quickFeedback: z.array(z.string()),
-  comment: z.string().optional(),
-  photos: z.array(FeedbackPhotoSchema).optional(),
+  categories: z.record(z.number().min(1).max(5)).optional(),
+  quickFeedback: z.array(z.string()).optional(),
+  comment: z.string().max(1000, 'Comment must be less than 1000 characters').optional(),
+  photos: z.array(z.object({
+    id: z.string(),
+    filename: z.string(),
+    size: z.number(),
+    type: z.string()
+  })).max(5, 'Maximum 5 photos allowed').optional(),
   guestInfo: z.object({
     name: z.string().optional(),
-    email: z.string().email().optional(),
+    email: z.string().email('Invalid email format').optional(),
     phone: z.string().optional()
   }).optional()
 })
 
-const FeedbackResponseSchema = z.object({
-  id: z.string(),
-  orderId: z.string().nullable(),
-  restaurantId: z.string(),
-  tableId: z.string().nullable(),
-  overallRating: z.number(),
-  categories: z.record(z.number()),
-  quickFeedback: z.array(z.string()),
-  comment: z.string().nullable(),
-  photos: z.array(FeedbackPhotoSchema),
-  guestInfo: z.object({
-    name: z.string().nullable(),
-    email: z.string().nullable(),
-    phone: z.string().nullable()
-  }).nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-  restaurantResponse: z.object({
-    message: z.string(),
-    respondedAt: z.string(),
-    respondedBy: z.string()
-  }).optional()
+const FeedbackListParamsSchema = z.object({
+  restaurantId: z.string().optional(),
+  page: z.number().min(1).optional(),
+  limit: z.number().min(1).max(100).optional(),
+  rating: z.number().min(1).max(5).optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  hasComment: z.boolean().optional(),
+  hasPhotos: z.boolean().optional(),
+  tableId: z.string().optional(),
+  orderId: z.string().optional(),
+  sortBy: z.enum(['createdAt', 'rating', 'updatedAt']).optional(),
+  sortOrder: z.enum(['asc', 'desc']).optional()
 })
 
-const FeedbackListResponseSchema = z.object({
-  feedbacks: z.array(FeedbackResponseSchema),
-  pagination: z.object({
-    page: z.number(),
-    limit: z.number(),
-    total: z.number(),
-    totalPages: z.number()
-  }),
-  averageRating: z.number(),
-  totalFeedbacks: z.number()
+
+const FlagFeedbackSchema = z.object({
+  reason: z.enum(['INAPPROPRIATE', 'SPAM', 'FAKE', 'OFFENSIVE', 'OTHER']),
+  details: z.string().max(200, 'Details must be less than 200 characters').optional()
 })
-
-const FeedbackStatsResponseSchema = z.object({
-  totalFeedbacks: z.number(),
-  averageRating: z.number(),
-  ratingDistribution: z.record(z.number()),
-  categoryAverages: z.record(z.number()),
-  recentTrends: z.object({
-    thisWeek: z.number(),
-    lastWeek: z.number(),
-    change: z.number()
-  })
-})
-
-// Type definitions
-export type CreateFeedbackRequest = z.infer<typeof CreateFeedbackRequestSchema>
-export type FeedbackResponse = z.infer<typeof FeedbackResponseSchema>
-export type FeedbackListResponse = z.infer<typeof FeedbackListResponseSchema>
-export type FeedbackStatsResponse = z.infer<typeof FeedbackStatsResponseSchema>
-export type FeedbackPhoto = z.infer<typeof FeedbackPhotoSchema>
-
-export interface FeedbackListParams {
-  restaurantId: string
-  page?: number
-  limit?: number
-  rating?: number
-  startDate?: string
-  endDate?: string
-  hasComment?: boolean
-  orderBy?: 'createdAt' | 'rating'
-  order?: 'asc' | 'desc'
-}
 
 export class FeedbackAPI {
   constructor(private client: TabsyApiClient) {}
@@ -106,21 +69,35 @@ export class FeedbackAPI {
    */
   async create(data: CreateFeedbackRequest): Promise<{
     success: boolean
-    data?: FeedbackResponse
+    data?: Feedback
     error?: string
   }> {
     try {
       // Validate request data
       const validatedData = CreateFeedbackRequestSchema.parse(data)
 
-      const response = await this.client.post<FeedbackResponse>('/feedback', validatedData)
+      const response = await this.client.post<Feedback>('/feedback', validatedData)
+
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to create feedback')
+      }
 
       return {
         success: true,
-        data: FeedbackResponseSchema.parse(response)
+        data: response.data
       }
     } catch (error) {
       console.error('Create feedback error:', error)
+
+      // Enhanced error handling for production
+      if (error instanceof z.ZodError) {
+        const validationErrors = error.errors.map(e => e.message).join(', ')
+        return {
+          success: false,
+          error: `Validation error: ${validationErrors}`
+        }
+      }
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to create feedback'
@@ -133,15 +110,23 @@ export class FeedbackAPI {
    */
   async getById(id: string): Promise<{
     success: boolean
-    data?: FeedbackResponse
+    data?: Feedback
     error?: string
   }> {
     try {
-      const response = await this.client.get<FeedbackResponse>(`/feedback/${id}`)
+      if (!id || id.trim() === '') {
+        throw new Error('Feedback ID is required')
+      }
+
+      const response = await this.client.get<Feedback>(`/feedback/${id}`)
+
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to get feedback')
+      }
 
       return {
         success: true,
-        data: FeedbackResponseSchema.parse(response)
+        data: response.data
       }
     } catch (error) {
       console.error('Get feedback error:', error)
@@ -161,16 +146,37 @@ export class FeedbackAPI {
     error?: string
   }> {
     try {
-      const queryParams = serializeQueryParams(createFilterParams(params))
+      // Validate parameters
+      const validatedParams = FeedbackListParamsSchema.parse(params)
 
-      const response = await this.client.get<FeedbackListResponse>(`/feedback?${queryParams}`)
+      if (!validatedParams.restaurantId) {
+        throw new Error('Restaurant ID is required')
+      }
+
+      const queryParams = serializeQueryParams(createFilterParams(validatedParams))
+      const endpoint = `/restaurants/${validatedParams.restaurantId}/feedback?${queryParams}`
+
+      const response = await this.client.get<FeedbackListResponse>(endpoint)
+
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to get restaurant feedback')
+      }
 
       return {
         success: true,
-        data: FeedbackListResponseSchema.parse(response)
+        data: response.data
       }
     } catch (error) {
       console.error('Get restaurant feedback error:', error)
+
+      if (error instanceof z.ZodError) {
+        const validationErrors = error.errors.map(e => e.message).join(', ')
+        return {
+          success: false,
+          error: `Validation error: ${validationErrors}`
+        }
+      }
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to get restaurant feedback'
@@ -181,19 +187,32 @@ export class FeedbackAPI {
   /**
    * Get feedback statistics for a restaurant
    */
-  async getStats(restaurantId: string, period?: 'week' | 'month' | 'quarter' | 'year'): Promise<{
+  async getStats(restaurantId: string, params?: {
+    startDate?: string
+    endDate?: string
+    groupBy?: 'day' | 'week' | 'month'
+  }): Promise<{
     success: boolean
-    data?: FeedbackStatsResponse
+    data?: FeedbackStats
     error?: string
   }> {
     try {
-      const queryParams = serializeQueryParams({ restaurantId, period })
+      if (!restaurantId || restaurantId.trim() === '') {
+        throw new Error('Restaurant ID is required')
+      }
 
-      const response = await this.client.get<FeedbackStatsResponse>(`/feedback/stats?${queryParams}`)
+      const queryParams = params ? serializeQueryParams(createFilterParams(params)) : ''
+      const endpoint = `/restaurants/${restaurantId}/feedback/stats${queryParams ? `?${queryParams}` : ''}`
+
+      const response = await this.client.get<FeedbackStats>(endpoint)
+
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to get feedback statistics')
+      }
 
       return {
         success: true,
-        data: FeedbackStatsResponseSchema.parse(response)
+        data: response.data
       }
     } catch (error) {
       console.error('Get feedback stats error:', error)
@@ -213,16 +232,40 @@ export class FeedbackAPI {
     error?: string
   }> {
     try {
+      // Validation
+      if (!files || files.length === 0) {
+        throw new Error('No files provided')
+      }
+
+      if (files.length > 5) {
+        throw new Error('Maximum 5 photos allowed')
+      }
+
+      // Validate each file
+      for (const file of files) {
+        if (file.size > 5242880) { // 5MB
+          throw new Error(`File ${file.name} is too large. Maximum size is 5MB`)
+        }
+
+        if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+          throw new Error(`File ${file.name} has unsupported format. Use JPEG, PNG, or WebP`)
+        }
+      }
+
       const formData = new FormData()
       files.forEach((file, index) => {
-        formData.append(`photos[${index}]`, file)
+        formData.append('photos', file) // Use consistent naming
       })
 
-      const response = await this.client.postFormData<{ photos: FeedbackPhoto[] }>('/feedback/upload-photos', formData)
+      const response = await this.client.postFormData<{ success: boolean; data: FeedbackPhoto[]; error?: string }>('/feedback/photos', formData)
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to upload photos')
+      }
 
       return {
         success: true,
-        data: response.photos
+        data: response.data
       }
     } catch (error) {
       console.error('Upload feedback photos error:', error)
@@ -241,7 +284,15 @@ export class FeedbackAPI {
     error?: string
   }> {
     try {
-      await this.client.delete(`/feedback/photos/${photoId}`)
+      if (!photoId || photoId.trim() === '') {
+        throw new Error('Photo ID is required')
+      }
+
+      const response = await this.client.delete<{ success: boolean }>(`/feedback/photos/${photoId}`)
+
+      if (!response.success) {
+        throw new Error('Failed to delete photo')
+      }
 
       return {
         success: true
@@ -255,53 +306,109 @@ export class FeedbackAPI {
     }
   }
 
-  /**
-   * Respond to feedback (restaurant staff only)
-   */
-  async respond(feedbackId: string, message: string): Promise<{
-    success: boolean
-    data?: FeedbackResponse
-    error?: string
-  }> {
-    try {
-      const response = await this.client.post<FeedbackResponse>(`/feedback/${feedbackId}/respond`, {
-        message
-      })
-
-      return {
-        success: true,
-        data: FeedbackResponseSchema.parse(response)
-      }
-    } catch (error) {
-      console.error('Respond to feedback error:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to respond to feedback'
-      }
-    }
-  }
 
   /**
-   * Flag feedback as inappropriate (moderation)
+   * Flag feedback as inappropriate
    */
-  async flag(feedbackId: string, reason: string): Promise<{
+  async flag(feedbackId: string, data: FlagFeedbackRequest): Promise<{
     success: boolean
     error?: string
   }> {
     try {
-      await this.client.post(`/feedback/${feedbackId}/flag`, {
-        reason
-      })
+      if (!feedbackId || feedbackId.trim() === '') {
+        throw new Error('Feedback ID is required')
+      }
+
+      const validatedData = FlagFeedbackSchema.parse(data)
+
+      const response = await this.client.post<{ success: boolean }>(`/feedback/${feedbackId}/flag`, validatedData)
+
+      if (!response.success) {
+        throw new Error('Failed to flag feedback')
+      }
 
       return {
         success: true
       }
     } catch (error) {
       console.error('Flag feedback error:', error)
+
+      if (error instanceof z.ZodError) {
+        const validationErrors = error.errors.map(e => e.message).join(', ')
+        return {
+          success: false,
+          error: `Validation error: ${validationErrors}`
+        }
+      }
+
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to flag feedback'
       }
     }
   }
+
+  /**
+   * Get all feedback for admin (across all restaurants)
+   */
+  async getAllFeedback(params?: {
+    page?: number
+    limit?: number
+    restaurantId?: string
+  }): Promise<{
+    success: boolean
+    data?: FeedbackListResponse
+    error?: string
+  }> {
+    try {
+      const queryParams = params ? serializeQueryParams(createFilterParams(params)) : ''
+      const endpoint = `/admin/feedback${queryParams ? `?${queryParams}` : ''}`
+
+      const response = await this.client.get<FeedbackListResponse>(endpoint)
+
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to get all feedback')
+      }
+
+      return {
+        success: true,
+        data: response.data
+      }
+    } catch (error) {
+      console.error('Get all feedback error:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get all feedback'
+      }
+    }
+  }
+
+  /**
+   * Get platform-wide feedback statistics for admin
+   */
+  async getPlatformStats(): Promise<{
+    success: boolean
+    data?: any
+    error?: string
+  }> {
+    try {
+      const response = await this.client.get<any>('/admin/feedback/stats')
+
+      if (!response.success) {
+        throw new Error(response.error?.message || 'Failed to get platform statistics')
+      }
+
+      return {
+        success: true,
+        data: response.data
+      }
+    } catch (error) {
+      console.error('Get platform stats error:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get platform statistics'
+      }
+    }
+  }
+
 }

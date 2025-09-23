@@ -112,8 +112,12 @@ export {
   useFeedbackStats,
   useUploadFeedbackPhotos,
   useDeleteFeedbackPhoto,
-  useRespondToFeedback,
   useFlagFeedback,
+  useAdminFeedback,
+  useAdminFeedbackStats,
+  useUpdateFeedbackStatus,
+  usePrefetchFeedback,
+  useInvalidateFeedback,
   FEEDBACK_KEYS
 } from './feedback-hooks'
 

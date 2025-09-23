@@ -1558,6 +1558,464 @@ GET /live
 
 ---
 
+## Feedback Management API
+
+### Base Routes
+All feedback management endpoints are prefixed with `/api/v1`
+
+### Authentication
+- **Guest Access**: Allowed for creating feedback
+- **Restaurant Owner/Admin**: Required for viewing restaurant feedback
+- **Admin**: Required for moderation features
+- **Header**: `Authorization: Bearer <jwt_token>` (when authenticated)
+
+---
+
+### 1. Create Feedback
+
+```http
+POST /api/v1/feedback
+```
+
+**Authentication**: Optional (Guest session or authenticated user)
+
+**Important Notes**:
+- Guest sessions can submit anonymous feedback using sessionId
+- Authenticated users have feedback linked to their account
+- Photos must be uploaded separately using the photo upload endpoint
+- Feedback can be linked to a specific order or just restaurant/table
+
+**Request Body**:
+```typescript
+{
+  orderId?: string          // Optional - Link to specific order
+  restaurantId: string      // Required - Restaurant being reviewed
+  tableId?: string          // Optional - Table context
+  overallRating: number     // Required - 1-5 star rating
+  categories: {             // Optional - Category-specific ratings
+    food?: number           // 1-5 star rating for food quality
+    service?: number        // 1-5 star rating for service
+    speed?: number          // 1-5 star rating for speed
+    value?: number          // 1-5 star rating for value for money
+  }
+  quickFeedback?: string[]  // Optional - Array of predefined feedback tags
+  comment?: string          // Optional - Written feedback (max 1000 characters)
+  photos?: {                // Optional - Photo metadata (files uploaded separately)
+    id: string
+    filename: string
+    size: number
+    type: string
+  }[]
+  guestInfo?: {             // Optional - Guest contact details for follow-up
+    name?: string
+    email?: string
+    phone?: string
+  }
+}
+```
+
+**Validation Rules**:
+- `restaurantId`: Required, must be valid restaurant ID
+- `overallRating`: Required, integer 1-5
+- `categories.*`: Optional, integer 1-5 if provided
+- `comment`: Max 1000 characters, sanitized for HTML/scripts
+- `photos`: Max 5 photos, each max 5MB
+
+**Response**:
+```typescript
+{
+  success: boolean
+  data: {
+    id: string
+    orderId?: string
+    restaurantId: string
+    tableId?: string
+    userId?: string          // If authenticated user
+    sessionId?: string       // If guest session
+    overallRating: number
+    categories: {
+      food?: number
+      service?: number
+      speed?: number
+      value?: number
+    }
+    quickFeedback?: string[]
+    comment?: string
+    photos?: FeedbackPhoto[]
+    guestInfo?: {
+      name?: string
+      email?: string
+      phone?: string
+    }
+    status: 'PENDING' | 'APPROVED' | 'FLAGGED' | 'HIDDEN'
+    createdAt: string
+    updatedAt: string
+  }
+  message?: string
+}
+```
+
+---
+
+### 2. Get Feedback by ID
+
+```http
+GET /api/v1/feedback/:feedbackId
+```
+
+**Authentication**: Optional (Public feedback, private details require ownership or restaurant access)
+
+**Response**:
+```typescript
+{
+  success: boolean
+  data: Feedback    // Full feedback details
+  message?: string
+}
+```
+
+---
+
+### 3. Get Restaurant Feedback
+
+```http
+GET /api/v1/restaurants/:restaurantId/feedback
+```
+
+**Authentication**: Required (Restaurant Owner/Admin)
+
+**Query Parameters**:
+```typescript
+{
+  page?: number             // Page number (default: 1)
+  limit?: number            // Items per page (default: 20, max: 100)
+  rating?: number           // Filter by rating (1-5)
+  startDate?: string        // Filter by date range (ISO string)
+  endDate?: string          // Filter by date range (ISO string)
+  status?: 'PENDING' | 'APPROVED' | 'FLAGGED' | 'HIDDEN'
+  hasComment?: boolean      // Filter feedback with/without comments
+  hasPhotos?: boolean       // Filter feedback with/without photos
+  tableId?: string          // Filter by specific table
+  orderId?: string          // Filter by specific order
+}
+```
+
+**Response**:
+```typescript
+{
+  success: boolean
+  data: {
+    feedback: Feedback[]
+    pagination: {
+      total: number
+      page: number
+      limit: number
+      totalPages: number
+    }
+    stats: {
+      averageRating: number
+      totalCount: number
+      ratingDistribution: {
+        1: number
+        2: number
+        3: number
+        4: number
+        5: number
+      }
+    }
+  }
+  message?: string
+}
+```
+
+---
+
+### 4. Get Feedback Statistics
+
+```http
+GET /api/v1/restaurants/:restaurantId/feedback/stats
+```
+
+**Authentication**: Required (Restaurant Owner/Admin)
+
+**Query Parameters**:
+```typescript
+{
+  startDate?: string        // Date range for stats (ISO string)
+  endDate?: string          // Date range for stats (ISO string)
+  groupBy?: 'day' | 'week' | 'month'  // Group statistics by period
+}
+```
+
+**Response**:
+```typescript
+{
+  success: boolean
+  data: {
+    overview: {
+      totalFeedback: number
+      averageRating: number
+    }
+    ratings: {
+      overall: {
+        average: number
+        distribution: { 1: number, 2: number, 3: number, 4: number, 5: number }
+      }
+      categories: {
+        food: { average: number, count: number }
+        service: { average: number, count: number }
+        speed: { average: number, count: number }
+        value: { average: number, count: number }
+      }
+    }
+    trends: {
+      period: string
+      averageRating: number
+      feedbackCount: number
+    }[]
+    quickFeedback: {
+      positive: { tag: string, count: number }[]
+      negative: { tag: string, count: number }[]
+      neutral: { tag: string, count: number }[]
+    }
+    photos: {
+      totalPhotos: number
+      recentPhotos: FeedbackPhoto[]  // Last 10 photos
+    }
+  }
+  message?: string
+}
+```
+
+---
+
+### 5. Upload Feedback Photos
+
+```http
+POST /api/v1/feedback/photos
+```
+
+**Authentication**: Optional (Guest session or authenticated user)
+
+**Important Notes**:
+- Supports multipart/form-data for file uploads
+- Photos are uploaded before feedback submission
+- Returns photo IDs that can be referenced in feedback creation
+- Implements virus scanning and content moderation
+
+**Request**: Multipart form data
+```typescript
+{
+  files: File[]             // Array of image files
+  feedbackId?: string       // Optional - Link to existing feedback
+}
+```
+
+**Validation Rules**:
+- Max 5 files per request
+- Each file max 5MB
+- Supported formats: JPEG, PNG, WebP
+- Images are resized/optimized on upload
+
+**Response**:
+```typescript
+{
+  success: boolean
+  data: {
+    id: string
+    filename: string
+    originalName: string
+    size: number
+    type: string
+    url: string             // Public URL for viewing
+    thumbnailUrl: string    // Optimized thumbnail URL
+    uploadedAt: string
+  }[]
+  message?: string
+}
+```
+
+---
+
+### 6. Delete Feedback Photo
+
+```http
+DELETE /api/v1/feedback/photos/:photoId
+```
+
+**Authentication**: Required (Photo owner, restaurant owner, or admin)
+
+**Response**:
+```typescript
+{
+  success: boolean
+  message: string
+}
+```
+
+---
+
+
+### 7. Flag Feedback
+
+```http
+POST /api/v1/feedback/:feedbackId/flag
+```
+
+**Authentication**: Required (Restaurant owner, admin, or authenticated user)
+
+**Request Body**:
+```typescript
+{
+  reason: 'INAPPROPRIATE' | 'SPAM' | 'FAKE' | 'OFFENSIVE' | 'OTHER'
+  details?: string          // Additional context for the flag
+}
+```
+
+**Response**:
+```typescript
+{
+  success: boolean
+  message: string
+}
+```
+
+---
+
+### Frontend Type Definitions
+
+```typescript
+interface CreateFeedbackRequest {
+  orderId?: string
+  restaurantId: string
+  tableId?: string
+  overallRating: number
+  categories?: {
+    food?: number
+    service?: number
+    speed?: number
+    value?: number
+  }
+  quickFeedback?: string[]
+  comment?: string
+  photos?: {
+    id: string
+    filename: string
+    size: number
+    type: string
+  }[]
+  guestInfo?: {
+    name?: string
+    email?: string
+    phone?: string
+  }
+}
+
+interface Feedback {
+  id: string
+  orderId?: string
+  restaurantId: string
+  tableId?: string
+  userId?: string
+  sessionId?: string
+  overallRating: number
+  categories?: {
+    food?: number
+    service?: number
+    speed?: number
+    value?: number
+  }
+  quickFeedback?: string[]
+  comment?: string
+  photos?: FeedbackPhoto[]
+  guestInfo?: {
+    name?: string
+    email?: string
+    phone?: string
+  }
+  status: 'PENDING' | 'APPROVED' | 'FLAGGED' | 'HIDDEN'
+  flagged?: {
+    reason: string
+    details?: string
+    flaggedAt: string
+    flaggedBy: string
+  }
+  createdAt: string
+  updatedAt: string
+}
+
+interface FeedbackPhoto {
+  id: string
+  filename: string
+  originalName: string
+  size: number
+  type: string
+  url: string
+  thumbnailUrl: string
+  uploadedAt: string
+}
+
+interface FeedbackStats {
+  overview: {
+    totalFeedback: number
+    averageRating: number
+    responseRate: number
+  }
+  ratings: {
+    overall: {
+      average: number
+      distribution: Record<number, number>
+    }
+    categories: {
+      food: { average: number, count: number }
+      service: { average: number, count: number }
+      speed: { average: number, count: number }
+      value: { average: number, count: number }
+    }
+  }
+  trends: {
+    period: string
+    averageRating: number
+    feedbackCount: number
+  }[]
+  quickFeedback: {
+    positive: { tag: string, count: number }[]
+    negative: { tag: string, count: number }[]
+    neutral: { tag: string, count: number }[]
+  }
+  photos: {
+    totalPhotos: number
+    recentPhotos: FeedbackPhoto[]
+  }
+}
+```
+
+---
+
+### Common Issues and Solutions
+
+#### 1. Photo Upload Failures
+- **Issue**: Large files or unsupported formats
+- **Solution**: Implement client-side validation and image compression
+- **Frontend**: Show progress indicators and file size warnings
+
+#### 2. Guest Session Management
+- **Issue**: Lost session during feedback submission
+- **Solution**: Persist session ID in sessionStorage and implement retry logic
+- **Frontend**: Auto-restore session and graceful error handling
+
+#### 3. Feedback Validation
+- **Issue**: Missing required fields or invalid data
+- **Solution**: Comprehensive client and server-side validation
+- **Frontend**: Real-time validation with clear error messages
+
+#### 4. Content Moderation
+- **Issue**: Inappropriate feedback content
+- **Solution**: Automated content filtering and manual review queue
+- **Backend**: Implement profanity filters and image content analysis
+
+---
+
 ## Summary of API Coverage
 
 The Tabsy Frontend now has complete API client coverage for all **86 backend endpoints** across:

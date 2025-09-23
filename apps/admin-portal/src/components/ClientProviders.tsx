@@ -6,6 +6,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { AuthProvider, ToastProvider } from '@tabsy/ui-components';
 import { TabsyAPI } from '@tabsy/api-client';
 import { ThemeProvider } from './ThemeProvider';
+import { ApiProvider } from './providers/api-provider';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -30,12 +31,14 @@ export function ClientProviders({ children }: ClientProvidersProps): JSX.Element
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider apiClient={apiClient}>
-        <ThemeProvider variant="admin">
-          <ToastProvider>
-            {children}
-          </ToastProvider>
-        </ThemeProvider>
-        <ReactQueryDevtools initialIsOpen={false} />
+        <ApiProvider apiClient={apiClient}>
+          <ThemeProvider variant="admin">
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </ThemeProvider>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </ApiProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -1,4 +1,5 @@
 export * from './cart';
+export * from './feedback';
 export * from './menu';
 export * from './notification';
 export * from './order';

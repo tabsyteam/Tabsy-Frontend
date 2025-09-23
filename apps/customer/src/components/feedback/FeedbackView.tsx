@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@tabsy/ui-components'
@@ -21,41 +21,79 @@ import {
   Meh,
   X,
   Image,
-  Upload
+  Upload,
+  Loader2,
+  AlertCircle,
+  Trash2,
+  RotateCcw
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { FeedbackFormSkeleton, HeaderSkeleton } from '../ui/Skeleton'
 import { haptics } from '@/lib/haptics'
 import { useApi } from '@/components/providers/api-provider'
+import {
+  useCreateFeedback,
+  useUploadFeedbackPhotos,
+  useDeleteFeedbackPhoto,
+  FEEDBACK_KEYS
+} from '@tabsy/react-query-hooks'
+import { useQueryClient } from '@tanstack/react-query'
+import type {
+  CreateFeedbackRequest,
+  FeedbackPhoto,
+  QuickFeedbackOption,
+  FeedbackCategoryDefinition,
+  DEFAULT_QUICK_FEEDBACK_OPTIONS,
+  DEFAULT_FEEDBACK_CATEGORIES
+} from '@tabsy/shared-types'
 
-interface FeedbackCategory {
+// Enhanced interfaces with production features
+interface LocalFeedbackCategory {
   id: string
   name: string
   icon: React.ElementType
   rating: number
 }
 
-interface QuickFeedback {
+interface LocalQuickFeedback {
   id: string
   label: string
   icon: React.ElementType
   type: 'positive' | 'neutral' | 'negative'
 }
 
-interface UploadedPhoto {
+interface LocalUploadedPhoto {
   id: string
   file: File
   preview: string
   uploading?: boolean
+  uploaded?: boolean
+  error?: string
+  progress?: number
+}
+
+// Add UploadedPhoto alias for backward compatibility
+type UploadedPhoto = LocalUploadedPhoto
+
+interface ValidationErrors {
+  overallRating?: string
+  comment?: string
+  photos?: string
+  guestInfo?: {
+    email?: string
+    phone?: string
+  }
 }
 
 export function FeedbackView() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { api } = useApi()
+  const queryClient = useQueryClient()
 
+  // Enhanced state management
   const [overallRating, setOverallRating] = useState<number>(0)
-  const [categories, setCategories] = useState<FeedbackCategory[]>([
+  const [categories, setCategories] = useState<LocalFeedbackCategory[]>([
     { id: 'food', name: 'Food Quality', icon: Utensils, rating: 0 },
     { id: 'service', name: 'Service', icon: Users, rating: 0 },
     { id: 'speed', name: 'Speed', icon: Clock, rating: 0 },
@@ -63,31 +101,157 @@ export function FeedbackView() {
   ])
   const [selectedQuickFeedback, setSelectedQuickFeedback] = useState<string[]>([])
   const [comment, setComment] = useState('')
-  const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
-  const [photos, setPhotos] = useState<UploadedPhoto[]>([])
-  const [uploadingPhotos, setUploadingPhotos] = useState(false)
+  const [photos, setPhotos] = useState<LocalUploadedPhoto[]>([])
   const [loading, setLoading] = useState(true)
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({})
+  const [guestInfo, setGuestInfo] = useState({ name: '', email: '', phone: '' })
+  const [showGuestInfo, setShowGuestInfo] = useState(false)
+  const [isDirty, setIsDirty] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [uploadingPhotos, setUploadingPhotos] = useState(false)
 
+  // URL parameters
   const orderId = searchParams.get('order')
   const restaurantId = searchParams.get('restaurant')
   const tableId = searchParams.get('table')
 
-  // Simulate loading state
+  // React Query hooks for production data handling
+  const createFeedbackMutation = useCreateFeedback(api, {
+    onSuccess: (result) => {
+      if (result.success) {
+        setSubmitted(true)
+        setIsDirty(false)
+        haptics.success()
+
+        toast.success('Thank you for your feedback!', {
+          description: 'Your review helps us improve our service',
+          duration: 4000,
+          icon: '🌟'
+        })
+
+        // Navigate back after delay
+        setTimeout(() => {
+          router.push('/')
+        }, 3000)
+      }
+    },
+    onError: (error) => {
+      console.error('Failed to submit feedback:', error)
+      haptics.error()
+      handleSubmissionError(error)
+    }
+  })
+
+  const uploadPhotosMutation = useUploadFeedbackPhotos(api, {
+    onSuccess: (result) => {
+      if (result.success && result.data) {
+        // Update local photos with uploaded data
+        setPhotos(prev =>
+          prev.map(photo => {
+            const uploadedPhoto = result.data!.find(up => up.originalName === photo.file.name)
+            if (uploadedPhoto) {
+              return {
+                ...photo,
+                id: uploadedPhoto.id,
+                uploading: false,
+                uploaded: true,
+                progress: 100
+              }
+            }
+            return photo
+          })
+        )
+      }
+    },
+    onError: (error) => {
+      console.error('Photo upload failed:', error)
+      // Handle upload errors per photo
+      setPhotos(prev =>
+        prev.map(photo => photo.uploading ? {
+          ...photo,
+          uploading: false,
+          error: error.message
+        } : photo)
+      )
+    }
+  })
+
+  const deletePhotoMutation = useDeleteFeedbackPhoto(api)
+
+  // Error handling helper
+  const handleSubmissionError = (error: Error) => {
+    const errorMessage = error.message.toLowerCase()
+
+    let errorTitle = 'Failed to submit feedback'
+    let errorDescription = 'Please try again'
+
+    if (errorMessage.includes('network') || errorMessage.includes('fetch')) {
+      errorTitle = 'Network error'
+      errorDescription = 'Please check your internet connection and try again'
+    } else if (errorMessage.includes('404') || errorMessage.includes('not found')) {
+      errorTitle = 'Service temporarily unavailable'
+      errorDescription = 'The feedback system is currently under maintenance. Please try again later'
+    } else if (errorMessage.includes('validation')) {
+      errorTitle = 'Invalid feedback data'
+      errorDescription = error.message
+    }
+
+    toast.error(errorTitle, {
+      description: errorDescription,
+      duration: 5000,
+      action: {
+        label: 'Retry',
+        onClick: () => handleSubmit()
+      }
+    })
+  }
+
+  // Real loading management
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1000)
+    const timer = setTimeout(() => setLoading(false), 800)
     return () => clearTimeout(timer)
   }, [])
 
-  const quickFeedbackOptions: QuickFeedback[] = [
+  // Track form changes for unsaved warnings
+  useEffect(() => {
+    const hasChanges = overallRating > 0 ||
+                      categories.some(cat => cat.rating > 0) ||
+                      selectedQuickFeedback.length > 0 ||
+                      comment.trim() !== '' ||
+                      photos.length > 0
+    setIsDirty(hasChanges)
+  }, [overallRating, categories, selectedQuickFeedback, comment, photos])
+
+  // Warn about unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty && !submitted) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isDirty, submitted])
+
+  // Enhanced quick feedback options with better categorization
+  const quickFeedbackOptions: LocalQuickFeedback[] = [
     { id: 'delicious', label: 'Delicious food', icon: Heart, type: 'positive' },
     { id: 'friendly', label: 'Friendly staff', icon: ThumbsUp, type: 'positive' },
     { id: 'fast', label: 'Quick service', icon: Clock, type: 'positive' },
     { id: 'clean', label: 'Clean environment', icon: CheckCircle, type: 'positive' },
+    { id: 'great_value', label: 'Great value', icon: DollarSign, type: 'positive' },
+    { id: 'recommended', label: 'Highly recommended', icon: Heart, type: 'positive' },
     { id: 'slow', label: 'Slow service', icon: Clock, type: 'negative' },
     { id: 'cold', label: 'Food was cold', icon: ThumbsDown, type: 'negative' },
     { id: 'expensive', label: 'Too expensive', icon: DollarSign, type: 'negative' },
-    { id: 'average', label: 'Just okay', icon: Meh, type: 'neutral' }
+    { id: 'poor_quality', label: 'Poor food quality', icon: ThumbsDown, type: 'negative' },
+    { id: 'unfriendly', label: 'Unfriendly staff', icon: Users, type: 'negative' },
+    { id: 'dirty', label: 'Cleanliness issues', icon: X, type: 'negative' },
+    { id: 'average', label: 'Just okay', icon: Meh, type: 'neutral' },
+    { id: 'as_expected', label: 'As expected', icon: CheckCircle, type: 'neutral' }
   ]
 
   const updateCategoryRating = (categoryId: string, rating: number) => {
@@ -114,73 +278,51 @@ export function FeedbackView() {
 
     const maxPhotos = 5
     const maxFileSize = 5 * 1024 * 1024 // 5MB
+    const validFiles: File[] = []
 
-    setUploadingPhotos(true)
+    // Validate files first
+    for (let i = 0; i < files.length && photos.length + validFiles.length < maxPhotos; i++) {
+      const file = files[i]
+      if (!file) continue
 
-    try {
-      for (let i = 0; i < files.length && photos.length + i < maxPhotos; i++) {
-        const file = files[i]
-        if (!file) continue
-
-        // Validate file type
-        if (!file.type.startsWith('image/')) {
-          toast.error(`${file.name} is not a valid image file`)
-          continue
-        }
-
-        // Validate file size
-        if (file.size > maxFileSize) {
-          toast.error(`${file.name} is too large (max 5MB)`)
-          continue
-        }
-
-        // Create preview
-        const preview = URL.createObjectURL(file)
-        const photoId = `photo-${Date.now()}-${i}`
-
-        const newPhoto: UploadedPhoto = {
-          id: photoId,
-          file,
-          preview,
-          uploading: true
-        }
-
-        setPhotos(prev => [...prev, newPhoto])
-
-        // Upload to server using the feedback API
-        try {
-          const uploadResponse = await api.feedback.uploadPhotos([file])
-          if (uploadResponse.success && uploadResponse.data && uploadResponse.data.length > 0) {
-            const uploadedPhoto = uploadResponse.data[0]
-            if (uploadedPhoto) {
-              setPhotos(prev =>
-                prev.map(photo =>
-                  photo.id === photoId
-                    ? { ...photo, uploading: false, id: uploadedPhoto.id }
-                    : photo
-                )
-              )
-            } else {
-              throw new Error('No photo data received')
-            }
-          } else {
-            throw new Error('Upload failed')
-          }
-        } catch (uploadError) {
-          console.error('Photo upload failed:', uploadError)
-          setPhotos(prev => prev.filter(p => p.id !== photoId))
-          toast.error(`Failed to upload ${file.name}`)
-        }
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast.error(`${file.name} is not a valid image file`)
+        continue
       }
 
-      toast.success(`${Math.min(files.length, maxPhotos - photos.length)} photo(s) added`)
-    } catch (error) {
-      console.error('Error uploading photos:', error)
-      toast.error('Failed to upload photos')
-    } finally {
-      setUploadingPhotos(false)
-      // Reset the input
+      // Validate file size
+      if (file.size > maxFileSize) {
+        toast.error(`${file.name} is too large (max 5MB)`)
+        continue
+      }
+
+      validFiles.push(file)
+    }
+
+    if (validFiles.length === 0) {
       event.target.value = ''
+      return
+    }
+
+    // Add files to local state immediately with previews
+    const newPhotos: LocalUploadedPhoto[] = validFiles.map((file, index) => ({
+      id: `photo-${Date.now()}-${index}`,
+      file,
+      preview: URL.createObjectURL(file),
+      uploading: true
+    }))
+
+    setPhotos(prev => [...prev, ...newPhotos])
+    event.target.value = ''
+
+    // Upload files using the mutation
+    try {
+      await uploadPhotosMutation.mutateAsync(validFiles)
+      toast.success(`${validFiles.length} photo(s) uploaded successfully`)
+    } catch (error) {
+      console.error('Photo upload failed:', error)
+      // Error handling is done in the mutation's onError callback
     }
   }
 
@@ -189,9 +331,9 @@ export function FeedbackView() {
     if (!photoToRemove) return
 
     try {
-      // Delete from server if it was uploaded
-      if (!photoToRemove.uploading) {
-        await api.feedback.deletePhoto(photoId)
+      // Delete from server if it was uploaded and has a real ID
+      if (!photoToRemove.uploading && !photoId.startsWith('photo-')) {
+        await deletePhotoMutation.mutateAsync(photoId)
       }
 
       // Remove from local state
@@ -199,9 +341,29 @@ export function FeedbackView() {
         URL.revokeObjectURL(photoToRemove.preview)
         return prev.filter(p => p.id !== photoId)
       })
+
+      toast.success('Photo removed')
     } catch (error) {
       console.error('Failed to delete photo:', error)
-      toast.error('Failed to delete photo')
+
+      // Still remove from local state even if server deletion fails
+      setPhotos(prev => {
+        URL.revokeObjectURL(photoToRemove.preview)
+        return prev.filter(p => p.id !== photoId)
+      })
+
+      // Enhanced photo deletion error handling
+      let errorMessage = 'Photo removed from feedback. Server deletion failed'
+      if (error instanceof Error) {
+        const errorText = error.message.toLowerCase()
+        if (errorText.includes('network') || errorText.includes('404')) {
+          errorMessage = 'Photo removed locally. Server deletion failed but your feedback will still work'
+        } else if (errorText.includes('403') || errorText.includes('unauthorized')) {
+          errorMessage = 'Photo removed from feedback. Server access denied'
+        }
+      }
+
+      toast.error(errorMessage)
     }
   }
 
@@ -215,72 +377,57 @@ export function FeedbackView() {
   }, [photos])
 
   const handleSubmit = async () => {
+    // Validation
     if (overallRating === 0) {
       haptics.error()
       toast.error('Please provide an overall rating')
       return
     }
 
+    if (!restaurantId) {
+      haptics.error()
+      toast.error('Restaurant information is missing')
+      return
+    }
+
     haptics.formSubmit()
-    setSubmitting(true)
 
     try {
-      if (!restaurantId) {
-        throw new Error('Restaurant ID is required')
-      }
-
-      const feedbackData = {
+      const feedbackData: CreateFeedbackRequest = {
         orderId: orderId || undefined,
         restaurantId,
         tableId: tableId || undefined,
         overallRating,
-        categories: categories.reduce((acc, cat) => ({
-          ...acc,
-          [cat.id]: cat.rating
-        }), {}),
+        categories: categories.reduce((acc, cat) => {
+          if (cat.rating > 0) {
+            acc[cat.id] = cat.rating
+          }
+          return acc
+        }, {} as Record<string, number>),
         quickFeedback: selectedQuickFeedback,
         comment: comment.trim() || undefined,
-        photos: photos.filter(p => !p.uploading).map(photo => ({
-          id: photo.id,
-          filename: photo.file.name,
-          size: photo.file.size,
-          type: photo.file.type
-        }))
+        photos: photos
+          .filter(p => !p.uploading && !p.id.startsWith('photo-')) // Only include uploaded photos
+          .map(photo => ({
+            id: photo.id,
+            filename: photo.file.name,
+            size: photo.file.size,
+            type: photo.file.type
+          })),
+        guestInfo: showGuestInfo && (guestInfo.name || guestInfo.email || guestInfo.phone)
+          ? {
+              name: guestInfo.name || undefined,
+              email: guestInfo.email || undefined,
+              phone: guestInfo.phone || undefined
+            }
+          : undefined
       }
 
       console.log('Submitting feedback:', feedbackData)
-
-      const response = await api.feedback.create(feedbackData)
-
-      if (response.success) {
-        setSubmitted(true)
-        toast.success('Thank you for your feedback!', {
-          description: 'Your review helps us improve our service',
-          duration: 4000,
-          icon: '🌟'
-        })
-
-        // Navigate back after a delay
-        setTimeout(() => {
-          router.push('/')
-        }, 3000)
-      } else {
-        const errorMessage = response.error
-          ? (typeof response.error === 'string'
-              ? response.error
-              : (response.error as any)?.message || 'Failed to submit feedback')
-          : 'Failed to submit feedback'
-        throw new Error(errorMessage)
-      }
-
+      await createFeedbackMutation.mutateAsync(feedbackData)
     } catch (error) {
-      console.error('Failed to submit feedback:', error)
-      haptics.error()
-      toast.error('Failed to submit feedback', {
-        description: error instanceof Error ? error.message : 'Please try again'
-      })
-    } finally {
-      setSubmitting(false)
+      // Error handling is managed by the mutation's onError callback
+      console.error('Feedback submission failed:', error)
     }
   }
 

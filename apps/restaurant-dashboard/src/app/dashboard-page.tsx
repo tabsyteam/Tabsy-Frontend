@@ -2,10 +2,11 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Button, useAuth } from '@tabsy/ui-components'
-import { BarChart3, ShoppingCart, Users, Utensils, TrendingUp, Clock } from 'lucide-react'
+import { BarChart3, ShoppingCart, Users, Utensils, TrendingUp, Clock, Star } from 'lucide-react'
 import { OrdersManagement } from '@/components/orders/OrdersManagement'
 import { MenuManagement } from '@/components/menu/MenuManagement'
 import { TableManagement } from '@/components/tables/TableManagement'
+import { FeedbackManagement } from '@/components/feedback/FeedbackManagement'
 import { DynamicWeeklyOverviewChart } from '@/components'
 import { Header } from '@/components/layout'
 import { useRouter } from 'next/navigation'
@@ -44,7 +45,7 @@ export function DashboardClient(): JSX.Element {
   const auth = useAuth()
   const user = auth.user as UserType | null
   // State hooks - ADD MENU AND TABLES AS VIEWS
-  const [currentView, setCurrentView] = useState<'overview' | 'orders' | 'menu' | 'tables'>('overview')
+  const [currentView, setCurrentView] = useState<'overview' | 'orders' | 'menu' | 'tables' | 'feedback'>('overview')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   
   // Get current restaurant
@@ -527,6 +528,14 @@ export function DashboardClient(): JSX.Element {
                     <Users className="h-4 w-4 mr-2" />
                     Table Management
                   </Button>
+                  <Button
+                    className="w-full justify-start "
+                    variant="outline"
+                    onClick={() => setCurrentView('feedback')}
+                  >
+                    <Star className="h-4 w-4 mr-2" />
+                    Customer Feedback
+                  </Button>
                   <Button className="w-full justify-start " variant="outline">
                     <BarChart3 className="h-4 w-4 mr-2" />
                     View Analytics
@@ -596,6 +605,14 @@ export function DashboardClient(): JSX.Element {
           <div className="h-full overflow-y-auto">
             {restaurantId ? (
               <TableManagement restaurantId={restaurantId} />
+            ) : (
+              <p className="text-foreground/80">No restaurant access available.</p>
+            )}
+          </div>
+        ) : currentView === 'feedback' ? (
+          <div className="h-full overflow-y-auto">
+            {restaurantId ? (
+              <FeedbackManagement restaurantId={restaurantId} />
             ) : (
               <p className="text-foreground/80">No restaurant access available.</p>
             )}
