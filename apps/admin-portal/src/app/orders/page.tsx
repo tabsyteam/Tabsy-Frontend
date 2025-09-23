@@ -34,7 +34,7 @@ import { useOrders, useOrderMetrics } from '@/hooks/api';
 import { formatDistanceToNow, format } from 'date-fns';
 import OrderDetailsModal from '@/components/orders/OrderDetailsModal';
 import { Order, OrderStatus } from '@tabsy/shared-types';
-import { useWebSocket, useWebSocketEvent, useOrderUpdates } from '@tabsy/api-client';
+// WebSocket imports removed to eliminate duplicate order event handling
 import { useAuth } from '@tabsy/ui-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -89,78 +89,10 @@ export default function OrdersPage() {
 
   const { data: metrics } = useOrderMetrics();
 
-  // WebSocket for real-time updates
-  const ws = useWebSocket({
-    url: process.env.NEXT_PUBLIC_WS_BASE_URL || 'http://localhost:5001',
-    auth: {
-      token: auth.session?.token,
-      namespace: 'restaurant' as const
-    },
-    onConnect: () => {
-      console.log('Orders WebSocket connected');
-    },
-    onError: (error: Error) => {
-      console.error('Orders WebSocket error:', error);
-    }
-  });
+  // WebSocket connection removed - using standard API data fetching with manual/periodic refresh
 
-  // Real-time order updates using shared WebSocket hooks - COMPLETE ORDER MONITORING
-  useWebSocketEvent(ws.client, 'order:created', (data: any) => {
-    toast.success(`🆕 New order #${data.orderId?.slice(-8)} received!`);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-    refetch();
-  });
-
-  useWebSocketEvent(ws.client, 'order:updated', (data: any) => {
-    toast.info(`📝 Order #${data.orderId?.slice(-8)} updated by ${data.updatedBy}`);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-    refetch();
-  });
-
-  useWebSocketEvent(ws.client, 'order:status_updated', (data: any) => {
-    toast.info(`🔄 Order #${data.orderId?.slice(-8)} status: ${data.previousStatus} → ${data.newStatus}`);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-    refetch();
-  });
-
-  // Order Item Modification Events - Critical for Order Management
-  useWebSocketEvent(ws.client, 'order:item_added', (data: any) => {
-    toast.success(`➕ Item added to order #${data.orderId?.slice(-8)} (Qty: ${data.quantity})`);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-    refetch();
-  });
-
-  useWebSocketEvent(ws.client, 'order:item_updated', (data: any) => {
-    toast.info(`✏️ Item updated in order #${data.orderId?.slice(-8)} by ${data.updatedBy}`);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-    refetch();
-  });
-
-  useWebSocketEvent(ws.client, 'order:item_removed', (data: any) => {
-    toast.warning(`❌ Item removed from order #${data.orderId?.slice(-8)} by ${data.removedBy}`);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-    refetch();
-  });
-
-  // Kitchen Events - Important for Order Lifecycle Tracking
-  useWebSocketEvent(ws.client, 'kitchen:new-order', (data: any) => {
-    if (data.priority === 'urgent' || data.priority === 'high') {
-      toast.warning(`🍳 ${data.priority.toUpperCase()} kitchen order: #${data.orderId?.slice(-8)} - ${data.orderType}`);
-    }
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-  });
-
-  useWebSocketEvent(ws.client, 'kitchen:order-ready', (data: any) => {
-    toast.success(`✅ Kitchen completed order #${data.orderId?.slice(-8)} in ${data.totalPrepTime}min`);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-    refetch();
-  });
-
-  useWebSocketEvent(ws.client, 'kitchen:order-cancelled', (data: any) => {
-    toast.error(`🚫 Kitchen cancelled order #${data.orderId?.slice(-8)} - ${data.reason}`);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-    refetch();
-  });
+  // WebSocket event handlers removed to eliminate duplicate order event handling
+  // Admin orders page now relies on standard API data fetching with manual/periodic refresh
 
 
   // Calculate pagination
@@ -214,14 +146,6 @@ export default function OrdersPage() {
                 </p>
               </div>
               <div className="flex gap-3">
-                <div className={`flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${
-                  ws.isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  <div className={`w-2 h-2 rounded-full mr-2 ${
-                    ws.isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'
-                  }`} />
-                  {ws.isConnected ? 'Live' : 'Offline'}
-                </div>
                 <Button
                   variant="outline"
                   size="sm"

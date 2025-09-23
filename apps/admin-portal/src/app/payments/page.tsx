@@ -35,7 +35,6 @@ import { usePayments, usePaymentMetrics } from '@/hooks/api';
 import { formatDistanceToNow, format } from 'date-fns';
 import PaymentDetailsModal from '@/components/payments/PaymentDetailsModal';
 import { Payment, PaymentStatus } from '@tabsy/shared-types';
-import { useWebSocket, useWebSocketEvent, usePaymentUpdates } from '@tabsy/api-client';
 import { useAuth } from '@tabsy/ui-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -104,58 +103,8 @@ export default function PaymentsPage() {
 
   const { data: metrics } = usePaymentMetrics();
 
-  // WebSocket for real-time updates
-  const ws = useWebSocket({
-    url: process.env.NEXT_PUBLIC_WS_BASE_URL || 'http://localhost:5001',
-    auth: {
-      token: auth.session?.token,
-      namespace: 'restaurant' as const
-    },
-    onConnect: () => {
-      console.log('Payments WebSocket connected');
-    },
-    onError: (error: Error) => {
-      console.error('Payments WebSocket error:', error);
-    }
-  });
-
-  // Real-time payment updates using shared WebSocket hooks - COMPLETE PAYMENT LIFECYCLE MONITORING
-  useWebSocketEvent(ws.client, 'payment:created', (data: any) => {
-    toast.info(`💳 Payment initiated: $${data.amount} for order #${data.orderId?.slice(-8)} via ${data.method}`);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-    refetch();
-  });
-
-  useWebSocketEvent(ws.client, 'payment:completed', (data: any) => {
-    const tipText = data.tip ? ` (tip: $${data.tip})` : '';
-    toast.success(`✅ Payment completed: $${data.amount} via ${data.method}${tipText}`);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-    refetch();
-  });
-
-  useWebSocketEvent(ws.client, 'payment:failed', (data: any) => {
-    toast.error(`❌ Payment failed: $${data.amount} via ${data.method} - ${data.errorMessage} (${data.errorCode})`);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-    refetch();
-  });
-
-  useWebSocketEvent(ws.client, 'payment:cancelled', (data: any) => {
-    toast.warning(`⏹️ Payment cancelled: Order #${data.orderId?.slice(-8)} - ${data.reason}`);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-    refetch();
-  });
-
-  useWebSocketEvent(ws.client, 'payment:refunded', (data: any) => {
-    toast.info(`💰 Refund processed: $${data.amount} for order #${data.orderId?.slice(-8)} - ${data.reason} (by ${data.processedBy})`);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-    refetch();
-  });
-
-  useWebSocketEvent(ws.client, 'payment:status_updated', (data: any) => {
-    toast.info(`🔄 Payment status updated: #${data.paymentId?.slice(-8)} → ${data.status}`);
-    queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-    refetch();
-  });
+  // Note: Real-time WebSocket events were removed to eliminate duplicate order event handling.
+  // Payment data is now fetched via standard API calls with manual/periodic refresh.
 
   // Calculate pagination
   const payments = Array.isArray(paymentsData) ? paymentsData : paymentsData?.payments || [];
@@ -202,14 +151,6 @@ export default function PaymentsPage() {
                 </p>
               </div>
               <div className="flex gap-3">
-                <div className={`flex items-center px-3 py-1.5 rounded-full text-xs font-medium ${
-                  ws.isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  <div className={`w-2 h-2 rounded-full mr-2 ${
-                    ws.isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'
-                  }`} />
-                  {ws.isConnected ? 'Live' : 'Offline'}
-                </div>
                 <Button
                   variant="outline"
                   size="sm"

@@ -15,7 +15,7 @@ import { createDashboardHooks, createNotificationHooks } from '@tabsy/react-quer
 import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AssistanceAlertsContainer } from '@/components/alerts/AssistanceAlert'
-import { useWebSocketContext, useWebSocketEvent } from '@/contexts/WebSocketContext'
+import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
 import { type Notification } from '@tabsy/shared-types'
 import { useNotificationSound } from '@/hooks/useNotificationSound'
 
@@ -126,8 +126,8 @@ export function DashboardClient(): JSX.Element {
     }
   )
 
-  // Use WebSocket from context (singleton pattern)
-  const { client: wsClient, isConnected: wsConnected } = useWebSocketContext()
+  // Use unified WebSocket provider
+  const { isConnected: wsConnected } = useWebSocket()
 
   console.log('Dashboard - State:', {
     restaurantId,
@@ -213,30 +213,9 @@ export function DashboardClient(): JSX.Element {
   // Note: notification:created event handler removed to prevent duplicate refetches
   // since assistance:requested already triggers refetchNotifications()
 
-  // OPTIMIZATION: Memoize WebSocket event handlers with throttling to prevent excessive API calls
-  const handleOrderCreated = useCallback((payload: any) => {
-    console.log('📦 New order created:', payload)
-    // Throttle invalidation to prevent too many API calls
-    setTimeout(() => {
-      queryClient.invalidateQueries({
-        queryKey: ['dashboard-metrics', restaurantId],
-        exact: false
-      })
-    }, 1000) // 1 second delay to batch multiple events
-  }, [queryClient, restaurantId])
-
-  const handleOrderStatusUpdated = useCallback((payload: any) => {
-    console.log('🔄 Order status updated:', payload)
-    // Only invalidate for certain status changes that affect dashboard metrics
-    if (payload.status === 'COMPLETED' || payload.status === 'CANCELLED') {
-      setTimeout(() => {
-        queryClient.invalidateQueries({
-          queryKey: ['dashboard-metrics', restaurantId],
-          exact: false
-        })
-      }, 1000)
-    }
-  }, [queryClient, restaurantId])
+  // Note: Removed duplicate order:created and order:status_updated handlers
+  // Dashboard metrics are automatically updated through React Query's invalidation cascade
+  // when the Header component invalidates the orders cache
 
   const handlePaymentCompleted = useCallback((payload: any) => {
     console.log('💰 Payment completed:', payload)
@@ -253,9 +232,7 @@ export function DashboardClient(): JSX.Element {
     }, 2000) // Longer delay for revenue updates as they're less frequent
   }, [queryClient, restaurantId])
 
-  // Listen for order events to keep dashboard in sync
-  useWebSocketEvent('order:created', handleOrderCreated, [handleOrderCreated])
-  useWebSocketEvent('order:status_updated', handleOrderStatusUpdated, [handleOrderStatusUpdated])
+  // Listen for payment events to keep dashboard in sync
   useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted])
 
   // OPTIMIZATION: Memoize assistance handlers to prevent child re-renders

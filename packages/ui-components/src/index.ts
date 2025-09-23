@@ -16,6 +16,9 @@ export * from './components/Toast'
 // Error Handling Hooks
 export * from './hooks/useErrorHandler'
 
+// WebSocket Event Registry Hooks
+export * from './hooks/useWebSocketEventRegistry'
+
 // Validation System
 export * from './hooks/useValidation'
 export * from './validation/schemas'
@@ -38,6 +41,11 @@ export * from './components/order-card'
 export * from './components/qr-code-display'
 export * from './components/cart-sidebar'
 export * from './components/cart-item-display'
+
+// Connection Management Providers
+export * from './providers/ConnectionProvider'
+export * from './providers/WebSocketProvider'
+export * from './providers/SessionProvider'
 
 // Utilities
 export * from './lib/utils'

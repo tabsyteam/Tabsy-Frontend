@@ -35,7 +35,7 @@ interface FeedbackManagementProps {
 }
 
 export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
-  const api = useApiClient()
+  const api = tabsyClient
 
   // State management
   const [selectedFilter, setSelectedFilter] = useState<FeedbackStatus | 'all'>('all')

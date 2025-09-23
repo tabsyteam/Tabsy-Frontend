@@ -3,10 +3,9 @@
 import React, { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { AuthProvider, ToastProvider } from '@tabsy/ui-components';
-import { TabsyAPI } from '@tabsy/api-client';
+import { AuthProvider, ToastProvider, ConnectionProvider } from '@tabsy/ui-components';
+import { TabsyAPI, tabsyClient } from '@tabsy/api-client';
 import { ThemeProvider } from './ThemeProvider';
-import { ApiProvider } from './providers/api-provider';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -24,21 +23,20 @@ interface ClientProvidersProps {
 }
 
 export function ClientProviders({ children }: ClientProvidersProps): JSX.Element {
-  const [apiClient] = useState(() => new TabsyAPI({
-    baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5001/api/v1'
-  }));
+  // Use the shared tabsyClient instance for consistency across all apps
+  const apiClient = tabsyClient;
 
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider apiClient={apiClient}>
-        <ApiProvider apiClient={apiClient}>
+        <ConnectionProvider apiClient={apiClient}>
           <ThemeProvider variant="admin">
             <ToastProvider>
               {children}
             </ToastProvider>
           </ThemeProvider>
-          <ReactQueryDevtools initialIsOpen={false} />
-        </ApiProvider>
+        </ConnectionProvider>
+        <ReactQueryDevtools initialIsOpen={false} />
       </AuthProvider>
     </QueryClientProvider>
   );

@@ -32,7 +32,7 @@ import {
   DynamicUserStatusChart
 } from "../../components/charts";
 import { useAdminDashboard, useRestaurants, useUsers, useLiveOrders, useLivePayments } from '@/hooks/api';
-import { useWebSocket, useWebSocketEvent, useAnalyticsUpdates } from '@tabsy/api-client';
+import { useAnalyticsUpdates } from '@tabsy/api-client';
 import { formatDistanceToNow } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -162,22 +162,7 @@ export default function AdminDashboard(): JSX.Element {
   const { data: liveOrders } = useLiveOrders();
   const { data: livePayments } = useLivePayments();
 
-  // WebSocket for real-time updates
-  const ws = useWebSocket({
-    url: process.env.NEXT_PUBLIC_WS_BASE_URL || 'http://localhost:5001',
-    auth: {
-      token: auth.session?.token,
-      namespace: 'restaurant' as const
-    },
-    onConnect: () => {
-      console.log('Admin WebSocket connected');
-      toast.success('Connected to real-time updates');
-    },
-    onError: (error: Error) => {
-      console.error('Admin WebSocket error:', error);
-      toast.error('Failed to connect to real-time updates');
-    }
-  });
+  // Removed WebSocket - Admin portal uses periodic refresh instead of real-time updates
 
   // Auto-refresh dashboard
   useEffect(() => {
@@ -205,168 +190,8 @@ export default function AdminDashboard(): JSX.Element {
     queryClient.invalidateQueries({ queryKey: ['admin'] });
   };
 
-  // Set up real-time event listeners for comprehensive admin monitoring
-
-  // CRITICAL: Staff Notifications & Alerts
-  useWebSocketEvent(ws.client, 'notification:staff', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'notifications'] });
-    const priority = data.priority === 'critical' ? 'error' : data.priority === 'high' ? 'warning' : 'info';
-    toast[priority](`Staff Notification: ${data.title}`, {
-      description: data.message,
-      duration: data.priority === 'critical' ? Infinity : 10000
-    });
-  });
-
-  useWebSocketEvent(ws.client, 'alert:urgent', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'alerts'] });
-    toast.error(`🚨 URGENT ALERT: ${data.title}`, {
-      description: data.message,
-      duration: Infinity,
-      action: {
-        label: 'Acknowledge',
-        onClick: () => console.log('Alert acknowledged:', data.alertId)
-      }
-    });
-  });
-
-  useWebSocketEvent(ws.client, 'notification:created', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'notifications'] });
-    toast.info(`New notification: ${data.title}`);
-  });
-
-  // Order Events
-  useWebSocketEvent(ws.client, 'order:created', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
-    toast.success(`New order #${data.orderId?.slice(-8)} received!`);
-  });
-
-  useWebSocketEvent(ws.client, 'order:updated', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-    toast.info(`Order #${data.orderId?.slice(-8)} updated`);
-  });
-
-  useWebSocketEvent(ws.client, 'order:status_updated', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-    toast.info(`Order #${data.orderId?.slice(-8)} status: ${data.newStatus}`);
-  });
-
-  // Payment Events - Complete Lifecycle
-  useWebSocketEvent(ws.client, 'payment:created', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
-    toast.info(`Payment initiated: $${data.amount} for order #${data.orderId?.slice(-8)}`);
-  });
-
-  useWebSocketEvent(ws.client, 'payment:completed', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
-    toast.success(`Payment completed: $${data.amount} via ${data.method}`);
-  });
-
-  useWebSocketEvent(ws.client, 'payment:failed', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-    toast.error(`Payment failed: $${data.amount} - ${data.errorMessage}`);
-  });
-
-  useWebSocketEvent(ws.client, 'payment:cancelled', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-    toast.warning(`Payment cancelled: $${data.amount} - ${data.reason}`);
-  });
-
-  useWebSocketEvent(ws.client, 'payment:refunded', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-    toast.info(`Refund processed: $${data.amount} - ${data.reason}`);
-  });
-
-  useWebSocketEvent(ws.client, 'payment:status_updated', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-    toast.info(`Payment status updated: ${data.status}`);
-  });
-
-  // Analytics Events
-  useWebSocketEvent(ws.client, 'analytics:update', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'analytics'] });
-    // Only show toast for significant changes to avoid spam
-    if (data.metric === 'revenue' && data.value > 1000) {
-      toast.success(`Revenue milestone: $${data.value.toLocaleString()}`);
-    }
-  });
-
-  // Kitchen Events
-  useWebSocketEvent(ws.client, 'kitchen:new-order', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'kitchen'] });
-    if (data.priority === 'urgent') {
-      toast.warning(`🍳 URGENT Kitchen Order: ${data.orderId?.slice(-8)} - ${data.priority}`);
-    }
-  });
-
-  useWebSocketEvent(ws.client, 'kitchen:order-ready', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'kitchen'] });
-    toast.success(`🍽️ Order ready: #${data.orderId?.slice(-8)} (${data.totalPrepTime}min)`);
-  });
-
-  useWebSocketEvent(ws.client, 'kitchen:order-cancelled', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'kitchen'] });
-    toast.error(`🚫 Kitchen cancelled order #${data.orderId?.slice(-8)} - ${data.reason}`);
-  });
-
-  // Table Events
-  useWebSocketEvent(ws.client, 'table:status_updated', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'tables'] });
-    // Only show toast for important status changes
-    if (data.status === 'occupied' || data.status === 'available') {
-      toast.info(`Table ${data.tableId}: ${data.status}`);
-    }
-  });
-
-  useWebSocketEvent(ws.client, 'table:check_in', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'tables'] });
-    toast.success(`👥 Table check-in: ${data.tableId} (${data.customersCount || 1} guests)`);
-  });
-
-  useWebSocketEvent(ws.client, 'table:check_out', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'tables'] });
-    toast.info(`👋 Table check-out: ${data.tableId}`);
-  });
-
-  // Session Events
-  useWebSocketEvent(ws.client, 'session:updated', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'sessions'] });
-    // Only show significant session updates
-    if (data.status === 'expired' || data.totalSpent > 100) {
-      toast.info(`QR Session ${data.sessionId?.slice(-8)}: ${data.status} - $${data.totalSpent}`);
-    }
-  });
-
-  useWebSocketEvent(ws.client, 'session:expired', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'sessions'] });
-    toast.warning(`⏰ Session expired: ${data.sessionId?.slice(-8)} - ${data.reason} ($${data.finalTotal})`);
-  });
-
-  // Menu Events
-  useWebSocketEvent(ws.client, 'menu:updated', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurants'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'menus'] });
-    toast.info(`Menu updated: Item ${data.itemId?.slice(-8)} by ${data.updatedBy}`);
-  });
-
-  // Order Modification Events
-  useWebSocketEvent(ws.client, 'order:item_added', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-    toast.info(`Item added to order #${data.orderId?.slice(-8)}`);
-  });
-
-  useWebSocketEvent(ws.client, 'order:item_updated', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-    toast.info(`Item updated in order #${data.orderId?.slice(-8)}`);
-  });
-
-  useWebSocketEvent(ws.client, 'order:item_removed', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'orders'] });
-    toast.warning(`Item removed from order #${data.orderId?.slice(-8)}`);
-  });
+  // WebSocket events removed - Admin portal uses periodic refresh instead of real-time WebSocket updates
+  // This eliminates duplicate order event handling and provides more stable data refresh for administrative interfaces
 
   // Calculate system health based on metrics
   const getSystemHealth = () => {
@@ -398,12 +223,7 @@ export default function AdminDashboard(): JSX.Element {
                   <Zap className="h-3 w-3 mr-1" />
                   System {systemHealth.status}
                 </span>
-                {ws.isConnected && (
-                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium badge-success animate-pulse">
-                    <Activity className="h-3 w-3 mr-1" />
-                    Live
-                  </span>
-                )}
+                {/* WebSocket connection status removed - Admin portal uses periodic refresh */}
               </div>
               <div className="flex items-center space-x-3">
                 <Button

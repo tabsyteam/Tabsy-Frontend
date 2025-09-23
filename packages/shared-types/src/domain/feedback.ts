@@ -123,7 +123,7 @@ export interface FeedbackListParams {
   hasPhotos?: boolean       // Filter feedback with/without photos
   tableId?: string          // Filter by specific table
   orderId?: string          // Filter by specific order
-  sortBy?: 'createdAt' | 'rating' | 'updatedAt'
+  sortBy?: 'createdAt' | 'overallRating' | 'updatedAt'
   sortOrder?: 'asc' | 'desc'
 }
 

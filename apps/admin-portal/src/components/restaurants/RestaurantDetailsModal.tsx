@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@tabsy/ui-components';
 import {
   X,
@@ -21,13 +21,10 @@ import {
   Hash,
   CheckCircle,
   AlertCircle,
-  Wifi,
-  WifiOff
 } from 'lucide-react';
 import { Restaurant, Table, Order, OrderStatus, TableStatus } from '@tabsy/shared-types';
 import { useRestaurantDetails, useRestaurantOrders, useRestaurantTables } from '@/hooks/api';
 import { format } from 'date-fns';
-import { useWebSocket, useWebSocketEvent } from '@tabsy/api-client';
 import { useAuth } from '@tabsy/ui-components';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -50,106 +47,11 @@ export default function RestaurantDetailsModal({
   const { data: orders } = useRestaurantOrders(restaurant.id);
   const { data: tables } = useRestaurantTables(restaurant.id);
 
-  // WebSocket for real-time updates specific to this restaurant
-  const ws = useWebSocket({
-    url: process.env.NEXT_PUBLIC_WS_BASE_URL || 'http://localhost:5001',
-    auth: {
-      token: auth.session?.token,
-      restaurantId: restaurant.id,
-      namespace: 'restaurant' as const
-    },
-    onConnect: () => {
-      console.log(`WebSocket connected for restaurant ${restaurant.id}`);
-    },
-    onError: (error: Error) => {
-      console.error(`WebSocket error for restaurant ${restaurant.id}:`, error);
-    }
-  });
-
-  // Set up real-time event listeners for this specific restaurant - COMPREHENSIVE RESTAURANT MONITORING
-
-  // Order Events
-  useWebSocketEvent(ws.client, 'order:created', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'orders'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id] }); // Refresh stats
-  });
-
-  useWebSocketEvent(ws.client, 'order:updated', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'orders'] });
-  });
-
-  useWebSocketEvent(ws.client, 'order:status_updated', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'orders'] });
-  });
-
-  // Table Events - Critical for Restaurant Management
-  useWebSocketEvent(ws.client, 'table:status_updated', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'tables'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id] }); // Refresh occupancy stats
-  });
-
-  useWebSocketEvent(ws.client, 'table:check_in', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'tables'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id] }); // Refresh stats
-  });
-
-  useWebSocketEvent(ws.client, 'table:check_out', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'tables'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id] }); // Refresh stats
-  });
-
-  // Session Events - Important for Table Management
-  useWebSocketEvent(ws.client, 'session:updated', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'sessions'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'tables'] });
-  });
-
-  useWebSocketEvent(ws.client, 'session:expired', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'sessions'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'tables'] });
-  });
-
-  // Payment Events - Important for Restaurant Revenue Tracking
-  useWebSocketEvent(ws.client, 'payment:completed', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'payments'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id] }); // Refresh revenue stats
-  });
-
-  useWebSocketEvent(ws.client, 'payment:failed', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'payments'] });
-  });
-
-  useWebSocketEvent(ws.client, 'payment:refunded', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'payments'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id] }); // Refresh revenue stats
-  });
-
-  // Kitchen Events - Restaurant Operations
-  useWebSocketEvent(ws.client, 'kitchen:new-order', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'kitchen'] });
-  });
-
-  useWebSocketEvent(ws.client, 'kitchen:order-ready', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'kitchen'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'orders'] });
-  });
-
-  useWebSocketEvent(ws.client, 'kitchen:order-cancelled', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'kitchen'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'orders'] });
-  });
-
-  // Menu Events
-  useWebSocketEvent(ws.client, 'menu:updated', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'menu'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id] });
-  });
-
-  // Analytics Events - Restaurant Performance
-  useWebSocketEvent(ws.client, 'analytics:update', (data: any) => {
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id, 'analytics'] });
-    queryClient.invalidateQueries({ queryKey: ['admin', 'restaurant', restaurant.id] }); // Refresh overview stats
-  });
+  /*
+   * WebSocket real-time event handlers have been removed to eliminate duplicate order event handling.
+   * This admin portal modal now relies on standard API data fetching and manual refresh.
+   * Real-time updates should be handled at the application level, not in individual modals.
+   */
 
   // Calculate statistics
   const stats = {
@@ -190,13 +92,6 @@ export default function RestaurantDetailsModal({
                 {restaurant.cuisine && (
                   <span className="text-sm text-content-secondary">{restaurant.cuisine}</span>
                 )}
-                <div className="flex items-center">
-                  {ws.isConnected ? (
-                    <><Wifi className="h-3 w-3 text-green-500 mr-1" /><span className="text-xs text-green-600">Online</span></>
-                  ) : (
-                    <><WifiOff className="h-3 w-3 text-red-500 mr-1" /><span className="text-xs text-red-600">Offline</span></>
-                  )}
-                </div>
               </div>
             </div>
           </div>

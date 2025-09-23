@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { useApi } from '@/components/providers/api-provider'
-import { useWebSocket, useWebSocketEvent } from '@tabsy/api-client'
+import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
 import { toast } from 'sonner'
 import { MenuView } from '@/components/menu/MenuView'
 import { globalSessionManager } from '@/utils/globalSessionManager'
@@ -86,35 +86,11 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
   const router = useRouter()
   const { api } = useApi()
 
-  // State to track the current session ID for WebSocket
+  // State to track the current session ID
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
-  const [shouldConnectWebSocket, setShouldConnectWebSocket] = useState(false)
 
-  // Set up WebSocket connection for customer namespace - only connect after session is created
-  const {
-    isConnected,
-    connect,
-    disconnect,
-    client
-  } = useWebSocket({
-    auth: {
-      namespace: 'customer',
-      restaurantId,
-      tableId,
-      sessionId: currentSessionId || undefined
-    },
-    autoConnect: false, // Don't auto-connect, wait for session
-    onConnect: () => {},
-    onDisconnect: () => {},
-    onError: () => {}
-  })
-
-  // Effect to connect WebSocket when session ID is available
-  useEffect(() => {
-    if (currentSessionId && shouldConnectWebSocket && !isConnected) {
-      connect()
-    }
-  }, [currentSessionId, shouldConnectWebSocket, isConnected, connect])
+  // Use global WebSocket connection managed by unified architecture
+  const { client, isConnected } = useWebSocket()
 
   // WebSocket event handlers for table session updates
   useWebSocketEvent(client, 'table:session_created', useCallback((data: any) => {
@@ -227,7 +203,6 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
         isConnected: true
       }))
       setSessionInitialized(true)
-      setShouldConnectWebSocket(true)
       return true
     }
 
@@ -258,7 +233,6 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
           isConnected: true
         }))
         setSessionInitialized(true)
-        setShouldConnectWebSocket(true)
         return true
       }
     }
@@ -291,9 +265,7 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
       }))
       setSessionInitialized(true)
 
-      // Connect to WebSocket now that we have the existing session from API client
-      connect()
-
+      // Global WebSocket provider handles connection automatically
       return true
     }
 
@@ -326,9 +298,7 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
       }))
       setSessionInitialized(true)
 
-      // Connect to WebSocket now that we have the existing session from storage
-      connect()
-
+      // Global WebSocket provider handles connection automatically
       return true
     }
 
@@ -431,9 +401,8 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
 
             setSessionInitialized(true)
 
-            // Set the session ID for WebSocket and trigger connection
+            // Set the session ID for global WebSocket provider
             setCurrentSessionId(guestSession.sessionId)
-            setShouldConnectWebSocket(true)
 
             return true
           }

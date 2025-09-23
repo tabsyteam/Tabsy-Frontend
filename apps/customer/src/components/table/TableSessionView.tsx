@@ -18,7 +18,8 @@ import {
 import { Button } from '@tabsy/ui-components'
 import { SessionManager } from '@/lib/session'
 import { toast } from 'sonner'
-import { useWebSocket, useSessionUpdates } from '@tabsy/api-client'
+import { useWebSocket } from '@tabsy/ui-components'
+import { useSessionUpdates } from '@tabsy/api-client'
 import { useSessionDetails } from '@/hooks/useSessionDetails'
 interface TableInfo {
   restaurant: {
@@ -54,35 +55,26 @@ export function TableSessionView() {
     refreshSessionDetails
   } = useSessionDetails(session?.sessionId || null, session?.tableSessionId || null)
 
-  // WebSocket connection for real-time customer features
-  const {
-    isConnected,
-    error: wsError,
-    client,
-    connect,
-    disconnect,
-    emit
-  } = useWebSocket({
-    url: process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:5001',
-    auth: {
-      namespace: 'customer',
-      sessionId: session?.sessionId,
-      tableId: session?.tableId,
-      restaurantId: session?.restaurantId
-    },
-    autoConnect: !!session,
-    onConnect: () => {
+  // Use global WebSocket connection for real-time customer features
+  const { isConnected, error: wsError, client } = useWebSocket()
+
+  // Track connection status and show user feedback
+  useEffect(() => {
+    if (isConnected) {
       console.log('[TableSession] Connected to customer WebSocket')
       setLastConnectionTime(new Date())
       toast.success('Connected to real-time updates')
-    },
-    onDisconnect: (reason) => {
-      console.log('[TableSession] Disconnected from WebSocket:', reason)
-    },
-    onError: (error) => {
-      console.error('[TableSession] WebSocket error:', error)
+    } else {
+      console.log('[TableSession] Disconnected from customer WebSocket')
     }
-  })
+  }, [isConnected])
+
+  // Handle WebSocket errors
+  useEffect(() => {
+    if (wsError) {
+      console.error('[TableSession] WebSocket error:', wsError)
+    }
+  }, [wsError])
 
   // Listen for session updates (order status, session expiry, etc.)
   useSessionUpdates(

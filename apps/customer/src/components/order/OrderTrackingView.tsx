@@ -21,7 +21,7 @@ import {
 import { toast } from 'sonner'
 import { useApi } from '@/components/providers/api-provider'
 import { OrderStatus } from '@tabsy/shared-types'
-import { useWebSocket, useWebSocketEvent } from '@tabsy/api-client'
+import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
 import { SessionManager } from '@/lib/session'
 import { OrderStatusSkeleton, OrderTimelineSkeleton, OrderSummarySkeleton, HeaderSkeleton } from '../ui/Skeleton'
 import { usePullToRefresh } from '@/hooks/usePullToRefresh'
@@ -194,33 +194,20 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
   const diningSession = SessionManager.getDiningSession()
   const sessionId = diningSession?.sessionId || null
 
-  // Real-time WebSocket connection to customer namespace
-  const {
-    isConnected: wsConnected,
-    client: wsClient
-  } = useWebSocket({
-    url: process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://localhost:5001',
-    auth: {
-      namespace: 'customer',
-      restaurantId: restaurantId || undefined,
-      tableId: tableId || undefined,
-      sessionId: sessionId || undefined
-    },
-    autoConnect: true,
-    onConnect: () => {
+  // Use global WebSocket connection for real-time updates
+  const { isConnected: wsConnected, client: wsClient } = useWebSocket()
+
+  // Log connection status for debugging
+  useEffect(() => {
+    if (wsConnected) {
       console.log('Connected to order tracking updates')
-    },
-    onDisconnect: () => {
+    } else {
       console.log('Disconnected from order tracking updates')
-    },
-    onError: (error) => {
-      console.error('Order tracking WebSocket error:', error)
     }
-  })
+  }, [wsConnected])
 
   // Listen for order status updates
   useWebSocketEvent(
-    wsClient,
     'order:status_updated',
     (payload) => {
       console.log('[OrderTrackingView] Raw status update payload:', payload)
@@ -306,12 +293,12 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
         })
       }
     },
-    [orderId]
+    [orderId],
+    'OrderTrackingView'
   )
 
   // Listen for general order updates
   useWebSocketEvent(
-    wsClient,
     'order:updated',
     (payload) => {
       if (payload.orderId === orderId) {
@@ -350,7 +337,8 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
         })
       }
     },
-    [orderId]
+    [orderId],
+    'OrderTrackingView'
   )
 
 

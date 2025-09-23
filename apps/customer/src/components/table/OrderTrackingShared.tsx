@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { useWebSocket, useWebSocketEvent } from '@tabsy/api-client'
+import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { toast } from 'sonner'
 import { TabsyAPI } from '@tabsy/api-client'
@@ -62,16 +62,8 @@ export function OrderTrackingShared({
   const [isLoading, setIsLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
 
-  // Set up WebSocket connection for order tracking
-  const { client } = useWebSocket({
-    auth: {
-      namespace: 'customer',
-      restaurantId: tableSession.restaurantId,
-      tableId: tableSession.tableId,
-      sessionId: currentUser.guestSessionId
-    },
-    autoConnect: true
-  })
+  // Use global WebSocket connection for order tracking
+  const { client } = useWebSocket()
 
   // Load orders for table session
   const loadOrders = useCallback(async () => {
@@ -142,9 +134,9 @@ export function OrderTrackingShared({
   }, [tableSession.tableId, loadOrders])
 
   // Set up WebSocket event listeners with useWebSocketEvent hooks
-  useWebSocketEvent(client, 'order:status_updated', handleOrderStatusUpdate, [handleOrderStatusUpdate])
-  useWebSocketEvent(client, 'order:updated', handleOrderUpdate, [handleOrderUpdate])
-  useWebSocketEvent(client, 'order:created', handleNewOrder, [handleNewOrder])
+  useWebSocketEvent('order:status_updated', handleOrderStatusUpdate, [handleOrderStatusUpdate], 'OrderTrackingShared')
+  useWebSocketEvent('order:updated', handleOrderUpdate, [handleOrderUpdate], 'OrderTrackingShared')
+  useWebSocketEvent('order:created', handleNewOrder, [handleNewOrder], 'OrderTrackingShared')
 
   // Initial load
   useEffect(() => {

@@ -4,13 +4,12 @@ import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { useState } from 'react'
-import { AuthProvider, ToastProvider } from '@tabsy/ui-components'
+import { AuthProvider, ToastProvider, ConnectionProvider, WebSocketProvider } from '@tabsy/ui-components'
 import { TabsyAPI, tabsyClient } from '@tabsy/api-client'
 import { ThemeProvider } from '@/components/ThemeProvider'
-import { ApiClientProvider } from './api-client-context'
-import { WebSocketProvider } from '@/contexts/WebSocketContext'
 import { NotificationMuteProvider } from '@/contexts/NotificationMuteContext'
 import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
+import { useAuth } from '@tabsy/ui-components'
 
 interface ClientProvidersProps {
   children: React.ReactNode
@@ -21,17 +20,25 @@ interface ClientProvidersProps {
  */
 function InnerProviders({ children }: { children: React.ReactNode }) {
   const { restaurantId } = useCurrentRestaurant()
+  const { session } = useAuth()
 
   return (
-    <WebSocketProvider restaurantId={restaurantId} namespace="restaurant">
-      <NotificationMuteProvider>
-        <ThemeProvider variant="restaurant">
-          <ToastProvider>
-            {children as any}
-          </ToastProvider>
-        </ThemeProvider>
-      </NotificationMuteProvider>
-    </WebSocketProvider>
+    <ConnectionProvider apiClient={tabsyClient}>
+      <WebSocketProvider
+        authToken={session?.token}
+        restaurantId={restaurantId}
+        namespace="restaurant"
+        autoConnect={true}
+      >
+        <NotificationMuteProvider>
+          <ThemeProvider variant="restaurant">
+            <ToastProvider>
+              {children as any}
+            </ToastProvider>
+          </ThemeProvider>
+        </NotificationMuteProvider>
+      </WebSocketProvider>
+    </ConnectionProvider>
   )
 }
 
@@ -73,14 +80,12 @@ export function ClientProviders({ children }: ClientProvidersProps) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <ApiClientProvider client={apiClient}>
-        <AuthProvider apiClient={apiClient}>
-          <InnerProviders>
-            {children}
-          </InnerProviders>
-          <ReactQueryDevtools initialIsOpen={false} />
-        </AuthProvider>
-      </ApiClientProvider>
+      <AuthProvider apiClient={apiClient}>
+        <InnerProviders>
+          {children}
+        </InnerProviders>
+        <ReactQueryDevtools initialIsOpen={false} />
+      </AuthProvider>
     </QueryClientProvider>
   )
 }

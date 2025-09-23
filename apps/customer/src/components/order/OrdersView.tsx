@@ -14,7 +14,7 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { useApi } from '@/components/providers/api-provider'
 import { OrderStatus, Order as ApiOrder } from '@tabsy/shared-types'
 import { SessionManager } from '@/lib/session'
-import { useWebSocket, useWebSocketEvent } from '@tabsy/api-client'
+import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
 import { OrderFilterPills, FilterStatus, filterOrdersByStatus } from './OrderFilterPills'
 import { OrderCard } from './OrderCard'
 import { processOrderUpdatePayload } from '@/utils/websocket'
@@ -62,23 +62,15 @@ export function OrdersView() {
 
   // Get tableSessionId with fallback - memoized for consistency throughout component
   const tableSessionId = useMemo(() => {
-    return session?.tableSessionId || sessionStorage.getItem('tabsy-table-session-id')
+    return session?.tableSessionId || (typeof window !== 'undefined' ? sessionStorage.getItem('tabsy-table-session-id') : null)
   }, [session?.tableSessionId])
 
   // Track if initial orders have been loaded to prevent unnecessary refetches
   const ordersLoadedRef = useRef(false)
   const initialLoadInProgressRef = useRef(false)
 
-  // Set up WebSocket connection for real-time updates (only if in table session)
-  const { client: wsClient, isConnected: wsConnected } = useWebSocket({
-    auth: session ? {
-      namespace: 'customer',
-      restaurantId: session.restaurantId,
-      tableId: session.tableId,
-      sessionId: guestSessionId || ''
-    } : undefined,
-    autoConnect: !!session
-  })
+  // Use global WebSocket connection for real-time updates
+  const { client: wsClient, isConnected: wsConnected } = useWebSocket()
 
   // Update view when URL parameter changes
   useEffect(() => {
@@ -667,9 +659,9 @@ export function OrdersView() {
   }
 
   // Set up WebSocket event listeners
-  useWebSocketEvent(wsClient, 'order:created', handleOrderCreated, [handleOrderCreated, session?.tableId])
-  useWebSocketEvent(wsClient, 'order:status_updated', handleOrderStatusUpdate, [handleOrderStatusUpdate])
-  useWebSocketEvent(wsClient, 'order:updated', handleOrderUpdate, [handleOrderUpdate])
+  useWebSocketEvent('order:created', handleOrderCreated, [handleOrderCreated, session?.tableId], 'OrdersView')
+  useWebSocketEvent('order:status_updated', handleOrderStatusUpdate, [handleOrderStatusUpdate], 'OrdersView')
+  useWebSocketEvent('order:updated', handleOrderUpdate, [handleOrderUpdate], 'OrdersView')
 
   // Filter orders by view (My Orders vs Table Orders) - computed from all loaded orders
   const viewFilteredOrders = useMemo(() => {

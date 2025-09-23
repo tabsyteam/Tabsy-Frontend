@@ -12,7 +12,7 @@ import { toast } from 'sonner'
 import { createOrderHooks } from '@tabsy/react-query-hooks'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useContext } from 'react'
-import { useWebSocketContext, useWebSocketEvent } from '@/contexts/WebSocketContext'
+import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
 
 interface OrdersManagementProps {
   restaurantId: string
@@ -82,13 +82,12 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
       : finalOrders.filter((order: Order) => order.status === statusFilter)
   }, [finalOrders, statusFilter])
 
-  // Use WebSocket from context (singleton pattern)
+  // Use unified WebSocket provider with proper cleanup
   const {
     isConnected,
-    client,
     joinRoom,
     leaveRoom
-  } = useWebSocketContext()
+  } = useWebSocket()
 
   useEffect(() => {
     // Join restaurant room for real-time updates
@@ -104,72 +103,69 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     }
   }, [isConnected, restaurantId, joinRoom, leaveRoom])
 
-  useEffect(() => {
-    if (!client) return
+  // Clean WebSocket event handling with proper cleanup (fixes duplicate order bug)
+  const handleNewOrder = useCallback((data: any) => {
+    console.log('📦 New order received via WebSocket:', data)
 
-    const handleNewOrder = (...args: any[]) => {
-      console.log('📦 Raw WebSocket event received for order:created:', args)
-      console.log('📦 Number of arguments:', args.length)
-      console.log('📦 All arguments:', args)
+    // Try to extract order data from different possible formats
+    let order = null
+    if (data?.data?.id) {
+      order = data.data
+    } else if (data?.id) {
+      order = data
+    } else if (data?.order?.id) {
+      order = data.order
+    }
 
-      // Try to extract order data from different possible formats
-      let order = null
+    if (!order?.id) {
+      console.error('❌ Invalid order data received:', data)
+      refetchOrders()
+      return
+    }
 
-      if (args.length > 0) {
-        const data = args[0]
+    // Fix customization field mapping: WebSocket sends 'customizations' but UI expects 'options'
+    if (order.items && Array.isArray(order.items)) {
+      order.items = order.items.map((item: any) => {
+        if (item.customizations && !item.options) {
+          return { ...item, options: item.customizations }
+        }
+        return item
+      })
+    }
 
-        // Try different data formats
-        if (data && typeof data === 'object') {
-          // Case 1: Event wrapper { data: order }
-          if (data.data && data.data.id) {
-            order = data.data
-            console.log('📦 Found order in data.data:', order)
-          }
-          // Case 2: Direct order object
-          else if (data.id) {
-            order = data
-            console.log('📦 Found order as direct data:', order)
-          }
-          // Case 3: Order in other properties
-          else if (data.order && data.order.id) {
-            order = data.order
-            console.log('📦 Found order in data.order:', order)
+    toast.success(`New order #${order.id} received`)
+
+    // Update orders cache
+    queryClient.setQueryData(['orders', 'restaurant', restaurantId, undefined], (oldData: any) => {
+      if (oldData?.data?.orders) {
+        const updatedOrders = [order, ...oldData.data.orders]
+        return {
+          ...oldData,
+          data: {
+            ...oldData.data,
+            orders: updatedOrders,
+            totalCount: (oldData.data.totalCount || 0) + 1
           }
         }
+      } else {
+        return {
+          data: {
+            orders: [order],
+            totalCount: 1,
+            page: 1,
+            limit: 50
+          },
+          success: true
+        }
       }
+    })
 
-      if (!order || !order.id) {
-        console.error('❌ Invalid order data received. Raw args:', args)
-        console.error('❌ Could not extract order from any format')
-
-        // Let's try to refetch orders manually as fallback
-        console.log('🔄 Attempting manual order refetch as fallback...')
-        refetchOrders()
-        return
-      }
-
-      // Fix customization field mapping: WebSocket sends 'customizations' but UI expects 'options'
-      if (order.items && Array.isArray(order.items)) {
-        order.items = order.items.map((item: any) => {
-          if (item.customizations && !item.options) {
-            return { ...item, options: item.customizations }
-          }
-          return item
-        })
-      }
-
-      console.log('✅ Valid order found with customizations mapped:', order)
-
-      toast.success(`New order #${order.id} received`)
-
-      // Use WebSocket data directly (backend sends complete menu item details)
-      queryClient.setQueryData(['orders', 'restaurant', restaurantId, undefined], (oldData: any) => {
-        console.log('📊 Current cache data for orders:', oldData)
-
+    // Update RECEIVED orders cache if needed
+    if (order.status === 'RECEIVED') {
+      queryClient.setQueryData(['orders', 'restaurant', restaurantId, { status: 'RECEIVED' }], (oldData: any) => {
         if (oldData?.data?.orders) {
-          // Add new order to the beginning of the array (most recent first)
           const updatedOrders = [order, ...oldData.data.orders]
-          const newData = {
+          return {
             ...oldData,
             data: {
               ...oldData.data,
@@ -177,11 +173,8 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
               totalCount: (oldData.data.totalCount || 0) + 1
             }
           }
-          console.log('📊 Updated cache data with WebSocket order:', newData)
-          return newData
         } else {
-          // Create initial cache structure if it doesn't exist
-          const newData = {
+          return {
             data: {
               orders: [order],
               totalCount: 1,
@@ -190,218 +183,146 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
             },
             success: true
           }
-          console.log('📊 Creating new cache data with WebSocket order:', newData)
-          return newData
         }
       })
-
-      // Also update the RECEIVED orders cache if needed
-      if (order.status === 'RECEIVED') {
-        queryClient.setQueryData(['orders', 'restaurant', restaurantId, { status: 'RECEIVED' }], (oldData: any) => {
-          if (oldData?.data?.orders) {
-            const updatedOrders = [order, ...oldData.data.orders]
-            return {
-              ...oldData,
-              data: {
-                ...oldData.data,
-                orders: updatedOrders,
-                totalCount: (oldData.data.totalCount || 0) + 1
-              }
-            }
-          } else {
-            return {
-              data: {
-                orders: [order],
-                totalCount: 1,
-                page: 1,
-                limit: 50
-              },
-              success: true
-            }
-          }
-        })
-      }
-
-      // Also update other relevant query caches
-      queryClient.invalidateQueries({ queryKey: ['dashboard-metrics', restaurantId] })
-      queryClient.invalidateQueries({ queryKey: ['orders', 'today', restaurantId] })
     }
 
-    const handleOrderUpdate = (data: any) => {
-      console.log('📝 Raw WebSocket data received for order:updated:', data)
-      console.log('📝 Data type:', typeof data, 'Keys:', Object.keys(data || {}))
+    // Invalidate related caches
+    queryClient.invalidateQueries({ queryKey: ['dashboard-metrics', restaurantId] })
+    queryClient.invalidateQueries({ queryKey: ['orders', 'today', restaurantId] })
+  }, [queryClient, restaurantId, refetchOrders])
 
-      // Handle different data formats - backend might send just order data or wrapped event
-      let order = null
+  const handleOrderUpdate = useCallback((data: any) => {
+    console.log('📝 Order updated via WebSocket:', data)
 
-      if (data && typeof data === 'object') {
-        // Try different data formats
-        if (data.data && data.data.id) {
-          order = data.data
-          console.log('📝 Found order in data.data:', order)
-        } else if (data.id) {
-          order = data
-          console.log('📝 Found order as direct data:', order)
-        } else if (data.order && data.order.id) {
-          order = data.order
-          console.log('📝 Found order in data.order:', order)
+    // Extract order data
+    let order = null
+    if (data?.data?.id) {
+      order = data.data
+    } else if (data?.id) {
+      order = data
+    } else if (data?.order?.id) {
+      order = data.order
+    }
+
+    if (!order?.id) {
+      console.error('❌ Invalid order update data:', data)
+      return
+    }
+
+    // Fix customization field mapping
+    if (order.items && Array.isArray(order.items)) {
+      order.items = order.items.map((item: any) => {
+        if (item.customizations && !item.options) {
+          return { ...item, options: item.customizations }
         }
-      }
-
-      if (!order || !order.id) {
-        console.error('❌ Invalid order data received for order:updated. Raw data:', data)
-        console.error('❌ Could not extract order from any format')
-
-        // Don't show error toast for empty data - might be a backend issue
-        // Just log it and return silently
-        return
-      }
-
-      // Fix customization field mapping: WebSocket sends 'customizations' but UI expects 'options'
-      if (order.items && Array.isArray(order.items)) {
-        order.items = order.items.map((item: any) => {
-          if (item.customizations && !item.options) {
-            return { ...item, options: item.customizations }
-          }
-          return item
-        })
-      }
-
-      // Check if this is a status update that we initiated locally
-      if (order.status) {
-        const changeKey = `${order.id}:${order.status}`
-        if (pendingStatusChanges.has(changeKey)) {
-          console.log('🔄 Ignoring locally initiated order update:', changeKey)
-          return
-        }
-      }
-
-      toast.info(`Order #${order.id} updated`)
-      // Real-time data received via WebSocket - no need to refetch API
-      // Update React Query cache directly instead of refetching
-      // IMPORTANT: Must match the exact query key used by useOrdersByRestaurant hook
-      queryClient.setQueryData(['orders', 'restaurant', restaurantId, undefined], (oldData: any) => {
-        if (oldData?.data?.orders) {
-          const updatedOrders = oldData.data.orders.map((existingOrder: Order) =>
-            existingOrder.id === order.id ? order : existingOrder
-          )
-          return { ...oldData, data: { ...oldData.data, orders: updatedOrders } }
-        }
-        return oldData
+        return item
       })
-
-      // Update selected order if it matches the updated order - use functional update
-      setSelectedOrder(current =>
-        current && current.id === order.id ? order : current
-      )
     }
 
-    const handleOrderStatusChange = (data: { orderId: string; status: OrderStatus }) => {
-      console.log('🔄 Order status changed via WebSocket:', data)
-
-      // Check if this is a locally initiated change (feedback loop prevention)
-      const changeKey = `${data.orderId}:${data.status}`
+    // Check if this is a locally initiated status change
+    if (order.status) {
+      const changeKey = `${order.id}:${order.status}`
       if (pendingStatusChanges.has(changeKey)) {
-        console.log('🔄 Ignoring locally initiated status change:', changeKey)
+        console.log('🔄 Ignoring locally initiated order update:', changeKey)
         return
       }
+    }
 
-      toast.info(`Order #${data.orderId} status: ${data.status}`)
+    toast.info(`Order #${order.id} updated`)
 
-      // Find the current order to check its previous status
-      let previousStatus: OrderStatus | null = null
-      // IMPORTANT: Must match the exact query key used by useOrdersByRestaurant hook
-      queryClient.setQueryData(['orders', 'restaurant', restaurantId, undefined], (oldData: any) => {
-        if (oldData?.data?.orders) {
-          const existingOrder = oldData.data.orders.find((order: Order) => order.id === data.orderId)
-          previousStatus = existingOrder?.status || null
+    // Update orders cache
+    queryClient.setQueryData(['orders', 'restaurant', restaurantId, undefined], (oldData: any) => {
+      if (oldData?.data?.orders) {
+        const updatedOrders = oldData.data.orders.map((existingOrder: Order) =>
+          existingOrder.id === order.id ? order : existingOrder
+        )
+        return { ...oldData, data: { ...oldData.data, orders: updatedOrders } }
+      }
+      return oldData
+    })
 
-          const updatedOrders = oldData.data.orders.map((existingOrder: Order) =>
-            existingOrder.id === data.orderId
-              ? { ...existingOrder, status: data.status }
-              : existingOrder
+    // Update selected order if it matches
+    setSelectedOrder(current =>
+      current && current.id === order.id ? order : current
+    )
+  }, [queryClient, restaurantId, pendingStatusChanges])
+
+  const handleOrderStatusChange = useCallback((data: { orderId: string; status: OrderStatus }) => {
+    console.log('🔄 Order status changed via WebSocket:', data)
+
+    // Check if this is a locally initiated change
+    const changeKey = `${data.orderId}:${data.status}`
+    if (pendingStatusChanges.has(changeKey)) {
+      console.log('🔄 Ignoring locally initiated status change:', changeKey)
+      return
+    }
+
+    toast.info(`Order #${data.orderId} status: ${data.status}`)
+
+    // Update orders cache with status change
+    let previousStatus: OrderStatus | null = null
+    queryClient.setQueryData(['orders', 'restaurant', restaurantId, undefined], (oldData: any) => {
+      if (oldData?.data?.orders) {
+        const existingOrder = oldData.data.orders.find((order: Order) => order.id === data.orderId)
+        previousStatus = existingOrder?.status || null
+
+        const updatedOrders = oldData.data.orders.map((existingOrder: Order) =>
+          existingOrder.id === data.orderId
+            ? { ...existingOrder, status: data.status }
+            : existingOrder
+        )
+        return { ...oldData, data: { ...oldData.data, orders: updatedOrders } }
+      }
+      return oldData
+    })
+
+    // Update RECEIVED orders cache for badge count
+    queryClient.setQueryData(['orders', 'restaurant', restaurantId, { status: 'RECEIVED' }], (oldData: any) => {
+      if (oldData?.data?.orders) {
+        let updatedOrders = oldData.data.orders
+        let totalCount = oldData.data.totalCount || 0
+
+        if (previousStatus === 'RECEIVED' && data.status !== 'RECEIVED') {
+          updatedOrders = updatedOrders.filter((order: Order) => order.id !== data.orderId)
+          totalCount = Math.max(0, totalCount - 1)
+        } else if (previousStatus !== 'RECEIVED' && data.status === 'RECEIVED') {
+          const mainCache = queryClient.getQueryData(['orders', 'restaurant', restaurantId, undefined]) as any
+          const fullOrder = mainCache?.data?.orders?.find((order: Order) => order.id === data.orderId)
+          if (fullOrder) {
+            updatedOrders = [{ ...fullOrder, status: data.status }, ...updatedOrders]
+            totalCount = totalCount + 1
+          }
+        } else if (previousStatus === 'RECEIVED' && data.status === 'RECEIVED') {
+          updatedOrders = updatedOrders.map((order: Order) =>
+            order.id === data.orderId ? { ...order, status: data.status } : order
           )
-          return { ...oldData, data: { ...oldData.data, orders: updatedOrders } }
         }
-        return oldData
-      })
 
-      // Update RECEIVED orders cache for badge count
-      queryClient.setQueryData(['orders', 'restaurant', restaurantId, { status: 'RECEIVED' }], (oldData: any) => {
-        if (oldData?.data?.orders) {
-          let updatedOrders = oldData.data.orders
-          let totalCount = oldData.data.totalCount || 0
-
-          // If order was moved FROM RECEIVED status, remove it from RECEIVED cache
-          if (previousStatus === 'RECEIVED' && data.status !== 'RECEIVED') {
-            updatedOrders = updatedOrders.filter((order: Order) => order.id !== data.orderId)
-            totalCount = Math.max(0, totalCount - 1)
-          }
-          // If order was moved TO RECEIVED status, add it to RECEIVED cache
-          else if (previousStatus !== 'RECEIVED' && data.status === 'RECEIVED') {
-            // Find the full order from the main cache
-            const mainCache = queryClient.getQueryData(['orders', 'restaurant', restaurantId, undefined]) as any
-            const fullOrder = mainCache?.data?.orders?.find((order: Order) => order.id === data.orderId)
-            if (fullOrder) {
-              updatedOrders = [{ ...fullOrder, status: data.status }, ...updatedOrders]
-              totalCount = totalCount + 1
-            }
-          }
-          // If order status changed within RECEIVED (shouldn't happen but just in case)
-          else if (previousStatus === 'RECEIVED' && data.status === 'RECEIVED') {
-            updatedOrders = updatedOrders.map((order: Order) =>
-              order.id === data.orderId ? { ...order, status: data.status } : order
-            )
-          }
-
-          return {
-            ...oldData,
-            data: {
-              ...oldData.data,
-              orders: updatedOrders,
-              totalCount
-            }
+        return {
+          ...oldData,
+          data: {
+            ...oldData.data,
+            orders: updatedOrders,
+            totalCount
           }
         }
-        return oldData
-      })
-
-      // Update selected order status if it matches - use functional update
-      setSelectedOrder(current =>
-        current && current.id === data.orderId
-          ? { ...current, status: data.status }
-          : current
-      )
-    }
-
-    // Subscribe to real-time events with enhanced debugging
-    console.log('🔌 Setting up WebSocket event listeners...')
-
-    client.on('order:created', (data: any) => {
-      console.log('🎯 order:created event triggered')
-      handleNewOrder(data)
+      }
+      return oldData
     })
 
-    client.on('order:updated', (data: any) => {
-      console.log('🎯 order:updated event triggered')
-      handleOrderUpdate(data)
-    })
+    // Update selected order if it matches
+    setSelectedOrder(current =>
+      current && current.id === data.orderId
+        ? { ...current, status: data.status }
+        : current
+    )
+  }, [queryClient, restaurantId, pendingStatusChanges])
 
-    client.on('order:status_updated', (data: any) => {
-      console.log('🎯 order:status_updated event triggered')
-      handleOrderStatusChange(data)
-    })
-
-
-    return () => {
-      // Clean up all event listeners
-      client.off('order:created')
-      client.off('order:updated')
-      client.off('order:status_updated')
-    }
-    // Remove selectedOrder from dependencies to prevent unnecessary re-subscriptions
-    // Use functional updates instead to avoid stale closures
-  }, [client, queryClient, restaurantId, pendingStatusChanges])
+  // Use clean useWebSocketEvent hooks (prevents duplicate event listeners)
+  useWebSocketEvent('order:created', handleNewOrder, [handleNewOrder])
+  useWebSocketEvent('order:updated', handleOrderUpdate, [handleOrderUpdate])
+  useWebSocketEvent('order:status_updated', handleOrderStatusChange, [handleOrderStatusChange])
   
   // Update selected order when orders data changes
   // Use more efficient comparison instead of expensive JSON.stringify

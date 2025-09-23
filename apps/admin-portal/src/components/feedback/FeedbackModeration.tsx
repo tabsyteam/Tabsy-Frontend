@@ -19,7 +19,7 @@ import {
   useAdminFeedback,
   useAdminFeedbackStats
 } from '@tabsy/react-query-hooks'
-import { useApi } from '@/components/providers/api-provider'
+import { tabsyClient } from '@tabsy/api-client'
 import type {
   Feedback,
   FeedbackListParams
@@ -36,7 +36,7 @@ interface FeedbackViewFilters {
 }
 
 export function AdminFeedbackViewer() {
-  const { api } = useApi()
+  const api = tabsyClient
 
   // State management for filters and pagination
   const [filters, setFilters] = useState<FeedbackViewFilters>({

@@ -51,7 +51,7 @@ const FeedbackListParamsSchema = z.object({
   hasPhotos: z.boolean().optional(),
   tableId: z.string().optional(),
   orderId: z.string().optional(),
-  sortBy: z.enum(['createdAt', 'rating', 'updatedAt']).optional(),
+  sortBy: z.enum(['createdAt', 'overallRating', 'updatedAt']).optional(),
   sortOrder: z.enum(['asc', 'desc']).optional()
 })
 

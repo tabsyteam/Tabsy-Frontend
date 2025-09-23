@@ -44,7 +44,7 @@ export function useTableSessionData() {
 
         // If not in session data, try to get it from sessionStorage
         if (!tableSessionId) {
-          const storedTableSessionId = sessionStorage.getItem('tabsy-table-session-id')
+          const storedTableSessionId = typeof window !== 'undefined' ? sessionStorage.getItem('tabsy-table-session-id') : null
           if (storedTableSessionId) {
             tableSessionId = storedTableSessionId
           }

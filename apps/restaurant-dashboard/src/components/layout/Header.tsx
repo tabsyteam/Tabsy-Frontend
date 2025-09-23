@@ -30,7 +30,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { tabsyClient } from '@tabsy/api-client'
 import { createOrderHooks, createNotificationHooks } from '@tabsy/react-query-hooks'
 import { formatNotificationContent, formatRelativeTime, getNotificationPriorityColor, generateFallbackNotifications } from '@/lib/notificationUtils'
-import { useWebSocketContext, useWebSocketEvent } from '@/contexts/WebSocketContext'
+import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
 import { playAssistanceSound, playOrderSound, notificationSoundService } from '@/lib/notificationSound'
 import { useNotificationMute } from '@/contexts/NotificationMuteContext'
 
@@ -147,8 +147,8 @@ export function Header({
   const notifications = notificationsData?.notifications || []
   const unreadNotificationsCount = notifications.filter((n: Notification) => !n.isRead).length
 
-  // Use WebSocket from context (singleton pattern)
-  const { client: wsClient, isConnected: wsConnected } = useWebSocketContext()
+  // Use unified WebSocket provider
+  const { isConnected: wsConnected } = useWebSocket()
 
   // WebSocket event listeners for real-time updates
   // OPTIMIZATION: Memoize WebSocket event handlers
