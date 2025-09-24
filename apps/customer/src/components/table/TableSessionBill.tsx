@@ -1,14 +1,17 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback, memo } from 'react'
+import { useRouter } from 'next/navigation'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { toast } from 'sonner'
 import { TabsyAPI } from '@tabsy/api-client'
+import { SessionManager } from '@/lib/session'
+import { Button } from '@tabsy/ui-components'
+import { CreditCard, Split, Users, AlertTriangle, RefreshCw } from 'lucide-react'
 import type {
-  TableSessionBill,
+  TableSessionBill as TableSessionBillType,
   TableSessionUser,
-  MultiUserTableSession,
-  SplitPaymentOption
+  MultiUserTableSession
 } from '@tabsy/shared-types'
 
 interface TableSessionBillProps {
@@ -19,141 +22,138 @@ interface TableSessionBillProps {
   onPaymentInitiated?: () => void
 }
 
-export function TableSessionBill({
+const TableSessionBillComponent = ({
   tableSession,
   currentUser,
   users,
   api,
   onPaymentInitiated
-}: TableSessionBillProps) {
-  const [bill, setBill] = useState<TableSessionBill | null>(null)
+}: TableSessionBillProps) => {
+  const router = useRouter()
+  const [bill, setBill] = useState<TableSessionBillType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [showSplitOptions, setShowSplitOptions] = useState(false)
-  const [splitOption, setSplitOption] = useState<SplitPaymentOption>({
-    type: 'equal',
-    participants: [currentUser.guestSessionId]
-  })
+  const [error, setError] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
 
-  // Load bill data
-  useEffect(() => {
-    const loadBill = async () => {
-      try {
-        setIsLoading(true)
-        const response = await api.tableSession.getBill(tableSession.id)
-
-        if (response.success) {
-          setBill(response.data)
-        } else {
-          throw new Error('Failed to load bill')
-        }
-      } catch (error) {
-        console.error('[TableSessionBill] Error loading bill:', error)
-        toast.error('Failed to load bill')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    loadBill()
-  }, [api, tableSession.id])
-
-  // Handle split payment option changes
-  const handleSplitOptionChange = (type: SplitPaymentOption['type']) => {
-    setSplitOption({
-      type,
-      participants: type === 'equal' ? users.map(u => u.guestSessionId) : [currentUser.guestSessionId]
-    })
-  }
-
-  // Calculate split amounts
-  const calculateSplitAmounts = () => {
-    if (!bill) return {}
-
-    const amounts: { [guestSessionId: string]: number } = {}
-    const { remainingBalance } = bill.summary
-
-    switch (splitOption.type) {
-      case 'equal':
-        const equalAmount = remainingBalance / splitOption.participants.length
-        splitOption.participants.forEach(id => {
-          amounts[id] = equalAmount
-        })
-        break
-
-      case 'by_percentage':
-        if (splitOption.percentages) {
-          Object.entries(splitOption.percentages).forEach(([id, percentage]) => {
-            amounts[id] = (remainingBalance * percentage) / 100
-          })
-        }
-        break
-
-      case 'by_amount':
-        if (splitOption.amounts) {
-          Object.assign(amounts, splitOption.amounts)
-        }
-        break
-
-      case 'by_items':
-        // Calculate based on item assignments
-        const roundTotals: { [guestSessionId: string]: number } = {}
-
-        if (splitOption.itemAssignments) {
-          Object.values(bill.billByRound).forEach(round => {
-            round.orders.forEach(order => {
-              order.items.forEach((item: any) => {
-                const assignedTo = splitOption.itemAssignments![item.id] || currentUser.guestSessionId
-                roundTotals[assignedTo] = (roundTotals[assignedTo] || 0) + item.subtotal
-              })
-            })
-          })
-
-          // Add proportional tax and tip
-          const subtotalSum = Object.values(roundTotals).reduce((sum, val) => sum + val, 0)
-          Object.entries(roundTotals).forEach(([id, subtotal]) => {
-            const proportion = subtotal / subtotalSum
-            amounts[id] = subtotal + (bill.summary.tax * proportion) + (bill.summary.tip * proportion)
-          })
-        }
-        break
-    }
-
-    return amounts
-  }
-
-  // Initiate payment
-  const initiatePayment = async (amount?: number) => {
+  // Memoized bill loading function with enhanced error handling
+  const loadBill = useCallback(async () => {
     try {
-      const paymentAmount = amount || bill?.summary.remainingBalance || 0
+      setIsLoading(true)
+      setError(null)
 
-      // For now, redirect to payment page with amount
-      // In a real implementation, this would integrate with the payment system
-      const paymentData = {
-        tableSessionId: tableSession.id,
-        amount: paymentAmount,
-        splitOption: amount ? splitOption : null,
-        guestSessionId: currentUser.guestSessionId
+      const response = await api.tableSession.getBill(tableSession.id)
+
+      if (response.success && response.data) {
+        setBill(response.data)
+        setRetryCount(0) // Reset retry count on success
+      } else {
+        throw new Error(response.error?.message || 'Failed to load bill')
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to load bill'
+      console.error('[TableSessionBill] Error loading bill:', error)
+      setError(errorMessage)
+
+      // Only show toast on first error, not retries
+      if (retryCount === 0) {
+        toast.error(errorMessage)
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }, [api, tableSession.id, retryCount])
+
+  // Load bill data on mount and when dependencies change
+  useEffect(() => {
+    loadBill()
+  }, [loadBill])
+
+  // Retry function
+  const handleRetry = useCallback(() => {
+    setRetryCount(prev => prev + 1)
+    loadBill()
+  }, [loadBill])
+
+
+  // Memoized payment initiation functions
+  const initiatePayment = useCallback(async () => {
+    try {
+      const session = SessionManager.getDiningSession()
+      if (!session) {
+        toast.error('Session not found')
+        return
       }
 
-      // Store payment data for the payment page
-      sessionStorage.setItem('pendingPayment', JSON.stringify(paymentData))
+      // Navigate to payment page for table session
+      const queryParams = new URLSearchParams({
+        tableSessionId: tableSession.id,
+        type: 'table_session',
+        restaurant: session.restaurantId,
+        table: session.tableId
+      })
 
+      router.push(`/payment?${queryParams.toString()}`)
       onPaymentInitiated?.()
-      toast.success(`Initiating payment for $${paymentAmount.toFixed(2)}`)
-
-      // In a real app, navigate to payment page
-      // router.push('/payment')
 
     } catch (error) {
       console.error('[TableSessionBill] Error initiating payment:', error)
       toast.error('Failed to initiate payment')
     }
-  }
+  }, [tableSession.id, router, onPaymentInitiated])
 
+  const initiateSplitPayment = useCallback(async () => {
+    try {
+      const session = SessionManager.getDiningSession()
+      if (!session) {
+        toast.error('Session not found')
+        return
+      }
+
+      // Navigate to payment page for split bill
+      const queryParams = new URLSearchParams({
+        tableSessionId: tableSession.id,
+        type: 'split_bill',
+        restaurant: session.restaurantId,
+        table: session.tableId
+      })
+
+      router.push(`/payment?${queryParams.toString()}`)
+      onPaymentInitiated?.()
+
+    } catch (error) {
+      console.error('[TableSessionBill] Error initiating split payment:', error)
+      toast.error('Failed to initiate split payment')
+    }
+  }, [tableSession.id, router, onPaymentInitiated])
+
+  // Enhanced loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-8">
+      <div className="flex flex-col items-center justify-center p-8 space-y-4">
         <LoadingSpinner />
+        <p className="text-sm text-content-secondary">Loading bill details...</p>
+      </div>
+    )
+  }
+
+  // Enhanced error state with retry option
+  if (error && !bill) {
+    return (
+      <div className="p-4 space-y-4">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+          <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-2" />
+          <h3 className="font-medium text-red-800 mb-1">Unable to Load Bill</h3>
+          <p className="text-sm text-red-700 mb-4">{error}</p>
+          <Button
+            onClick={handleRetry}
+            variant="outline"
+            size="sm"
+            className="border-red-300 text-red-700 hover:bg-red-50"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Try Again
+          </Button>
+        </div>
       </div>
     )
   }
@@ -161,12 +161,11 @@ export function TableSessionBill({
   if (!bill) {
     return (
       <div className="p-4 text-center">
-        <p className="text-content-secondary">Unable to load bill</p>
+        <p className="text-content-secondary">No bill data available</p>
       </div>
     )
   }
 
-  const splitAmounts = calculateSplitAmounts()
 
   return (
     <div className="p-4 space-y-6">
@@ -200,7 +199,7 @@ export function TableSessionBill({
           </div>
           <div className="flex justify-between text-success">
             <span>Paid</span>
-            <span>-${bill.summary.totalPaid.toFixed(2)}</span>
+            <span>-${(bill.summary.totalPaid || 0).toFixed(2)}</span>
           </div>
           <hr className="border-default" />
           <div className="flex justify-between font-semibold text-lg">
@@ -218,25 +217,57 @@ export function TableSessionBill({
             <h4 className="font-medium mb-3">Round {roundNum}</h4>
             <div className="space-y-3">
               {round.orders.map(order => (
-                <div key={order.orderId} className="bg-surface-secondary rounded p-3">
+                <div key={order.orderId} className={`rounded p-3 transition-all ${
+                  order.isPaid
+                    ? 'bg-green-50 border-2 border-green-200 opacity-75'
+                    : 'bg-surface-secondary'
+                }`}>
                   <div className="flex justify-between items-start mb-2">
-                    <span className="font-medium">{order.orderNumber}</span>
+                    <div className="flex items-center space-x-2">
+                      <span className={`font-medium ${order.isPaid ? 'line-through text-green-700' : ''}`}>
+                        {order.orderNumber}
+                      </span>
+                      {order.isPaid && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          ✓ Paid
+                        </span>
+                      )}
+                    </div>
                     <span className="text-sm text-content-secondary">
                       by {order.placedBy}
                     </span>
                   </div>
                   <div className="space-y-1">
                     {order.items.map((item: any, idx: number) => (
-                      <div key={idx} className="flex justify-between text-sm">
-                        <span>{item.quantity}x {item.name}</span>
-                        <span>${item.subtotal.toFixed(2)}</span>
+                      <div key={idx} className={`flex justify-between text-sm ${
+                        order.isPaid ? 'text-green-700' : ''
+                      }`}>
+                        <span className={order.isPaid ? 'line-through' : ''}>
+                          {item.quantity}x {item.name}
+                        </span>
+                        <span className={order.isPaid ? 'line-through' : ''}>
+                          ${Number(item.subtotal || 0).toFixed(2)}
+                        </span>
                       </div>
                     ))}
                   </div>
-                  <div className="flex justify-between font-medium mt-2 pt-2 border-t border-default">
-                    <span>Order Total</span>
-                    <span>${order.total.toFixed(2)}</span>
+                  <div className={`flex justify-between font-medium mt-2 pt-2 border-t border-default ${
+                    order.isPaid ? 'text-green-700' : ''
+                  }`}>
+                    <span className={order.isPaid ? 'line-through' : ''}>Order Total</span>
+                    <span className={order.isPaid ? 'line-through' : ''}>
+                      ${Number(order.total || 0).toFixed(2)}
+                    </span>
                   </div>
+                  {order.isPaid && order.payments && order.payments.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-green-200">
+                      <div className="text-xs text-green-700">
+                        Payment: {order.payments.map((p: any) =>
+                          `${p.method} $${Number(p.amount).toFixed(2)}`
+                        ).join(', ')}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -250,108 +281,49 @@ export function TableSessionBill({
 
       {/* Payment Options */}
       {bill.summary.remainingBalance > 0 && (
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="font-semibold">Payment Options</h3>
-            <button
-              onClick={() => setShowSplitOptions(!showSplitOptions)}
-              className="text-sm text-primary hover:underline"
+        <div className="space-y-4 pb-24">
+          <h3 className="font-semibold flex items-center space-x-2">
+            <CreditCard className="w-5 h-5" />
+            <span>Payment Options</span>
+          </h3>
+
+          {/* Payment Action Buttons */}
+          <div className="grid grid-cols-1 gap-3">
+            {/* Full Payment */}
+            <Button
+              onClick={initiatePayment}
+              size="lg"
+              className="w-full flex items-center justify-center space-x-2"
             >
-              {showSplitOptions ? 'Hide' : 'Show'} Split Options
-            </button>
+              <CreditCard className="w-4 h-4" />
+              <span>Pay Full Amount • ${bill.summary.remainingBalance.toFixed(2)}</span>
+            </Button>
+
+            {/* Split Payment - only show if multiple users */}
+            {users.length > 1 && (
+              <Button
+                onClick={initiateSplitPayment}
+                variant="outline"
+                size="lg"
+                className="w-full flex items-center justify-center space-x-2"
+              >
+                <Split className="w-4 h-4" />
+                <span>Split Bill</span>
+                <Users className="w-4 h-4" />
+                <span>({users.length} people)</span>
+              </Button>
+            )}
           </div>
 
-          {/* Full Payment */}
-          <button
-            onClick={() => initiatePayment()}
-            className="w-full px-4 py-3 bg-primary text-primary-foreground rounded-lg font-medium"
-          >
-            Pay Full Amount • ${bill.summary.remainingBalance.toFixed(2)}
-          </button>
-
-          {/* Split Payment Options */}
-          {showSplitOptions && (
-            <div className="bg-surface-secondary rounded-lg p-4 space-y-4">
-              <h4 className="font-medium">Split Payment</h4>
-
-              {/* Split Type Selection */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => handleSplitOptionChange('equal')}
-                  className={`p-2 rounded text-sm ${
-                    splitOption.type === 'equal'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-surface border border-default'
-                  }`}
-                >
-                  Split Equally
-                </button>
-                <button
-                  onClick={() => handleSplitOptionChange('by_items')}
-                  className={`p-2 rounded text-sm ${
-                    splitOption.type === 'by_items'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-surface border border-default'
-                  }`}
-                >
-                  By Items
-                </button>
-                <button
-                  onClick={() => handleSplitOptionChange('by_percentage')}
-                  className={`p-2 rounded text-sm ${
-                    splitOption.type === 'by_percentage'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-surface border border-default'
-                  }`}
-                >
-                  By Percentage
-                </button>
-                <button
-                  onClick={() => handleSplitOptionChange('by_amount')}
-                  className={`p-2 rounded text-sm ${
-                    splitOption.type === 'by_amount'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-surface border border-default'
-                  }`}
-                >
-                  Custom Amount
-                </button>
+          {/* Info for multiple diners */}
+          {users.length > 1 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-center space-x-2 text-sm text-blue-800">
+                <Users className="w-4 h-4" />
+                <span>
+                  {users.length} people are dining at this table. Use "Split Bill" to divide the payment among participants.
+                </span>
               </div>
-
-              {/* Split Details */}
-              {splitOption.type === 'equal' && (
-                <div className="space-y-2">
-                  <p className="text-sm text-content-secondary">
-                    ${(bill.summary.remainingBalance / users.length).toFixed(2)} per person
-                  </p>
-                  <div className="space-y-1">
-                    {users.map(user => (
-                      <div key={user.guestSessionId} className="flex justify-between text-sm">
-                        <span>{user.userName}</span>
-                        <span>${(bill.summary.remainingBalance / users.length).toFixed(2)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Current User Payment */}
-              {Object.keys(splitAmounts).length > 0 && (
-                <div className="pt-3 border-t border-default">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium">Your Share:</span>
-                    <span className="font-semibold">
-                      ${(splitAmounts[currentUser.guestSessionId] || 0).toFixed(2)}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => initiatePayment(splitAmounts[currentUser.guestSessionId])}
-                    className="w-full px-4 py-2 bg-secondary text-secondary-foreground rounded-lg"
-                  >
-                    Pay My Share • ${(splitAmounts[currentUser.guestSessionId] || 0).toFixed(2)}
-                  </button>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -370,3 +342,6 @@ export function TableSessionBill({
     </div>
   )
 }
+
+// Memoized component export for performance optimization
+export const TableSessionBill = memo(TableSessionBillComponent)

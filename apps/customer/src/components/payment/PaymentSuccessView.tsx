@@ -13,19 +13,22 @@ import {
   ArrowRight,
   Receipt,
   Home,
-  Utensils
+  Utensils,
+  Users
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApi } from '@/components/providers/api-provider'
+import { SessionManager } from '@/lib/session'
+import type { Payment, PaymentMethod, PaymentStatus, Order, TableSessionBill } from '@tabsy/shared-types'
 
-interface Payment {
-  id: string
-  orderId: string
-  amount: number
-  tip?: number
-  status: string
-  paymentMethod: string
-  createdAt: string
+interface EnhancedPayment extends Payment {
+  order?: Order
+  tableBill?: TableSessionBill
+  splitInfo?: {
+    totalParticipants: number
+    userAmount: number
+    isComplete: boolean
+  }
 }
 
 // Transform API payment response to local Payment interface
@@ -33,9 +36,12 @@ const transformApiPaymentToLocal = (apiPayment: any): Payment => ({
   id: apiPayment.id,
   orderId: apiPayment.orderId,
   amount: apiPayment.amount,
+  totalAmount: apiPayment.amount, // Keep both for compatibility
   tip: apiPayment.tipAmount,
+  tipAmount: apiPayment.tipAmount, // Keep both for compatibility
   status: apiPayment.status,
   paymentMethod: apiPayment.method,
+  method: apiPayment.method, // Keep both for compatibility
   createdAt: apiPayment.createdAt
 })
 
@@ -44,15 +50,59 @@ export function PaymentSuccessView() {
   const searchParams = useSearchParams()
   const { api } = useApi()
 
-  const [payment, setPayment] = useState<Payment | null>(null)
+  const [payment, setPayment] = useState<EnhancedPayment | null>(null)
   const [loading, setLoading] = useState(true)
   const [downloadingReceipt, setDownloadingReceipt] = useState(false)
+  const [showDetailedReceipt, setShowDetailedReceipt] = useState(false)
+  const [sessionRestored, setSessionRestored] = useState(false)
 
   const paymentId = searchParams.get('payment')
   const restaurantId = searchParams.get('restaurant')
   const tableId = searchParams.get('table')
+  const tableSessionId = searchParams.get('tableSession')
+  const isSplit = searchParams.get('split') === 'true'
+  const guestSessionId = searchParams.get('guestSession')
+
+  // Restore guest session before making any API calls
+  useEffect(() => {
+    const restoreSession = () => {
+      // Try to get session from URL params first
+      if (guestSessionId) {
+        console.log('PaymentSuccessView: Restoring guest session from URL:', guestSessionId)
+        api.setGuestSession(guestSessionId)
+        setSessionRestored(true)
+        return
+      }
+
+      // Try to get session from existing dining session
+      const diningSession = SessionManager.getDiningSession()
+      if (diningSession?.sessionId) {
+        console.log('PaymentSuccessView: Restoring guest session from dining session:', diningSession.sessionId)
+        api.setGuestSession(diningSession.sessionId)
+        setSessionRestored(true)
+        return
+      }
+
+      // Try to get session from stored session storage
+      const storedSessionId = sessionStorage.getItem('tabsy-guest-session-id')
+      if (storedSessionId) {
+        console.log('PaymentSuccessView: Restoring guest session from storage:', storedSessionId)
+        api.setGuestSession(storedSessionId)
+        setSessionRestored(true)
+        return
+      }
+
+      console.log('PaymentSuccessView: No guest session found, proceeding without session')
+      setSessionRestored(true)
+    }
+
+    restoreSession()
+  }, [api, guestSessionId])
 
   useEffect(() => {
+    // Only load payment after session is restored
+    if (!sessionRestored) return
+
     const loadPayment = async () => {
       if (!paymentId) {
         toast.error('Payment ID is missing')
@@ -62,10 +112,65 @@ export function PaymentSuccessView() {
 
       try {
         setLoading(true)
-        const response = await api.payment.getById(paymentId)
+        let response: any
+        let fallbackUsed = false
+
+        try {
+          // Try authenticated endpoint first
+          response = await api.payment.getById(paymentId)
+        } catch (authError: any) {
+          // If authentication fails, try public endpoint as fallback
+          if (authError?.status === 401 || authError?.message?.includes('Unauthorized')) {
+            console.log('Authentication failed, trying public endpoint as fallback')
+            response = await api.payment.getPublicDetails(paymentId)
+            fallbackUsed = true
+          } else {
+            throw authError
+          }
+        }
 
         if (response.success && response.data) {
-          setPayment(transformApiPaymentToLocal(response.data))
+          const paymentData = transformApiPaymentToLocal(response.data)
+          const enhancedPayment: EnhancedPayment = { ...paymentData }
+
+          // Load additional order details if available (skip if using fallback due to auth issues)
+          if (paymentData.orderId && !fallbackUsed) {
+            try {
+              const orderResponse = await api.order.getById(paymentData.orderId)
+              if (orderResponse.success && orderResponse.data) {
+                enhancedPayment.order = orderResponse.data
+              }
+            } catch (orderError) {
+              console.warn('Could not load order details:', orderError)
+            }
+          }
+
+          // Load table session bill if available (skip if using fallback due to auth issues)
+          if (tableSessionId && !fallbackUsed) {
+            try {
+              const billResponse = await api.tableSession.getBill(tableSessionId)
+              if (billResponse.success && billResponse.data) {
+                enhancedPayment.tableBill = billResponse.data
+              }
+            } catch (billError) {
+              console.warn('Could not load table session bill:', billError)
+            }
+          }
+
+          // Add split payment info if applicable
+          if (isSplit) {
+            enhancedPayment.splitInfo = {
+              totalParticipants: 1, // This would come from split payment data
+              userAmount: paymentData.amount,
+              isComplete: true
+            }
+          }
+
+          setPayment(enhancedPayment)
+
+          if (fallbackUsed) {
+            console.log('Payment loaded successfully using public endpoint fallback')
+          }
         } else {
           throw new Error('Payment not found')
         }
@@ -79,60 +184,199 @@ export function PaymentSuccessView() {
     }
 
     loadPayment()
-  }, [paymentId, api, router])
+  }, [paymentId, tableSessionId, isSplit, api, router, sessionRestored])
+
+  const generateDetailedReceipt = () => {
+    if (!payment) return ''
+
+    const date = new Date(payment.createdAt).toLocaleDateString()
+    const time = new Date(payment.createdAt).toLocaleTimeString()
+
+    let receiptContent = `
+=====================================
+           TABSY RECEIPT
+=====================================
+
+Date: ${date}
+Time: ${time}
+${tableId ? `Table: ${tableId}` : ''}
+${payment.transactionId ? `Transaction ID: ${payment.transactionId}` : ''}
+
+=====================================
+`
+
+    // Add split payment info if applicable
+    if (payment.splitInfo) {
+      receiptContent += `
+SPLIT PAYMENT
+Your portion: $${Number(payment.splitInfo.userAmount || 0).toFixed(2)}
+Total participants: ${payment.splitInfo.totalParticipants}
+
+=====================================
+`
+    }
+
+    // Add order items if available
+    if (payment.order?.items) {
+      receiptContent += `
+ORDER DETAILS
+-------------------------------------
+`
+      payment.order.items.forEach((item: any) => {
+        receiptContent += `
+${item.quantity}x ${item.menuItem?.name || item.name}
+   $${(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}
+`
+        if (item.customizations?.length) {
+          item.customizations.forEach((custom: any) => {
+            receiptContent += `   + ${custom.name} (+$${Number(custom.price || 0).toFixed(2)})\n`
+          })
+        }
+      })
+      receiptContent += `
+-------------------------------------
+Subtotal: $${Number(payment.order.subtotal || 0).toFixed(2)}
+Tax: $${Number(payment.order.tax || 0).toFixed(2)}
+`
+    }
+
+    receiptContent += `
+-------------------------------------
+Payment Method: ${payment.method}
+Amount Paid: $${Number(payment.totalAmount || 0).toFixed(2)}
+${payment.tipAmount ? `Tip: $${Number(payment.tipAmount || 0).toFixed(2)}` : ''}
+
+TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).toFixed(2)}
+
+=====================================
+    Thank you for dining with us!
+         Powered by Tabsy
+=====================================
+`
+
+    return receiptContent
+  }
 
   const handleDownloadReceipt = async () => {
     if (!paymentId) return
 
     try {
       setDownloadingReceipt(true)
-      const response = await api.payment.getReceipt(paymentId)
 
-      if (response.success && response.data) {
-        // Create a download link for the receipt
-        const receiptData = response.data
-        if (receiptData.receiptUrl) {
-          // If backend provides URL, open it
-          window.open(receiptData.receiptUrl, '_blank')
+      let receiptData = null
+      let fallbackUsed = false
+
+      try {
+        // Try authenticated endpoint first
+        const response = await api.payment.getReceipt(paymentId)
+        if (response.success && response.data) {
+          receiptData = response.data
+        }
+      } catch (authError: any) {
+        // If authentication fails, generate receipt from available payment data
+        if (authError?.status === 401 || authError?.message?.includes('Unauthorized')) {
+          console.log('Authentication failed for receipt, generating from payment data')
+          fallbackUsed = true
         } else {
-          // Create a simple receipt and trigger download
-          const receiptContent = `
-TABSY RECEIPT
-Order: ${payment?.orderId}
-Amount: $${payment?.amount.toFixed(2)}
-${payment?.tip ? `Tip: $${payment.tip.toFixed(2)}` : ''}
-Date: ${new Date(payment?.createdAt || '').toLocaleDateString()}
-          `
+          throw authError
+        }
+      }
 
-          const blob = new Blob([receiptContent], { type: 'text/plain' })
-          const url = window.URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = `tabsy-receipt-${payment?.orderId}.txt`
-          link.click()
-          window.URL.revokeObjectURL(url)
+      if (receiptData?.receiptUrl && !fallbackUsed) {
+        // If backend provides URL, open it
+        window.open(receiptData.receiptUrl, '_blank')
+      } else {
+        // Create a detailed receipt and trigger download
+        const receiptContent = generateDetailedReceipt()
+
+        if (!receiptContent || receiptContent.trim().length === 0) {
+          throw new Error('Unable to generate receipt content')
         }
 
-        toast.success('Receipt downloaded successfully')
+        const blob = new Blob([receiptContent], { type: 'text/plain' })
+        const url = window.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `tabsy-receipt-${payment?.id || paymentId}.txt`
+        link.click()
+        window.URL.revokeObjectURL(url)
       }
+
+      const successMessage = fallbackUsed
+        ? 'Receipt downloaded successfully (generated from payment data)'
+        : 'Receipt downloaded successfully'
+      toast.success(successMessage)
+
     } catch (error) {
       console.error('Failed to download receipt:', error)
-      toast.error('Failed to download receipt')
+      toast.error('Failed to download receipt. Please try again later.')
     } finally {
       setDownloadingReceipt(false)
     }
   }
 
   const handleLeaveFeedback = () => {
-    router.push(`/feedback?order=${payment?.orderId}&restaurant=${restaurantId}&table=${tableId}`)
+    const currentGuestSessionId = api.getGuestSessionId()
+    const baseUrl = '/feedback'
+    const params = new URLSearchParams()
+
+    // Add restaurant and table info
+    if (restaurantId) params.set('restaurant', restaurantId)
+    if (tableId) params.set('table', tableId)
+
+    // Add guest session for authentication
+    if (currentGuestSessionId) params.set('guestSession', currentGuestSessionId)
+
+    // Prefer table session for group dining feedback, fall back to individual order
+    if (tableSessionId) {
+      // For group dining - feedback will be associated with the table session
+      // This allows feedback for the entire dining experience including multiple orders
+      params.set('tableSession', tableSessionId)
+      console.log('PaymentSuccessView: Leaving feedback for table session (group dining):', tableSessionId)
+    } else if (payment?.orderId) {
+      // For individual order feedback
+      params.set('order', payment.orderId)
+      console.log('PaymentSuccessView: Leaving feedback for individual order:', payment.orderId)
+    }
+
+    const feedbackUrl = `${baseUrl}?${params.toString()}`
+    router.push(feedbackUrl)
   }
 
   const handleBackToHome = () => {
-    router.push('/')
+    const currentGuestSessionId = api.getGuestSessionId()
+
+    if (tableSessionId) {
+      const session = SessionManager.getDiningSession()
+      if (session) {
+        // Preserve guest session in query params for navigation
+        const queryParams = SessionManager.getDiningQueryParams()
+        const guestParam = currentGuestSessionId ? `&guestSession=${currentGuestSessionId}` : ''
+        router.push(`/table${queryParams}${guestParam}`)
+      } else {
+        router.push('/')
+      }
+    } else {
+      router.push('/')
+    }
   }
 
   const handleOrderAgain = () => {
-    router.push(`/menu?restaurant=${restaurantId}&table=${tableId}`)
+    const currentGuestSessionId = api.getGuestSessionId()
+
+    if (tableSessionId && restaurantId && tableId) {
+      const guestParam = currentGuestSessionId ? `&guestSession=${currentGuestSessionId}` : ''
+      router.push(`/table/menu?restaurant=${restaurantId}&table=${tableId}&tableSession=${tableSessionId}${guestParam}`)
+    } else if (restaurantId && tableId) {
+      const guestParam = currentGuestSessionId ? `&guestSession=${currentGuestSessionId}` : ''
+      router.push(`/menu?restaurant=${restaurantId}&table=${tableId}${guestParam}`)
+    } else {
+      router.push('/')
+    }
+  }
+
+  const handleViewDetailedReceipt = () => {
+    setShowDetailedReceipt(!showDetailedReceipt)
   }
 
   if (loading) {
@@ -150,8 +394,8 @@ Date: ${new Date(payment?.createdAt || '').toLocaleDateString()}
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center space-y-6 max-w-md">
-          <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-            <CheckCircle className="w-8 h-8 text-red-600" />
+          <div className="w-16 h-16 mx-auto bg-status-error/10 rounded-full flex items-center justify-center">
+            <CheckCircle className="w-8 h-8 text-status-error" />
           </div>
           <div>
             <h1 className="text-xl font-semibold text-content-primary mb-2">
@@ -185,8 +429,8 @@ Date: ${new Date(payment?.createdAt || '').toLocaleDateString()}
           className="text-center mb-8"
         >
           <div className="relative">
-            <div className="w-24 h-24 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-6">
-              <CheckCircle className="w-12 h-12 text-green-600" />
+            <div className="w-24 h-24 mx-auto bg-status-success/10 rounded-full flex items-center justify-center mb-6">
+              <CheckCircle className="w-12 h-12 text-status-success" />
             </div>
 
             {/* Confetti animation */}
@@ -233,32 +477,90 @@ Date: ${new Date(payment?.createdAt || '').toLocaleDateString()}
           transition={{ delay: 0.8 }}
           className="bg-surface rounded-xl border p-6 mb-6"
         >
-          <h3 className="text-lg font-semibold text-content-primary mb-4 flex items-center space-x-2">
-            <Receipt className="w-5 h-5" />
-            <span>Payment Details</span>
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-content-primary flex items-center space-x-2">
+              <Receipt className="w-5 h-5" />
+              <span>Payment Details</span>
+            </h3>
+            {payment.order?.items && (
+              <Button
+                onClick={handleViewDetailedReceipt}
+                variant="ghost"
+                size="sm"
+                className="text-xs"
+              >
+                {showDetailedReceipt ? 'Hide Details' : 'Show Details'}
+              </Button>
+            )}
+          </div>
+
+          {/* Split Payment Banner */}
+          {payment.splitInfo && (
+            <div className="mb-4 p-3 bg-status-info/10 border border-status-info/20 rounded-lg">
+              <div className="flex items-center space-x-2 text-sm">
+                <Users className="w-4 h-4 text-status-info" />
+                <span className="text-status-info font-medium">
+                  Split Payment - Your portion of ${payment.splitInfo.totalParticipants} people
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-content-secondary">Order</span>
-              <span className="font-medium text-content-primary">#{payment.orderId}</span>
-            </div>
-
-            <div className="flex justify-between">
-              <span className="text-content-secondary">Amount</span>
-              <span className="font-medium text-content-primary">${payment.amount.toFixed(2)}</span>
-            </div>
-
-            {payment.tip && payment.tip > 0 && (
+            {payment.orderId && (
               <div className="flex justify-between">
-                <span className="text-content-secondary">Tip</span>
-                <span className="font-medium text-content-primary">${payment.tip.toFixed(2)}</span>
+                <span className="text-content-secondary">Order</span>
+                <span className="font-medium text-content-primary">#{payment.orderId}</span>
+              </div>
+            )}
+
+            {tableSessionId && (
+              <div className="flex justify-between">
+                <span className="text-content-secondary">Table Session</span>
+                <span className="font-medium text-content-primary">Table {tableId}</span>
               </div>
             )}
 
             <div className="flex justify-between">
+              <span className="text-content-secondary">Amount</span>
+              <span className="font-medium text-content-primary">${(() => {
+                // Amount should be order total (subtotal + tax), not including tip
+                if (payment.order) {
+                  const subtotal = Number(payment.order.subtotal || 0);
+                  const tax = Number(payment.order.tax || 0);
+                  return (subtotal + tax).toFixed(2);
+                } else {
+                  // Fallback: total amount minus tip
+                  const totalAmount = Number(payment.totalAmount || 0);
+                  const tipAmount = Number(payment.tipAmount || 0);
+                  return (totalAmount - tipAmount).toFixed(2);
+                }
+              })()}</span>
+            </div>
+
+            {(() => {
+              // Calculate tip amount - either from tipAmount field or derive from totals
+              const subtotal = Number(payment.order?.subtotal || 0);
+              const tax = Number(payment.order?.tax || 0);
+              const totalPaid = Number(payment.totalAmount || 0);
+              const tipAmount = Number(payment.tipAmount || 0);
+
+              // If we have order details, calculate what the tip should be
+              const derivedTip = payment.order ? totalPaid - subtotal - tax : tipAmount;
+              const displayTip = Math.max(tipAmount, derivedTip);
+
+              // Always show tip if it exists, either from API or calculated
+              return displayTip > 0.01 && (
+                <div className="flex justify-between">
+                  <span className="text-content-secondary">Tip</span>
+                  <span className="font-medium text-content-primary">${displayTip.toFixed(2)}</span>
+                </div>
+              );
+            })()}
+
+            <div className="flex justify-between">
               <span className="text-content-secondary">Payment Method</span>
-              <span className="font-medium text-content-primary">{payment.paymentMethod}</span>
+              <span className="font-medium text-content-primary">{payment.method}</span>
             </div>
 
             <div className="flex justify-between">
@@ -272,11 +574,50 @@ Date: ${new Date(payment?.createdAt || '').toLocaleDateString()}
               <div className="flex justify-between text-lg font-semibold">
                 <span className="text-content-primary">Total Paid</span>
                 <span className="text-content-primary">
-                  ${(payment.amount + (payment.tip || 0)).toFixed(2)}
+                  ${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).toFixed(2)}
                 </span>
               </div>
             </div>
           </div>
+
+          {/* Detailed Receipt */}
+          {showDetailedReceipt && payment.order?.items && (
+            <div className="mt-6 p-4 bg-surface-secondary rounded-lg border border-border-secondary">
+              <h4 className="font-medium text-content-primary mb-3">Order Items</h4>
+              <div className="space-y-2">
+                {payment.order.items.map((item: any, index: number) => (
+                  <div key={index} className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-content-primary">
+                        {item.quantity}x {item.menuItem?.name || item.name}
+                      </div>
+                      {item.customizations?.length > 0 && (
+                        <div className="text-xs text-content-secondary mt-1">
+                          {item.customizations.map((custom: any, idx: number) => (
+                            <div key={idx}>+ {custom.name} (+${Number(custom.price || 0).toFixed(2)})</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-sm font-medium text-content-primary">
+                      ${(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-border-secondary space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-content-secondary">Subtotal</span>
+                  <span className="text-content-primary">${Number(payment.order.subtotal || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-content-secondary">Tax</span>
+                  <span className="text-content-primary">${Number(payment.order.tax || 0).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         {/* Action Buttons */}

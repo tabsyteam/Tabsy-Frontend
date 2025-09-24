@@ -93,7 +93,7 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
   const { client, isConnected } = useWebSocket()
 
   // WebSocket event handlers for table session updates
-  useWebSocketEvent(client, 'table:session_created', useCallback((data: any) => {
+  useWebSocketEvent('table:session_created', useCallback((data: any) => {
     if (data.tableId === tableId) {
       setSessionState(prev => ({
         ...prev,
@@ -113,7 +113,7 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
     }
   }, [tableId, restaurantId]), [tableId, restaurantId])
 
-  useWebSocketEvent(client, 'table:user_joined', useCallback((data: any) => {
+  useWebSocketEvent('table:user_joined', useCallback((data: any) => {
     if (data.tableId === tableId) {
       setSessionState(prev => ({
         ...prev,
@@ -130,7 +130,7 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
     }
   }, [tableId]), [tableId])
 
-  useWebSocketEvent(client, 'table:user_left', useCallback((data: any) => {
+  useWebSocketEvent('table:user_left', useCallback((data: any) => {
     if (data.tableId === tableId) {
       setSessionState(prev => ({
         ...prev,
@@ -140,7 +140,7 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
     }
   }, [tableId]), [tableId])
 
-  useWebSocketEvent(client, 'table:session_closed', useCallback((data: any) => {
+  useWebSocketEvent('table:session_closed', useCallback((data: any) => {
     if (data.tableId === tableId) {
       toast.info('Table session has been closed')
       setSessionState({
@@ -154,7 +154,7 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
     }
   }, [tableId, router]), [tableId, router])
 
-  useWebSocketEvent(client, 'table:session_updated', useCallback((data: any) => {
+  useWebSocketEvent('table:session_updated', useCallback((data: any) => {
     if (data.tableId === tableId) {
       setSessionState(prev => ({
         ...prev,

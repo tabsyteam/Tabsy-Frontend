@@ -162,66 +162,59 @@ export function useRefundPayment() {
   });
 }
 
-export function usePaymentMetrics() {
+export function usePaymentMetrics(period: 'today' | 'week' | 'month' | 'quarter' | 'year' = 'today', restaurantId?: string) {
   const { isAuthenticated } = useAuth();
 
   return useQuery({
-    queryKey: ['admin', 'payments', 'metrics'],
+    queryKey: ['admin', 'payments', 'metrics', period, restaurantId],
     queryFn: async () => {
-      const now = new Date();
-      const dateFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-      const paymentsResponse = await tabsyClient.payment.getByRestaurant('', { limit: 10000 });
-      const payments = paymentsResponse.data || [];
-
-      const todayPayments = payments.filter(p =>
-        new Date(p.createdAt) >= dateFrom
-      );
-
-      const completedPayments = todayPayments.filter(p => p.status === PaymentStatus.COMPLETED);
-      const pendingPayments = todayPayments.filter(p => p.status === PaymentStatus.PENDING);
-      const failedPayments = todayPayments.filter(p => p.status === PaymentStatus.FAILED);
-
-      // Calculate payment method breakdown as percentages
-      const methodCounts: Record<string, number> = {};
-      completedPayments.forEach(payment => {
-        const method = payment.method || 'card';
-        methodCounts[method] = (methodCounts[method] || 0) + 1;
-      });
-
-      const totalCompleted = completedPayments.length;
-      const methodBreakdown: Record<string, number> = {};
-      Object.entries(methodCounts).forEach(([method, count]) => {
-        methodBreakdown[method] = totalCompleted > 0 ? Math.round((count / totalCompleted) * 100) : 0;
-      });
-
-      // Ensure all methods have a value
-      ['card', 'cash', 'mobile', 'wallet'].forEach(method => {
-        if (!methodBreakdown[method]) {
-          methodBreakdown[method] = 0;
-        }
-      });
-
-      return {
-        totalRevenue: completedPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0),
-        totalTransactions: todayPayments.length,
-        successfulTransactions: completedPayments.length,
-        pendingPayments: pendingPayments.length,
-        pendingAmount: pendingPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0),
-        failedPayments: failedPayments.length,
-        failureRate: todayPayments.length > 0
-          ? (failedPayments.length / todayPayments.length) * 100
-          : 0,
-        averageTransactionValue: completedPayments.length > 0
-          ? completedPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0) / completedPayments.length
-          : 0,
-        successRate: todayPayments.length > 0
-          ? (completedPayments.length / todayPayments.length) * 100
-          : 0,
-        methodBreakdown
-      };
+      const response = await tabsyClient.paymentMetrics.getMetricsForPeriod(period, restaurantId, true);
+      return response.data;
     },
-    enabled: isAuthenticated
+    enabled: isAuthenticated,
+    refetchInterval: 30000
+  });
+}
+
+export function useRealTimePaymentMetrics(restaurantId?: string) {
+  const { isAuthenticated } = useAuth();
+
+  return useQuery({
+    queryKey: ['admin', 'payments', 'metrics', 'realtime', restaurantId],
+    queryFn: async () => {
+      const response = await tabsyClient.paymentMetrics.getRealTimeMetrics(restaurantId);
+      return response.data;
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 5000
+  });
+}
+
+export function usePaymentHealthStatus(restaurantId?: string) {
+  const { isAuthenticated } = useAuth();
+
+  return useQuery({
+    queryKey: ['admin', 'payments', 'health', restaurantId],
+    queryFn: async () => {
+      const response = await tabsyClient.paymentMetrics.getHealthStatus(restaurantId);
+      return response.data;
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 30000
+  });
+}
+
+export function usePaymentAlerts(restaurantId?: string) {
+  const { isAuthenticated } = useAuth();
+
+  return useQuery({
+    queryKey: ['admin', 'payments', 'alerts', restaurantId],
+    queryFn: async () => {
+      const response = await tabsyClient.paymentMetrics.getAlerts(restaurantId);
+      return response.data;
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 15000
   });
 }
 
@@ -288,53 +281,18 @@ function calculateTopRestaurants(payments: Payment[]): Array<{
     .slice(0, 10);
 }
 
-export function usePaymentReconciliation(dateRange: { from: Date; to: Date }) {
+export function usePaymentReconciliation(dateRange: { from: Date; to: Date }, restaurantId?: string) {
   const { isAuthenticated } = useAuth();
 
   return useQuery({
-    queryKey: ['admin', 'payments', 'reconciliation', dateRange],
+    queryKey: ['admin', 'payments', 'reconciliation', dateRange, restaurantId],
     queryFn: async () => {
-      const paymentsResponse = await tabsyClient.payment.getByRestaurant('', { limit: 10000 });
-      const payments = paymentsResponse.data || [];
-
-      const rangePayments = payments.filter(p => {
-        const date = new Date(p.createdAt);
-        return date >= dateRange.from && date <= dateRange.to;
-      });
-
-      const completed = rangePayments.filter(p => p.status === PaymentStatus.COMPLETED);
-      const pending = rangePayments.filter(p => p.status === PaymentStatus.PENDING);
-      const failed = rangePayments.filter(p => p.status === PaymentStatus.FAILED);
-      const refunded = rangePayments.filter(p => p.status === PaymentStatus.REFUNDED);
-
-      return {
-        summary: {
-          grossRevenue: completed.reduce((sum, p) => sum + Number(p.amount || 0), 0),
-          refunds: refunded.reduce((sum, p) => sum + Number((p as any).refundAmount || p.amount || 0), 0),
-          netRevenue: completed.reduce((sum, p) => sum + Number(p.amount || 0), 0) -
-                      refunded.reduce((sum, p) => sum + Number((p as any).refundAmount || p.amount || 0), 0),
-          pendingAmount: pending.reduce((sum, p) => sum + Number(p.amount || 0), 0),
-          failedAmount: failed.reduce((sum, p) => sum + Number(p.amount || 0), 0)
-        },
-        transactions: {
-          completed: completed.length,
-          pending: pending.length,
-          failed: failed.length,
-          refunded: refunded.length,
-          total: rangePayments.length
-        },
-        byMethod: rangePayments.reduce((acc, p) => {
-          if (!acc[p.method]) {
-            acc[p.method] = { count: 0, amount: 0 };
-          }
-          acc[p.method].count += 1;
-          if (p.status === PaymentStatus.COMPLETED) {
-            acc[p.method].amount += Number(p.amount || 0);
-          }
-          return acc;
-        }, {} as Record<PaymentMethod, { count: number; amount: number }>),
-        discrepancies: [] // Would be populated with actual discrepancy detection logic
-      };
+      const response = await tabsyClient.paymentMetrics.getReconciliation(
+        dateRange.from.toISOString(),
+        dateRange.to.toISOString(),
+        restaurantId
+      );
+      return response.data;
     },
     enabled: isAuthenticated && !!dateRange
   });

@@ -27,7 +27,7 @@ import {
   Download,
   TrendingUp
 } from 'lucide-react';
-import { Payment, PaymentStatus } from '@tabsy/shared-types';
+import { Payment, PaymentStatus, PaymentMethod } from '@tabsy/shared-types';
 import { useOrder, useProcessRefund } from '@/hooks/api';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
@@ -58,15 +58,15 @@ export default function PaymentDetailsModal({
 
   const getStatusColor = (status: PaymentStatus) => {
     const colors: Record<PaymentStatus, string> = {
-      [PaymentStatus.PENDING]: 'text-yellow-600 bg-yellow-100',
-      [PaymentStatus.PROCESSING]: 'text-blue-600 bg-blue-100',
-      [PaymentStatus.COMPLETED]: 'text-green-600 bg-green-100',
-      [PaymentStatus.FAILED]: 'text-red-600 bg-red-100',
-      [PaymentStatus.REFUNDED]: 'text-purple-600 bg-purple-100',
-      [PaymentStatus.CANCELLED]: 'text-gray-600 bg-gray-100',
-      [PaymentStatus.PARTIALLY_REFUNDED]: 'text-orange-600 bg-orange-100'
+      [PaymentStatus.PENDING]: 'text-status-warning bg-status-warning/10',
+      [PaymentStatus.PROCESSING]: 'text-status-info bg-status-info/10',
+      [PaymentStatus.COMPLETED]: 'text-status-success bg-status-success/10',
+      [PaymentStatus.FAILED]: 'text-status-error bg-status-error/10',
+      [PaymentStatus.REFUNDED]: 'text-status-warning bg-status-warning/10',
+      [PaymentStatus.CANCELLED]: 'text-content-secondary bg-surface-secondary',
+      [PaymentStatus.PARTIALLY_REFUNDED]: 'text-status-warning bg-status-warning/10'
     };
-    return colors[status] || 'text-gray-600 bg-gray-100';
+    return colors[status] || 'text-content-secondary bg-surface-secondary';
   };
 
   const getStatusIcon = (status: PaymentStatus) => {
@@ -82,14 +82,18 @@ export default function PaymentDetailsModal({
     return icons[status] || AlertCircle;
   };
 
-  const getPaymentMethodIcon = (method: string) => {
-    const icons: Record<string, any> = {
-      card: CreditCard,
-      cash: Banknote,
-      mobile: Smartphone,
-      wallet: Wallet
-    };
-    return icons[method.toLowerCase()] || CreditCard;
+  const getPaymentMethodIcon = (method: PaymentMethod) => {
+    switch (method) {
+      case PaymentMethod.CREDIT_CARD:
+      case PaymentMethod.DEBIT_CARD:
+        return CreditCard;
+      case PaymentMethod.MOBILE_PAYMENT:
+        return Smartphone;
+      case PaymentMethod.CASH:
+        return Banknote;
+      default:
+        return CreditCard;
+    }
   };
 
   const handleProcessRefund = async () => {
@@ -119,7 +123,7 @@ export default function PaymentDetailsModal({
   };
 
   const StatusIcon = getStatusIcon(payment.status);
-  const MethodIcon = getPaymentMethodIcon(payment.method || 'card');
+  const MethodIcon = getPaymentMethodIcon(payment.method || PaymentMethod.CREDIT_CARD);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-modal animate-fadeIn">
@@ -157,8 +161,8 @@ export default function PaymentDetailsModal({
         <div className="grid grid-cols-4 gap-4 p-6 bg-surface-secondary/50">
           <div className="bg-surface rounded-lg p-3 border border-border-tertiary">
             <div className="flex items-center justify-between mb-1">
-              <DollarSign className="h-4 w-4 text-green-500" />
-              <span className="text-xs text-green-600">Amount</span>
+              <DollarSign className="h-4 w-4 text-status-success" />
+              <span className="text-xs text-status-success">Amount</span>
             </div>
             <div className="text-xl font-bold text-content-primary">
               ${payment.amount?.toFixed(2)}
@@ -167,8 +171,8 @@ export default function PaymentDetailsModal({
 
           <div className="bg-surface rounded-lg p-3 border border-border-tertiary">
             <div className="flex items-center justify-between mb-1">
-              <MethodIcon className="h-4 w-4 text-blue-500" />
-              <span className="text-xs text-blue-600">Method</span>
+              <MethodIcon className="h-4 w-4 text-primary" />
+              <span className="text-xs text-primary">Method</span>
             </div>
             <div className="text-sm font-medium text-content-primary">
               {payment.method || 'Card'}
@@ -177,8 +181,8 @@ export default function PaymentDetailsModal({
 
           <div className="bg-surface rounded-lg p-3 border border-border-tertiary">
             <div className="flex items-center justify-between mb-1">
-              <Clock className="h-4 w-4 text-orange-500" />
-              <span className="text-xs text-orange-600">Processing</span>
+              <Clock className="h-4 w-4 text-status-warning" />
+              <span className="text-xs text-status-warning">Processing</span>
             </div>
             <div className="text-sm font-medium text-content-primary">
               2.3s
@@ -187,8 +191,8 @@ export default function PaymentDetailsModal({
 
           <div className="bg-surface rounded-lg p-3 border border-border-tertiary">
             <div className="flex items-center justify-between mb-1">
-              <TrendingUp className="h-4 w-4 text-purple-500" />
-              <span className="text-xs text-purple-600">Fee</span>
+              <TrendingUp className="h-4 w-4 text-secondary" />
+              <span className="text-xs text-secondary">Fee</span>
             </div>
             <div className="text-sm font-medium text-content-primary">
               ${((payment.amount || 0) * 0.029).toFixed(2)}
@@ -447,8 +451,8 @@ export default function PaymentDetailsModal({
                 {/* Timeline events */}
                 <div className="space-y-4">
                   <div className="flex items-start">
-                    <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
-                      <CreditCard className="h-4 w-4 text-blue-600" />
+                    <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-primary/10 rounded-full">
+                      <CreditCard className="h-4 w-4 text-primary" />
                     </div>
                     <div className="ml-4 flex-1">
                       <p className="text-sm font-medium text-content-primary">Payment Initiated</p>
@@ -460,8 +464,8 @@ export default function PaymentDetailsModal({
 
                   {payment.status !== PaymentStatus.PENDING && (
                     <div className="flex items-start">
-                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-yellow-100 rounded-full">
-                        <RefreshCw className="h-4 w-4 text-yellow-600" />
+                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-status-warning/10 rounded-full">
+                        <RefreshCw className="h-4 w-4 text-status-warning" />
                       </div>
                       <div className="ml-4 flex-1">
                         <p className="text-sm font-medium text-content-primary">Processing Started</p>
@@ -472,8 +476,8 @@ export default function PaymentDetailsModal({
 
                   {payment.status === PaymentStatus.COMPLETED && (
                     <div className="flex items-start">
-                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
-                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-status-success/10 rounded-full">
+                        <CheckCircle className="h-4 w-4 text-status-success" />
                       </div>
                       <div className="ml-4 flex-1">
                         <p className="text-sm font-medium text-content-primary">Payment Completed</p>
@@ -486,8 +490,8 @@ export default function PaymentDetailsModal({
 
                   {payment.status === PaymentStatus.FAILED && (
                     <div className="flex items-start">
-                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-red-100 rounded-full">
-                        <XCircle className="h-4 w-4 text-red-600" />
+                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-status-error/10 rounded-full">
+                        <XCircle className="h-4 w-4 text-status-error" />
                       </div>
                       <div className="ml-4 flex-1">
                         <p className="text-sm font-medium text-content-primary">Payment Failed</p>
@@ -500,8 +504,8 @@ export default function PaymentDetailsModal({
 
                   {payment.status === PaymentStatus.REFUNDED && (
                     <div className="flex items-start">
-                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-purple-100 rounded-full">
-                        <Receipt className="h-4 w-4 text-purple-600" />
+                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-status-warning/10 rounded-full">
+                        <Receipt className="h-4 w-4 text-status-warning" />
                       </div>
                       <div className="ml-4 flex-1">
                         <p className="text-sm font-medium text-content-primary">Refund Processed</p>

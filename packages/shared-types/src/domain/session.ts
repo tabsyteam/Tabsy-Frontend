@@ -19,6 +19,8 @@ export interface GuestSession {
   tableId: string;
   restaurantId: string;
   tableSessionId: string;  // Link to table session - required from backend
+  userName?: string;      // Display user name in UI
+  isHost: boolean;        // Show different UI for hosts vs guests
   expiresAt: string;
   createdAt: string;
 }

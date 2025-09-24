@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Button, useAuth } from '@tabsy/ui-components'
-import { BarChart3, ShoppingCart, Users, Utensils, TrendingUp, Clock, Star } from 'lucide-react'
+import { BarChart3, ShoppingCart, Users, Utensils, TrendingUp, Clock, Star, CreditCard } from 'lucide-react'
 import { OrdersManagement } from '@/components/orders/OrdersManagement'
 import { MenuManagement } from '@/components/menu/MenuManagement'
 import { TableManagement } from '@/components/tables/TableManagement'
 import { FeedbackManagement } from '@/components/feedback/FeedbackManagement'
+import { PaymentManagement } from '@/components/payments/PaymentManagement'
+import { PaymentNotifications } from '@/components/payments/PaymentNotifications'
 import { DynamicWeeklyOverviewChart } from '@/components'
 import { Header } from '@/components/layout'
 import { useRouter } from 'next/navigation'
@@ -45,7 +47,7 @@ export function DashboardClient(): JSX.Element {
   const auth = useAuth()
   const user = auth.user as UserType | null
   // State hooks - ADD MENU AND TABLES AS VIEWS
-  const [currentView, setCurrentView] = useState<'overview' | 'orders' | 'menu' | 'tables' | 'feedback'>('overview')
+  const [currentView, setCurrentView] = useState<'overview' | 'orders' | 'menu' | 'tables' | 'payments' | 'feedback'>('overview')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   
   // Get current restaurant
@@ -508,6 +510,14 @@ export function DashboardClient(): JSX.Element {
                   <Button
                     className="w-full justify-start "
                     variant="outline"
+                    onClick={() => setCurrentView('payments')}
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Payment Management
+                  </Button>
+                  <Button
+                    className="w-full justify-start "
+                    variant="outline"
                     onClick={() => setCurrentView('feedback')}
                   >
                     <Star className="h-4 w-4 mr-2" />
@@ -586,6 +596,14 @@ export function DashboardClient(): JSX.Element {
               <p className="text-foreground/80">No restaurant access available.</p>
             )}
           </div>
+        ) : currentView === 'payments' ? (
+          <div className="h-full overflow-y-auto">
+            {restaurantId ? (
+              <PaymentManagement restaurantId={restaurantId} />
+            ) : (
+              <p className="text-foreground/80">No restaurant access available.</p>
+            )}
+          </div>
         ) : currentView === 'feedback' ? (
           <div className="h-full overflow-y-auto">
             {restaurantId ? (
@@ -603,6 +621,11 @@ export function DashboardClient(): JSX.Element {
         onDismiss={handleDismissAssistance}
         onAcknowledge={handleAcknowledgeAssistance}
       />
+
+      {/* Payment Notifications Overlay */}
+      {restaurantId && (
+        <PaymentNotifications restaurantId={restaurantId} />
+      )}
     </div>
   )
 }

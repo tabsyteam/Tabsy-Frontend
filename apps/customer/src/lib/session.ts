@@ -369,6 +369,69 @@ export class SessionManager {
       }
     }
   }
+
+  // Validate session compatibility for table operations
+  static validateTableSessionContext(tableSessionId?: string): {
+    isValid: boolean
+    error?: string
+    suggestion?: string
+  } {
+    const session = this.getDiningSession()
+
+    if (!session) {
+      return {
+        isValid: false,
+        error: 'No active dining session found',
+        suggestion: 'Please scan the QR code at your table to join the session'
+      }
+    }
+
+    if (tableSessionId && session.tableSessionId && session.tableSessionId !== tableSessionId) {
+      return {
+        isValid: false,
+        error: 'Table session mismatch',
+        suggestion: 'You appear to be connected to a different table session. Please scan the correct QR code.'
+      }
+    }
+
+    // Check if session is about to expire (within 15 minutes)
+    const expiryInfo = this.getSessionExpiryInfo()
+    if (expiryInfo.isExpiringSoon && expiryInfo.minutesRemaining !== null && expiryInfo.minutesRemaining < 15) {
+      return {
+        isValid: true,
+        error: `Session expires in ${expiryInfo.minutesRemaining} minutes`,
+        suggestion: 'Consider completing your actions soon or refresh your session'
+      }
+    }
+
+    return { isValid: true }
+  }
+
+  // Enhanced session debugging helper
+  static getSessionDebugInfo(): {
+    hasDiningSession: boolean
+    sessionId?: string
+    tableSessionId?: string
+    tableId?: string
+    restaurantId?: string
+    isExpired: boolean
+    minutesRemaining: number | null
+    lastActivity?: string
+  } {
+    const session = this.getDiningSession()
+    const expiryInfo = this.getSessionExpiryInfo()
+
+    return {
+      hasDiningSession: !!session,
+      sessionId: session?.sessionId,
+      tableSessionId: session?.tableSessionId,
+      tableId: session?.tableId,
+      restaurantId: session?.restaurantId,
+      isExpired: expiryInfo.isExpired,
+      minutesRemaining: expiryInfo.minutesRemaining,
+      lastActivity: session ? new Date(session.lastActivity).toISOString() : undefined
+    }
+  }
 }
 
 // Auto-cleanup on initialization

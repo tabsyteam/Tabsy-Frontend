@@ -66,6 +66,23 @@ export function createRestaurantHooks(useQuery: any) {
         },
         enabled: !!restaurantId
       })
+    },
+
+    useRestaurantsByOwner: (ownerId: string, options?: any) => {
+      return useQuery({
+        queryKey: QUERY_KEYS.restaurants.byOwner(ownerId),
+        queryFn: async () => {
+          console.log('useRestaurantsByOwner - Making API call:', {
+            ownerId,
+            hasToken: !!tabsyClient.getAuthToken()
+          })
+          const result = await tabsyClient.restaurant.getByOwner(ownerId)
+          console.log('useRestaurantsByOwner - API result:', result)
+          return result
+        },
+        enabled: !!ownerId,
+        ...options
+      })
     }
   }
 }

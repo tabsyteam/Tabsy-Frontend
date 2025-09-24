@@ -98,6 +98,13 @@ export class OrderAPI {
   }
 
   /**
+   * PATCH /orders/:id/tip - Update tip for order
+   */
+  async updateTip(orderId: string, tipAmount: number): Promise<ApiResponse<Order>> {
+    return this.client.patch(`/orders/${orderId}/tip`, { tipAmount })
+  }
+
+  /**
    * Helper method: Update order status
    */
   async updateStatus(orderId: string, status: OrderStatus): Promise<ApiResponse<Order>> {

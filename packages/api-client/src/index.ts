@@ -6,6 +6,7 @@ export * from "./endpoints/menu-item-options"
 export * from "./endpoints/table"
 export * from "./endpoints/order"
 export * from "./endpoints/payment"
+export * from "./endpoints/payment-metrics"
 export * from "./endpoints/user"
 export * from "./endpoints/notification"
 export * from "./endpoints/session"
@@ -27,6 +28,7 @@ import { MenuItemOptionsAPI } from './endpoints/menu-item-options'
 import { TableAPI } from './endpoints/table'
 import { OrderAPI } from './endpoints/order'
 import { PaymentAPI } from './endpoints/payment'
+import { PaymentMetricsAPI } from './endpoints/payment-metrics'
 import { UserAPI } from './endpoints/user'
 import { NotificationAPI } from './endpoints/notification'
 import { SessionAPI } from './endpoints/session'
@@ -50,6 +52,7 @@ export class TabsyAPI {
   public table: TableAPI
   public order: OrderAPI
   public payment: PaymentAPI
+  public paymentMetrics: PaymentMetricsAPI
   public user: UserAPI
   public notification: NotificationAPI
   public session: SessionAPI
@@ -70,6 +73,7 @@ export class TabsyAPI {
     this.table = new TableAPI(this.client)
     this.order = new OrderAPI(this.client)
     this.payment = new PaymentAPI(this.client)
+    this.paymentMetrics = new PaymentMetricsAPI(this.client)
     this.user = new UserAPI(this.client)
     this.notification = new NotificationAPI(this.client)
     this.session = new SessionAPI(this.client)

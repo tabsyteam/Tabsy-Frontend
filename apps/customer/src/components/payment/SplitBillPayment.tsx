@@ -4,6 +4,9 @@ import { useState, useEffect } from 'react'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { toast } from 'sonner'
 import { TabsyAPI } from '@tabsy/api-client'
+import {
+  PaymentMethod
+} from '@tabsy/shared-types'
 import type {
   TableSessionBill,
   TableSessionUser,
@@ -19,28 +22,28 @@ interface SplitBillPaymentProps {
   onCancel?: () => void
 }
 
-interface PaymentMethod {
-  id: string
+interface PaymentMethodOption {
+  id: PaymentMethod
   name: string
   icon: string
   description: string
 }
 
-const paymentMethods: PaymentMethod[] = [
+const paymentMethods: PaymentMethodOption[] = [
   {
-    id: 'card',
+    id: PaymentMethod.CREDIT_CARD,
     name: 'Credit/Debit Card',
     icon: '💳',
     description: 'Visa, Mastercard, American Express'
   },
   {
-    id: 'digital_wallet',
+    id: PaymentMethod.MOBILE_PAYMENT,
     name: 'Digital Wallet',
     icon: '📱',
     description: 'Apple Pay, Google Pay, Samsung Pay'
   },
   {
-    id: 'cash',
+    id: PaymentMethod.CASH,
     name: 'Cash',
     icon: '💵',
     description: 'Pay with cash to staff'
@@ -59,7 +62,7 @@ export function SplitBillPayment({
     type: 'equal',
     participants: users.map(u => u.guestSessionId)
   })
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('card')
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CREDIT_CARD)
   const [customAmounts, setCustomAmounts] = useState<{ [userId: string]: string }>({})
   const [customPercentages, setCustomPercentages] = useState<{ [userId: string]: string }>({})
   const [itemAssignments, setItemAssignments] = useState<{ [itemId: string]: string }>({})
@@ -92,21 +95,59 @@ export function SplitBillPayment({
       case 'equal':
         const equalAmount = remainingBalance / splitOption.participants.length
         splitOption.participants.forEach(id => {
-          amounts[id] = equalAmount
+          amounts[id] = Math.round(equalAmount * 100) / 100 // Round to cents
         })
+
+        // Handle rounding precision - add remainder to current user
+        const totalCalculated = Object.values(amounts).reduce((sum, amt) => sum + amt, 0)
+        const remainder = Math.round((remainingBalance - totalCalculated) * 100) / 100
+        if (remainder !== 0 && amounts[currentUser.guestSessionId] !== undefined) {
+          amounts[currentUser.guestSessionId] += remainder
+        }
         break
 
       case 'by_percentage':
+        let totalPercentage = 0
         Object.entries(customPercentages).forEach(([id, percentageStr]) => {
           const percentage = parseFloat(percentageStr) || 0
-          amounts[id] = (remainingBalance * percentage) / 100
+          totalPercentage += percentage
+          amounts[id] = Math.round((remainingBalance * percentage / 100) * 100) / 100
         })
+
+        // Validate percentage total doesn't exceed 100%
+        if (totalPercentage > 100.01) { // Allow small rounding tolerance
+          console.warn('Total percentage exceeds 100%:', totalPercentage)
+          // Normalize percentages
+          Object.entries(amounts).forEach(([id, amount]) => {
+            amounts[id] = Math.round((amount / totalPercentage * 100) * 100) / 100
+          })
+        }
+
+        // Handle rounding precision
+        const totalCalcPercentage = Object.values(amounts).reduce((sum, amt) => sum + amt, 0)
+        const remainderPercentage = Math.round((remainingBalance - totalCalcPercentage) * 100) / 100
+        if (remainderPercentage !== 0 && amounts[currentUser.guestSessionId] !== undefined) {
+          amounts[currentUser.guestSessionId] += remainderPercentage
+        }
         break
 
       case 'by_amount':
+        let totalManualAmount = 0
         Object.entries(customAmounts).forEach(([id, amountStr]) => {
-          amounts[id] = parseFloat(amountStr) || 0
+          const amount = Math.max(0, parseFloat(amountStr) || 0) // Ensure non-negative
+          amounts[id] = Math.round(amount * 100) / 100
+          totalManualAmount += amounts[id]
         })
+
+        // Validate total doesn't exceed remaining balance
+        if (totalManualAmount > remainingBalance + 0.01) { // Allow small tolerance
+          console.warn('Manual amounts exceed remaining balance:', totalManualAmount, 'vs', remainingBalance)
+          // Scale down proportionally
+          const scaleFactor = remainingBalance / totalManualAmount
+          Object.entries(amounts).forEach(([id, amount]) => {
+            amounts[id] = Math.round((amount * scaleFactor) * 100) / 100
+          })
+        }
         break
 
       case 'by_items':
@@ -123,7 +164,7 @@ export function SplitBillPayment({
           round.orders.forEach(order => {
             order.items.forEach((item: any) => {
               const assignedTo = itemAssignments[item.id] || currentUser.guestSessionId
-              userTotals[assignedTo] += item.subtotal
+              userTotals[assignedTo] += parseFloat(item.subtotal) || 0
             })
           })
         })
@@ -133,13 +174,61 @@ export function SplitBillPayment({
         if (subtotalSum > 0) {
           Object.entries(userTotals).forEach(([id, subtotal]) => {
             const proportion = subtotal / subtotalSum
-            amounts[id] = subtotal + (bill.summary.tax * proportion) + (bill.summary.tip * proportion)
+            const taxShare = bill.summary.tax * proportion
+            const tipShare = bill.summary.tip * proportion
+            amounts[id] = Math.round((subtotal + taxShare + tipShare) * 100) / 100
           })
+
+          // Handle rounding precision for by_items
+          const totalCalcItems = Object.values(amounts).reduce((sum, amt) => sum + amt, 0)
+          const remainderItems = Math.round((remainingBalance - totalCalcItems) * 100) / 100
+          if (remainderItems !== 0 && amounts[currentUser.guestSessionId] !== undefined) {
+            amounts[currentUser.guestSessionId] += remainderItems
+          }
         }
         break
     }
 
     return amounts
+  }
+
+  // Validate split amounts
+  const validateSplitAmounts = (amounts: { [guestSessionId: string]: number }): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = []
+    const totalSplit = Object.values(amounts).reduce((sum, amt) => sum + amt, 0)
+    const userAmount = amounts[currentUser.guestSessionId] || 0
+
+    // Check if user amount is valid
+    if (userAmount <= 0) {
+      errors.push('Your payment amount must be greater than $0')
+    }
+
+    if (userAmount < 0.01) {
+      errors.push('Payment amount must be at least $0.01')
+    }
+
+    // Check if total split doesn't exceed remaining balance (with small tolerance)
+    if (totalSplit > bill.summary.remainingBalance + 0.01) {
+      errors.push(`Total split amount ($${totalSplit.toFixed(2)}) exceeds remaining balance ($${bill.summary.remainingBalance.toFixed(2)})`)
+    }
+
+    // Check for unreasonably large amounts
+    if (userAmount > bill.summary.grandTotal) {
+      errors.push('Payment amount cannot exceed the total bill')
+    }
+
+    // Check percentage validation for by_percentage
+    if (splitOption.type === 'by_percentage') {
+      const totalPercentage = Object.values(customPercentages).reduce((sum, pct) => sum + (parseFloat(pct) || 0), 0)
+      if (totalPercentage > 100.01) {
+        errors.push(`Total percentage (${totalPercentage.toFixed(1)}%) exceeds 100%`)
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    }
   }
 
   // Handle split option change
@@ -217,43 +306,152 @@ export function SplitBillPayment({
     }
   }
 
-  // Process payment
+  // Handle session expiry during split payment
+  const handleSessionExpiry = async (): Promise<boolean> => {
+    try {
+      // Attempt to recover session (simplified - in real implementation, use SessionManager recovery)
+      console.log('[SplitBillPayment] Attempting session recovery...')
+      toast.info('Session expired. Attempting to recover...', { duration: 3000 })
+
+      // In a real implementation, this would call SessionManager recovery
+      // For now, return false to indicate recovery failed
+      return false
+    } catch (error) {
+      console.error('[SplitBillPayment] Session recovery failed:', error)
+      return false
+    }
+  }
+
+  // Process payment with enhanced error handling
   const processPayment = async () => {
     const splitAmounts = calculateSplitAmounts()
-    const userAmount = splitAmounts[currentUser.guestSessionId] || 0
+    const validation = validateSplitAmounts(splitAmounts)
 
-    if (userAmount <= 0) {
-      toast.error('Payment amount must be greater than $0')
+    // Show validation errors
+    if (!validation.isValid) {
+      validation.errors.forEach(error => {
+        toast.error(error, { duration: 5000 })
+      })
       return
     }
 
+    const userAmount = splitAmounts[currentUser.guestSessionId] || 0
     setIsProcessing(true)
 
     try {
-      // Create split payment
-      const paymentResponse = await api.payment.createSplitPayment({
-        tableSessionId: bill.tableSessionId,
-        amount: userAmount,
-        paymentMethod: selectedPaymentMethod,
-        splitOption,
-        guestSessionId: currentUser.guestSessionId,
-        tip: tipAmount
-      })
+      // Check if session is still valid before processing
+      const billRefreshResponse = await api.tableSession.getBill(bill.tableSessionId)
+      if (!billRefreshResponse.success) {
+        throw new Error('Unable to verify current bill status')
+      }
 
-      if (paymentResponse.success) {
-        toast.success(`Payment of $${userAmount.toFixed(2)} processed successfully!`)
-        onPaymentComplete?.(paymentResponse.data.id)
+      const currentBill = billRefreshResponse.data
+      if (!currentBill) {
+        throw new Error('Bill data is no longer available')
+      }
+
+      // Check if remaining balance has changed
+      if (Math.abs(currentBill.summary.remainingBalance - bill.summary.remainingBalance) > 0.01) {
+        toast.warning('Bill has been updated by another user. Please review the changes.', {
+          duration: 6000
+        })
+
+        // Optionally, you could refresh the bill data here
+        console.log('[SplitBillPayment] Bill changed during payment:', {
+          original: bill.summary.remainingBalance,
+          current: currentBill.summary.remainingBalance
+        })
+      }
+
+      // Create split payment using the new table session payment endpoint
+      const paymentResponse = await api.tableSession.createPayment(
+        bill.tableSessionId,
+        {
+          paymentMethod: selectedPaymentMethod,
+          amount: userAmount,
+          tipAmount: tipAmount
+        },
+        { guestSessionId: currentUser.guestSessionId }
+      )
+
+      if (paymentResponse.success && paymentResponse.data) {
+        const paymentData = paymentResponse.data
+
+        toast.success(`Split payment of $${userAmount.toFixed(2)} processed successfully!`, {
+          duration: 4000,
+          description: 'Your portion of the bill has been paid'
+        })
+
+        onPaymentComplete?.(paymentData.id)
       } else {
         throw new Error(paymentResponse.error?.message || 'Payment failed')
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('[SplitBillPayment] Payment error:', error)
-      toast.error('Payment failed. Please try again.')
+
+      // Handle specific error cases
+      if (error?.response?.status === 401 || error?.message?.includes('SESSION_EXPIRED')) {
+        const recovered = await handleSessionExpiry()
+        if (recovered) {
+          toast.success('Session recovered. Please try your payment again.')
+          return
+        } else {
+          toast.error('Session expired. Please scan the QR code again to continue.', {
+            duration: 8000
+          })
+          return
+        }
+      }
+
+      if (error?.response?.status === 409) {
+        toast.error('Another payment is currently being processed. Please wait and try again.', {
+          duration: 5000
+        })
+      } else if (error?.response?.status === 400) {
+        toast.error('Invalid payment data. Please review your split amounts and try again.', {
+          duration: 5000
+        })
+      } else if (error?.response?.status === 402) {
+        toast.error('Payment method declined. Please try a different payment method.', {
+          duration: 5000
+        })
+      } else {
+        toast.error(`Payment failed: ${error.message || 'Please try again.'}`, {
+          duration: 5000
+        })
+      }
     } finally {
       setIsProcessing(false)
     }
   }
+
+  // Auto-refresh bill data to handle concurrent payments
+  const refreshBillData = async () => {
+    try {
+      const billResponse = await api.tableSession.getBill(bill.tableSessionId)
+      if (billResponse.success && billResponse.data) {
+        // In a real implementation, you'd update the parent component's bill state
+        console.log('[SplitBillPayment] Bill refreshed:', billResponse.data)
+
+        // Check if remaining balance changed significantly
+        const currentRemaining = billResponse.data.summary.remainingBalance
+        if (Math.abs(currentRemaining - bill.summary.remainingBalance) > 0.01) {
+          toast.info('Bill updated - another payment may have been completed', {
+            duration: 4000
+          })
+        }
+      }
+    } catch (error) {
+      console.warn('[SplitBillPayment] Failed to refresh bill data:', error)
+    }
+  }
+
+  // Set up periodic bill refresh during split payment to handle concurrent payments
+  useEffect(() => {
+    const interval = setInterval(refreshBillData, 10000) // Refresh every 10 seconds
+    return () => clearInterval(interval)
+  }, [bill.tableSessionId])
 
   const splitAmounts = calculateSplitAmounts()
   const userAmount = splitAmounts[currentUser.guestSessionId] || 0
@@ -478,7 +676,7 @@ export function SplitBillPayment({
                 name="paymentMethod"
                 value={method.id}
                 checked={selectedPaymentMethod === method.id}
-                onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                onChange={(e) => setSelectedPaymentMethod(e.target.value as PaymentMethod)}
                 className="text-primary"
               />
               <div className="text-xl">{method.icon}</div>

@@ -127,6 +127,7 @@ export interface MultiUserTableSession {
   hostUserId?: string;
   totalAmount: number;
   paidAmount: number;
+  closedAt?: string;              // Show when session was closed
   createdAt: string;
   expiresAt: string;
   lastActivity: string;

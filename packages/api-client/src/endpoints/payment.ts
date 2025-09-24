@@ -98,6 +98,13 @@ export class PaymentAPI {
   }
 
   /**
+   * GET /payments/:id/public - Get public payment details (no authentication required)
+   */
+  async getPublicDetails(id: string): Promise<ApiResponse<Payment>> {
+    return this.client.get(`/payments/${id}/public`)
+  }
+
+  /**
    * DELETE /payments/:id - Delete payment (admin)
    */
   async delete(id: string): Promise<ApiResponse<void>> {

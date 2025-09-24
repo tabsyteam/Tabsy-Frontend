@@ -20,7 +20,8 @@ import {
   Users,
   Calendar,
   HelpCircle,
-  AlertCircle
+  AlertCircle,
+  CreditCard
 } from 'lucide-react'
 import { User as UserType, Restaurant, UpdateRestaurantRequest, OrderStatus, Notification } from '@tabsy/shared-types'
 import { cn } from '@/lib/utils'
@@ -38,14 +39,14 @@ interface HeaderProps {
   user: UserType | null
   restaurant?: Restaurant | null
   restaurantName?: string
-  currentView: 'overview' | 'orders' | 'menu' | 'tables'
-  onViewChange: (view: 'overview' | 'orders' | 'menu' | 'tables') => void
+  currentView: 'overview' | 'orders' | 'menu' | 'tables' | 'payments'
+  onViewChange: (view: 'overview' | 'orders' | 'menu' | 'tables' | 'payments') => void
   onLogout: () => void
   isLoggingOut?: boolean
 }
 
 interface NavItem {
-  id: 'overview' | 'orders' | 'menu' | 'tables'
+  id: 'overview' | 'orders' | 'menu' | 'tables' | 'payments'
   label: string
   icon: React.ReactNode
   badge?: number
@@ -301,6 +302,11 @@ export function Header({
       id: 'tables',
       label: 'Tables',
       icon: <Users className="w-4 h-4" />
+    },
+    {
+      id: 'payments',
+      label: 'Payments',
+      icon: <CreditCard className="w-4 h-4" />
     }
   ], [receivedOrdersCount])
 

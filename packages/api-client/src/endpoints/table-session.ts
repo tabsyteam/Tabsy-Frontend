@@ -4,7 +4,9 @@ import type {
   TableSession,
   TableSessionUser,
   Order,
-  TableSessionBill
+  TableSessionBill,
+  PaymentMethod,
+  PaymentStatus
 } from '@tabsy/shared-types'
 
 export interface CreateTableSessionRequest {
@@ -51,6 +53,53 @@ export interface TableSessionOrdersResponse {
   status: string
 }
 
+export interface CreateTableSessionPaymentRequest {
+  paymentMethod: PaymentMethod
+  includeOrders?: string[]
+  amount?: number
+  tipAmount?: number
+}
+
+export interface TableSessionPaymentResponse {
+  id: string
+  clientSecret: string
+  amount: number
+  tableSessionId: string
+  status: PaymentStatus
+  ordersIncluded: string[]
+  breakdown: {
+    subtotal: number
+    tax: number
+    tip: number
+    total: number
+  }
+}
+
+export interface TableSessionPaymentStatusResponse {
+  tableSessionId: string
+  totalAmount: number
+  paidAmount: number
+  remainingAmount: number
+  canAcceptNewPayment: boolean
+  lastPaymentAt?: string
+  payments: Array<{
+    id: string
+    amount: number
+    status: PaymentStatus
+    paymentMethod: PaymentMethod
+    createdAt: string
+    paidBy?: string
+  }>
+  paymentSummary: {
+    byMethod: Record<string, number>
+    byUser: Record<string, number>
+  }
+}
+
+export interface CancelTableSessionPaymentRequest {
+  reason?: string
+}
+
 export class TableSessionAPI {
   constructor(private client: TabsyApiClient) {}
 
@@ -95,6 +144,40 @@ export class TableSessionAPI {
    */
   async close(sessionId: string, data?: CloseTableSessionRequest): Promise<ApiResponse<{ tableSessionId: string; status: string; endedSessions: number }>> {
     return this.client.post(`/table-sessions/${sessionId}/close`, data || {})
+  }
+
+  /**
+   * POST /table-sessions/:sessionId/payment - Create table-wide payment intent
+   */
+  async createPayment(
+    sessionId: string,
+    data: CreateTableSessionPaymentRequest,
+    options?: { guestSessionId?: string }
+  ): Promise<ApiResponse<TableSessionPaymentResponse>> {
+    const headers: Record<string, string> = {}
+    if (options?.guestSessionId) {
+      headers['x-session-id'] = options.guestSessionId
+    }
+
+    return this.client.post(`/table-sessions/${sessionId}/payment`, data, { headers })
+  }
+
+  /**
+   * GET /table-sessions/:sessionId/payment-status - Get table session payment status
+   */
+  async getPaymentStatus(sessionId: string): Promise<ApiResponse<TableSessionPaymentStatusResponse>> {
+    return this.client.get(`/table-sessions/${sessionId}/payment-status`)
+  }
+
+  /**
+   * POST /table-sessions/:sessionId/payments/:paymentId/cancel - Cancel table session payment
+   */
+  async cancelPayment(
+    sessionId: string,
+    paymentId: string,
+    data?: CancelTableSessionPaymentRequest
+  ): Promise<ApiResponse<{ paymentId: string; cancelled: boolean }>> {
+    return this.client.post(`/table-sessions/${sessionId}/payments/${paymentId}/cancel`, data || {})
   }
 
 }

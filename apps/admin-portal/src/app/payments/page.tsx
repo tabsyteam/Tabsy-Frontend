@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { Button } from '@tabsy/ui-components';
+import { Button, useWebSocketEventRegistry } from '@tabsy/ui-components';
 import {
   CreditCard,
   Search,
@@ -29,46 +29,52 @@ import {
   Smartphone,
   Wallet,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Wifi,
+  WifiOff,
+  Activity
 } from 'lucide-react';
-import { usePayments, usePaymentMetrics } from '@/hooks/api';
+import { usePayments, usePaymentMetrics, useRealTimePaymentMetrics, usePaymentHealthStatus, usePaymentAlerts } from '@/hooks/api';
 import { formatDistanceToNow, format } from 'date-fns';
 import PaymentDetailsModal from '@/components/payments/PaymentDetailsModal';
-import { Payment, PaymentStatus } from '@tabsy/shared-types';
+import { Payment, PaymentStatus, PaymentMethod } from '@tabsy/shared-types';
 import { useAuth } from '@tabsy/ui-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useAdminWebSocket } from '@/hooks/useAdminWebSocket';
 
 // Payment Method Icon
-function PaymentMethodIcon({ method }: { method: string }) {
-  const icons: Record<string, any> = {
-    card: CreditCard,
-    cash: Banknote,
-    mobile: Smartphone,
-    wallet: Wallet
-  };
-
-  const Icon = icons[method.toLowerCase()] || CreditCard;
-  return <Icon className="h-4 w-4" />;
+function PaymentMethodIcon({ method }: { method: PaymentMethod }) {
+  switch (method) {
+    case PaymentMethod.CREDIT_CARD:
+    case PaymentMethod.DEBIT_CARD:
+      return <CreditCard className="h-4 w-4" />;
+    case PaymentMethod.MOBILE_PAYMENT:
+      return <Smartphone className="h-4 w-4" />;
+    case PaymentMethod.CASH:
+      return <Banknote className="h-4 w-4" />;
+    default:
+      return <CreditCard className="h-4 w-4" />;
+  }
 }
 
 // Status Badge Component
 function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
   const statusConfig: Record<string, { color: string; icon: any; label: string }> = {
-    PENDING: { color: 'badge-warning', icon: Clock, label: 'Pending' },
-    PROCESSING: { color: 'badge-info', icon: Clock, label: 'Processing' },
-    COMPLETED: { color: 'badge-success', icon: CheckCircle, label: 'Completed' },
-    FAILED: { color: 'badge-error', icon: XCircle, label: 'Failed' },
-    CANCELLED: { color: 'badge-error', icon: XCircle, label: 'Cancelled' },
-    REFUNDED: { color: 'badge-error', icon: Receipt, label: 'Refunded' },
-    PARTIALLY_REFUNDED: { color: 'badge-warning', icon: Receipt, label: 'Partially Refunded' }
+    PENDING: { color: 'bg-status-warning/10 text-status-warning border border-status-warning/20', icon: Clock, label: 'Pending' },
+    PROCESSING: { color: 'bg-status-info/10 text-status-info border border-status-info/20', icon: RefreshCw, label: 'Processing' },
+    COMPLETED: { color: 'bg-status-success/10 text-status-success border border-status-success/20', icon: CheckCircle, label: 'Completed' },
+    FAILED: { color: 'bg-status-error/10 text-status-error border border-status-error/20', icon: XCircle, label: 'Failed' },
+    CANCELLED: { color: 'bg-surface-secondary text-content-secondary border border-border-default', icon: XCircle, label: 'Cancelled' },
+    REFUNDED: { color: 'bg-status-warning/10 text-status-warning border border-status-warning/20', icon: Receipt, label: 'Refunded' },
+    PARTIALLY_REFUNDED: { color: 'bg-status-warning/10 text-status-warning border border-status-warning/20', icon: Receipt, label: 'Partially Refunded' }
   };
 
   const config = statusConfig[status] || statusConfig.PENDING;
   const Icon = config?.icon || Clock;
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config?.color || 'badge-warning'}`}>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config?.color}`}>
       <Icon className="w-3 h-3 mr-1" />
       {config?.label || 'Unknown'}
     </span>
@@ -80,12 +86,14 @@ export default function PaymentsPage() {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | PaymentStatus>('all');
-  const [methodFilter, setMethodFilter] = useState<'all' | 'card' | 'cash' | 'mobile'>('all');
+  const [methodFilter, setMethodFilter] = useState<'all' | PaymentMethod>('all');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('today');
   const [sortBy, setSortBy] = useState<'createdAt' | 'amount'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [realtimeUpdates, setRealtimeUpdates] = useState(0);
+  const [metricsPeriod, setMetricsPeriod] = useState<'today' | 'week' | 'month' | 'quarter' | 'year'>('today');
   const itemsPerPage = 10;
 
   const auth = useAuth();
@@ -101,10 +109,36 @@ export default function PaymentsPage() {
     sortOrder
   });
 
-  const { data: metrics } = usePaymentMetrics();
+  const { data: metrics } = usePaymentMetrics(metricsPeriod);
+  const { data: realtimeMetrics } = useRealTimePaymentMetrics();
+  const { data: healthStatus } = usePaymentHealthStatus();
+  const { data: alerts } = usePaymentAlerts();
 
-  // Note: Real-time WebSocket events were removed to eliminate duplicate order event handling.
-  // Payment data is now fetched via standard API calls with manual/periodic refresh.
+  // Real-time WebSocket connection for admin portal
+  const { isConnected } = useAdminWebSocket({
+    onPaymentUpdate: (data) => {
+      console.log('💳 Admin Payment Update:', data)
+      // Invalidate payment queries for real-time updates
+      queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] })
+      queryClient.invalidateQueries({ queryKey: ['admin', 'payments', 'metrics'] })
+      setRealtimeUpdates(prev => prev + 1)
+
+      // Show toast notification for significant payment events
+      if (data.type === 'payment:completed') {
+        toast.success(`Payment of $${data.amount?.toFixed(2)} completed successfully`)
+      } else if (data.type === 'payment:failed') {
+        toast.error(`Payment failed: ${data.errorMessage}`)
+      }
+    },
+    onAnalyticsUpdate: (data) => {
+      console.log('📊 Admin Analytics Update:', data)
+      // Update metrics in real-time
+      if (data.metric === 'payments' || data.metric === 'revenue') {
+        queryClient.invalidateQueries({ queryKey: ['admin', 'payments', 'metrics'] })
+        setRealtimeUpdates(prev => prev + 1)
+      }
+    }
+  })
 
   // Calculate pagination
   const payments = Array.isArray(paymentsData) ? paymentsData : paymentsData?.payments || [];
@@ -142,12 +176,37 @@ export default function PaymentsPage() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-6">
               <div>
-                <h1 className="text-2xl font-bold text-content-primary flex items-center">
-                  <CreditCard className="h-7 w-7 mr-3 text-primary" />
-                  Payment Management
-                </h1>
+                <div className="flex items-center space-x-4">
+                  <h1 className="text-2xl font-bold text-content-primary flex items-center">
+                    <CreditCard className="h-7 w-7 mr-3 text-primary" />
+                    Payment Management
+                  </h1>
+
+                  {/* Real-time Status Indicator */}
+                  <div className="flex items-center space-x-2">
+                    {isConnected ? (
+                      <>
+                        <Wifi className="w-4 h-4 text-status-success" />
+                        <span className="text-sm text-status-success font-medium">Live</span>
+                      </>
+                    ) : (
+                      <>
+                        <WifiOff className="w-4 h-4 text-status-error" />
+                        <span className="text-sm text-status-error font-medium">Offline</span>
+                      </>
+                    )}
+                    {realtimeUpdates > 0 && (
+                      <div className="flex items-center space-x-1">
+                        <Activity className="w-3 h-3 text-primary animate-pulse" />
+                        <span className="text-xs text-content-tertiary">
+                          {realtimeUpdates} updates
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <p className="mt-1 text-sm text-content-secondary">
-                  Track and manage all payment transactions
+                  Track and manage all payment transactions across all restaurants
                 </p>
               </div>
               <div className="flex gap-3">
@@ -174,114 +233,250 @@ export default function PaymentsPage() {
           </div>
         </div>
 
+        {/* Period Selector and Health Status */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center space-x-4">
+              <select
+                value={metricsPeriod}
+                onChange={(e) => setMetricsPeriod(e.target.value as any)}
+                className="px-4 py-2 border border-border-tertiary rounded-lg input-professional"
+              >
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="quarter">This Quarter</option>
+                <option value="year">This Year</option>
+              </select>
+            </div>
+
+            {/* Payment Health Status */}
+            {healthStatus && (
+              <div className={`flex items-center px-3 py-2 rounded-lg border ${
+                healthStatus.status === 'HEALTHY' ? 'bg-status-success/10 border-status-success/20 text-status-success' :
+                healthStatus.status === 'WARNING' ? 'bg-status-warning/10 border-status-warning/20 text-status-warning' :
+                healthStatus.status === 'CRITICAL' ? 'bg-status-error/10 border-status-error/20 text-status-error' :
+                'bg-status-info/10 border-status-info/20 text-status-info'
+              }`}>
+                <Activity className="w-4 h-4 mr-2" />
+                <span className="text-sm font-medium">System {healthStatus.status}</span>
+                <span className="text-xs ml-2">Score: {healthStatus.score}/100</span>
+              </div>
+            )}
+          </div>
+
+          {/* Payment Alerts */}
+          {alerts && alerts.length > 0 && (
+            <div className="mb-4 bg-status-warning/10 border border-status-warning/20 rounded-lg p-4">
+              <div className="flex items-center mb-2">
+                <AlertCircle className="h-5 w-5 text-status-warning mr-2" />
+                <h3 className="text-sm font-medium text-status-warning">Payment Alerts ({alerts.length})</h3>
+              </div>
+              <div className="space-y-2">
+                {alerts.slice(0, 3).map((alert, index) => (
+                  <div key={index} className={`text-xs px-2 py-1 rounded ${
+                    alert.severity === 'CRITICAL' ? 'bg-status-error/20 text-status-error' :
+                    alert.severity === 'HIGH' ? 'bg-status-warning/20 text-status-warning' :
+                    'bg-status-info/20 text-status-info'
+                  }`}>
+                    {alert.message}
+                  </div>
+                ))}
+                {alerts.length > 3 && (
+                  <div className="text-xs text-content-tertiary">
+                    +{alerts.length - 3} more alerts
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Metrics Cards */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="bg-surface rounded-lg shadow-card p-4 border border-border-tertiary">
               <div className="flex items-center justify-between mb-2">
-                <DollarSign className="h-5 w-5 text-green-500" />
-                <span className="text-xs text-green-600 flex items-center">
-                  <TrendingUp className="h-3 w-3 mr-1" />
-                  +15%
+                <DollarSign className="h-5 w-5 text-status-success" />
+                <span className={`text-xs flex items-center ${
+                  (metrics?.revenueGrowth || 0) >= 0 ? 'text-status-success' : 'text-status-error'
+                }`}>
+                  {(metrics?.revenueGrowth || 0) >= 0 ? (
+                    <TrendingUp className="h-3 w-3 mr-1" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 mr-1" />
+                  )}
+                  {metrics?.revenueGrowth?.toFixed(1) || '0.0'}%
                 </span>
               </div>
               <div className="text-2xl font-bold text-content-primary">
                 ${metrics?.totalRevenue?.toFixed(2) || '0.00'}
               </div>
               <p className="text-xs text-content-secondary mt-1">Total Revenue</p>
+              {realtimeMetrics && (
+                <p className="text-xs text-status-info mt-1">
+                  Recent: ${realtimeMetrics.recentRevenue?.toFixed(2) || '0.00'}
+                </p>
+              )}
             </div>
 
             <div className="bg-surface rounded-lg shadow-card p-4 border border-border-tertiary">
               <div className="flex items-center justify-between mb-2">
-                <Receipt className="h-5 w-5 text-blue-500" />
-                <span className="text-xs font-medium text-blue-600">
-                  {metrics?.totalTransactions || 0}
+                <Receipt className="h-5 w-5 text-primary" />
+                <span className={`text-xs flex items-center ${
+                  (metrics?.transactionGrowth || 0) >= 0 ? 'text-status-success' : 'text-status-error'
+                }`}>
+                  {(metrics?.transactionGrowth || 0) >= 0 ? (
+                    <TrendingUp className="h-3 w-3 mr-1" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 mr-1" />
+                  )}
+                  {metrics?.transactionGrowth?.toFixed(1) || '0.0'}%
                 </span>
               </div>
               <div className="text-2xl font-bold text-content-primary">
-                {metrics?.successfulTransactions || 0}
+                {metrics?.totalTransactions || 0}
               </div>
-              <p className="text-xs text-content-secondary mt-1">Successful</p>
+              <p className="text-xs text-content-secondary mt-1">Total Transactions</p>
+              <p className="text-xs text-status-success mt-1">
+                Success: {metrics?.successfulTransactions || 0} ({metrics?.successRate?.toFixed(1) || '0.0'}%)
+              </p>
             </div>
 
             <div className="bg-surface rounded-lg shadow-card p-4 border border-border-tertiary">
               <div className="flex items-center justify-between mb-2">
-                <Clock className="h-5 w-5 text-orange-500" />
-                <span className="text-xs text-orange-600">
+                <Clock className="h-5 w-5 text-status-warning" />
+                <span className="text-xs text-status-warning">
                   {metrics?.pendingPayments || 0}
                 </span>
               </div>
               <div className="text-2xl font-bold text-content-primary">
                 ${metrics?.pendingAmount?.toFixed(2) || '0.00'}
               </div>
-              <p className="text-xs text-content-secondary mt-1">Pending</p>
+              <p className="text-xs text-content-secondary mt-1">Pending Amount</p>
+              {realtimeMetrics && (
+                <p className="text-xs text-status-warning mt-1">
+                  Live: {realtimeMetrics.pendingPayments || 0}
+                </p>
+              )}
             </div>
 
             <div className="bg-surface rounded-lg shadow-card p-4 border border-border-tertiary">
               <div className="flex items-center justify-between mb-2">
-                <XCircle className="h-5 w-5 text-red-500" />
-                <span className="text-xs text-red-600">
-                  {metrics?.failedPayments || 0}
+                <XCircle className="h-5 w-5 text-status-error" />
+                <span className={`text-xs flex items-center ${
+                  (metrics?.successRateChange || 0) >= 0 ? 'text-status-success' : 'text-status-error'
+                }`}>
+                  {(metrics?.successRateChange || 0) >= 0 ? (
+                    <TrendingUp className="h-3 w-3 mr-1" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 mr-1" />
+                  )}
+                  {Math.abs(metrics?.successRateChange || 0).toFixed(1)}%
                 </span>
               </div>
               <div className="text-2xl font-bold text-content-primary">
                 {metrics?.failureRate?.toFixed(1) || '0.0'}%
               </div>
               <p className="text-xs text-content-secondary mt-1">Failure Rate</p>
+              <p className="text-xs text-status-error mt-1">
+                Failed: {metrics?.failedPayments || 0}
+              </p>
             </div>
 
             <div className="bg-surface rounded-lg shadow-card p-4 border border-border-tertiary">
               <div className="flex items-center justify-between mb-2">
-                <TrendingUp className="h-5 w-5 text-purple-500" />
-                <span className="text-xs text-purple-600">AOV</span>
+                <TrendingUp className="h-5 w-5 text-secondary" />
+                <span className="text-xs text-secondary">AOV</span>
               </div>
               <div className="text-2xl font-bold text-content-primary">
                 ${metrics?.averageTransactionValue?.toFixed(2) || '0.00'}
               </div>
-              <p className="text-xs text-content-secondary mt-1">Avg Value</p>
+              <p className="text-xs text-content-secondary mt-1">Average Order Value</p>
+              <p className="text-xs text-secondary mt-1">
+                Refund Rate: {metrics?.refundRate?.toFixed(1) || '0.0'}%
+              </p>
             </div>
           </div>
 
           {/* Payment Method Breakdown */}
           <div className="mt-4 bg-surface rounded-lg shadow-card p-4 border border-border-tertiary">
-            <h3 className="text-sm font-medium text-content-primary mb-3">Payment Methods</h3>
-            <div className="grid grid-cols-4 gap-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <CreditCard className="h-4 w-4 text-blue-500 mr-2" />
-                  <span className="text-sm text-content-secondary">Card</span>
+            <h3 className="text-sm font-medium text-content-primary mb-3">Payment Methods Distribution</h3>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="flex flex-col p-3 bg-background rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center">
+                    <CreditCard className="h-4 w-4 text-primary mr-2" />
+                    <span className="text-sm text-content-secondary">Credit Cards</span>
+                  </div>
+                  <span className="text-sm font-bold text-primary">
+                    {metrics?.cardPercentage?.toFixed(1) || '0.0'}%
+                  </span>
                 </div>
-                <span className="text-sm font-medium text-content-primary">
-                  {metrics?.methodBreakdown?.card || 0}%
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Banknote className="h-4 w-4 text-green-500 mr-2" />
-                  <span className="text-sm text-content-secondary">Cash</span>
+                <div className="text-xs text-content-tertiary">
+                  {metrics?.cardTransactions || 0} transactions
                 </div>
-                <span className="text-sm font-medium text-content-primary">
-                  {metrics?.methodBreakdown?.cash || 0}%
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Smartphone className="h-4 w-4 text-purple-500 mr-2" />
-                  <span className="text-sm text-content-secondary">Mobile</span>
+                <div className="text-xs text-content-tertiary">
+                  ${metrics?.cardAmount?.toFixed(2) || '0.00'} revenue
                 </div>
-                <span className="text-sm font-medium text-content-primary">
-                  {metrics?.methodBreakdown?.mobile || 0}%
-                </span>
               </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Wallet className="h-4 w-4 text-orange-500 mr-2" />
-                  <span className="text-sm text-content-secondary">Wallet</span>
+
+              <div className="flex flex-col p-3 bg-background rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center">
+                    <Smartphone className="h-4 w-4 text-secondary mr-2" />
+                    <span className="text-sm text-content-secondary">Digital Wallets</span>
+                  </div>
+                  <span className="text-sm font-bold text-secondary">
+                    {metrics?.walletPercentage?.toFixed(1) || '0.0'}%
+                  </span>
                 </div>
-                <span className="text-sm font-medium text-content-primary">
-                  {metrics?.methodBreakdown?.wallet || 0}%
-                </span>
+                <div className="text-xs text-content-tertiary">
+                  {metrics?.digitalWalletTransactions || 0} transactions
+                </div>
+                <div className="text-xs text-content-tertiary">
+                  ${metrics?.digitalWalletAmount?.toFixed(2) || '0.00'} revenue
+                </div>
               </div>
+
+              <div className="flex flex-col p-3 bg-background rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center">
+                    <Banknote className="h-4 w-4 text-status-success mr-2" />
+                    <span className="text-sm text-content-secondary">Cash</span>
+                  </div>
+                  <span className="text-sm font-bold text-status-success">
+                    {metrics?.cashPercentage?.toFixed(1) || '0.0'}%
+                  </span>
+                </div>
+                <div className="text-xs text-content-tertiary">
+                  {metrics?.cashTransactions || 0} transactions
+                </div>
+                <div className="text-xs text-content-tertiary">
+                  ${metrics?.cashAmount?.toFixed(2) || '0.00'} revenue
+                </div>
+              </div>
+
+              {/* Peak Performance Indicator */}
+              {metrics?.peakHours && metrics.peakHours.length > 0 && (
+                <div className="flex flex-col p-3 bg-background rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center">
+                      <Activity className="h-4 w-4 text-accent mr-2" />
+                      <span className="text-sm text-content-secondary">Peak Hour</span>
+                    </div>
+                    <span className="text-sm font-bold text-accent">
+                      {String(metrics.peakHours[0]?.hour || 0).padStart(2, '0')}:00
+                    </span>
+                  </div>
+                  <div className="text-xs text-content-tertiary">
+                    {metrics.peakHours[0]?.transactions || 0} transactions
+                  </div>
+                  <div className="text-xs text-accent">
+                    Busiest period
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -336,9 +531,10 @@ export default function PaymentsPage() {
                   className="px-4 py-2 border border-border-tertiary rounded-lg input-professional"
                 >
                   <option value="all">All Methods</option>
-                  <option value="card">Card</option>
-                  <option value="cash">Cash</option>
-                  <option value="mobile">Mobile</option>
+                  <option value={PaymentMethod.CREDIT_CARD}>Credit Card</option>
+                  <option value={PaymentMethod.DEBIT_CARD}>Debit Card</option>
+                  <option value={PaymentMethod.MOBILE_PAYMENT}>Mobile Payment</option>
+                  <option value={PaymentMethod.CASH}>Cash</option>
                 </select>
 
                 <button
@@ -423,15 +619,18 @@ export default function PaymentsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <PaymentMethodIcon method={payment.method || 'card'} />
+                              <PaymentMethodIcon method={payment.method || PaymentMethod.CREDIT_CARD} />
                               <span className="text-sm text-content-primary ml-2">
-                                {payment.method || 'Card'}
+                                {payment.method === PaymentMethod.CREDIT_CARD ? 'Credit Card' :
+                                 payment.method === PaymentMethod.DEBIT_CARD ? 'Debit Card' :
+                                 payment.method === PaymentMethod.MOBILE_PAYMENT ? 'Mobile Payment' :
+                                 payment.method === PaymentMethod.CASH ? 'Cash' : 'Credit Card'}
                               </span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <DollarSign className="h-4 w-4 text-green-500 mr-1" />
+                              <DollarSign className="h-4 w-4 text-status-success mr-1" />
                               <span className="text-sm font-bold text-content-primary">
                                 {payment.amount?.toFixed(2)}
                               </span>
