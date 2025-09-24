@@ -1,20 +1,34 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
 import { ChefHat } from 'lucide-react';
 import { LoginForm, useAuth } from '@tabsy/ui-components';
 import { UserRole, User } from '@tabsy/shared-types';
 
-export default function RestaurantLoginPage() {
+function RestaurantLoginContent() {
   const router = useRouter();
-  const { isAuthenticated, user, isLoading } = useAuth();
+  const searchParams = useSearchParams();
+  const { isAuthenticated, user, isLoading, isVerifying } = useAuth();
   const [loadingTimeout, setLoadingTimeout] = useState(false);
+
+  // Get error message from URL params
+  const errorType = searchParams.get('error');
+  const getErrorMessage = () => {
+    switch (errorType) {
+      case 'unauthorized_role':
+        return 'Your account role is not authorized for the restaurant dashboard. Please contact your administrator.';
+      case 'session_expired':
+        return 'Your session has expired. Please sign in again.';
+      default:
+        return null;
+    }
+  };
 
   // Debug logs
   useEffect(() => {
-    console.log('Auth State:', { isAuthenticated, user: (user as User)?.role, isLoading });
-  }, [isAuthenticated, user, isLoading]);
+    console.log('Auth State:', { isAuthenticated, user: (user as User)?.role, isLoading, isVerifying });
+  }, [isAuthenticated, user, isLoading, isVerifying]);
 
   // Set a timeout for loading state to prevent infinite loading
   useEffect(() => {
@@ -35,11 +49,11 @@ export default function RestaurantLoginPage() {
     }
   }, [isLoading]);
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated - WAIT for complete profile
   useEffect(() => {
-    if (isAuthenticated && user && 'role' in user) {
+    if (isAuthenticated && user && 'role' in user && !isVerifying && !isLoading) {
       const typedUser = user as User;
-      console.log('User authenticated, redirecting...', typedUser.role);
+      console.log('User authenticated with complete profile, redirecting...', typedUser.role);
       // Check if user has restaurant access
       const userRole = typedUser.role;
       if (userRole === UserRole.RESTAURANT_OWNER || userRole === UserRole.RESTAURANT_STAFF) {
@@ -48,10 +62,11 @@ export default function RestaurantLoginPage() {
         router.push('/admin/dashboard');
       } else {
         // Not a restaurant or admin user, redirect to customer app
+        console.log('Invalid role for restaurant dashboard:', userRole);
         window.location.href = 'http://localhost:3001';
       }
     }
-  }, [isAuthenticated, user, router]);
+  }, [isAuthenticated, user, router, isVerifying, isLoading]);
 
   const handleLoginSuccess = () => {
     // The redirect logic is handled above in useEffect
@@ -60,13 +75,17 @@ export default function RestaurantLoginPage() {
   };
 
   // Show loading while checking authentication (with timeout fallback)
-  if (isLoading && !loadingTimeout) {
+  if ((isLoading || isVerifying) && !loadingTimeout) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-primary border-t-transparent rounded-full"></div>
-          <p className="text-muted-foreground">Loading...</p>
-          <p className="text-xs text-muted-foreground mt-2">Initializing authentication...</p>
+          <p className="text-muted-foreground">
+            {isVerifying ? 'Verifying credentials...' : 'Loading...'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            {isVerifying ? 'Fetching complete profile...' : 'Initializing authentication...'}
+          </p>
         </div>
       </div>
     );
@@ -178,5 +197,20 @@ export default function RestaurantLoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RestaurantLoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-primary border-t-transparent rounded-full"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    }>
+      <RestaurantLoginContent />
+    </Suspense>
   );
 }

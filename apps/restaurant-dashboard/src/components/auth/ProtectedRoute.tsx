@@ -16,17 +16,18 @@ interface ProtectedRouteProps {
  * ProtectedRoute component for restaurant dashboard
  * Ensures user is authenticated and has appropriate roles
  */
-export function ProtectedRoute({ 
-  children, 
+export function ProtectedRoute({
+  children,
   requiredRoles = [UserRole.RESTAURANT_OWNER, UserRole.RESTAURANT_STAFF, UserRole.ADMIN],
   redirectTo = '/login',
   requireRestaurantAccess = true
 }: ProtectedRouteProps) {
   const router = useRouter();
-  const { isAuthenticated, user, isLoading } = useAuth();
+  const { isAuthenticated, user, isLoading, isVerifying } = useAuth();
 
   useEffect(() => {
-    if (!isLoading) {
+    // Wait for both loading and verification to complete
+    if (!isLoading && !isVerifying) {
       // Not authenticated - redirect to login
       if (!isAuthenticated || !user) {
         router.push(redirectTo);
@@ -35,7 +36,7 @@ export function ProtectedRoute({
 
       // Type-safe check for user properties
       const typedUser = user as { role?: UserRole };
-      
+
       // Check if user has required role
       if (!typedUser?.role || !requiredRoles.includes(typedUser.role)) {
         // User doesn't have required role
@@ -47,8 +48,9 @@ export function ProtectedRoute({
           window.location.href = 'http://localhost:3001';
           return;
         } else {
-          // Other roles - show unauthorized page
-          router.push('/unauthorized');
+          // Other roles - redirect to login with error message
+          console.warn('User with invalid role trying to access restaurant dashboard:', typedUser?.role)
+          router.push('/login?error=unauthorized_role');
           return;
         }
       }
@@ -65,15 +67,17 @@ export function ProtectedRoute({
         */
       }
     }
-  }, [isAuthenticated, user, isLoading, router, requiredRoles, redirectTo, requireRestaurantAccess]);
+  }, [isAuthenticated, user, isLoading, isVerifying, router, requiredRoles, redirectTo, requireRestaurantAccess]);
 
-  // Show loading state
-  if (isLoading) {
+  // Show loading state while loading or verifying auth
+  if (isLoading || isVerifying) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-primary border-t-transparent rounded-full"></div>
-          <p className="text-content-secondary">Authenticating...</p>
+          <p className="text-content-secondary">
+            {isVerifying ? 'Verifying credentials...' : 'Authenticating...'}
+          </p>
         </div>
       </div>
     );

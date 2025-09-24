@@ -9,7 +9,7 @@ import { useRef, useEffect } from 'react'
  * For restaurant staff/owners, this will return their restaurant ID and details
  */
 export function useCurrentRestaurant() {
-  const { user, isLoading: authLoading } = useAuth()
+  const { user, isLoading: authLoading, isVerifying } = useAuth()
   const errorLoggedRef = useRef(false)
   const errorTimeoutRef = useRef<NodeJS.Timeout>()
 
@@ -21,34 +21,54 @@ export function useCurrentRestaurant() {
       hasRestaurantStaff: !!(user as any)?.restaurantStaff,
       restaurantOwnerId: (user as any)?.restaurantOwner?.restaurantId,
       restaurantStaffId: (user as any)?.restaurantStaff?.restaurantId,
-      role: user?.role
+      role: user?.role,
+      isInitialLoad,
+      authLoading
     })
   }
 
   // Create restaurant hooks using the factory pattern
   const restaurantHooks = createRestaurantHooks(useQuery)
-  
+
+  // CRITICAL: Only check restaurant access after auth is fully complete
+  // This prevents the race condition where user role is checked before relationships are loaded
+  const isAuthComplete = !authLoading && !isVerifying && !!user
+
   // Determine if user has restaurant access
-  const isRestaurantUser = (user as User)?.role === UserRole.RESTAURANT_OWNER || (user as User)?.role === UserRole.RESTAURANT_STAFF
+  const isRestaurantUser = isAuthComplete && ((user as User)?.role === UserRole.RESTAURANT_OWNER || (user as User)?.role === UserRole.RESTAURANT_STAFF)
 
   // Get restaurant ID from user data - extract from restaurant relationships
   // For restaurant owners: user.restaurantOwner.restaurantId
   // For restaurant staff: user.restaurantStaff.restaurantId
-  let restaurantId = isRestaurantUser
+  // IMPORTANT: Only extract restaurantId when auth is complete to avoid race conditions
+  const restaurantId = isAuthComplete && isRestaurantUser
     ? (user as any)?.restaurantOwner?.restaurantId || (user as any)?.restaurantStaff?.restaurantId
     : undefined
 
-  // Handle missing restaurant relationships properly - debounced error logging
+  // Debug: Log what we're actually receiving from the API
+  console.log('🔍 useCurrentRestaurant - Debug API response:', {
+    userId: user?.id,
+    userRole: user?.role,
+    restaurantOwner: (user as any)?.restaurantOwner,
+    restaurantStaff: (user as any)?.restaurantStaff,
+    restaurantId,
+    authLoading,
+    isVerifying
+  })
+
+  // Handle missing restaurant relationships - only check after auth is complete
   useEffect(() => {
-    if (isRestaurantUser && !restaurantId && user && !authLoading) {
+    // Only run this check when authentication is fully complete
+    if (isAuthComplete && isRestaurantUser && !restaurantId && user) {
       // Clear any existing timeout
       if (errorTimeoutRef.current) {
         clearTimeout(errorTimeoutRef.current)
       }
 
-      // Set a new timeout to log the error after a delay (to avoid logging during rapid state changes)
+      // Set a timeout to wait for data to load properly
+      // This gives time for any remaining async operations to complete
       errorTimeoutRef.current = setTimeout(() => {
-        if (!errorLoggedRef.current) {
+        if (!errorLoggedRef.current && !restaurantId) {
           console.error('❌ Restaurant user found but no restaurant relationships in database. User needs to be properly associated with a restaurant.')
           console.error('User data:', {
             id: user?.id,
@@ -59,7 +79,7 @@ export function useCurrentRestaurant() {
           })
           errorLoggedRef.current = true
         }
-      }, 1000) // Wait 1 second before logging to allow auth state to stabilize
+      }, 2000) // Reduced timeout since auth is already complete
     } else if (restaurantId) {
       // Reset error logged flag if we now have a restaurant ID
       errorLoggedRef.current = false
@@ -74,7 +94,7 @@ export function useCurrentRestaurant() {
         clearTimeout(errorTimeoutRef.current)
       }
     }
-  }, [isRestaurantUser, restaurantId, user, authLoading])
+  }, [isAuthComplete, isRestaurantUser, restaurantId, user])
   
   // Fetch restaurant details if we have a restaurant ID
   const {
@@ -90,9 +110,9 @@ export function useCurrentRestaurant() {
   return {
     restaurantId,
     restaurant,
-    isLoading: restaurantLoading,
-    error: restaurantError || (isRestaurantUser && !restaurantId ? 'User not associated with any restaurant' : null),
+    isLoading: authLoading || isVerifying || restaurantLoading,
+    error: restaurantError || (isAuthComplete && isRestaurantUser && !restaurantId ? 'User not associated with any restaurant' : null),
     refetch: refetchRestaurant,
-    hasRestaurantAccess: isRestaurantUser && !!restaurantId
+    hasRestaurantAccess: isAuthComplete && isRestaurantUser && !!restaurantId
   }
 }

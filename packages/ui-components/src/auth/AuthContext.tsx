@@ -16,6 +16,7 @@ export interface AuthContextValue {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
+  isVerifying: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
   register: (userData: RegisterData) => Promise<void>
@@ -51,6 +52,7 @@ interface AuthProviderProps {
 export function AuthProvider({ children, apiClient }: AuthProviderProps) {
   const [session, setSession] = useState<AuthSession | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isVerifying, setIsVerifying] = useState(false)
 
   // Load session from storage on mount
   useEffect(() => {
@@ -91,17 +93,18 @@ export function AuthProvider({ children, apiClient }: AuthProviderProps) {
           
           // Try to verify token with server (optional verification)
           try {
+            setIsVerifying(true)
             const timeoutPromise = new Promise<null>((_, reject) => {
-              setTimeout(() => reject(new Error('Token verification timeout')), 5000) // 5 second timeout
+              setTimeout(() => reject(new Error('Token verification timeout')), 8000) // Extended to 8 seconds
             })
-            
+
             const verificationPromise = apiClient.auth.getCurrentUser()
-            
+
             const currentUser = await Promise.race([verificationPromise, timeoutPromise])
             if (currentUser) {
               // Update user data if available
               setSession(prev => prev ? { ...prev, user: currentUser } : null)
-              console.log('Token verification successful')
+              console.log('Token verification successful - user data refreshed')
             }
           } catch (error) {
             // Don't logout on verification failure - the stored session might still be valid
@@ -120,6 +123,8 @@ export function AuthProvider({ children, apiClient }: AuthProviderProps) {
             
             // For network errors, timeouts, etc., keep the session and let the user try to use it
             console.log('Keeping session despite verification failure - might be network issue')
+          } finally {
+            setIsVerifying(false)
           }
         } else {
           // Token expired, try to refresh
@@ -167,18 +172,37 @@ export function AuthProvider({ children, apiClient }: AuthProviderProps) {
     setIsLoading(true)
     try {
       const response = await apiClient.auth.login({ email, password })
-      
+
       if (response && response.user && response.token) {
+        // Set token for subsequent API calls
+        apiClient.setAuthToken(response.token)
+
+        // CRITICAL: Always fetch complete user profile after login
+        // This ensures we have all relationship data (restaurant, admin permissions, etc.)
+        // Works for all apps: Customer, Restaurant Dashboard, Admin Portal
+        let completeUser = response.user
+        try {
+          console.log('🔄 Fetching complete user profile after login...')
+          const fetchedUserResponse = await apiClient.user.getCurrentUser()
+          if (fetchedUserResponse?.data) {
+            completeUser = fetchedUserResponse.data
+            console.log('✅ Complete user profile fetched successfully')
+          }
+        } catch (profileError) {
+          console.warn('⚠️ Could not fetch complete user profile, using login response:', profileError)
+          // Continue with basic user data from login response
+        }
+
         const newSession: AuthSession = {
-          user: response.user,
+          user: completeUser,
           token: response.token,
           refreshToken: response.refreshToken,
           expiresAt: response.expiresAt || (Date.now() + (3600 * 1000)) // Default 1 hour
         }
-        
+
         setSession(newSession)
         localStorage.setItem('tabsy-auth-session', JSON.stringify(newSession))
-        apiClient.setAuthToken(newSession.token)
+        console.log('✅ Login completed with complete user profile')
       } else {
         throw new Error('Login failed')
       }
@@ -194,18 +218,36 @@ export function AuthProvider({ children, apiClient }: AuthProviderProps) {
     setIsLoading(true)
     try {
       const response = await apiClient.auth.register(userData)
-      
+
       if (response && response.user && response.token) {
+        // Set token for subsequent API calls
+        apiClient.setAuthToken(response.token)
+
+        // Fetch complete user profile after registration
+        // Works for all apps: Customer, Restaurant Dashboard, Admin Portal
+        let completeUser = response.user
+        try {
+          console.log('🔄 Fetching complete user profile after registration...')
+          const fetchedUserResponse = await apiClient.user.getCurrentUser()
+          if (fetchedUserResponse?.data) {
+            completeUser = fetchedUserResponse.data
+            console.log('✅ Complete user profile fetched successfully')
+          }
+        } catch (profileError) {
+          console.warn('⚠️ Could not fetch complete user profile, using registration response:', profileError)
+          // Continue with basic user data from registration response
+        }
+
         const newSession: AuthSession = {
-          user: response.user,
+          user: completeUser,
           token: response.token,
           refreshToken: response.refreshToken,
           expiresAt: response.expiresAt || (Date.now() + (3600 * 1000)) // Default 1 hour
         }
-        
+
         setSession(newSession)
         localStorage.setItem('tabsy-auth-session', JSON.stringify(newSession))
-        apiClient.setAuthToken(newSession.token)
+        console.log('✅ Registration completed with complete user profile')
       } else {
         throw new Error('Registration failed')
       }
@@ -227,9 +269,17 @@ export function AuthProvider({ children, apiClient }: AuthProviderProps) {
       console.error('Logout error:', error)
       // Continue with logout even if API call fails
     } finally {
+      // Clear all auth-related state
       setSession(null)
+      setIsVerifying(false)
+
+      // Clear only auth-related storage (NOT customer app data)
       localStorage.removeItem('tabsy-auth-session')
+
+      // Clear API client auth token
       apiClient.clearAuthToken()
+
+      console.log('✅ Auth logout cleanup performed')
       setIsLoading(false)
     }
   }, [apiClient, session])
@@ -297,6 +347,7 @@ export function AuthProvider({ children, apiClient }: AuthProviderProps) {
     user: session?.user || null,
     isAuthenticated: !!session,
     isLoading,
+    isVerifying,
     login,
     logout,
     register,

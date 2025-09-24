@@ -19,8 +19,13 @@ interface ClientProvidersProps {
  * Inner component that has access to auth context
  */
 function InnerProviders({ children }: { children: React.ReactNode }) {
-  const { restaurantId } = useCurrentRestaurant()
-  const { session } = useAuth()
+  const { session, isAuthenticated, isLoading, isVerifying } = useAuth()
+
+  // Always call the hook, but it will handle its own loading logic internally
+  const { restaurantId, hasRestaurantAccess } = useCurrentRestaurant()
+
+  // Only connect WebSocket when we have both auth token and restaurant access
+  const shouldConnect = isAuthenticated && !isLoading && !isVerifying && hasRestaurantAccess
 
   return (
     <ConnectionProvider apiClient={tabsyClient}>
@@ -28,7 +33,7 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
         authToken={session?.token}
         restaurantId={restaurantId}
         namespace="restaurant"
-        autoConnect={true}
+        autoConnect={shouldConnect}
       >
         <NotificationMuteProvider>
           <ThemeProvider variant="restaurant">

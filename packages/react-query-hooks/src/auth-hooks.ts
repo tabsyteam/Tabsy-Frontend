@@ -12,6 +12,7 @@ export const QUERY_KEYS = {
     menu: (id: string) => ['restaurants', id, 'menu'] as const,
     tables: (id: string) => ['restaurants', id, 'tables'] as const,
     analytics: (id: string) => ['restaurants', id, 'analytics'] as const,
+    byOwner: (ownerId: string) => ['restaurants', 'owner', ownerId] as const,
   },
   menus: {
     all: ['menus'] as const,
