@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
 import { toast } from 'sonner'
 import { DietaryType, AllergyInfo, MenuItem, OrderItemOption } from '@tabsy/shared-types'
+import { STORAGE_KEYS } from '@/constants/storage'
 
 // Type guard to ensure a value is a string
 const isValidString = (value: unknown): value is string => {
@@ -83,7 +84,7 @@ export function CartProvider({ children }: CartProviderProps) {
   // Load cart from sessionStorage on mount
   useEffect(() => {
     try {
-      const savedCart = sessionStorage.getItem('tabsy-cart')
+      const savedCart = sessionStorage.getItem(STORAGE_KEYS.CART)
       if (savedCart) {
         const parsedCart = JSON.parse(savedCart)
         setCart(Array.isArray(parsedCart) ? parsedCart : [])
@@ -92,7 +93,7 @@ export function CartProvider({ children }: CartProviderProps) {
       console.error('Failed to load cart from storage:', error)
       setError('Failed to load cart')
       // Clear corrupted data
-      sessionStorage.removeItem('tabsy-cart')
+      sessionStorage.removeItem(STORAGE_KEYS.CART)
     } finally {
       setIsLoading(false)
     }
@@ -102,7 +103,7 @@ export function CartProvider({ children }: CartProviderProps) {
   useEffect(() => {
     if (!isLoading) {
       try {
-        sessionStorage.setItem('tabsy-cart', JSON.stringify(cart))
+        sessionStorage.setItem(STORAGE_KEYS.CART, JSON.stringify(cart))
         setError(null)
       } catch (error) {
         console.error('Failed to save cart to storage:', error)

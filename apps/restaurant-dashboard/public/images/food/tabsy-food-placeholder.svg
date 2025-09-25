@@ -1,0 +1,124 @@
+<svg width="400" height="300" viewBox="0 0 400 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8fafc;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e2e8f0;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="plateGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f1f5f9;stop-opacity:1" />
+    </linearGradient>
+
+    <linearGradient id="tabsyGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#14b8a6;stop-opacity:1" />
+    </linearGradient>
+
+    <!-- Subtle pattern -->
+    <pattern id="dotPattern" patternUnits="userSpaceOnUse" width="20" height="20">
+      <circle cx="10" cy="10" r="1" fill="#cbd5e1" opacity="0.3"/>
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="300" fill="url(#bgGradient)"/>
+  <rect width="400" height="300" fill="url(#dotPattern)"/>
+
+  <!-- Plate shadow -->
+  <ellipse cx="200" cy="220" rx="140" ry="18" fill="#000000" opacity="0.1"/>
+
+  <!-- Main plate -->
+  <ellipse cx="200" cy="210" rx="130" ry="130" fill="url(#plateGradient)" stroke="#e2e8f0" stroke-width="3"/>
+  <ellipse cx="200" cy="210" rx="120" ry="120" fill="none" stroke="#f1f5f9" stroke-width="1"/>
+
+  <!-- Food Items -->
+
+  <!-- Main dish (center) -->
+  <circle cx="200" cy="190" r="45" fill="#f59e0b" opacity="0.8"/>
+  <circle cx="200" cy="190" r="35" fill="#fbbf24" opacity="0.9"/>
+
+  <!-- Vegetables -->
+  <!-- Carrot slices -->
+  <circle cx="160" cy="170" r="12" fill="#fb923c"/>
+  <circle cx="160" cy="170" r="8" fill="#fdba74"/>
+
+  <!-- Broccoli -->
+  <circle cx="240" cy="175" r="15" fill="#22c55e"/>
+  <circle cx="235" cy="165" r="8" fill="#4ade80"/>
+  <circle cx="245" cy="165" r="6" fill="#4ade80"/>
+
+  <!-- Cherry tomatoes -->
+  <circle cx="180" cy="220" r="10" fill="#ef4444"/>
+  <circle cx="195" cy="235" r="8" fill="#f87171"/>
+  <circle cx="220" cy="220" r="9" fill="#ef4444"/>
+
+  <!-- Fruits -->
+  <!-- Orange slice -->
+  <circle cx="170" cy="145" r="18" fill="#fb923c"/>
+  <path d="M170 127 L170 163 M152 145 L188 145 M159 134 L181 156 M181 134 L159 156" stroke="#fdba74" stroke-width="1.5"/>
+
+  <!-- Apple slice -->
+  <ellipse cx="230" cy="145" rx="16" ry="20" fill="#ef4444"/>
+  <ellipse cx="230" cy="145" rx="12" ry="16" fill="#fecaca"/>
+  <circle cx="230" cy="140" r="2" fill="#7c3aed"/>
+
+  <!-- Garnish and herbs -->
+  <path d="M190 125 Q200 115 210 125 Q200 135 190 125" fill="#22c55e"/>
+  <path d="M175 130 Q180 122 185 130" fill="#16a34a" opacity="0.8"/>
+  <path d="M215 130 Q220 122 225 130" fill="#16a34a" opacity="0.8"/>
+
+  <!-- Cutlery -->
+  <!-- Fork -->
+  <rect x="110" y="160" width="2.5" height="55" fill="#6b7280" rx="1"/>
+  <rect x="108" y="150" width="6.5" height="12" fill="#6b7280" rx="2"/>
+  <rect x="109" y="148" width="1" height="6" fill="#9ca3af"/>
+  <rect x="111.5" y="148" width="1" height="6" fill="#9ca3af"/>
+  <rect x="114" y="148" width="1" height="6" fill="#9ca3af"/>
+
+  <!-- Knife -->
+  <rect x="285" y="165" width="2" height="50" fill="#6b7280" rx="1"/>
+  <ellipse cx="286" cy="155" rx="3" ry="12" fill="#6b7280"/>
+  <rect x="283" y="152" width="6" height="2" fill="#9ca3af"/>
+
+  <!-- Tabsy Branding -->
+  <!-- Logo background -->
+  <circle cx="200" cy="80" r="35" fill="url(#tabsyGradient)" opacity="0.15"/>
+  <circle cx="200" cy="80" r="30" fill="url(#tabsyGradient)" opacity="0.25"/>
+
+  <!-- Tabsy "T" logo -->
+  <path d="M185 65 L215 65 M200 65 L200 95" stroke="url(#tabsyGradient)" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="200" cy="95" r="3" fill="url(#tabsyGradient)"/>
+
+  <!-- Food icon accents around logo -->
+  <circle cx="175" cy="65" r="4" fill="#f59e0b" opacity="0.7"/>
+  <circle cx="225" cy="65" r="4" fill="#ef4444" opacity="0.7"/>
+  <circle cx="175" cy="95" r="4" fill="#22c55e" opacity="0.7"/>
+  <circle cx="225" cy="95" r="4" fill="#8b5cf6" opacity="0.7"/>
+
+  <!-- Brand text -->
+  <text x="200" y="125" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="url(#tabsyGradient)">Tabsy</text>
+
+  <!-- Steam effect -->
+  <g opacity="0.4">
+    <path d="M175 110 Q180 100 175 90 Q170 100 175 110" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <path d="M200 105 Q205 95 200 85 Q195 95 200 105" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+    <path d="M225 110 Q230 100 225 90 Q220 100 225 110" stroke="#94a3b8" stroke-width="1.5" fill="none"/>
+  </g>
+
+  <!-- Decorative food elements -->
+  <!-- Peas -->
+  <circle cx="150" cy="200" r="4" fill="#22c55e"/>
+  <circle cx="158" cy="205" r="3" fill="#4ade80"/>
+  <circle cx="145" cy="210" r="3" fill="#4ade80"/>
+
+  <!-- Corn kernels -->
+  <ellipse cx="250" cy="200" rx="3" ry="5" fill="#fbbf24"/>
+  <ellipse cx="255" cy="205" rx="3" ry="5" fill="#f59e0b"/>
+  <ellipse cx="245" cy="210" rx="3" ry="5" fill="#fbbf24"/>
+
+  <!-- Footer text -->
+  <text x="200" y="270" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="500" fill="#64748b">Fresh • Delicious • Healthy</text>
+  <text x="200" y="285" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8">Crafted with care by Tabsy</text>
+</svg>

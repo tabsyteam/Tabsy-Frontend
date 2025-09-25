@@ -11,6 +11,7 @@ import {
   Users
 } from 'lucide-react'
 import { SessionManager } from '@/lib/session'
+import { STORAGE_KEYS } from '@/constants/storage'
 
 interface BottomNavProps {
   cartItemCount?: number
@@ -44,7 +45,7 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
       tableNum = session.tableName
     } else {
       // Try to get from saved table info
-      const savedTableInfo = sessionStorage.getItem('tabsy-table-info')
+      const savedTableInfo = sessionStorage.getItem(STORAGE_KEYS.TABLE_INFO)
       if (savedTableInfo) {
         try {
           const tableInfo = JSON.parse(savedTableInfo)

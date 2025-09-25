@@ -11,19 +11,21 @@ import {
   AlertCircle,
   RefreshCw,
   Download,
-  Filter
+  Filter,
+  Banknote
 } from 'lucide-react'
 import { tabsyClient } from '@tabsy/api-client'
 import { PaymentOverview } from './PaymentOverview'
 import { ActivePayments, ActivePaymentsRef } from './ActivePayments'
 import { PaymentHistory } from './PaymentHistory'
 import { PaymentAnalytics } from './PaymentAnalytics'
+import { PendingCashPayments } from './PendingCashPayments'
 
 interface PaymentManagementProps {
   restaurantId: string
 }
 
-type PaymentTab = 'overview' | 'active' | 'history' | 'analytics'
+type PaymentTab = 'overview' | 'active' | 'pending_cash' | 'history' | 'analytics'
 
 export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
   const [activeTab, setActiveTab] = useState<PaymentTab>('overview')
@@ -43,6 +45,12 @@ export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
       label: 'Active Payments',
       icon: Clock,
       description: 'Monitor ongoing payments'
+    },
+    {
+      id: 'pending_cash' as PaymentTab,
+      label: 'Pending Cash',
+      icon: Banknote,
+      description: 'Manage pending cash payments'
     },
     {
       id: 'history' as PaymentTab,
@@ -211,6 +219,16 @@ export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
             hideControls={true}
             filterStatus={filterStatus}
           />
+        </div>
+
+        <div
+          className={`h-full transition-opacity duration-300 ease-in-out ${
+            activeTab === 'pending_cash' ? 'opacity-100' : 'opacity-0 hidden'
+          }`}
+        >
+          <div className="p-6 overflow-y-auto h-full">
+            <PendingCashPayments restaurantId={restaurantId} />
+          </div>
         </div>
 
         <div

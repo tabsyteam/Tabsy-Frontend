@@ -35,6 +35,7 @@ import SearchBar from '@/components/navigation/SearchBar'
 import BottomNav from '@/components/navigation/BottomNav'
 import MenuItemCard from '@/components/cards/MenuItemCard'
 import CategoryCard from '@/components/cards/CategoryCard'
+import { STORAGE_KEYS } from '@/constants/storage'
 
 
 interface Category {
@@ -174,7 +175,7 @@ export function MenuView() {
   // Load favorites from localStorage
   const loadFavoritesFromStorage = useCallback((): Set<string> => {
     try {
-      const stored = localStorage.getItem(`tabsy-favorites-${restaurantId}`)
+      const stored = localStorage.getItem(STORAGE_KEYS.FAVORITES(restaurantId))
       return stored ? new Set(JSON.parse(stored)) : new Set()
     } catch (error) {
       console.error('Failed to load favorites:', error)
@@ -185,7 +186,7 @@ export function MenuView() {
   // Save favorites to localStorage
   const saveFavoritesToStorage = useCallback((favSet: Set<string>) => {
     try {
-      localStorage.setItem(`tabsy-favorites-${restaurantId}`, JSON.stringify(Array.from(favSet)))
+      localStorage.setItem(STORAGE_KEYS.FAVORITES(restaurantId), JSON.stringify(Array.from(favSet)))
     } catch (error) {
       console.error('Failed to save favorites:', error)
     }
@@ -194,7 +195,7 @@ export function MenuView() {
   // Load recent searches
   const loadRecentSearches = useCallback((): string[] => {
     try {
-      const stored = localStorage.getItem(`tabsy-recent-searches-${restaurantId}`)
+      const stored = localStorage.getItem(STORAGE_KEYS.RECENT_SEARCHES(restaurantId))
       return stored ? JSON.parse(stored) : []
     } catch (error) {
       console.error('Failed to load recent searches:', error)
@@ -210,7 +211,7 @@ export function MenuView() {
       const recent = loadRecentSearches()
       const filtered = recent.filter(item => item !== query)
       const updated = [query, ...filtered].slice(0, 5)
-      localStorage.setItem(`tabsy-recent-searches-${restaurantId}`, JSON.stringify(updated))
+      localStorage.setItem(STORAGE_KEYS.RECENT_SEARCHES(restaurantId), JSON.stringify(updated))
       setRecentSearches(updated)
     } catch (error) {
       console.error('Failed to save recent search:', error)
@@ -321,7 +322,7 @@ export function MenuView() {
             categories,
             cachedAt: new Date().toISOString()
           }
-          sessionStorage.setItem('tabsy-menu-data', JSON.stringify(menuDataToCache))
+          sessionStorage.setItem(STORAGE_KEYS.MENU_DATA, JSON.stringify(menuDataToCache))
           console.log('[MenuView] Menu data cached for cart editing')
         } catch (error) {
           console.error('[MenuView] Failed to cache menu data:', error)
@@ -1124,6 +1125,8 @@ export function MenuView() {
           setSelectedCartItem(null)
         }}
         existingQuantity={selectedItem ? getItemQuantity(selectedItem.id) : 0}
+        isFavorite={selectedItem ? favorites.has(selectedItem.id) : false}
+        onToggleFavorite={toggleFavorite}
         existingCartItem={selectedCartItem}
         onAddToCart={(item, quantity, customizations, options) => {
           console.log('[MenuView] -- onAddToCart from ItemDetailModal:', { item, quantity, customizations, options })

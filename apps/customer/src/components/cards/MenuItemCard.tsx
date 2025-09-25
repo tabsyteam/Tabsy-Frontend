@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import Image from 'next/image'
+import { MenuItemImage } from '../ui/OptimizedImage'
 import {
   Plus,
   Minus,
@@ -196,12 +196,10 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
         <div className="flex gap-4">
           {/* Image */}
           <div className="relative w-20 h-20 flex-shrink-0">
-            <Image
-              src={item.image || '/images/food/dish-placeholder.svg'}
+            <MenuItemImage
+              src={item.image}
               alt={item.name}
-              fill
-              className="object-cover rounded-lg"
-              sizes="80px"
+              className="absolute inset-0 object-cover rounded-lg"
             />
             {item.isNew && (
               <div className="absolute -top-1 -right-1 bg-accent text-accent-foreground text-xs font-bold rounded-full px-2 py-0.5">
@@ -368,12 +366,10 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
     >
       {/* Image Container */}
       <div className="relative aspect-[16/10] overflow-hidden">
-        <Image
-          src={item.image || '/images/food/dish-placeholder.svg'}
+        <MenuItemImage
+          src={item.image}
           alt={item.name}
-          fill
-          className="object-cover transition-transform duration-300 hover:scale-105"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          className="absolute inset-0 object-cover transition-transform duration-300 hover:scale-105"
         />
 
         {/* Overlay Badges */}

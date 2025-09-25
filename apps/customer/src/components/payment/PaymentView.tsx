@@ -21,7 +21,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApi } from '@/components/providers/api-provider'
-import { PaymentMethod, TableSessionBill, TableSessionUser, MultiUserTableSession, CreateTableSessionPaymentRequest } from '@tabsy/shared-types'
+import { PaymentMethod, PaymentStatus, TableSessionBill, TableSessionUser, MultiUserTableSession, CreateTableSessionPaymentRequest } from '@tabsy/shared-types'
+import { PaymentType } from '@/constants/payment'
 import { SessionManager } from '@/lib/session'
 import { SplitBillPayment } from './SplitBillPayment'
 import { StripeCardForm } from './StripeCardForm'
@@ -80,8 +81,6 @@ interface TipOption {
   amount: number
 }
 
-type PaymentType = 'order' | 'table_session' | 'split_bill'
-
 export function PaymentView() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -97,7 +96,7 @@ export function PaymentView() {
   const [sessionUsers, setSessionUsers] = useState<TableSessionUser[]>([])
 
   // Payment state
-  const [paymentType, setPaymentType] = useState<PaymentType>('order')
+  const [paymentType, setPaymentType] = useState<PaymentType>(PaymentType.ORDER)
   const [showSplitBill, setShowSplitBill] = useState(false)
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
@@ -110,6 +109,8 @@ export function PaymentView() {
   const [paymentStatusPolling, setPaymentStatusPolling] = useState<NodeJS.Timeout | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [updatingTip, setUpdatingTip] = useState(false)
+  const [cashPaymentPending, setCashPaymentPending] = useState(false)
+  const [changingPaymentMethod, setChangingPaymentMethod] = useState(false)
 
   // Payment breakdown state for real-time updates
   const [paymentBreakdown, setPaymentBreakdown] = useState<{
@@ -124,7 +125,7 @@ export function PaymentView() {
   const tableSessionId = searchParams.get('tableSessionId')
   const restaurantId = searchParams.get('restaurant')
   const tableId = searchParams.get('table')
-  const paymentTypeParam = searchParams.get('type') as PaymentType || 'order'
+  const paymentTypeParam = searchParams.get('type') || PaymentType.ORDER
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -139,6 +140,9 @@ export function PaymentView() {
   const handleTableSessionUpdate = useCallback(async (data: any) => {
     if (data.type === 'payment_completed' || data.type === 'payment_status_update') {
       try {
+        // Check if this is our payment that was completed
+        const isOurPayment = data.paymentId === paymentId
+
         // Refresh the table bill to show updated amounts
         const session = SessionManager.getDiningSession()
         const sessionId = tableSessionId || session?.tableSessionId
@@ -149,10 +153,34 @@ export function PaymentView() {
             setTableBill(billResponse.data)
 
             if (data.type === 'payment_completed') {
-              toast.success('Payment completed by another user', {
-                description: 'Bill has been updated with the new payment',
-                duration: 3000
-              })
+              if (isOurPayment && cashPaymentPending) {
+                // Our cash payment was confirmed by staff
+                setCashPaymentPending(false)
+                toast.success('Cash Payment Confirmed!', {
+                  description: 'Your server has confirmed receipt of your cash payment',
+                  duration: 4000
+                })
+
+                // Get guest session from multiple sources
+                const session = SessionManager.getDiningSession()
+                const guestSessionId = session?.sessionId || api.getGuestSessionId() || sessionStorage.getItem('tabsy-guest-session-id')
+
+                // Navigate to success page
+                const successUrl = paymentType === PaymentType.ORDER
+                  ? `/payment/success?payment=${paymentId}&restaurant=${restaurantId}&table=${tableId}&guestSession=${guestSessionId || ''}`
+                  : `/payment/success?payment=${paymentId}&tableSession=${tableSession?.id}&restaurant=${restaurantId}&table=${tableId}&guestSession=${guestSessionId || ''}`
+
+                setTimeout(() => {
+                  router.push(successUrl)
+                }, 1500)
+
+              } else {
+                // Another user's payment was completed
+                toast.success('Payment completed by another user', {
+                  description: 'Bill has been updated with the new payment',
+                  duration: 3000
+                })
+              }
             }
           }
         }
@@ -160,7 +188,7 @@ export function PaymentView() {
         console.warn('Error handling payment update:', error)
       }
     }
-  }, [api, tableSessionId])
+  }, [api, tableSessionId, paymentId, cashPaymentPending, paymentType, restaurantId, tableId, tableSession?.id, router])
 
   // Set up WebSocket event listeners for payment updates using common provider
   const session = SessionManager.getDiningSession()
@@ -190,9 +218,9 @@ export function PaymentView() {
   const getTipOptions = (): TipOption[] => {
     let subtotal = 0
 
-    if (paymentType === 'order' && order) {
+    if (paymentType === PaymentType.ORDER && order) {
       subtotal = order.subtotal
-    } else if (paymentType === 'table_session' && tableBill) {
+    } else if (paymentType === PaymentType.TABLE_SESSION && tableBill) {
       subtotal = tableBill.summary.subtotal
     }
 
@@ -218,9 +246,9 @@ export function PaymentView() {
     }
 
     // For orders, use server-calculated total which already includes tip
-    if (paymentType === 'order' && order) {
+    if (paymentType === PaymentType.ORDER && order) {
       return order.total  // Server already calculated: subtotal + tax + tip
-    } else if (paymentType === 'table_session' && tableBill) {
+    } else if (paymentType === PaymentType.TABLE_SESSION && tableBill) {
       // For table sessions, still add tip locally since table bills don't use order tip system
       const tipAmount = selectedTip > 0 ? selectedTip : getCustomTipAmount()
       return tableBill.summary.remainingBalance + tipAmount
@@ -230,9 +258,9 @@ export function PaymentView() {
   }
 
   const getPaymentAmount = (): number => {
-    if (paymentType === 'order' && order) {
+    if (paymentType === PaymentType.ORDER && order) {
       return order.total
-    } else if (paymentType === 'table_session' && tableBill) {
+    } else if (paymentType === PaymentType.TABLE_SESSION && tableBill) {
       return tableBill.summary.remainingBalance
     }
     return 0
@@ -241,13 +269,13 @@ export function PaymentView() {
   // Initialize payment type from URL or session
   useEffect(() => {
     const determinePaymentType = () => {
-      if (paymentTypeParam === 'split_bill') {
-        setPaymentType('split_bill')
+      if (paymentTypeParam === PaymentType.SPLIT_BILL) {
+        setPaymentType(PaymentType.SPLIT_BILL)
         setShowSplitBill(true)
       } else if (tableSessionId || (!orderId && SessionManager.getDiningSession())) {
-        setPaymentType('table_session')
+        setPaymentType(PaymentType.TABLE_SESSION)
       } else if (orderId) {
-        setPaymentType('order')
+        setPaymentType(PaymentType.ORDER)
       } else {
         setError('No payment data available')
         setLoading(false)
@@ -266,7 +294,7 @@ export function PaymentView() {
         setLoading(true)
         setError(null)
 
-        if (paymentType === 'order' && orderId) {
+        if (paymentType === PaymentType.ORDER && orderId) {
           // Load individual order
           const response = await api.order.getById(orderId)
           if (response.success && response.data) {
@@ -274,7 +302,7 @@ export function PaymentView() {
           } else {
             throw new Error('Order not found')
           }
-        } else if (paymentType === 'table_session' || paymentType === 'split_bill') {
+        } else if (paymentType === PaymentType.TABLE_SESSION || paymentType === PaymentType.SPLIT_BILL) {
           // Load table session data
           const session = SessionManager.getDiningSession()
           const sessionId = tableSessionId || session?.tableSessionId
@@ -384,7 +412,7 @@ export function PaymentView() {
     setCustomTip('')
 
     // Update tip on server for security
-    if (paymentType === 'order' && orderId) {
+    if (paymentType === PaymentType.ORDER && orderId) {
       try {
         const response = await api.order.updateTip(orderId, amount)
         if (response.success && response.data) {
@@ -397,7 +425,7 @@ export function PaymentView() {
         // Reset tip selection on error
         setSelectedTip(0)
       }
-    } else if (paymentType === 'table_session' && clientSecret && paymentId) {
+    } else if (paymentType === PaymentType.TABLE_SESSION && clientSecret && paymentId) {
       // Update tip for existing table session payment intent
       try {
         setUpdatingTip(true)
@@ -442,7 +470,7 @@ export function PaymentView() {
     const tipAmount = parseFloat(value) || 0
 
     // Update tip on server for security (only if valid amount)
-    if (paymentType === 'order' && orderId && tipAmount >= 0) {
+    if (paymentType === PaymentType.ORDER && orderId && tipAmount >= 0) {
       try {
         const response = await api.order.updateTip(orderId, tipAmount)
         if (response.success && response.data) {
@@ -455,7 +483,7 @@ export function PaymentView() {
         // Reset custom tip on error
         setCustomTip('')
       }
-    } else if (paymentType === 'table_session' && clientSecret && paymentId && tipAmount >= 0) {
+    } else if (paymentType === PaymentType.TABLE_SESSION && clientSecret && paymentId && tipAmount >= 0) {
       // Update tip for existing table session payment intent
       try {
         setUpdatingTip(true)
@@ -549,12 +577,12 @@ export function PaymentView() {
   }
 
   const createPaymentIntent = async () => {
-    if (paymentType === 'order' && (!order || !orderId)) {
+    if (paymentType === PaymentType.ORDER && (!order || !orderId)) {
       toast.error('Order information is missing')
       return
     }
 
-    if (paymentType === 'table_session' && (!tableBill || !tableSession)) {
+    if (paymentType === PaymentType.TABLE_SESSION && (!tableBill || !tableSession)) {
       toast.error('Table session information is missing')
       return
     }
@@ -565,20 +593,72 @@ export function PaymentView() {
       return
     }
 
+    // Check for existing card payments to prevent duplicates
+    if (paymentType === PaymentType.ORDER) {
+      const existingPayments = await api.payment.getByOrder(orderId!)
+      if (existingPayments.success && existingPayments.data) {
+        const existingCardPayment = existingPayments.data.find(p =>
+          (p.method === PaymentMethod.CREDIT_CARD || p.method === PaymentMethod.DEBIT_CARD || p.method === PaymentMethod.MOBILE_PAYMENT) &&
+          (p.status === PaymentStatus.PENDING || p.status === PaymentStatus.COMPLETED)
+        )
+
+        if (existingCardPayment) {
+          if (existingCardPayment.status === PaymentStatus.COMPLETED) {
+            toast.info('Payment Already Completed', {
+              description: 'This order has already been paid for'
+            })
+            return
+          } else if (existingCardPayment.status === PaymentStatus.PENDING) {
+            toast.info('Payment Already In Progress', {
+              description: 'A payment is already being processed for this order'
+            })
+            setClientSecret(existingCardPayment.clientSecret || null)
+            setPaymentId(existingCardPayment.id)
+            return
+          }
+        }
+      }
+    } else if (paymentType === PaymentType.TABLE_SESSION) {
+      // Check for existing table session payments
+      const session = SessionManager.getDiningSession()
+      const sessionId = tableSessionId || session?.tableSessionId
+
+      if (sessionId) {
+        const paymentStatus = await api.tableSession.getPaymentStatus(sessionId)
+        if (paymentStatus.success && paymentStatus.data) {
+          const existingCardPayment = paymentStatus.data.payments?.find((p: any) =>
+            (p.paymentMethod === PaymentMethod.CREDIT_CARD || p.paymentMethod === PaymentMethod.DEBIT_CARD || p.paymentMethod === PaymentMethod.MOBILE_PAYMENT) &&
+            (p.status === PaymentStatus.PENDING || p.status === PaymentStatus.PROCESSING) &&
+            p.paidBy === session?.sessionId // Only check payments created by this guest
+          )
+
+          if (existingCardPayment) {
+            toast.info('Payment Already In Progress', {
+              description: 'You already have a payment being processed for this table session'
+            })
+            setClientSecret(existingCardPayment.clientSecret || null)
+            setPaymentId(existingCardPayment.id)
+            return
+          }
+        }
+      }
+    }
+
     setProcessing(true)
 
     try {
       let response: any
 
-      if (paymentType === 'order') {
+      if (paymentType === PaymentType.ORDER) {
         // Individual order payment - backend calculates amounts securely from Order fields
         // No need to send amounts from frontend since backend validates order.total = subtotal + tax + tip
-        const paymentData = {
+        response = await api.payment.createOrderPayment({
+          orderId: orderId!,
+          amount: order.total,
+          currency: 'USD',
           paymentMethod: selectedPaymentMethod
-        }
-
-        response = await api.payment.createForOrder(orderId!, paymentData)
-      } else if (paymentType === 'table_session') {
+        })
+      } else if (paymentType === PaymentType.TABLE_SESSION) {
         // Use table-wide payment endpoint
         const session = SessionManager.getDiningSession()
         const sessionId = tableSessionId || session?.tableSessionId
@@ -627,6 +707,35 @@ export function PaymentView() {
       }
     } catch (error: any) {
       console.error('Payment intent creation error:', error)
+
+      // Enhanced error handling for duplicate payment
+      const isDuplicatePayment =
+        error?.response?.data?.errorCode === 'DUPLICATE_PAYMENT' ||
+        error?.response?.data?.message?.includes('duplicate payment') ||
+        error?.message?.toLowerCase().includes('already has an active payment')
+
+      if (isDuplicatePayment) {
+        toast.error('Payment Already Exists', {
+          description: 'This order already has an active payment. Please check your payment status.',
+          duration: 5000
+        })
+        setError('This order already has an active payment')
+        return
+      }
+
+      // Check for insufficient funds error
+      const isInsufficientFunds =
+        error?.response?.data?.errorCode === 'INSUFFICIENT_FUNDS' ||
+        error?.message?.toLowerCase().includes('insufficient funds')
+
+      if (isInsufficientFunds) {
+        toast.error('Payment Failed', {
+          description: 'Insufficient funds. Please try a different payment method.',
+          duration: 5000
+        })
+        setError('Insufficient funds for this payment')
+        return
+      }
 
       // Check if this is a session expiry error
       const isSessionExpired = error?.response?.status === 401 ||
@@ -692,11 +801,163 @@ export function PaymentView() {
   }
 
   const handleNonCardPayment = async () => {
-    // Handle cash payments or other non-card methods
-    toast.info('Cash Payment', {
-      description: 'Please let your server know you will pay with cash',
-      duration: 5000
-    })
+    if (processing || cashPaymentPending) return
+
+    setProcessing(true)
+
+    try {
+      // Check for existing cash payments to prevent duplicates
+      if (paymentType === PaymentType.ORDER) {
+        const existingPayments = await api.payment.getByOrder(orderId!)
+        if (existingPayments.success && existingPayments.data) {
+          const existingCashPayment = existingPayments.data.find(p =>
+            p.method === PaymentMethod.CASH &&
+            (p.status === PaymentStatus.PENDING || p.status === PaymentStatus.COMPLETED)
+          )
+
+          if (existingCashPayment) {
+            if (existingCashPayment.status === PaymentStatus.COMPLETED) {
+              toast.info('Payment Already Completed', {
+                description: 'This order has already been paid for with cash'
+              })
+              setProcessing(false)
+              return
+            } else if (existingCashPayment.status === PaymentStatus.PENDING) {
+              toast.info('Cash Payment Already Requested', {
+                description: 'A cash payment request is already pending for this order'
+              })
+              setCashPaymentPending(true)
+              setPaymentId(existingCashPayment.id)
+              setProcessing(false)
+              return
+            }
+          }
+        }
+      } else if (paymentType === PaymentType.TABLE_SESSION) {
+        // Check for existing table session cash payments
+        const session = SessionManager.getDiningSession()
+        const sessionId = tableSessionId || session?.tableSessionId
+
+        if (sessionId) {
+          const paymentStatus = await api.tableSession.getPaymentStatus(sessionId)
+          if (paymentStatus.success && paymentStatus.data) {
+            const existingCashPayment = paymentStatus.data.payments?.find((p: any) =>
+              p.paymentMethod === PaymentMethod.CASH &&
+              (p.status === PaymentStatus.PENDING || p.status === PaymentStatus.COMPLETED) &&
+              p.paidBy === session?.sessionId // Only check payments created by this guest
+            )
+
+            if (existingCashPayment) {
+              if (existingCashPayment.status === PaymentStatus.COMPLETED) {
+                toast.info('Payment Already Completed', {
+                  description: 'You have already paid with cash for this table session'
+                })
+                setProcessing(false)
+                return
+              } else if (existingCashPayment.status === PaymentStatus.PENDING) {
+                toast.info('Cash Payment Already Requested', {
+                  description: 'You already have a cash payment request pending for this table session'
+                })
+                setCashPaymentPending(true)
+                setPaymentId(existingCashPayment.id)
+                setProcessing(false)
+                return
+              }
+            }
+          }
+        }
+      }
+
+      setCashPaymentPending(true)
+
+      let response: any
+
+      if (paymentType === PaymentType.ORDER) {
+        // Individual order payment with cash method
+        response = await api.payment.recordCash({
+          orderId: orderId!,
+          amount: order.total
+        })
+      } else if (paymentType === PaymentType.TABLE_SESSION) {
+        // Table session payment with cash method
+        const session = SessionManager.getDiningSession()
+        const sessionId = tableSessionId || session?.tableSessionId
+
+        if (!sessionId) {
+          throw new Error('No table session found')
+        }
+
+        // Calculate tip amount to send to backend
+        const tipAmount = selectedTip > 0 ? selectedTip : getCustomTipAmount()
+
+        const paymentData: CreateTableSessionPaymentRequest = {
+          paymentMethod: PaymentMethod.CASH,
+          tipAmount: tipAmount > 0 ? tipAmount : undefined
+        }
+
+        response = await api.tableSession.createPayment(
+          sessionId,
+          paymentData,
+          { guestSessionId: session?.sessionId }
+        )
+      }
+
+      if (response?.success) {
+        // Store payment ID for tracking
+        setPaymentId(response.data.id || response.data.paymentId)
+
+        // Store payment breakdown if available
+        if (response.data.breakdown) {
+          setPaymentBreakdown(response.data.breakdown)
+        }
+
+        toast.success('Cash Payment Requested', {
+          description: 'Your server will confirm when payment is received',
+          duration: 6000
+        })
+
+        // Start listening for payment status updates via WebSocket
+        // The existing WebSocket handlers will catch payment completion events
+
+      } else {
+        throw new Error(
+          typeof response?.error === 'string'
+            ? response.error
+            : response?.error?.message || 'Failed to create cash payment request'
+        )
+      }
+    } catch (error: any) {
+      console.error('Cash payment request error:', error)
+
+      // Handle session expiry
+      const isSessionExpired = error?.response?.status === 401 ||
+                               error?.response?.data?.errorCode === 'SESSION_EXPIRED'
+
+      if (isSessionExpired) {
+        const recoverySuccessful = await attemptSessionRecovery()
+        if (recoverySuccessful) {
+          setTimeout(() => handleNonCardPayment(), 1000)
+          return
+        } else {
+          SessionManager.clearDiningSession()
+          setTimeout(() => router.push('/'), 3000)
+          return
+        }
+      }
+
+      let errorMessage = 'Failed to request cash payment. Please try again.'
+      if (error?.response?.status === 400) {
+        errorMessage = 'Invalid payment request. Please check and try again.'
+      }
+
+      toast.error('Cash Payment Request Failed', {
+        description: errorMessage
+      })
+
+      setCashPaymentPending(false)
+    } finally {
+      setProcessing(false)
+    }
   }
 
   const handlePaymentSuccess = (stripePaymentIntentId: string) => {
@@ -712,10 +973,14 @@ export function PaymentView() {
       return
     }
 
-    // Navigate to success page with internal payment ID
-    const successUrl = paymentType === 'order'
-      ? `/payment/success?payment=${paymentId}&restaurant=${restaurantId}&table=${tableId}`
-      : `/payment/success?payment=${paymentId}&tableSession=${tableSession?.id}&restaurant=${restaurantId}&table=${tableId}`
+    // Get guest session from multiple sources for reliability
+    const session = SessionManager.getDiningSession()
+    const guestSessionId = session?.sessionId || api.getGuestSessionId() || sessionStorage.getItem('tabsy-guest-session-id')
+
+    // Navigate to success page with internal payment ID and guest session
+    const successUrl = paymentType === PaymentType.ORDER
+      ? `/payment/success?payment=${paymentId}&restaurant=${restaurantId}&table=${tableId}&guestSession=${guestSessionId || ''}`
+      : `/payment/success?payment=${paymentId}&tableSession=${tableSession?.id}&restaurant=${restaurantId}&table=${tableId}&guestSession=${guestSessionId || ''}`
 
     router.push(successUrl)
   }
@@ -730,7 +995,7 @@ export function PaymentView() {
   }
 
   const handlePaymentCancel = async () => {
-    if (!paymentId || paymentType !== 'table_session') {
+    if (!paymentId) {
       toast.error('Unable to cancel payment')
       return
     }
@@ -738,34 +1003,49 @@ export function PaymentView() {
     setCancelling(true)
 
     try {
-      const session = SessionManager.getDiningSession()
-      const sessionId = tableSessionId || session?.tableSessionId
+      let response: any
 
-      if (!sessionId) {
-        throw new Error('No table session found')
+      if (paymentType === PaymentType.TABLE_SESSION) {
+        const session = SessionManager.getDiningSession()
+        const sessionId = tableSessionId || session?.tableSessionId
+
+        if (!sessionId) {
+          throw new Error('No table session found')
+        }
+
+        response = await api.tableSession.cancelPayment(sessionId, paymentId, {
+          reason: 'User cancelled payment'
+        })
+      } else if (paymentType === PaymentType.ORDER) {
+        // For order payments, use payment status update endpoint
+        response = await api.payment.updateStatus(paymentId, 'CANCELLED' as any)
       }
 
-      const response = await api.tableSession.cancelPayment(sessionId, paymentId, {
-        reason: 'User cancelled payment'
-      })
-
-      if (response.success) {
+      if (response?.success) {
         toast.success('Payment Cancelled', {
-          description: 'Your payment has been cancelled successfully'
+          description: 'Your payment request has been cancelled successfully'
         })
 
         // Reset payment state to allow new payment
         setClientSecret(null)
         setPaymentId(null)
         setProcessing(false)
+        setCashPaymentPending(false)
+        setChangingPaymentMethod(false)
 
-        // Refresh the bill to show updated status
-        const billResponse = await api.tableSession.getBill(sessionId)
-        if (billResponse.success && billResponse.data) {
-          setTableBill(billResponse.data)
+        // Refresh data based on payment type
+        if (paymentType === PaymentType.TABLE_SESSION) {
+          const session = SessionManager.getDiningSession()
+          const sessionId = tableSessionId || session?.tableSessionId
+          if (sessionId) {
+            const billResponse = await api.tableSession.getBill(sessionId)
+            if (billResponse.success && billResponse.data) {
+              setTableBill(billResponse.data)
+            }
+          }
         }
       } else {
-        throw new Error(response.error || 'Failed to cancel payment')
+        throw new Error(response?.error || 'Failed to cancel payment')
       }
     } catch (error: any) {
       console.error('Payment cancellation error:', error)
@@ -797,7 +1077,67 @@ export function PaymentView() {
 
   const handleSplitPaymentComplete = (paymentId: string) => {
     toast.success('Split payment completed successfully!')
-    router.push(`/payment/success?payment=${paymentId}&tableSession=${tableSession?.id}&split=true`)
+    const guestSessionId = SessionManager.getDiningSession()?.sessionId || api.getGuestSessionId() || sessionStorage.getItem('tabsy-guest-session-id')
+    router.push(`/payment/success?payment=${paymentId}&tableSession=${tableSession?.id}&split=true&guestSession=${guestSessionId || ''}`)
+  }
+
+  const handleChangePaymentMethod = async (newPaymentMethod: PaymentMethod) => {
+    if (!paymentId || changingPaymentMethod) return
+
+    setChangingPaymentMethod(true)
+
+    try {
+      const response = await api.payment.changeMethod(paymentId, newPaymentMethod)
+
+      if (response?.success) {
+        // Update payment method and client secret if provided
+        setSelectedPaymentMethod(newPaymentMethod)
+
+        if (response.data.clientSecret) {
+          setClientSecret(response.data.clientSecret)
+        }
+
+        // Update states based on new payment method
+        if (newPaymentMethod === PaymentMethod.CASH) {
+          setCashPaymentPending(true)
+          setClientSecret(null)
+          toast.success('Payment Method Changed', {
+            description: 'Payment method changed to cash. Your server will confirm when payment is received.'
+          })
+        } else {
+          setCashPaymentPending(false)
+          toast.success('Payment Method Changed', {
+            description: 'Payment method changed to card. Please complete your payment below.'
+          })
+        }
+      } else {
+        throw new Error(response?.error || 'Failed to change payment method')
+      }
+    } catch (error: any) {
+      console.error('Payment method change error:', error)
+
+      // Handle session expiry
+      const isSessionExpired = error?.response?.status === 401 ||
+                               error?.response?.data?.errorCode === 'SESSION_EXPIRED'
+
+      if (isSessionExpired) {
+        const recoverySuccessful = await attemptSessionRecovery()
+        if (recoverySuccessful) {
+          setTimeout(() => handleChangePaymentMethod(newPaymentMethod), 1000)
+          return
+        } else {
+          SessionManager.clearDiningSession()
+          setTimeout(() => router.push('/'), 3000)
+          return
+        }
+      }
+
+      toast.error('Payment Method Change Failed', {
+        description: error.message || 'Unable to change payment method. Please try again.'
+      })
+    } finally {
+      setChangingPaymentMethod(false)
+    }
   }
 
   const handleBackFromSplit = () => {
@@ -805,9 +1145,9 @@ export function PaymentView() {
   }
 
   const handleBack = () => {
-    if (paymentType === 'order') {
+    if (paymentType === PaymentType.ORDER) {
       router.push(`/order/${orderId}?restaurant=${restaurantId}&table=${tableId}`)
-    } else if (paymentType === 'table_session' || paymentType === 'split_bill') {
+    } else if (paymentType === PaymentType.TABLE_SESSION || paymentType === PaymentType.SPLIT_BILL) {
       router.push(`/table/bill${SessionManager.getDiningQueryParams()}`)
     } else {
       router.back()
@@ -825,7 +1165,7 @@ export function PaymentView() {
     )
   }
 
-  if (error || (paymentType === 'order' && !order) || ((paymentType === 'table_session' || paymentType === 'split_bill') && (!tableBill || !tableSession))) {
+  if (error || (paymentType === PaymentType.ORDER && !order) || ((paymentType === PaymentType.TABLE_SESSION || paymentType === PaymentType.SPLIT_BILL) && (!tableBill || !tableSession))) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center space-y-6 max-w-md">
@@ -884,15 +1224,15 @@ export function PaymentView() {
             <div>
               <h1 className="text-xl font-semibold">Payment</h1>
               <p className="text-sm text-content-tertiary">
-                {paymentType === 'order' && order ? (
+                {paymentType === PaymentType.ORDER && order ? (
                   `Order #${order.orderNumber}`
-                ) : paymentType === 'table_session' ? (
+                ) : paymentType === PaymentType.TABLE_SESSION ? (
                   'Table Session Payment'
                 ) : (
                   'Split Bill Payment'
                 )}
               </p>
-              {paymentType !== 'order' && tableBill && (
+              {paymentType !== PaymentType.ORDER && tableBill && (
                 <p className="text-xs text-content-secondary">
                   Remaining: ${tableBill.summary.remainingBalance.toFixed(2)} of ${tableBill.summary.grandTotal.toFixed(2)}
                 </p>
@@ -915,9 +1255,9 @@ export function PaymentView() {
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-content-primary flex items-center space-x-2">
                   <Receipt className="w-5 h-5" />
-                  <span>{paymentType === 'order' ? 'Order Summary' : 'Bill Summary'}</span>
+                  <span>{paymentType === PaymentType.ORDER ? 'Order Summary' : 'Bill Summary'}</span>
                 </h3>
-                {paymentType === 'table_session' && sessionUsers.length > 1 && (
+                {paymentType === PaymentType.TABLE_SESSION && sessionUsers.length > 1 && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -930,7 +1270,7 @@ export function PaymentView() {
                 )}
               </div>
 
-              {paymentType === 'order' && order ? (
+              {paymentType === PaymentType.ORDER && order ? (
                 <>
                   <div className="space-y-3 mb-4">
                     {order.items.map((item) => (
@@ -969,7 +1309,7 @@ export function PaymentView() {
                     </div>
                   </div>
                 </>
-              ) : paymentType === 'table_session' && tableBill ? (
+              ) : paymentType === PaymentType.TABLE_SESSION && tableBill ? (
                 <>
                   <div className="space-y-3 mb-4">
                     <div className="flex items-center space-x-2 text-sm text-content-secondary">
@@ -1175,7 +1515,7 @@ export function PaymentView() {
                       </StripeProvider>
 
                       {/* Show cancel button for table session payments */}
-                      {paymentType === 'table_session' && paymentId && (
+                      {paymentType === PaymentType.TABLE_SESSION && paymentId && (
                         <Button
                           onClick={handlePaymentCancel}
                           variant="outline"
@@ -1202,7 +1542,7 @@ export function PaymentView() {
                       <div className="bg-status-info/10 border border-status-info/20 rounded-lg p-4">
                         <div className="text-sm text-status-info">
                           <strong>Ready to pay with card:</strong> Click "Initialize Payment" to prepare your payment form.
-                          {paymentType === 'table_session' && (
+                          {paymentType === PaymentType.TABLE_SESSION && (
                             <div className="mt-2 text-xs">
                               💡 You can cancel the payment before completing it if needed.
                             </div>
@@ -1235,7 +1575,7 @@ export function PaymentView() {
                         </Button>
 
                         {/* Show cancel button for table session payments when payment is initialized */}
-                        {paymentType === 'table_session' && clientSecret && paymentId && (
+                        {paymentType === PaymentType.TABLE_SESSION && clientSecret && paymentId && (
                           <Button
                             onClick={handlePaymentCancel}
                             variant="outline"
@@ -1273,13 +1613,27 @@ export function PaymentView() {
                 </div>
               )}
 
-              {selectedPaymentMethod === PaymentMethod.CASH && (
+              {selectedPaymentMethod === PaymentMethod.CASH && !cashPaymentPending && (
                 <div className="mt-4 p-4 bg-status-warning/10 border border-status-warning/20 rounded-lg">
                   <div className="flex items-center space-x-2 text-sm text-status-warning">
                     <Info className="w-4 h-4" />
                     <span>
-                      Please let your server know you'll be paying with cash
+                      Click below to notify your server about cash payment
                     </span>
+                  </div>
+                </div>
+              )}
+
+              {selectedPaymentMethod === PaymentMethod.CASH && cashPaymentPending && (
+                <div className="mt-4 p-4 bg-status-info/10 border border-status-info/20 rounded-lg">
+                  <div className="flex items-center space-x-2 text-sm text-status-info">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-status-info"></div>
+                    <span>
+                      <strong>Cash payment requested!</strong> Waiting for server confirmation...
+                    </span>
+                  </div>
+                  <div className="mt-2 text-xs text-status-info">
+                    Your server will confirm when they receive your cash payment.
                   </div>
                 </div>
               )}
@@ -1300,7 +1654,7 @@ export function PaymentView() {
 
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-content-secondary">
-                  <span>{paymentType === 'order' ? 'Order Total' : 'Amount Due'}</span>
+                  <span>{paymentType === PaymentType.ORDER ? 'Order Total' : 'Amount Due'}</span>
                   <span>${getPaymentAmount().toFixed(2)}</span>
                 </div>
 
@@ -1318,7 +1672,7 @@ export function PaymentView() {
                   </div>
                 </div>
 
-                {paymentType === 'table_session' && sessionUsers.length > 1 && (
+                {paymentType === PaymentType.TABLE_SESSION && sessionUsers.length > 1 && (
                   <div className="mt-4 p-3 bg-status-info/10 border border-status-info/20 rounded-lg">
                     <div className="flex items-center space-x-2 text-sm text-status-info">
                       <Info className="w-4 h-4" />
@@ -1331,18 +1685,61 @@ export function PaymentView() {
               </div>
 
               {/* Payment Action */}
-              {selectedPaymentMethod === PaymentMethod.CASH && (
+              {selectedPaymentMethod === PaymentMethod.CASH && !cashPaymentPending && (
                 <Button
                   onClick={handleNonCardPayment}
                   size="lg"
                   className="w-full"
                   disabled={processing || updatingTip}
                 >
-                  <div className="flex items-center space-x-2">
-                    <Banknote className="w-4 h-4" />
-                    <span>Notify Server - Cash Payment</span>
-                  </div>
+                  {processing ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Requesting Payment...</span>
+                    </div>
+                  ) : updatingTip ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Updating Tip...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <Banknote className="w-4 h-4" />
+                      <span>Request Cash Payment</span>
+                    </div>
+                  )}
                 </Button>
+              )}
+
+              {selectedPaymentMethod === PaymentMethod.CASH && cashPaymentPending && (
+                <div className="space-y-3">
+                  <div className="text-center p-4 bg-surface-tertiary rounded-lg">
+                    <div className="flex items-center justify-center space-x-2 text-sm text-content-secondary">
+                      <CheckCircle className="w-4 h-4 text-status-success" />
+                      <span>Payment request sent to server</span>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handlePaymentCancel}
+                    variant="outline"
+                    size="lg"
+                    className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                    disabled={cancelling || processing}
+                  >
+                    {cancelling ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                        <span>Cancelling...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <AlertCircle className="w-4 h-4" />
+                        <span>Cancel Cash Payment</span>
+                      </div>
+                    )}
+                  </Button>
+                </div>
               )}
 
               {selectedPaymentMethod === PaymentMethod.MOBILE_PAYMENT && (

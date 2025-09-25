@@ -22,6 +22,7 @@ import { DietaryType, AllergyInfo } from '@tabsy/shared-types'
 import { CompactCartItemDisplay } from '@tabsy/ui-components'
 import { haptics } from '@/lib/haptics'
 import { useCart } from '@/hooks/useCart'
+import { STORAGE_KEYS } from '@/constants/storage'
 
 
 interface CartDrawerProps {
@@ -89,7 +90,7 @@ export function CartDrawer({ isOpen, onClose, onEditItem }: CartDrawerProps) {
     haptics.buttonPressImportant()
 
     // Store special instructions in sessionStorage (cart is already managed by context)
-    sessionStorage.setItem('tabsy-special-instructions', specialInstructions)
+    sessionStorage.setItem(STORAGE_KEYS.SPECIAL_INSTRUCTIONS, specialInstructions)
 
     // Close drawer and navigate to checkout
     onClose()

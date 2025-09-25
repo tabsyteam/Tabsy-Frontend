@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { toast } from 'sonner'
 import { TabsyAPI } from '@tabsy/api-client'
+import { SplitBillType } from '@/constants/payment'
 import {
   PaymentMethod
 } from '@tabsy/shared-types'
@@ -59,7 +60,7 @@ export function SplitBillPayment({
   onCancel
 }: SplitBillPaymentProps) {
   const [splitOption, setSplitOption] = useState<SplitPaymentOption>({
-    type: 'equal',
+    type: SplitBillType.EQUAL,
     participants: users.map(u => u.guestSessionId)
   })
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CREDIT_CARD)
@@ -92,7 +93,7 @@ export function SplitBillPayment({
     const { remainingBalance } = bill.summary
 
     switch (splitOption.type) {
-      case 'equal':
+      case SplitBillType.EQUAL:
         const equalAmount = remainingBalance / splitOption.participants.length
         splitOption.participants.forEach(id => {
           amounts[id] = Math.round(equalAmount * 100) / 100 // Round to cents
@@ -106,7 +107,7 @@ export function SplitBillPayment({
         }
         break
 
-      case 'by_percentage':
+      case SplitBillType.BY_PERCENTAGE:
         let totalPercentage = 0
         Object.entries(customPercentages).forEach(([id, percentageStr]) => {
           const percentage = parseFloat(percentageStr) || 0
@@ -131,7 +132,7 @@ export function SplitBillPayment({
         }
         break
 
-      case 'by_amount':
+      case SplitBillType.BY_AMOUNT:
         let totalManualAmount = 0
         Object.entries(customAmounts).forEach(([id, amountStr]) => {
           const amount = Math.max(0, parseFloat(amountStr) || 0) // Ensure non-negative
@@ -150,7 +151,7 @@ export function SplitBillPayment({
         }
         break
 
-      case 'by_items':
+      case SplitBillType.BY_ITEMS:
         // Calculate based on item assignments
         const userTotals: { [guestSessionId: string]: number } = {}
 
@@ -218,7 +219,7 @@ export function SplitBillPayment({
     }
 
     // Check percentage validation for by_percentage
-    if (splitOption.type === 'by_percentage') {
+    if (splitOption.type === SplitBillType.BY_PERCENTAGE) {
       const totalPercentage = Object.values(customPercentages).reduce((sum, pct) => sum + (parseFloat(pct) || 0), 0)
       if (totalPercentage > 100.01) {
         errors.push(`Total percentage (${totalPercentage.toFixed(1)}%) exceeds 100%`)
@@ -235,10 +236,10 @@ export function SplitBillPayment({
   const handleSplitOptionChange = (type: SplitPaymentOption['type']) => {
     setSplitOption({
       type,
-      participants: type === 'equal' ? users.map(u => u.guestSessionId) : splitOption.participants,
-      amounts: type === 'by_amount' ? customAmounts : undefined,
-      percentages: type === 'by_percentage' ? customPercentages : undefined,
-      itemAssignments: type === 'by_items' ? itemAssignments : undefined
+      participants: type === SplitBillType.EQUAL ? users.map(u => u.guestSessionId) : splitOption.participants,
+      amounts: type === SplitBillType.BY_AMOUNT ? customAmounts : undefined,
+      percentages: type === SplitBillType.BY_PERCENTAGE ? customPercentages : undefined,
+      itemAssignments: type === SplitBillType.BY_ITEMS ? itemAssignments : undefined
     })
   }
 
@@ -259,7 +260,7 @@ export function SplitBillPayment({
       [userId]: value
     }))
 
-    if (splitOption.type === 'by_amount') {
+    if (splitOption.type === SplitBillType.BY_AMOUNT) {
       setSplitOption(prev => ({
         ...prev,
         amounts: {
@@ -277,7 +278,7 @@ export function SplitBillPayment({
       [userId]: value
     }))
 
-    if (splitOption.type === 'by_percentage') {
+    if (splitOption.type === SplitBillType.BY_PERCENTAGE) {
       setSplitOption(prev => ({
         ...prev,
         percentages: {
@@ -295,7 +296,7 @@ export function SplitBillPayment({
       [itemId]: userId
     }))
 
-    if (splitOption.type === 'by_items') {
+    if (splitOption.type === SplitBillType.BY_ITEMS) {
       setSplitOption(prev => ({
         ...prev,
         itemAssignments: {
@@ -495,9 +496,9 @@ export function SplitBillPayment({
 
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => handleSplitOptionChange('equal')}
+            onClick={() => handleSplitOptionChange(SplitBillType.EQUAL)}
             className={`p-3 rounded-lg border text-left ${
-              splitOption.type === 'equal'
+              splitOption.type === SplitBillType.EQUAL
                 ? 'border-primary bg-primary/10'
                 : 'border-default bg-surface'
             }`}
@@ -509,9 +510,9 @@ export function SplitBillPayment({
           </button>
 
           <button
-            onClick={() => handleSplitOptionChange('by_items')}
+            onClick={() => handleSplitOptionChange(SplitBillType.BY_ITEMS)}
             className={`p-3 rounded-lg border text-left ${
-              splitOption.type === 'by_items'
+              splitOption.type === SplitBillType.BY_ITEMS
                 ? 'border-primary bg-primary/10'
                 : 'border-default bg-surface'
             }`}
@@ -523,9 +524,9 @@ export function SplitBillPayment({
           </button>
 
           <button
-            onClick={() => handleSplitOptionChange('by_percentage')}
+            onClick={() => handleSplitOptionChange(SplitBillType.BY_PERCENTAGE)}
             className={`p-3 rounded-lg border text-left ${
-              splitOption.type === 'by_percentage'
+              splitOption.type === SplitBillType.BY_PERCENTAGE
                 ? 'border-primary bg-primary/10'
                 : 'border-default bg-surface'
             }`}
@@ -537,9 +538,9 @@ export function SplitBillPayment({
           </button>
 
           <button
-            onClick={() => handleSplitOptionChange('by_amount')}
+            onClick={() => handleSplitOptionChange(SplitBillType.BY_AMOUNT)}
             className={`p-3 rounded-lg border text-left ${
-              splitOption.type === 'by_amount'
+              splitOption.type === SplitBillType.BY_AMOUNT
                 ? 'border-primary bg-primary/10'
                 : 'border-default bg-surface'
             }`}
@@ -553,7 +554,7 @@ export function SplitBillPayment({
       </div>
 
       {/* Split Details */}
-      {splitOption.type === 'by_items' && (
+      {splitOption.type === SplitBillType.BY_ITEMS && (
         <div className="space-y-4">
           <h4 className="font-medium">Assign Items</h4>
           {Object.values(bill.billByRound).map(round => (
@@ -587,7 +588,7 @@ export function SplitBillPayment({
         </div>
       )}
 
-      {splitOption.type === 'by_percentage' && (
+      {splitOption.type === SplitBillType.BY_PERCENTAGE && (
         <div className="space-y-3">
           <h4 className="font-medium">Set Percentages</h4>
           {users.map(user => (
@@ -613,7 +614,7 @@ export function SplitBillPayment({
         </div>
       )}
 
-      {splitOption.type === 'by_amount' && (
+      {splitOption.type === SplitBillType.BY_AMOUNT && (
         <div className="space-y-3">
           <h4 className="font-medium">Set Amounts</h4>
           {users.map(user => (

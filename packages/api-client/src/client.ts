@@ -112,10 +112,11 @@ export class TabsyApiClient {
         if (error.response) {
           const status = error.response.status
           
-          // Handle 401 Unauthorized - attempt token refresh
-          if (status === 401 && !originalRequest._retry) {
+          // Handle 401 Unauthorized - attempt token refresh only if we have an auth token
+          // Don't attempt refresh for guest sessions
+          if (status === 401 && !originalRequest._retry && this.authToken) {
             originalRequest._retry = true
-            
+
             try {
               await this.refreshToken()
               return this.axiosInstance(originalRequest)
@@ -124,6 +125,12 @@ export class TabsyApiClient {
               this.handleAuthenticationError()
               return Promise.reject(refreshError)
             }
+          }
+
+          // For guest sessions or when no token exists, just reject with the error
+          if (status === 401 && !this.authToken) {
+            // Don't try to refresh, just return the error
+            return Promise.reject(error)
           }
 
           // Handle rate limiting (429) with max retry limit

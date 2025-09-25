@@ -596,13 +596,16 @@ export function CreateItemModal({
           <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6 sm:space-y-8">
             {/* Image Upload Section */}
             <div className="relative">
-              {imageUpload.preview ? (
+              {(imageUpload.preview || formData.image) ? (
                 <div className="glass-card p-4 border rounded-xl">
                   <div className="relative">
                     <img
-                      src={imageUpload.preview}
+                      src={imageUpload.preview || formData.image || '/images/food/tabsy-food-placeholder.svg'}
                       alt="Menu item preview"
                       className="w-full h-48 object-cover rounded-lg"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/images/food/tabsy-food-placeholder.svg';
+                      }}
                     />
                     {imageUpload.uploading && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg">

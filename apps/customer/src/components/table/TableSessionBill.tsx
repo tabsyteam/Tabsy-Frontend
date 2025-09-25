@@ -8,6 +8,7 @@ import { TabsyAPI } from '@tabsy/api-client'
 import { SessionManager } from '@/lib/session'
 import { Button } from '@tabsy/ui-components'
 import { CreditCard, Split, Users, AlertTriangle, RefreshCw } from 'lucide-react'
+import { PaymentType } from '@/constants/payment'
 import type {
   TableSessionBill as TableSessionBillType,
   TableSessionUser,
@@ -87,7 +88,7 @@ const TableSessionBillComponent = ({
       // Navigate to payment page for table session
       const queryParams = new URLSearchParams({
         tableSessionId: tableSession.id,
-        type: 'table_session',
+        type: PaymentType.TABLE_SESSION,
         restaurant: session.restaurantId,
         table: session.tableId
       })
@@ -112,7 +113,7 @@ const TableSessionBillComponent = ({
       // Navigate to payment page for split bill
       const queryParams = new URLSearchParams({
         tableSessionId: tableSession.id,
-        type: 'split_bill',
+        type: PaymentType.SPLIT_BILL,
         restaurant: session.restaurantId,
         table: session.tableId
       })

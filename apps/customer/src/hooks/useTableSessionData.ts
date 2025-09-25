@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useApi } from '@/components/providers/api-provider'
 import { SessionManager } from '@/lib/session'
 import { toast } from 'sonner'
+import { STORAGE_KEYS } from '@/constants/storage'
 import type {
   MultiUserTableSession,
   TableSessionUser
@@ -44,7 +45,7 @@ export function useTableSessionData() {
 
         // If not in session data, try to get it from sessionStorage
         if (!tableSessionId) {
-          const storedTableSessionId = typeof window !== 'undefined' ? sessionStorage.getItem('tabsy-table-session-id') : null
+          const storedTableSessionId = typeof window !== 'undefined' ? sessionStorage.getItem(STORAGE_KEYS.TABLE_SESSION_ID) : null
           if (storedTableSessionId) {
             tableSessionId = storedTableSessionId
           }

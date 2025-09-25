@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import { MenuItem, MenuCategory } from '@tabsy/shared-types'
 import { useCart } from './useCart'
+import { STORAGE_KEYS } from '@/constants/storage'
 
 interface UseMenuItemActionsProps {
   restaurantId: string | null
@@ -23,7 +24,7 @@ export function useMenuItemActions({ restaurantId, menuCategories }: UseMenuItem
   const loadFavoritesFromStorage = useCallback((): Set<string> => {
     if (!restaurantId) return new Set()
     try {
-      const stored = localStorage.getItem(`tabsy-favorites-${restaurantId}`)
+      const stored = localStorage.getItem(STORAGE_KEYS.FAVORITES(restaurantId))
       return stored ? new Set(JSON.parse(stored)) : new Set()
     } catch (error) {
       console.error('Failed to load favorites:', error)
@@ -35,7 +36,7 @@ export function useMenuItemActions({ restaurantId, menuCategories }: UseMenuItem
   const saveFavoritesToStorage = useCallback((favSet: Set<string>) => {
     if (!restaurantId) return
     try {
-      localStorage.setItem(`tabsy-favorites-${restaurantId}`, JSON.stringify(Array.from(favSet)))
+      localStorage.setItem(STORAGE_KEYS.FAVORITES(restaurantId), JSON.stringify(Array.from(favSet)))
     } catch (error) {
       console.error('Failed to save favorites:', error)
     }

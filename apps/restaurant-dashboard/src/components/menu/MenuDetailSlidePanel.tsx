@@ -543,7 +543,7 @@ export function MenuDetailSlidePanel({
                               alt={item.name}
                               className="w-full h-full object-cover"
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/images/food/dish-placeholder.svg';
+                                (e.target as HTMLImageElement).src = '/images/food/tabsy-food-placeholder.svg';
                               }}
                             />
                           </div>

@@ -10,6 +10,7 @@ import { MenuView } from '@/components/menu/MenuView'
 import { globalSessionManager } from '@/utils/globalSessionManager'
 import { strictModeGuard } from '@/utils/strictModeGuard'
 import { SessionManager } from '@/lib/session'
+import { STORAGE_KEYS } from '@/constants/storage'
 import type {
   MultiUserTableSession,
   TableSessionUser,
@@ -24,7 +25,7 @@ let globalSessionCreationLock = false
 
 // Check if session creation is already in progress globally
 const isSessionCreationInProgress = (tableId: string): boolean => {
-  const lockKey = `session-creation-lock-${tableId}`
+  const lockKey = STORAGE_KEYS.TABLE_SESSION_LOCK(tableId)
   const currentTime = Date.now()
   const lockData = sessionStorage.getItem(lockKey)
 
@@ -43,13 +44,13 @@ const isSessionCreationInProgress = (tableId: string): boolean => {
 
 // Set session creation lock globally
 const setSessionCreationLock = (tableId: string): void => {
-  const lockKey = `session-creation-lock-${tableId}`
+  const lockKey = STORAGE_KEYS.TABLE_SESSION_LOCK(tableId)
   sessionStorage.setItem(lockKey, JSON.stringify({ timestamp: Date.now() }))
 }
 
 // Clear session creation lock globally
 const clearSessionCreationLock = (tableId: string): void => {
-  const lockKey = `session-creation-lock-${tableId}`
+  const lockKey = STORAGE_KEYS.TABLE_SESSION_LOCK(tableId)
   sessionStorage.removeItem(lockKey)
 }
 
@@ -241,7 +242,7 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
     const existingSessionId = api.getGuestSessionId()
     if (existingSessionId) {
       // Check for stored tableSessionId from QR code processing
-      const tableSessionId = sessionStorage.getItem('tabsy-table-session-id')
+      const tableSessionId = sessionStorage.getItem(STORAGE_KEYS.TABLE_SESSION_ID)
 
       // Save dining session for MenuView
       SessionManager.setDiningSession({
@@ -275,7 +276,7 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
       api.setGuestSession(storedSessionId)
 
       // Check for stored tableSessionId from QR code processing
-      const tableSessionId = sessionStorage.getItem('tabsy-table-session-id')
+      const tableSessionId = sessionStorage.getItem(STORAGE_KEYS.TABLE_SESSION_ID)
 
       // Save dining session for MenuView
       SessionManager.setDiningSession({
@@ -374,7 +375,7 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
             sessionStorage.setItem(`guestSession-${tableId}`, guestSession.sessionId)
 
             // Store the table session ID for later use
-            sessionStorage.setItem('tabsy-table-session-id', guestSession.tableSessionId)
+            sessionStorage.setItem(STORAGE_KEYS.TABLE_SESSION_ID, guestSession.tableSessionId)
 
             // Save dining session for MenuView
             SessionManager.setDiningSession({

@@ -33,6 +33,8 @@ interface ItemDetailModalProps {
   onAddToCart: (item: MenuItem, quantity: number, customizations: Record<string, any>, options?: OrderItemOption[]) => void
   onUpdateCartItem?: (cartItemId: string, item: MenuItem, quantity: number, customizations: Record<string, any>, specialInstructions?: string, options?: OrderItemOption[]) => void
   existingQuantity?: number
+  isFavorite?: boolean
+  onToggleFavorite?: (itemId: string) => void
   existingCartItem?: {
     cartItemId: string
     quantity: number
@@ -104,6 +106,8 @@ export function ItemDetailModal({
   onAddToCart,
   onUpdateCartItem,
   existingQuantity = 0,
+  isFavorite: propIsFavorite = false,
+  onToggleFavorite,
   existingCartItem = null,
   mode = 'auto'
 }: ItemDetailModalProps) {
@@ -117,7 +121,7 @@ export function ItemDetailModal({
   const [imageLoading, setImageLoading] = useState(false)
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [imageScale, setImageScale] = useState(1)
-  const [isFavorite, setIsFavorite] = useState(false)
+  const [isFavorite, setIsFavorite] = useState(propIsFavorite)
   const imageRef = useRef<HTMLImageElement>(null)
   const nutritionRef = useRef<HTMLDivElement>(null)
   const { controls: shakeControls, shake } = useShakeAnimation()
@@ -241,6 +245,11 @@ export function ItemDetailModal({
   }, [isOpen])
 
   // Auto-scroll to nutritional information when it opens
+  // Sync favorite state when prop changes
+  useEffect(() => {
+    setIsFavorite(propIsFavorite)
+  }, [propIsFavorite])
+
   useEffect(() => {
     if (showNutrition && nutritionRef.current) {
       // Use a small delay to allow the animation to start
@@ -497,11 +506,14 @@ export function ItemDetailModal({
   }
 
   const toggleFavorite = () => {
-    setIsFavorite(!isFavorite)
-    if (!isFavorite) {
-      haptics.favoriteToggle()
-    } else {
-      haptics.unfavoriteToggle()
+    if (onToggleFavorite && item) {
+      onToggleFavorite(item.id)
+      setIsFavorite(!isFavorite)
+      if (!isFavorite) {
+        haptics.favoriteToggle()
+      } else {
+        haptics.unfavoriteToggle()
+      }
     }
   }
 
@@ -635,16 +647,22 @@ export function ItemDetailModal({
                     {images.length > 1 && (
                       <>
                         <motion.button
-                          onClick={prevImage}
-                          className="absolute left-4 top-1/2 -translate-y-1/2 bg-surface/90 backdrop-blur-sm text-content-primary rounded-full p-3 shadow-lg hover:bg-surface hover:scale-110 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            prevImage()
+                          }}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 bg-surface/95 backdrop-blur-sm text-content-primary rounded-full p-3 min-w-[44px] min-h-[44px] flex items-center justify-center shadow-lg hover:bg-surface active:scale-95 transition-all duration-200 z-20 opacity-100"
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.95 }}
                         >
                           <ChevronLeft className="w-5 h-5" />
                         </motion.button>
                         <motion.button
-                          onClick={nextImage}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 bg-surface/90 backdrop-blur-sm text-content-primary rounded-full p-3 shadow-lg hover:bg-surface hover:scale-110 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            nextImage()
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 bg-surface/95 backdrop-blur-sm text-content-primary rounded-full p-3 min-w-[44px] min-h-[44px] flex items-center justify-center shadow-lg hover:bg-surface active:scale-95 transition-all duration-200 z-20 opacity-100"
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.95 }}
                         >
@@ -652,18 +670,19 @@ export function ItemDetailModal({
                         </motion.button>
 
                         {/* Modern Dots Indicator */}
-                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-2 bg-black/30 backdrop-blur-sm rounded-full px-4 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-2 bg-black/60 backdrop-blur-sm rounded-full px-4 py-2 z-20 opacity-100 transition-opacity duration-300">
                           {images.map((_, index) => (
                             <motion.button
                               key={index}
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation()
                                 setCurrentImageIndex(index)
                                 setImageScale(1)
                               }}
-                              className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                              className={`min-w-[10px] min-h-[10px] rounded-full transition-all duration-200 ${
                                 index === currentImageIndex
-                                  ? 'bg-surface scale-125'
-                                  : 'bg-surface/60 hover:bg-surface/80'
+                                  ? 'bg-white w-6 scale-110'
+                                  : 'bg-white/60 hover:bg-white/80 w-2.5'
                               }`}
                               whileHover={{ scale: 1.2 }}
                               whileTap={{ scale: 0.9 }}
@@ -673,38 +692,44 @@ export function ItemDetailModal({
                       </>
                     )}
 
-                    {/* Enhanced Action Buttons */}
-                    <div className="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    {/* Enhanced Action Buttons - Mobile-friendly touch targets (44px minimum) */}
+                    <div className="absolute top-4 right-4 flex space-x-3 z-20 opacity-100 transition-opacity duration-300">
                       {/* Fullscreen Button */}
                       <motion.button
-                        onClick={toggleFullscreen}
-                        className="bg-surface/90 backdrop-blur-sm text-content-primary rounded-full p-2.5 shadow-lg hover:bg-surface transition-all duration-200"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleFullscreen()
+                        }}
+                        className="bg-surface/95 backdrop-blur-sm text-content-primary rounded-full p-3 min-w-[44px] min-h-[44px] flex items-center justify-center shadow-lg hover:bg-surface active:scale-95 transition-all duration-200"
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}
                         title="View fullscreen"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                         </svg>
                       </motion.button>
 
                       {/* Favorite Button */}
                       <motion.button
-                        onClick={toggleFavorite}
-                        className={`bg-surface/90 backdrop-blur-sm rounded-full p-2.5 shadow-lg hover:bg-surface transition-all duration-200 ${
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleFavorite()
+                        }}
+                        className={`bg-surface/95 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px] flex items-center justify-center shadow-lg hover:bg-surface active:scale-95 transition-all duration-200 ${
                           isFavorite ? 'text-red-500' : 'text-gray-800'
                         }`}
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}
                         title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                       >
-                        <Heart className={`w-4 h-4 ${isFavorite ? 'fill-current' : ''}`} />
+                        <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
                       </motion.button>
                     </div>
 
                     {/* Image Counter */}
                     {images.length > 1 && (
-                      <div className="absolute top-4 left-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-medium z-20 opacity-100 transition-opacity duration-300">
                         {currentImageIndex + 1} / {images.length}
                       </div>
                     )}
@@ -730,7 +755,7 @@ export function ItemDetailModal({
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 0.7, y: 0 }}
                           exit={{ opacity: 0, y: 10 }}
-                          className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-xs opacity-0 group-hover:opacity-70 transition-opacity duration-300 pointer-events-none"
+                          className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-medium opacity-90 transition-opacity duration-300 pointer-events-none z-10"
                         >
                           Tap to zoom
                         </motion.div>

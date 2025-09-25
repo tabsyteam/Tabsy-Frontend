@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 import { useWebSocket } from '@tabsy/ui-components'
 import { useSessionUpdates } from '@tabsy/api-client'
 import { useSessionDetails } from '@/hooks/useSessionDetails'
+import { STORAGE_KEYS } from '@/constants/storage'
 interface TableInfo {
   restaurant: {
     id: string
@@ -103,7 +104,7 @@ export function TableSessionView() {
 
     if (session) {
       // Get table info from sessionStorage
-      const storedTableInfo = sessionStorage.getItem('tabsy-table-info')
+      const storedTableInfo = sessionStorage.getItem(STORAGE_KEYS.TABLE_INFO)
       if (storedTableInfo) {
         try {
           setTableInfo(JSON.parse(storedTableInfo))
@@ -149,8 +150,8 @@ export function TableSessionView() {
   const handleEndSession = () => {
     SessionManager.clearDiningSession()
     sessionStorage.removeItem('tabsy-session')
-    sessionStorage.removeItem('tabsy-table-info')
-    sessionStorage.removeItem('tabsy-cart')
+    sessionStorage.removeItem(STORAGE_KEYS.TABLE_INFO)
+    sessionStorage.removeItem(STORAGE_KEYS.CART)
     toast.success('Session ended successfully')
     router.push('/')
   }

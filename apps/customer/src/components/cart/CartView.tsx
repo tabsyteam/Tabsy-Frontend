@@ -11,6 +11,8 @@ import { CustomizationList } from '@tabsy/ui-components'
 import { useCart } from '@/hooks/useCart'
 import { SessionManager } from '@/lib/session'
 import { ItemDetailModal } from '@/components/menu/ItemDetailModal'
+import { calculateTax } from '@/constants/tax'
+import { STORAGE_KEYS } from '@/constants/storage'
 
 
 interface TableInfo {
@@ -81,7 +83,7 @@ export function CartView() {
 
   useEffect(() => {
     // Load table info from sessionStorage
-    const savedTableInfo = sessionStorage.getItem('tabsy-table-info')
+    const savedTableInfo = sessionStorage.getItem(STORAGE_KEYS.TABLE_INFO)
     if (savedTableInfo) {
       try {
         setTableInfo(JSON.parse(savedTableInfo))
@@ -108,7 +110,7 @@ export function CartView() {
       // Try to get the original menu item with options from session storage
       let originalMenuItem = null
       try {
-        const cachedMenuData = sessionStorage.getItem('tabsy-menu-data')
+        const cachedMenuData = sessionStorage.getItem(STORAGE_KEYS.MENU_DATA)
         if (cachedMenuData) {
           const menuData = JSON.parse(cachedMenuData)
           // Find the original menu item
@@ -171,7 +173,7 @@ export function CartView() {
   }
 
   const getTax = (): number => {
-    return cartTotal * 0.08 // 8% tax
+    return calculateTax(cartTotal) // 10% tax (matches backend)
   }
 
   const getTotal = (): number => {
@@ -190,7 +192,7 @@ export function CartView() {
 
     // Store special instructions
     if (specialInstructions.trim()) {
-      sessionStorage.setItem('tabsy-special-instructions', specialInstructions.trim())
+      sessionStorage.setItem(STORAGE_KEYS.SPECIAL_INSTRUCTIONS, specialInstructions.trim())
     }
 
     // Navigate to checkout

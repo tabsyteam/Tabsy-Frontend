@@ -7,6 +7,7 @@ import { Camera, Upload, X, Loader2 } from 'lucide-react'
 import { Html5QrcodeScanner } from 'html5-qrcode'
 import { useApi } from '@/components/providers/api-provider'
 import { toast } from 'sonner'
+import { STORAGE_KEYS } from '@/constants/storage'
 
 export function QRScanner() {
   const [isScanning, setIsScanning] = useState(false)
@@ -75,7 +76,7 @@ export function QRScanner() {
         }
         
         // Store table and restaurant info in sessionStorage for the flow
-        sessionStorage.setItem('tabsy-table-info', JSON.stringify({
+        sessionStorage.setItem(STORAGE_KEYS.TABLE_INFO, JSON.stringify({
           restaurant,
           table,
           qrCode

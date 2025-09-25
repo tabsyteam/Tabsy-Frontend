@@ -9,6 +9,8 @@ import { toast } from 'sonner'
 import { useApi } from '@/components/providers/api-provider'
 import { useCart } from '@/hooks/useCart'
 import { SessionManager } from '@/lib/session'
+import { calculateTax } from '@/constants/tax'
+import { STORAGE_KEYS } from '@/constants/storage'
 
 interface CartItem {
   id: string
@@ -62,7 +64,7 @@ export function CheckoutView() {
 
   useEffect(() => {
     // Load cart from sessionStorage
-    const savedCart = sessionStorage.getItem('tabsy-cart')
+    const savedCart = sessionStorage.getItem(STORAGE_KEYS.CART)
     if (savedCart) {
       try {
         const cartData = JSON.parse(savedCart)
@@ -85,7 +87,7 @@ export function CheckoutView() {
     }
 
     // Load special instructions
-    const savedInstructions = sessionStorage.getItem('tabsy-special-instructions')
+    const savedInstructions = sessionStorage.getItem(STORAGE_KEYS.SPECIAL_INSTRUCTIONS)
     if (savedInstructions) {
       setSpecialInstructions(savedInstructions)
     }
@@ -103,7 +105,7 @@ export function CheckoutView() {
   }
 
   const getTax = (): number => {
-    return getSubtotal() * 0.08 // 8% tax
+    return calculateTax(getSubtotal()) // 10% tax (matches backend)
   }
 
   const getTotal = (): number => {
@@ -214,7 +216,7 @@ export function CheckoutView() {
       if (response.success && response.data) {
         // Clear cart using useCart hook and clear special instructions
         clearCart()
-        sessionStorage.removeItem('tabsy-special-instructions')
+        sessionStorage.removeItem(STORAGE_KEYS.SPECIAL_INSTRUCTIONS)
 
         // Store order info for tracking in sessionStorage
         sessionStorage.setItem('tabsy-current-order', JSON.stringify(response.data))

@@ -245,94 +245,6 @@ export function OrdersView() {
     }
   }
 
-  // Load orders for a specific view (used during view switching)
-  const loadOrdersForView = async (view: 'my' | 'table') => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const viewOrders: Order[] = []
-
-      if (session) {
-        const currentUserSessionId = guestSessionId
-
-        // Load both personal and table orders for the view, then let UI filtering handle display
-        console.log(`[loadOrdersForView] Loading all orders for '${view}' view`)
-
-        // Load personal orders
-        if (currentUserSessionId && currentUserSessionId !== 'null' && currentUserSessionId !== 'undefined') {
-          try {
-            const response = await api.order.list({ sessionId: currentUserSessionId })
-            console.log(`[loadOrdersForView] Personal orders:`, response)
-
-            if (response.success && response.data) {
-              let ordersArray: ApiOrder[] = []
-              if (Array.isArray(response.data)) {
-                ordersArray = response.data
-              } else if (isPaginatedResponse(response.data)) {
-                ordersArray = response.data.orders
-              }
-
-              if (ordersArray.length > 0) {
-                const apiOrders: Order[] = ordersArray.map((order: ApiOrder) => ({
-                  ...order,
-                  restaurantName: session.restaurantName
-                }))
-                viewOrders.push(...apiOrders)
-              }
-            }
-          } catch (apiError) {
-            console.warn(`[loadOrdersForView] Failed to load personal orders:`, apiError)
-          }
-        }
-
-        // Load table orders
-        if (tableSessionId && tableSessionId !== 'null' && tableSessionId !== 'undefined') {
-          try {
-            const response = await api.order.list({ tableSessionId: tableSessionId })
-            console.log(`[loadOrdersForView] Table orders:`, response)
-
-            if (response.success && response.data) {
-              let ordersArray: ApiOrder[] = []
-              if (Array.isArray(response.data)) {
-                ordersArray = response.data
-              } else if (isPaginatedResponse(response.data)) {
-                ordersArray = response.data.orders
-              }
-
-              if (ordersArray.length > 0) {
-                const apiOrders: Order[] = ordersArray.map((order: ApiOrder) => ({
-                  ...order,
-                  restaurantName: session.restaurantName
-                }))
-
-                // Merge table orders, avoiding duplicates
-                apiOrders.forEach(tableOrder => {
-                  const exists = viewOrders.some(existingOrder => existingOrder.id === tableOrder.id)
-                  if (!exists) {
-                    viewOrders.push(tableOrder)
-                  }
-                })
-              }
-            }
-          } catch (apiError) {
-            console.warn(`[loadOrdersForView] Failed to load table orders:`, apiError)
-          }
-        }
-      }
-
-      // Sort orders by creation date (newest first)
-      viewOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-
-      setOrders(viewOrders)
-      console.log(`[loadOrdersForView] Loaded ${viewOrders.length} orders for '${view}' view`)
-    } catch (err: any) {
-      console.error(`[loadOrdersForView] Failed to load orders for '${view}' view:`, err)
-      setError('Failed to load orders for this view')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   // Hybrid approach: WebSocket primary, API fallback when disconnected
   const loadOrders = async () => {
@@ -423,6 +335,96 @@ export function OrdersView() {
     } catch (err: any) {
       console.error('[OrdersView] Failed to load orders via API:', err)
       setError('Failed to load your orders')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load orders for a specific view - used when switching tabs
+  const loadOrdersForView = async (targetView: 'my' | 'table') => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const allOrders: Order[] = []
+
+      console.log('[OrdersView] Loading orders for specific view:', {
+        targetView,
+        wsConnected,
+        guestSessionId,
+        tableSessionId
+      })
+
+      if (targetView === 'my' && session) {
+        // Load personal orders (current user's orders only)
+        const currentUserSessionId = guestSessionId
+
+        if (currentUserSessionId && currentUserSessionId !== 'null' && currentUserSessionId !== 'undefined') {
+          try {
+            const response = await api.order.list({ sessionId: currentUserSessionId })
+            console.log('[OrdersView] Personal orders API response:', response)
+
+            if (response.success && response.data) {
+              let ordersArray: ApiOrder[] = []
+              if (Array.isArray(response.data)) {
+                ordersArray = response.data
+              } else if (isPaginatedResponse(response.data)) {
+                ordersArray = response.data.orders
+              }
+
+              if (ordersArray.length > 0) {
+                const apiOrders: Order[] = ordersArray.map((order: ApiOrder) => ({
+                  ...order,
+                  restaurantName: session.restaurantName
+                }))
+                allOrders.push(...apiOrders)
+                console.log(`[OrdersView] Loaded ${apiOrders.length} personal orders for view switch`)
+              }
+            }
+          } catch (apiError) {
+            console.warn('[OrdersView] Failed to load personal orders from API:', apiError)
+          }
+        }
+      } else if (targetView === 'table' && session) {
+        // Load table orders (shared orders for all users at the table session)
+        const tableSessionId = session.tableSessionId || sessionStorage.getItem('tabsy-table-session-id')
+
+        if (tableSessionId && tableSessionId !== 'null' && tableSessionId !== 'undefined') {
+          try {
+            const response = await api.order.list({ tableSessionId: tableSessionId })
+            console.log('[OrdersView] Table orders API response:', response)
+
+            if (response.success && response.data) {
+              let ordersArray: ApiOrder[] = []
+              if (Array.isArray(response.data)) {
+                ordersArray = response.data
+              } else if (isPaginatedResponse(response.data)) {
+                ordersArray = response.data.orders
+              }
+
+              if (ordersArray.length > 0) {
+                const apiOrders: Order[] = ordersArray.map((order: ApiOrder) => ({
+                  ...order,
+                  restaurantName: session.restaurantName
+                }))
+                allOrders.push(...apiOrders)
+                console.log(`[OrdersView] Loaded ${apiOrders.length} table orders for view switch`)
+              }
+            }
+          } catch (apiError) {
+            console.warn('[OrdersView] Failed to load table orders from API:', apiError)
+          }
+        }
+      }
+
+      // Sort orders by creation date (newest first)
+      allOrders.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+      setOrders(allOrders)
+      console.log(`[OrdersView] View switch complete: ${allOrders.length} orders loaded for '${targetView}' view`)
+    } catch (err: any) {
+      console.error('[OrdersView] Failed to load orders for view switch:', err)
+      setError('Failed to load orders for this view')
     } finally {
       setLoading(false)
     }
@@ -791,15 +793,33 @@ export function OrdersView() {
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-content-primary">
-                {currentView === 'my' ? 'My Orders' : 'Table Orders'}
-              </h1>
-              <p className="text-content-secondary">
-                {currentView === 'my'
-                  ? 'Track your current and past orders'
-                  : 'All orders for your table session'
-                }
-              </p>
+              <AnimatePresence mode="wait">
+                <motion.h1
+                  key={`title-${currentView}`}
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 5 }}
+                  transition={{ duration: 0.15 }}
+                  className="text-2xl font-bold text-content-primary"
+                >
+                  {currentView === 'my' ? 'My Orders' : 'Table Orders'}
+                </motion.h1>
+              </AnimatePresence>
+              <AnimatePresence mode="wait">
+                <motion.p
+                  key={`subtitle-${currentView}`}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15, delay: 0.05 }}
+                  className="text-content-secondary"
+                >
+                  {currentView === 'my'
+                    ? 'Track your current and past orders'
+                    : 'All orders for your table session'
+                  }
+                </motion.p>
+              </AnimatePresence>
               {/* Connection Status */}
               {session && (
                 <div className="mt-1">
@@ -861,10 +881,20 @@ export function OrdersView() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Empty State */}
+      <motion.div
+        className="max-w-4xl mx-auto px-4 py-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        {/* Empty State with Animation */}
         {filteredOrders.length === 0 && (
-          <div className="text-center py-12">
+          <motion.div
+            className="text-center py-12"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+          >
             <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
               <Receipt className="w-8 h-8 text-gray-400" />
             </div>
@@ -885,12 +915,18 @@ export function OrdersView() {
               }
             </p>
             {(orders.length === 0 || activeOrdersCount > 0) && (
-              <Button onClick={handleNewOrder}>
-                <Plus className="w-4 h-4 mr-2" />
-                Order Now
-              </Button>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.2, delay: 0.2 }}
+              >
+                <Button onClick={handleNewOrder}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Order Now
+                </Button>
+              </motion.div>
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* Orders List */}
@@ -925,7 +961,7 @@ export function OrdersView() {
             <Plus size={24} strokeWidth={2.5} />
           </motion.button>
         )}
-      </div>
+      </motion.div>
     </div>
   )
 }

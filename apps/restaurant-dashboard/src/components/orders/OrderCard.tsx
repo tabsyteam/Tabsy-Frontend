@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useMemo, useCallback, memo } from 'react'
 import { Button } from '@tabsy/ui-components'
-import { Clock, CheckCircle, XCircle, AlertCircle, Eye, Timer, Users, MapPin } from 'lucide-react'
-import { Order, OrderStatus, OrderItem, OrderItemStatus } from '@tabsy/shared-types'
+import { Clock, CheckCircle, XCircle, AlertCircle, Eye, Timer, Users, MapPin, Banknote, CreditCard } from 'lucide-react'
+import { Order, OrderStatus, OrderItem, OrderItemStatus, Payment, PaymentStatus, PaymentMethod } from '@tabsy/shared-types'
 import { formatDistanceToNow } from 'date-fns'
 import { CustomizationSummary } from '@tabsy/ui-components'
+import { tabsyClient } from '@tabsy/api-client'
+import { toast } from 'sonner'
 
 interface OrderCardProps {
   order: Order
@@ -16,6 +18,9 @@ interface OrderCardProps {
 function OrderCardComponent({ order, onStatusUpdate, onViewDetails }: OrderCardProps) {
   const [timeAgo, setTimeAgo] = useState('')
   const [isHovered, setIsHovered] = useState(false)
+  const [payments, setPayments] = useState<Payment[]>([])
+  const [loadingPayments, setLoadingPayments] = useState(false)
+  const [processingCashPayment, setProcessingCashPayment] = useState(false)
 
   useEffect(() => {
     const updateTimeAgo = () => {
@@ -27,6 +32,116 @@ function OrderCardComponent({ order, onStatusUpdate, onViewDetails }: OrderCardP
 
     return () => clearInterval(interval)
   }, [order.createdAt])
+
+  // Fetch payments for this order
+  useEffect(() => {
+    const fetchPayments = async () => {
+      setLoadingPayments(true)
+      try {
+        const response = await tabsyClient.payment.getByOrder(order.id)
+        if (response.success && response.data) {
+          setPayments(response.data)
+        }
+      } catch (error) {
+        console.error('Error fetching payments:', error)
+      } finally {
+        setLoadingPayments(false)
+      }
+    }
+
+    fetchPayments()
+  }, [order.id])
+
+  // Handle cash payment confirmation
+  const handleCashPaymentConfirm = async (paymentId: string) => {
+    setProcessingCashPayment(true)
+    try {
+      const orderTotal = Number(order.total)
+      const response = await tabsyClient.payment.recordCash({
+        orderId: order.id,
+        amount: orderTotal
+      })
+
+      if (response.success) {
+        toast.success('Cash Payment Confirmed', {
+          description: `Payment of $${orderTotal.toFixed(2)} confirmed for order #${order.orderNumber}`
+        })
+
+        // Refresh payments
+        const paymentsResponse = await tabsyClient.payment.getByOrder(order.id)
+        if (paymentsResponse.success && paymentsResponse.data) {
+          setPayments(paymentsResponse.data)
+        }
+      } else {
+        throw new Error(response.error || 'Failed to confirm cash payment')
+      }
+    } catch (error: any) {
+      console.error('Error confirming cash payment:', error)
+      toast.error('Failed to confirm cash payment', {
+        description: error.message || 'Please try again'
+      })
+    } finally {
+      setProcessingCashPayment(false)
+    }
+  }
+
+  // Helper functions for payment status
+  const getPendingCashPayment = (): Payment | null => {
+    return payments.find(p =>
+      p.method === PaymentMethod.CASH &&
+      p.status === PaymentStatus.PENDING
+    ) || null
+  }
+
+  const getCompletedPayments = (): Payment[] => {
+    return payments.filter(p => p.status === PaymentStatus.COMPLETED)
+  }
+
+  const getTotalPaidAmount = (): number => {
+    return getCompletedPayments().reduce((sum, payment) => sum + payment.amount, 0)
+  }
+
+  const isFullyPaid = (): boolean => {
+    const totalPaid = getTotalPaidAmount()
+    const orderTotal = Number(order.total)
+    return totalPaid >= orderTotal
+  }
+
+  const getPaymentStatusDisplay = (): { text: string; color: string; icon: React.ReactNode } => {
+    const pendingCash = getPendingCashPayment()
+    const totalPaid = getTotalPaidAmount()
+    const orderTotal = Number(order.total)
+
+    if (pendingCash) {
+      return {
+        text: 'Cash Payment Pending',
+        color: 'bg-status-warning/10 text-status-warning border-status-warning/20',
+        icon: <Banknote className="w-3 h-3" />
+      }
+    }
+
+    if (isFullyPaid()) {
+      return {
+        text: 'Payment Complete',
+        color: 'bg-status-success/10 text-status-success border-status-success/20',
+        icon: <CheckCircle className="w-3 h-3" />
+      }
+    }
+
+    if (totalPaid > 0) {
+      return {
+        text: `Partial: $${totalPaid.toFixed(2)}/$${orderTotal.toFixed(2)}`,
+        color: 'bg-primary/10 text-primary border-primary/20',
+        icon: <CreditCard className="w-3 h-3" />
+      }
+    }
+
+    return {
+      text: 'Payment Pending',
+      color: 'bg-surface-tertiary text-content-secondary border-border-secondary',
+      icon: <AlertCircle className="w-3 h-3" />
+    }
+  }
 
   const getStatusColor = (status: OrderStatus): string => {
     switch (status) {
@@ -166,6 +281,16 @@ function OrderCardComponent({ order, onStatusUpdate, onViewDetails }: OrderCardP
         )}
       </div>
 
+      {/* Payment Status Row */}
+      {!loadingPayments && payments.length > 0 && (
+        <div className="flex items-center mb-3">
+          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold border ${getPaymentStatusDisplay().color}`}>
+            {getPaymentStatusDisplay().icon}
+            <span className="ml-1">{getPaymentStatusDisplay().text}</span>
+          </span>
+        </div>
+      )}
+
       {/* Metadata Row - Responsive Grid Layout */}
       <div className="grid grid-cols-3 gap-1 sm:gap-2 mb-3 text-xs text-foreground/80">
         <div className="flex items-center gap-1 min-w-0">
@@ -251,6 +376,32 @@ function OrderCardComponent({ order, onStatusUpdate, onViewDetails }: OrderCardP
             </Button>
           )}
 
+          {getPendingCashPayment() && (
+            <Button
+              size="sm"
+              onClick={() => {
+                const pendingPayment = getPendingCashPayment()
+                if (pendingPayment) {
+                  handleCashPaymentConfirm(pendingPayment.id)
+                }
+              }}
+              disabled={processingCashPayment}
+              className="flex-1 text-xs h-8 font-medium bg-status-success hover:bg-status-success/80 text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+            >
+              {processingCashPayment ? (
+                <div className="flex items-center space-x-1">
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                  <span>Confirming...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-1">
+                  <Banknote className="h-3 w-3" />
+                  <span>Confirm Cash</span>
+                </div>
+              )}
+            </Button>
+          )}
+
         </div>
 
     </div>
@@ -260,6 +411,7 @@ function OrderCardComponent({ order, onStatusUpdate, onViewDetails }: OrderCardP
 // OPTIMIZATION: Memoize OrderCard component to prevent unnecessary re-renders
 export const OrderCard = memo(OrderCardComponent, (prevProps, nextProps) => {
   // Custom comparison function to prevent re-renders when irrelevant props change
+  // Note: We let the component handle payment state internally to avoid prop drilling
   return (
     prevProps.order.id === nextProps.order.id &&
     prevProps.order.status === nextProps.order.status &&

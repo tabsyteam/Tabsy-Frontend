@@ -47,8 +47,6 @@ export interface SplitPaymentResponse {
 export interface CashPaymentRequest {
   orderId: string
   amount: number
-  receivedAmount: number
-  change: number
 }
 
 export interface StripeWebhookEvent {
@@ -77,10 +75,17 @@ export class PaymentAPI {
   }
 
   /**
-   * POST /payments/intent - Create payment intent
+   * POST /payments/order - Create payment for a single order
+   */
+  async createOrderPayment(data: CreatePaymentIntentRequest): Promise<ApiResponse<PaymentIntent>> {
+    return this.client.post('/payments/order', data)
+  }
+
+  /**
+   * @deprecated Use createOrderPayment instead
    */
   async createIntent(data: CreatePaymentIntentRequest): Promise<ApiResponse<PaymentIntent>> {
-    return this.client.post('/payments/intent', data)
+    return this.createOrderPayment(data)
   }
 
   /**
@@ -116,6 +121,13 @@ export class PaymentAPI {
    */
   async updateStatus(id: string, status: PaymentStatus): Promise<ApiResponse<Payment>> {
     return this.client.put(`/payments/${id}/status`, { status })
+  }
+
+  /**
+   * PUT /payments/:id/method - Change payment method (cash to card)
+   */
+  async changeMethod(id: string, paymentMethod: PaymentMethod): Promise<ApiResponse<Payment & { clientSecret: string | null }>> {
+    return this.client.put(`/payments/${id}/method`, { paymentMethod })
   }
 
 
@@ -165,7 +177,7 @@ export class PaymentAPI {
    * GET /restaurants/:restaurantId/payments - Get restaurant payments
    */
   async getByRestaurant(
-    restaurantId: string, 
+    restaurantId: string,
     filters?: {
       dateFrom?: string
       dateTo?: string
