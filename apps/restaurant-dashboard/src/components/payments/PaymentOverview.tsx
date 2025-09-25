@@ -69,7 +69,15 @@ export function PaymentOverview({ restaurantId }: PaymentOverviewProps) {
       }
       throw new Error('Failed to fetch payment metrics')
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    staleTime: 300000, // 5 minutes - rely on WebSocket for real-time updates
+    retry: (failureCount, error) => {
+      // Don't retry if we're getting client errors
+      if (error && typeof error === 'object' && 'status' in error) {
+        const status = error.status as number
+        if (status >= 400 && status < 500) return false
+      }
+      return failureCount < 2
+    }
   })
 
   // WebSocket event handlers for real-time metrics updates

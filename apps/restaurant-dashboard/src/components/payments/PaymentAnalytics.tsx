@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useState, useEffect, useCallback } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@tabsy/ui-components'
 import {
   TrendingUp,
@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { tabsyClient } from '@tabsy/api-client'
 import { format, subDays, startOfDay, endOfDay } from 'date-fns'
+import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
 import type { PaymentMetrics, RealTimePaymentMetrics, PaymentHealthStatus, PaymentAlert } from '@tabsy/shared-types'
 
 interface PaymentAnalyticsProps {
@@ -34,6 +35,8 @@ interface PaymentAnalyticsProps {
 export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | '3months'>('month')
   const [selectedMetric, setSelectedMetric] = useState<'revenue' | 'transactions' | 'success_rate'>('revenue')
+  const queryClient = useQueryClient()
+  const { isConnected } = useWebSocket()
 
   const { data: analytics, isLoading, error, refetch } = useQuery({
     queryKey: ['restaurant', 'payment-analytics', restaurantId, selectedPeriod],
@@ -46,38 +49,83 @@ export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
       }
       throw new Error('Failed to fetch payment analytics')
     },
-    refetchInterval: 300000, // Refetch every 5 minutes
+    staleTime: 300000, // 5 minutes - rely on WebSocket for real-time updates
+    retry: (failureCount, error) => {
+      // Don't retry if we're getting 404s or other client errors
+      if (error && typeof error === 'object' && 'status' in error) {
+        const status = error.status as number
+        if (status >= 400 && status < 500) return false
+      }
+      return failureCount < 2
+    }
   })
 
-  // Add real-time metrics
+  // Real-time metrics - use WebSocket invalidation instead of polling
   const { data: realtimeMetrics } = useQuery({
     queryKey: ['restaurant', 'payment-realtime', restaurantId],
     queryFn: async () => {
       const response = await tabsyClient.paymentMetrics.getRealTimeMetrics(restaurantId)
       return response.data
     },
-    refetchInterval: 10000 // Update every 10 seconds
+    staleTime: 60000, // 1 minute - rely on WebSocket for updates
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'status' in error) {
+        const status = error.status as number
+        if (status >= 400 && status < 500) return false
+      }
+      return failureCount < 2
+    }
   })
 
-  // Add payment health status
+  // Payment health status - use WebSocket invalidation
   const { data: healthStatus } = useQuery({
     queryKey: ['restaurant', 'payment-health', restaurantId],
     queryFn: async () => {
       const response = await tabsyClient.paymentMetrics.getHealthStatus(restaurantId)
       return response.data
     },
-    refetchInterval: 30000 // Update every 30 seconds
+    staleTime: 120000, // 2 minutes - rely on WebSocket for updates
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'status' in error) {
+        const status = error.status as number
+        if (status >= 400 && status < 500) return false
+      }
+      return failureCount < 2
+    }
   })
 
-  // Add payment alerts
+  // Payment alerts - use WebSocket invalidation
   const { data: alerts } = useQuery({
     queryKey: ['restaurant', 'payment-alerts', restaurantId],
     queryFn: async () => {
       const response = await tabsyClient.paymentMetrics.getAlerts(restaurantId)
       return response.data || []
     },
-    refetchInterval: 15000 // Update every 15 seconds
+    staleTime: 120000, // 2 minutes - rely on WebSocket for updates
+    retry: (failureCount, error) => {
+      if (error && typeof error === 'object' && 'status' in error) {
+        const status = error.status as number
+        if (status >= 400 && status < 500) return false
+      }
+      return failureCount < 2
+    }
   })
+
+  // WebSocket event handlers for payment-related events
+  const handlePaymentEvent = useCallback(() => {
+    // Invalidate all payment-related queries when any payment event occurs
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-realtime', restaurantId] })
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-health', restaurantId] })
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-alerts', restaurantId] })
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-analytics', restaurantId] })
+  }, [queryClient, restaurantId])
+
+  // Register WebSocket event listeners for all payment events
+  useWebSocketEvent('payment:completed', handlePaymentEvent, [handlePaymentEvent])
+  useWebSocketEvent('payment:failed', handlePaymentEvent, [handlePaymentEvent])
+  useWebSocketEvent('payment:created', handlePaymentEvent, [handlePaymentEvent])
+  useWebSocketEvent('payment:refunded', handlePaymentEvent, [handlePaymentEvent])
+  useWebSocketEvent('payment:cancelled', handlePaymentEvent, [handlePaymentEvent])
 
 
   const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`
@@ -87,6 +135,21 @@ export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
     if (value > 0) return <ArrowUp className="w-4 h-4 text-status-success" />
     if (value < 0) return <ArrowDown className="w-4 h-4 text-status-error" />
     return null
+  }
+
+  // Debug logging for development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('PaymentAnalytics Debug:', {
+      isConnected,
+      restaurantId,
+      selectedPeriod,
+      hasAnalytics: !!analytics,
+      hasPeakHours: !!analytics?.peakHours,
+      hasTopDays: !!analytics?.topDays,
+      peakHoursCount: analytics?.peakHours?.length || 0,
+      topDaysCount: analytics?.topDays?.length || 0,
+      error: error?.message
+    })
   }
 
   const getTrendColor = (value: number) => {
@@ -397,29 +460,35 @@ export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
             <div className="bg-surface rounded-lg border p-6">
               <h3 className="text-lg font-semibold text-content-primary mb-4">Peak Hours</h3>
               <div className="space-y-4">
-                {analytics?.peakHours.map((hour, index) => (
-                  <div key={hour.hour} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                        index === 0 ? 'bg-primary/20 text-primary' :
-                        index === 1 ? 'bg-secondary/20 text-secondary' :
-                        'bg-accent/20 text-accent'
-                      }`}>
-                        {index + 1}
+                {analytics?.peakHours?.length ? (
+                  analytics.peakHours.map((hour, index) => (
+                    <div key={hour.hour} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                          index === 0 ? 'bg-primary/20 text-primary' :
+                          index === 1 ? 'bg-secondary/20 text-secondary' :
+                          'bg-accent/20 text-accent'
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <span className="text-content-primary">
+                          {hour.hour === 0 ? '12:00 AM' :
+                           hour.hour === 12 ? '12:00 PM' :
+                           hour.hour > 12 ? `${hour.hour - 12}:00 PM` : `${hour.hour}:00 AM`}
+                        </span>
                       </div>
-                      <span className="text-content-primary">
-                        {hour.hour === 0 ? '12:00 AM' :
-                         hour.hour === 12 ? '12:00 PM' :
-                         hour.hour > 12 ? `${hour.hour - 12}:00 PM` : `${hour.hour}:00 AM`}
-                      </span>
+                      <div className="text-right">
+                        <p className="font-semibold text-content-primary">
+                          {hour.transactions} transactions
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-content-primary">
-                        {hour.transactions} transactions
-                      </p>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-content-secondary">No peak hours data available for selected period</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
@@ -490,28 +559,34 @@ export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
             <div className="bg-surface rounded-lg border p-6">
               <h3 className="text-lg font-semibold text-content-primary mb-4">Top Performing Days</h3>
               <div className="space-y-4">
-                {analytics?.topDays.slice(0, 3).map((day, index) => (
-                  <div key={day.dayOfWeek} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                        index === 0 ? 'bg-primary/20 text-primary' :
-                        index === 1 ? 'bg-secondary/20 text-secondary' :
-                        'bg-accent/20 text-accent'
-                      }`}>
-                        {index + 1}
+                {analytics?.topDays?.length ? (
+                  analytics.topDays.slice(0, 3).map((day, index) => (
+                    <div key={day.dayOfWeek} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                          index === 0 ? 'bg-primary/20 text-primary' :
+                          index === 1 ? 'bg-secondary/20 text-secondary' :
+                          'bg-accent/20 text-accent'
+                        }`}>
+                          {index + 1}
+                        </div>
+                        <span className="text-content-primary">{day.dayOfWeek}</span>
                       </div>
-                      <span className="text-content-primary">{day.dayOfWeek}</span>
+                      <div className="text-right">
+                        <p className="font-semibold text-content-primary">
+                          {formatCurrency(day.averageRevenue)}
+                        </p>
+                        <p className="text-sm text-content-secondary">
+                          {day.averageTransactions.toFixed(0)} avg transactions
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-content-primary">
-                        {formatCurrency(day.averageRevenue)}
-                      </p>
-                      <p className="text-sm text-content-secondary">
-                        {day.averageTransactions.toFixed(0)} avg transactions
-                      </p>
-                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-content-secondary">No top performing days data available for selected period</p>
                   </div>
-                ))}
+                )}
               </div>
             </div>
           </div>
