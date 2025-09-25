@@ -114,19 +114,6 @@ export function useUpdatePaymentStatus() {
   })
 }
 
-export function useAddTip() {
-  const queryClient = useQueryClient()
-  
-  return useMutation({
-    mutationFn: async (data: { paymentId: string; tipAmount: number }) => {
-      const client = tabsyClient
-      return await client.payment.addTip(data.paymentId, data.tipAmount)
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['payment', variables.paymentId] })
-    }
-  })
-}
 
 export function useRecordCashPayment() {
   const queryClient = useQueryClient()

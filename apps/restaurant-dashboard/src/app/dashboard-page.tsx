@@ -45,7 +45,7 @@ interface DashboardStats {
 export function DashboardClient(): JSX.Element {
   const router = useRouter()
   const auth = useAuth()
-  const user = auth.user as UserType | null
+  const user = auth?.user as UserType | null
   // State hooks - ADD MENU AND TABLES AS VIEWS
   const [currentView, setCurrentView] = useState<'overview' | 'orders' | 'menu' | 'tables' | 'payments' | 'feedback'>('overview')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -76,7 +76,7 @@ export function DashboardClient(): JSX.Element {
     isLoading: metricsLoading,
     error: metricsError
   } = dashboardHooks.useDashboardMetrics(restaurantId || '', {
-    enabled: !!restaurantId && !!auth.session?.token,
+    enabled: !!restaurantId && !!auth?.session?.token,
     retry: (failureCount, error: any) => {
       // Don't retry rate limit errors or auth errors
       if (error?.status === 429 || error?.code === 'RATE_LIMIT_EXCEEDED' || error?.status === 401 || error?.status === 403) {
@@ -92,7 +92,7 @@ export function DashboardClient(): JSX.Element {
     data: weeklyData,
     isLoading: weeklyLoading
   } = dashboardHooks.useWeeklyOrderStats(restaurantId || '', {
-    enabled: !!restaurantId && !!auth.session?.token,
+    enabled: !!restaurantId && !!auth?.session?.token,
     staleTime: 600000, // 10 minutes (less frequent updates for weekly data)
     retry: (failureCount, error: any) => {
       if (error?.status === 429 || error?.code === 'RATE_LIMIT_EXCEEDED' || error?.status === 401 || error?.status === 403) {
@@ -138,8 +138,8 @@ export function DashboardClient(): JSX.Element {
     metricsLoading,
     metricsError,
     weeklyData,
-    authToken: auth.session?.token ? '***present***' : 'missing',
-    authUser: auth.user ? `${auth.user.firstName} ${auth.user.lastName}` : 'no user'
+    authToken: auth?.session?.token ? '***present***' : 'missing',
+    authUser: auth?.user ? `${auth?.user.firstName} ${auth?.user.lastName}` : 'no user'
   })
 
   // Additional debug logging for dashboard data issues
@@ -160,6 +160,19 @@ export function DashboardClient(): JSX.Element {
       // You might want to redirect or show an error message
     }
   }, [hasRestaurantAccess])
+
+  // Redirect if user doesn't have restaurant access after authentication is complete
+  useEffect(() => {
+    if (!auth?.isLoading && !auth?.isVerifying && auth?.isAuthenticated && (!hasRestaurantAccess || !restaurantId)) {
+      // Auto redirect to login after a short delay to show user the error
+      const redirectTimer = setTimeout(() => {
+        router.push('/login?error=no_restaurant_access')
+      }, 3000)
+
+      return () => clearTimeout(redirectTimer)
+    }
+    return
+  }, [auth?.isLoading, auth?.isVerifying, auth?.isAuthenticated, hasRestaurantAccess, restaurantId, router])
 
   // Update assistance notifications from notification data with deduplication
   useEffect(() => {
@@ -256,7 +269,7 @@ export function DashboardClient(): JSX.Element {
   const handleLogout = useCallback(async () => {
     try {
       setIsLoggingOut(true)
-      await auth.logout()
+      await auth?.logout()
       router.push('/login')
     } catch (error) {
       console.error('Logout error:', error)
@@ -298,19 +311,21 @@ export function DashboardClient(): JSX.Element {
   }, [])
 
   // RENDER LOADING STATE - AFTER ALL HOOKS
-  // Only show loading if restaurant data is still loading, not if missing restaurant association
-  if (restaurantLoading && restaurantId) {
+  // Show loading during authentication verification or restaurant data loading
+  if (auth?.isLoading || auth?.isVerifying || restaurantLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-          <p className="text-foreground/80">Loading restaurant...</p>
+          <p className="text-foreground/80">
+            {auth?.isVerifying ? 'Verifying credentials...' : 'Loading restaurant...'}
+          </p>
         </div>
       </div>
     )
   }
 
-  // Show error if user doesn't have restaurant access
+  // Show error if user doesn't have restaurant access (will auto-redirect)
   if (!hasRestaurantAccess || !restaurantId) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -322,7 +337,12 @@ export function DashboardClient(): JSX.Element {
           <p className="text-sm text-foreground/60 mb-4">
             User ID: {user?.id} | Role: {user?.role}
           </p>
-          <Button onClick={handleLogout} variant="outline">Sign Out</Button>
+          <p className="text-xs text-foreground/50 mb-4">
+            Redirecting to login in 3 seconds...
+          </p>
+          <Button onClick={() => router.push('/login')} variant="outline">
+            Sign In Again
+          </Button>
         </div>
       </div>
     )

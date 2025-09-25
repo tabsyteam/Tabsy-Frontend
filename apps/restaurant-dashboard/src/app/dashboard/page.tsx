@@ -41,8 +41,10 @@ function DashboardSkeleton() {
 
 export default function DashboardPage(): JSX.Element {
   return (
-    <Suspense fallback={<DashboardSkeleton />}>
-      <DashboardClient />
-    </Suspense>
+    <ProtectedRoute requireRestaurantAccess>
+      <Suspense fallback={<DashboardSkeleton />}>
+        <DashboardClient />
+      </Suspense>
+    </ProtectedRoute>
   )
 }

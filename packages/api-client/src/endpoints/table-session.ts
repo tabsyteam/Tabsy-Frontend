@@ -100,6 +100,25 @@ export interface CancelTableSessionPaymentRequest {
   reason?: string
 }
 
+export interface UpdatePaymentTipRequest {
+  tipAmount: number
+}
+
+export interface UpdatePaymentTipResponse {
+  id: string
+  amount: number
+  tableSessionId: string
+  status: PaymentStatus
+  ordersIncluded: string[]
+  breakdown: {
+    subtotal: number
+    tax: number
+    tip: number
+    total: number
+  }
+  updatedAt: string
+}
+
 export class TableSessionAPI {
   constructor(private client: TabsyApiClient) {}
 
@@ -178,6 +197,17 @@ export class TableSessionAPI {
     data?: CancelTableSessionPaymentRequest
   ): Promise<ApiResponse<{ paymentId: string; cancelled: boolean }>> {
     return this.client.post(`/table-sessions/${sessionId}/payments/${paymentId}/cancel`, data || {})
+  }
+
+  /**
+   * PATCH /table-sessions/:sessionId/payments/:paymentId/tip - Update payment tip amount
+   */
+  async updatePaymentTip(
+    sessionId: string,
+    paymentId: string,
+    data: UpdatePaymentTipRequest
+  ): Promise<ApiResponse<UpdatePaymentTipResponse>> {
+    return this.client.patch(`/table-sessions/${sessionId}/payments/${paymentId}/tip`, data)
   }
 
 }

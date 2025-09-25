@@ -62,7 +62,6 @@ export {
   useCreatePaymentIntent,
   useCreateOrderPayment,
   useUpdatePaymentStatus,
-  useAddTip,
   useRecordCashPayment,
   useCreateSplitPayment,
   useDeletePayment

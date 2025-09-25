@@ -57,14 +57,16 @@ export function ProtectedRoute({
 
       // Check restaurant access if required
       if (requireRestaurantAccess && typedUser?.role !== UserRole.ADMIN) {
-        // For development/demo purposes, allow restaurant staff without restaurantId
-        // In production, you would uncomment the following lines:
-        /*
-        if (!(typedUser as { restaurantId?: string })?.restaurantId) {
-          router.push('/setup-restaurant');
+        // Check if user has restaurant relationships
+        const hasRestaurantOwner = !!(user as any)?.restaurantOwner
+        const hasRestaurantStaff = !!(user as any)?.restaurantStaff
+        const restaurantId = (user as any)?.restaurantOwner?.restaurantId || (user as any)?.restaurantStaff?.restaurantId
+
+        if (!hasRestaurantOwner && !hasRestaurantStaff && !restaurantId) {
+          console.warn('Restaurant access required but user has no restaurant relationships')
+          router.push('/login?error=no_restaurant_access');
           return;
         }
-        */
       }
     }
   }, [isAuthenticated, user, isLoading, isVerifying, router, requiredRoles, redirectTo, requireRestaurantAccess]);

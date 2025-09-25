@@ -168,7 +168,7 @@ const TableSessionBillComponent = ({
 
 
   return (
-    <div className="p-4 space-y-6">
+    <div className="p-4 space-y-6 pb-24">
       {/* Bill Header */}
       <div className="bg-surface rounded-lg border border-default p-4">
         <div className="flex justify-between items-center mb-4">
@@ -281,7 +281,7 @@ const TableSessionBillComponent = ({
 
       {/* Payment Options */}
       {bill.summary.remainingBalance > 0 && (
-        <div className="space-y-4 pb-24">
+        <div className="space-y-4">
           <h3 className="font-semibold flex items-center space-x-2">
             <CreditCard className="w-5 h-5" />
             <span>Payment Options</span>

@@ -177,7 +177,10 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
     }
   }
 
-  // Connection status notification
+  // Connection status notification - DISABLED for better UX
+  // These auto-popups are distracting and not actionable for users
+  // WebSocket connection status can be shown in header or status bar instead
+  /*
   useEffect(() => {
     if (isConnected) {
       const notification = createNotification(
@@ -201,6 +204,7 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
       addNotification(notification)
     }
   }, [isConnected])
+  */
 
   if (notifications.length === 0) {
     return null

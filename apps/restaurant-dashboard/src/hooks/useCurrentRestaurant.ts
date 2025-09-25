@@ -22,8 +22,8 @@ export function useCurrentRestaurant() {
       restaurantOwnerId: (user as any)?.restaurantOwner?.restaurantId,
       restaurantStaffId: (user as any)?.restaurantStaff?.restaurantId,
       role: user?.role,
-      isInitialLoad,
-      authLoading
+      authLoading,
+      isVerifying
     })
   }
 
@@ -110,7 +110,7 @@ export function useCurrentRestaurant() {
   return {
     restaurantId,
     restaurant,
-    isLoading: authLoading || isVerifying || restaurantLoading,
+    isLoading: authLoading || isVerifying || (isAuthComplete && isRestaurantUser && restaurantLoading),
     error: restaurantError || (isAuthComplete && isRestaurantUser && !restaurantId ? 'User not associated with any restaurant' : null),
     refetch: refetchRestaurant,
     hasRestaurantAccess: isAuthComplete && isRestaurantUser && !!restaurantId

@@ -41,6 +41,7 @@ interface Order {
   }>
   subtotal: number
   tax: number
+  tip: number
   total: number
   guestInfo: {
     name: string
@@ -63,6 +64,7 @@ const transformApiOrderToLocal = (apiOrder: any): Order => ({
   })),
   subtotal: typeof apiOrder.subtotal === 'string' ? parseFloat(apiOrder.subtotal) : (apiOrder.subtotal || 0),
   tax: typeof apiOrder.tax === 'string' ? parseFloat(apiOrder.tax) : (apiOrder.tax || 0),
+  tip: typeof apiOrder.tip === 'string' ? parseFloat(apiOrder.tip) : (apiOrder.tip || 0),
   total: typeof apiOrder.total === 'string' ? parseFloat(apiOrder.total) : (apiOrder.total || 0),
   guestInfo: {
     name: apiOrder.customerName || 'Guest',
@@ -107,6 +109,15 @@ export function PaymentView() {
   const [paymentId, setPaymentId] = useState<string | null>(null)
   const [paymentStatusPolling, setPaymentStatusPolling] = useState<NodeJS.Timeout | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [updatingTip, setUpdatingTip] = useState(false)
+
+  // Payment breakdown state for real-time updates
+  const [paymentBreakdown, setPaymentBreakdown] = useState<{
+    subtotal: number
+    tax: number
+    tip: number
+    total: number
+  } | null>(null)
 
   // URL parameters
   const orderId = searchParams.get('order')
@@ -201,6 +212,11 @@ export function PaymentView() {
   }
 
   const getFinalTotal = (): number => {
+    // Use server-calculated breakdown if available (from payment intent updates)
+    if (paymentBreakdown) {
+      return paymentBreakdown.total
+    }
+
     // For orders, use server-calculated total which already includes tip
     if (paymentType === 'order' && order) {
       return order.total  // Server already calculated: subtotal + tax + tip
@@ -381,6 +397,41 @@ export function PaymentView() {
         // Reset tip selection on error
         setSelectedTip(0)
       }
+    } else if (paymentType === 'table_session' && clientSecret && paymentId) {
+      // Update tip for existing table session payment intent
+      try {
+        setUpdatingTip(true)
+
+        const session = SessionManager.getDiningSession()
+        const sessionId = tableSessionId || session?.tableSessionId
+
+        if (!sessionId) {
+          throw new Error('No table session found')
+        }
+
+        const response = await api.tableSession.updatePaymentTip(sessionId, paymentId, {
+          tipAmount: Math.round(amount * 100) / 100  // Round to 2 decimal places
+        })
+
+        if (response.success && response.data) {
+          // Update payment breakdown with server response
+          setPaymentBreakdown(response.data.breakdown)
+
+          toast.success('Tip updated successfully!', {
+            description: `Payment amount updated to $${response.data.amount.toFixed(2)}`,
+            duration: 2000
+          })
+        } else {
+          throw new Error(response.error || 'Failed to update tip')
+        }
+      } catch (error: any) {
+        console.error('Failed to update table session tip:', error)
+        toast.error('Failed to update tip. Please try again.')
+        // Reset tip selection on error
+        setSelectedTip(0)
+      } finally {
+        setUpdatingTip(false)
+      }
     }
   }
 
@@ -403,6 +454,41 @@ export function PaymentView() {
         toast.error('Failed to update tip. Please try again.')
         // Reset custom tip on error
         setCustomTip('')
+      }
+    } else if (paymentType === 'table_session' && clientSecret && paymentId && tipAmount >= 0) {
+      // Update tip for existing table session payment intent
+      try {
+        setUpdatingTip(true)
+
+        const session = SessionManager.getDiningSession()
+        const sessionId = tableSessionId || session?.tableSessionId
+
+        if (!sessionId) {
+          throw new Error('No table session found')
+        }
+
+        const response = await api.tableSession.updatePaymentTip(sessionId, paymentId, {
+          tipAmount: Math.round(tipAmount * 100) / 100  // Round to 2 decimal places
+        })
+
+        if (response.success && response.data) {
+          // Update payment breakdown with server response
+          setPaymentBreakdown(response.data.breakdown)
+
+          toast.success('Tip updated successfully!', {
+            description: `Payment amount updated to $${response.data.amount.toFixed(2)}`,
+            duration: 2000
+          })
+        } else {
+          throw new Error(response.error || 'Failed to update tip')
+        }
+      } catch (error: any) {
+        console.error('Failed to update table session custom tip:', error)
+        toast.error('Failed to update tip. Please try again.')
+        // Reset custom tip on error
+        setCustomTip('')
+      } finally {
+        setUpdatingTip(false)
       }
     }
   }
@@ -523,6 +609,12 @@ export function PaymentView() {
         // Store the internal payment ID (not Stripe PaymentIntent ID) for success page
         // For table sessions, use the table session payment ID; for orders, use the order payment ID
         setPaymentId(response.data.id || response.data.paymentId)
+
+        // Store payment breakdown if available (for table session payments)
+        if (response.data.breakdown) {
+          setPaymentBreakdown(response.data.breakdown)
+        }
+
         toast.success('Payment form ready!', {
           description: 'Please enter your card details to complete payment',
         })
@@ -865,6 +957,12 @@ export function PaymentView() {
                       <span>Tax</span>
                       <span>${order.tax.toFixed(2)}</span>
                     </div>
+                    {order.tip > 0 && (
+                      <div className="flex justify-between text-content-secondary">
+                        <span>Tip</span>
+                        <span>${order.tip.toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between font-semibold text-content-primary border-t pt-2">
                       <span>Order Total</span>
                       <span>${order.total.toFixed(2)}</span>
@@ -970,7 +1068,7 @@ export function PaymentView() {
                     variant={selectedTip === tip.amount ? 'default' : 'outline'}
                     onClick={() => handleTipSelection(tip.amount)}
                     className="h-12 flex-col"
-                    disabled={processing}
+                    disabled={processing || updatingTip}
                   >
                     <span className="text-sm font-semibold">{tip.label}</span>
                     <span className="text-xs">${tip.amount.toFixed(2)}</span>
@@ -989,18 +1087,15 @@ export function PaymentView() {
                     className="flex-1 p-3 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
                     min="0"
                     step="0.01"
-                    disabled={processing}
+                    disabled={processing || updatingTip}
                   />
                 </div>
 
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    setSelectedTip(0)
-                    setCustomTip('')
-                  }}
+                  onClick={() => handleTipSelection(0)}
                   className="w-full"
-                  disabled={processing}
+                  disabled={processing || updatingTip}
                 >
                   No Tip
                 </Button>
@@ -1033,7 +1128,7 @@ export function PaymentView() {
                   variant={selectedPaymentMethod === PaymentMethod.CREDIT_CARD ? 'default' : 'outline'}
                   onClick={() => setSelectedPaymentMethod(PaymentMethod.CREDIT_CARD)}
                   className="h-16 flex-col"
-                  disabled={processing}
+                  disabled={processing || updatingTip}
                 >
                   <CreditCard className="w-6 h-6 mb-1" />
                   <span className="text-sm">Card</span>
@@ -1043,7 +1138,7 @@ export function PaymentView() {
                   variant={selectedPaymentMethod === PaymentMethod.MOBILE_PAYMENT ? 'default' : 'outline'}
                   onClick={() => setSelectedPaymentMethod(PaymentMethod.MOBILE_PAYMENT)}
                   className="h-16 flex-col"
-                  disabled={processing}
+                  disabled={processing || updatingTip}
                 >
                   <Smartphone className="w-6 h-6 mb-1" />
                   <span className="text-sm">Apple Pay</span>
@@ -1053,7 +1148,7 @@ export function PaymentView() {
                   variant={selectedPaymentMethod === PaymentMethod.CASH ? 'default' : 'outline'}
                   onClick={() => setSelectedPaymentMethod('CASH' as PaymentMethod)}
                   className="h-16 flex-col"
-                  disabled={processing}
+                  disabled={processing || updatingTip}
                 >
                   <Banknote className="w-6 h-6 mb-1" />
                   <span className="text-sm">Cash</span>
@@ -1072,9 +1167,9 @@ export function PaymentView() {
                           tableSessionId={tableSession?.id}
                           onPaymentSuccess={handlePaymentSuccess}
                           onPaymentError={handlePaymentError}
-                          processing={processing}
+                          processing={processing || updatingTip}
                           setProcessing={setProcessing}
-                          disabled={false}
+                          disabled={updatingTip}
                           clientSecret={clientSecret}
                         />
                       </StripeProvider>
@@ -1086,7 +1181,7 @@ export function PaymentView() {
                           variant="outline"
                           size="sm"
                           className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-                          disabled={cancelling || processing}
+                          disabled={cancelling || processing || updatingTip}
                         >
                           {cancelling ? (
                             <div className="flex items-center space-x-2">
@@ -1119,12 +1214,17 @@ export function PaymentView() {
                           onClick={createPaymentIntent}
                           size="lg"
                           className="w-full"
-                          disabled={processing}
+                          disabled={processing || updatingTip}
                         >
                           {processing ? (
                             <div className="flex items-center space-x-2">
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                               <span>Preparing Payment...</span>
+                            </div>
+                          ) : updatingTip ? (
+                            <div className="flex items-center space-x-2">
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                              <span>Updating Tip...</span>
                             </div>
                           ) : (
                             <div className="flex items-center space-x-2">
@@ -1141,7 +1241,7 @@ export function PaymentView() {
                             variant="outline"
                             size="lg"
                             className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
-                            disabled={cancelling || processing}
+                            disabled={cancelling || processing || updatingTip}
                           >
                             {cancelling ? (
                               <div className="flex items-center space-x-2">
@@ -1204,10 +1304,10 @@ export function PaymentView() {
                   <span>${getPaymentAmount().toFixed(2)}</span>
                 </div>
 
-                {(selectedTip > 0 || getCustomTipAmount() > 0) && (
+                {(selectedTip > 0 || getCustomTipAmount() > 0 || (paymentBreakdown && paymentBreakdown.tip > 0)) && (
                   <div className="flex justify-between text-content-secondary">
                     <span>Tip</span>
-                    <span>${(selectedTip > 0 ? selectedTip : getCustomTipAmount()).toFixed(2)}</span>
+                    <span>${(paymentBreakdown?.tip || (selectedTip > 0 ? selectedTip : getCustomTipAmount())).toFixed(2)}</span>
                   </div>
                 )}
 
@@ -1236,7 +1336,7 @@ export function PaymentView() {
                   onClick={handleNonCardPayment}
                   size="lg"
                   className="w-full"
-                  disabled={processing}
+                  disabled={processing || updatingTip}
                 >
                   <div className="flex items-center space-x-2">
                     <Banknote className="w-4 h-4" />
@@ -1250,12 +1350,17 @@ export function PaymentView() {
                   onClick={createPaymentIntent}
                   size="lg"
                   className="w-full"
-                  disabled={processing}
+                  disabled={processing || updatingTip}
                 >
                   {processing ? (
                     <div className="flex items-center space-x-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       <span>Preparing...</span>
+                    </div>
+                  ) : updatingTip ? (
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Updating Tip...</span>
                     </div>
                   ) : (
                     <div className="flex items-center space-x-2">

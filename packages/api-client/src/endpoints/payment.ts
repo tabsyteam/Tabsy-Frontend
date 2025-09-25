@@ -118,12 +118,6 @@ export class PaymentAPI {
     return this.client.put(`/payments/${id}/status`, { status })
   }
 
-  /**
-   * PATCH /payments/:id - Add tip to payment
-   */
-  async addTip(id: string, tipAmount: number): Promise<ApiResponse<Payment>> {
-    return this.client.patch(`/payments/${id}`, { tipAmount })
-  }
 
   /**
    * POST /payments/cash - Record cash payment
