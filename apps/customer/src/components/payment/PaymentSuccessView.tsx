@@ -465,7 +465,10 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
               Payment Successful!
             </h1>
             <p className="text-content-secondary text-lg">
-              Thank you for dining with us
+              {payment?.tableBill
+                ? "Your table session payment was processed successfully"
+                : "Thank you for dining with us"
+              }
             </p>
           </motion.div>
         </motion.div>
@@ -482,7 +485,7 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
               <Receipt className="w-5 h-5" />
               <span>Payment Details</span>
             </h3>
-            {payment.order?.items && (
+            {(payment.tableBill || payment.order?.items) && (
               <Button
                 onClick={handleViewDetailedReceipt}
                 variant="ghost"
@@ -507,56 +510,70 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
           )}
 
           <div className="space-y-3">
-            {payment.orderId && (
+            {payment.tableBill ? (
+              // For Table Session Payments - Show Session Details
+              <>
+                <div className="flex justify-between">
+                  <span className="text-content-secondary">Table Session</span>
+                  <span className="font-medium text-content-primary">#{payment.tableBill.sessionCode}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-content-secondary">Table</span>
+                  <span className="font-medium text-content-primary">Table {tableId}</span>
+                </div>
+              </>
+            ) : payment.orderId && (
+              // For Individual Order Payments - Show Order ID
               <div className="flex justify-between">
                 <span className="text-content-secondary">Order</span>
                 <span className="font-medium text-content-primary">#{payment.orderId}</span>
               </div>
             )}
 
-            {tableSessionId && (
-              <div className="flex justify-between">
-                <span className="text-content-secondary">Table Session</span>
-                <span className="font-medium text-content-primary">Table {tableId}</span>
-              </div>
-            )}
-
-            <div className="flex justify-between">
-              <span className="text-content-secondary">Amount</span>
-              <span className="font-medium text-content-primary">${(() => {
-                // Amount should be order total (subtotal + tax), not including tip
-                if (payment.order) {
-                  const subtotal = Number(payment.order.subtotal || 0);
-                  const tax = Number(payment.order.tax || 0);
-                  return (subtotal + tax).toFixed(2);
-                } else {
-                  // Fallback: total amount minus tip
-                  const totalAmount = Number(payment.totalAmount || 0);
-                  const tipAmount = Number(payment.tipAmount || 0);
-                  return (totalAmount - tipAmount).toFixed(2);
-                }
-              })()}</span>
-            </div>
-
-            {(() => {
-              // Calculate tip amount - either from tipAmount field or derive from totals
-              const subtotal = Number(payment.order?.subtotal || 0);
-              const tax = Number(payment.order?.tax || 0);
-              const totalPaid = Number(payment.totalAmount || 0);
-              const tipAmount = Number(payment.tipAmount || 0);
-
-              // If we have order details, calculate what the tip should be
-              const derivedTip = payment.order ? totalPaid - subtotal - tax : tipAmount;
-              const displayTip = Math.max(tipAmount, derivedTip);
-
-              // Always show tip if it exists, either from API or calculated
-              return displayTip > 0.01 && (
+            {/* For Table Session - Show Table Bill Summary */}
+            {payment.tableBill ? (
+              <>
                 <div className="flex justify-between">
-                  <span className="text-content-secondary">Tip</span>
-                  <span className="font-medium text-content-primary">${displayTip.toFixed(2)}</span>
+                  <span className="text-content-secondary">Subtotal</span>
+                  <span className="font-medium text-content-primary">${payment.tableBill.summary.subtotal.toFixed(2)}</span>
                 </div>
-              );
-            })()}
+                <div className="flex justify-between">
+                  <span className="text-content-secondary">Tax</span>
+                  <span className="font-medium text-content-primary">${payment.tableBill.summary.tax.toFixed(2)}</span>
+                </div>
+                {payment.tableBill.summary.tip > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-content-secondary">Tip</span>
+                    <span className="font-medium text-content-primary">${payment.tableBill.summary.tip.toFixed(2)}</span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {/* For Individual Order - Show Order Amount */}
+                <div className="flex justify-between">
+                  <span className="text-content-secondary">Amount</span>
+                  <span className="font-medium text-content-primary">${(() => {
+                    if (payment.order) {
+                      const subtotal = Number(payment.order.subtotal || 0);
+                      const tax = Number(payment.order.tax || 0);
+                      return (subtotal + tax).toFixed(2);
+                    } else {
+                      // Use payment amount without trying to derive tip
+                      return Number(payment.amount || payment.totalAmount || 0).toFixed(2);
+                    }
+                  })()}</span>
+                </div>
+
+                {/* Only show tip if explicitly provided by backend and > 0 */}
+                {payment.tipAmount && Number(payment.tipAmount) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-content-secondary">Tip</span>
+                    <span className="font-medium text-content-primary">${Number(payment.tipAmount).toFixed(2)}</span>
+                  </div>
+                )}
+              </>
+            )}
 
             <div className="flex justify-between">
               <span className="text-content-secondary">Payment Method</span>
@@ -574,48 +591,120 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
               <div className="flex justify-between text-lg font-semibold">
                 <span className="text-content-primary">Total Paid</span>
                 <span className="text-content-primary">
-                  ${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).toFixed(2)}
+                  ${(() => {
+                    if (payment.tableBill) {
+                      // For table sessions, show the total paid amount from the bill
+                      return payment.tableBill.summary.totalPaid.toFixed(2);
+                    } else {
+                      // For individual payments, use payment amount (should already include tip if any)
+                      return Number(payment.amount || payment.totalAmount || 0).toFixed(2);
+                    }
+                  })()}
                 </span>
               </div>
             </div>
           </div>
 
           {/* Detailed Receipt */}
-          {showDetailedReceipt && payment.order?.items && (
+          {showDetailedReceipt && (
             <div className="mt-6 p-4 bg-surface-secondary rounded-lg border border-border-secondary">
-              <h4 className="font-medium text-content-primary mb-3">Order Items</h4>
-              <div className="space-y-2">
-                {payment.order.items.map((item: any, index: number) => (
-                  <div key={index} className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="text-sm font-medium text-content-primary">
-                        {item.quantity}x {item.menuItem?.name || item.name}
-                      </div>
-                      {item.customizations?.length > 0 && (
-                        <div className="text-xs text-content-secondary mt-1">
-                          {item.customizations.map((custom: any, idx: number) => (
-                            <div key={idx}>+ {custom.name} (+${Number(custom.price || 0).toFixed(2)})</div>
+              {payment.tableBill ? (
+                // Table Session Bill Details
+                <div>
+                  <h4 className="font-medium text-content-primary mb-3">Table Session Orders</h4>
+                  <div className="space-y-4">
+                    {Object.entries(payment.tableBill.billByRound).map(([roundNum, round]) => (
+                      <div key={roundNum}>
+                        <h5 className="text-sm font-medium text-content-primary mb-2">Round {roundNum}</h5>
+                        <div className="space-y-2">
+                          {round.orders.map(order => (
+                            <div key={order.orderId} className="border border-border-secondary/50 rounded p-2">
+                              <div className="flex justify-between items-start mb-1">
+                                <span className="text-xs font-medium text-content-primary">
+                                  Order #{order.orderNumber} by {order.placedBy}
+                                </span>
+                                <span className="text-xs font-medium text-content-primary">
+                                  ${Number(order.total || 0).toFixed(2)}
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                {order.items.map((item: any, idx: number) => (
+                                  <div key={idx} className="flex justify-between text-xs text-content-secondary">
+                                    <span>{item.quantity}x {item.name}</span>
+                                    <span>${Number(item.subtotal || 0).toFixed(2)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           ))}
                         </div>
-                      )}
+                        <div className="flex justify-between text-sm font-medium mt-2 pt-2 border-t border-border-secondary">
+                          <span>Round {roundNum} Total</span>
+                          <span>${round.roundTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-border-secondary space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-content-secondary">Subtotal</span>
+                      <span className="text-content-primary">${payment.tableBill.summary.subtotal.toFixed(2)}</span>
                     </div>
-                    <div className="text-sm font-medium text-content-primary">
-                      ${(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-content-secondary">Tax</span>
+                      <span className="text-content-primary">${payment.tableBill.summary.tax.toFixed(2)}</span>
+                    </div>
+                    {payment.tableBill.summary.tip > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-content-secondary">Tip</span>
+                        <span className="text-content-primary">${payment.tableBill.summary.tip.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-sm font-semibold pt-1 border-t">
+                      <span>Grand Total</span>
+                      <span>${payment.tableBill.summary.grandTotal.toFixed(2)}</span>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ) : payment.order?.items && (
+                // Individual Order Details (fallback)
+                <div>
+                  <h4 className="font-medium text-content-primary mb-3">Order Items</h4>
+                  <div className="space-y-2">
+                    {payment.order.items.map((item: any, index: number) => (
+                      <div key={index} className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <div className="text-sm font-medium text-content-primary">
+                            {item.quantity}x {item.menuItem?.name || item.name}
+                          </div>
+                          {item.customizations?.length > 0 && (
+                            <div className="text-xs text-content-secondary mt-1">
+                              {item.customizations.map((custom: any, idx: number) => (
+                                <div key={idx}>+ {custom.name} (+${Number(custom.price || 0).toFixed(2)})</div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="text-sm font-medium text-content-primary">
+                          ${(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
 
-              <div className="mt-4 pt-3 border-t border-border-secondary space-y-1">
-                <div className="flex justify-between text-sm">
-                  <span className="text-content-secondary">Subtotal</span>
-                  <span className="text-content-primary">${Number(payment.order.subtotal || 0).toFixed(2)}</span>
+                  <div className="mt-4 pt-3 border-t border-border-secondary space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-content-secondary">Subtotal</span>
+                      <span className="text-content-primary">${Number(payment.order.subtotal || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-content-secondary">Tax</span>
+                      <span className="text-content-primary">${Number(payment.order.tax || 0).toFixed(2)}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-content-secondary">Tax</span>
-                  <span className="text-content-primary">${Number(payment.order.tax || 0).toFixed(2)}</span>
-                </div>
-              </div>
+              )}
             </div>
           )}
         </motion.div>

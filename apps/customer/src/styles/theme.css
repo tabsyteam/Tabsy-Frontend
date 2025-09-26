@@ -146,6 +146,31 @@
   --border-focus-subtle: 120 113 108; /* Subtle focus border for inputs in dark mode */
   --border-error: 255 139 139; /* Light coral for errors */
 
+  /* Dark Mode Status Colors - Properly adjusted for dark backgrounds */
+  --status-success: 134 239 172; /* Light green for dark mode */
+  --status-success-light: 20 83 45; /* Dark green background */
+  --status-success-dark: 187 247 208; /* Very light green */
+  --status-success-foreground: 20 83 45; /* Dark text */
+  --status-success-border: 74 222 128; /* Medium green border */
+
+  --status-warning: 253 224 71; /* Light yellow for dark mode */
+  --status-warning-light: 133 77 14; /* Dark yellow background */
+  --status-warning-dark: 254 240 138; /* Very light yellow */
+  --status-warning-foreground: 133 77 14; /* Dark text */
+  --status-warning-border: 250 204 21; /* Medium yellow border */
+
+  --status-error: 248 113 113; /* Light red for dark mode */
+  --status-error-light: 127 29 29; /* Dark red background */
+  --status-error-dark: 254 202 202; /* Very light red */
+  --status-error-foreground: 255 255 255; /* White text */
+  --status-error-border: 239 68 68; /* Medium red border */
+
+  --status-info: 147 197 253; /* Light blue for dark mode */
+  --status-info-light: 30 58 138; /* Dark blue background */
+  --status-info-dark: 219 234 254; /* Very light blue */
+  --status-info-foreground: 255 255 255; /* White text */
+  --status-info-border: 96 165 250; /* Medium blue border */
+
   /* shadcn/ui dark mode variables in HSL */
   --foreground: 46 20% 98%; /* Light text in HSL */
   --muted: 25 13% 16%; /* Dark muted background in HSL */
@@ -185,6 +210,24 @@
   .border-focus { border-color: rgb(var(--border-focus)); }
   .border-focus-subtle { border-color: rgb(var(--border-focus-subtle)); }
   .border-error { border-color: rgb(var(--border-error)); }
+
+  /* Status-specific text utilities */
+  .text-status-success { color: rgb(var(--status-success)); }
+  .text-status-warning { color: rgb(var(--status-warning)); }
+  .text-status-error { color: rgb(var(--status-error)); }
+  .text-status-info { color: rgb(var(--status-info)); }
+
+  /* Status-specific background utilities */
+  .bg-status-success { background-color: rgb(var(--status-success)); }
+  .bg-status-warning { background-color: rgb(var(--status-warning)); }
+  .bg-status-error { background-color: rgb(var(--status-error)); }
+  .bg-status-info { background-color: rgb(var(--status-info)); }
+
+  /* Status-specific border utilities */
+  .border-status-success { border-color: rgb(var(--status-success-border)); }
+  .border-status-warning { border-color: rgb(var(--status-warning-border)); }
+  .border-status-error { border-color: rgb(var(--status-error-border)); }
+  .border-status-info { border-color: rgb(var(--status-info-border)); }
 
   /* Button variants */
   .btn-primary {

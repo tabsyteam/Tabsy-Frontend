@@ -127,6 +127,14 @@ const TableSessionBillComponent = ({
     }
   }, [tableSession.id, router, onPaymentInitiated])
 
+  // Helper function for better floating-point comparison
+  const hasRemainingBalance = useMemo(() => {
+    if (!bill) return false
+    // Use both isFullyPaid flag and remaining balance with small epsilon for floating-point precision
+    const epsilon = 0.01 // 1 cent tolerance
+    return !bill.summary.isFullyPaid && bill.summary.remainingBalance > epsilon
+  }, [bill])
+
   // Enhanced loading state
   if (isLoading) {
     return (
@@ -141,15 +149,15 @@ const TableSessionBillComponent = ({
   if (error && !bill) {
     return (
       <div className="p-4 space-y-4">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
-          <AlertTriangle className="w-8 h-8 text-red-500 mx-auto mb-2" />
-          <h3 className="font-medium text-red-800 mb-1">Unable to Load Bill</h3>
-          <p className="text-sm text-red-700 mb-4">{error}</p>
+        <div className="bg-status-error/10 border border-status-error/20 rounded-lg p-4 text-center">
+          <AlertTriangle className="w-8 h-8 text-status-error mx-auto mb-2" />
+          <h3 className="font-medium text-status-error mb-1">Unable to Load Bill</h3>
+          <p className="text-sm text-status-error mb-4">{error}</p>
           <Button
             onClick={handleRetry}
             variant="outline"
             size="sm"
-            className="border-red-300 text-red-700 hover:bg-red-50"
+            className="border-status-error/30 text-status-error hover:bg-status-error/5"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Try Again
@@ -170,42 +178,66 @@ const TableSessionBillComponent = ({
 
   return (
     <div className="p-4 space-y-6 pb-24">
-      {/* Bill Header */}
-      <div className="bg-surface rounded-lg border border-default p-4">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold">Table Bill</h2>
-          <span className="text-sm text-content-secondary">
-            Session: {bill.sessionCode}
-          </span>
+      {/* Enhanced Bill Header */}
+      <div className="bg-gradient-to-r from-surface to-surface-secondary rounded-xl border border-default shadow-sm p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div className="space-y-1">
+            <h2 className="text-2xl font-bold text-content-primary">Table Bill</h2>
+            <p className="text-sm text-content-secondary">Complete order summary</p>
+          </div>
+          <div className="text-right">
+            <div className="inline-flex items-center bg-primary/10 text-primary border border-primary/20 rounded-full px-3 py-1.5 text-sm font-medium">
+              #{bill.sessionCode}
+            </div>
+          </div>
         </div>
 
-        {/* Summary */}
-        <div className="space-y-2">
-          <div className="flex justify-between">
-            <span>Subtotal</span>
-            <span>${bill.summary.subtotal.toFixed(2)}</span>
+        {/* Enhanced Summary */}
+        <div className="space-y-3">
+          <div className="flex justify-between items-center py-2">
+            <span className="text-content-secondary">Subtotal</span>
+            <span className="font-medium">${bill.summary.subtotal.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Tax</span>
-            <span>${bill.summary.tax.toFixed(2)}</span>
+          <div className="flex justify-between items-center py-2">
+            <span className="text-content-secondary">Tax</span>
+            <span className="font-medium">${bill.summary.tax.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between">
-            <span>Tip</span>
-            <span>${bill.summary.tip.toFixed(2)}</span>
+          <div className="flex justify-between items-center py-2">
+            <span className="text-content-secondary">Tip</span>
+            <span className="font-medium">${bill.summary.tip.toFixed(2)}</span>
           </div>
-          <hr className="border-default" />
-          <div className="flex justify-between font-semibold">
-            <span>Total</span>
-            <span>${bill.summary.grandTotal.toFixed(2)}</span>
+
+          <div className="border-t border-default/50 pt-3">
+            <div className="flex justify-between items-center py-2">
+              <span className="font-semibold text-content-primary">Total</span>
+              <span className="font-bold text-lg">${bill.summary.grandTotal.toFixed(2)}</span>
+            </div>
           </div>
-          <div className="flex justify-between text-success">
-            <span>Paid</span>
-            <span>-${(bill.summary.totalPaid || 0).toFixed(2)}</span>
-          </div>
-          <hr className="border-default" />
-          <div className="flex justify-between font-semibold text-lg">
-            <span>Remaining</span>
-            <span>${bill.summary.remainingBalance.toFixed(2)}</span>
+
+          {bill.summary.totalPaid > 0 && (
+            <div className="flex justify-between items-center py-2 bg-status-success/10 rounded-lg px-3 -mx-1">
+              <span className="font-medium text-status-success">Amount Paid</span>
+              <span className="font-bold text-status-success">-${bill.summary.totalPaid.toFixed(2)}</span>
+            </div>
+          )}
+
+          <div className="border-t border-default pt-3">
+            <div className={`flex justify-between items-center py-2 px-3 -mx-1 rounded-lg ${
+              hasRemainingBalance
+                ? 'bg-status-warning/10 border border-status-warning/20'
+                : 'bg-status-success/10 border border-status-success/20'
+            }`}>
+              <span className={`font-bold text-lg ${
+                hasRemainingBalance ? 'text-status-warning' : 'text-status-success'
+              }`}>
+                {hasRemainingBalance ? 'Outstanding' : 'Balance'}
+              </span>
+              <span className={`font-bold text-xl ${
+                hasRemainingBalance ? 'text-status-warning' : 'text-status-success'
+              }`}>
+                ${bill.summary.remainingBalance.toFixed(2)}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -219,17 +251,17 @@ const TableSessionBillComponent = ({
             <div className="space-y-3">
               {round.orders.map(order => (
                 <div key={order.orderId} className={`rounded p-3 transition-all ${
-                  order.isPaid
-                    ? 'bg-green-50 border-2 border-green-200 opacity-75'
+                  (order as any).isPaid
+                    ? 'bg-status-success/10 border-2 border-status-success/20 opacity-75'
                     : 'bg-surface-secondary'
                 }`}>
                   <div className="flex justify-between items-start mb-2">
                     <div className="flex items-center space-x-2">
-                      <span className={`font-medium ${order.isPaid ? 'line-through text-green-700' : ''}`}>
+                      <span className={`font-medium ${(order as any).isPaid ? 'line-through text-status-success' : ''}`}>
                         {order.orderNumber}
                       </span>
-                      {order.isPaid && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      {(order as any).isPaid && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-status-success/20 text-status-success">
                           ✓ Paid
                         </span>
                       )}
@@ -241,29 +273,29 @@ const TableSessionBillComponent = ({
                   <div className="space-y-1">
                     {order.items.map((item: any, idx: number) => (
                       <div key={idx} className={`flex justify-between text-sm ${
-                        order.isPaid ? 'text-green-700' : ''
+                        (order as any).isPaid ? 'text-status-success' : ''
                       }`}>
-                        <span className={order.isPaid ? 'line-through' : ''}>
+                        <span className={(order as any).isPaid ? 'line-through' : ''}>
                           {item.quantity}x {item.name}
                         </span>
-                        <span className={order.isPaid ? 'line-through' : ''}>
+                        <span className={(order as any).isPaid ? 'line-through' : ''}>
                           ${Number(item.subtotal || 0).toFixed(2)}
                         </span>
                       </div>
                     ))}
                   </div>
                   <div className={`flex justify-between font-medium mt-2 pt-2 border-t border-default ${
-                    order.isPaid ? 'text-green-700' : ''
+                    (order as any).isPaid ? 'text-status-success' : ''
                   }`}>
-                    <span className={order.isPaid ? 'line-through' : ''}>Order Total</span>
-                    <span className={order.isPaid ? 'line-through' : ''}>
+                    <span className={(order as any).isPaid ? 'line-through' : ''}>Order Total</span>
+                    <span className={(order as any).isPaid ? 'line-through' : ''}>
                       ${Number(order.total || 0).toFixed(2)}
                     </span>
                   </div>
-                  {order.isPaid && order.payments && order.payments.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-green-200">
-                      <div className="text-xs text-green-700">
-                        Payment: {order.payments.map((p: any) =>
+                  {(order as any).isPaid && (order as any).payments && (order as any).payments.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-status-success/30">
+                      <div className="text-xs text-status-success">
+                        Payment: {(order as any).payments.map((p: any) =>
                           `${p.method} $${Number(p.amount).toFixed(2)}`
                         ).join(', ')}
                       </div>
@@ -280,24 +312,32 @@ const TableSessionBillComponent = ({
         ))}
       </div>
 
-      {/* Payment Options */}
-      {bill.summary.remainingBalance > 0 && (
-        <div className="space-y-4">
-          <h3 className="font-semibold flex items-center space-x-2">
-            <CreditCard className="w-5 h-5" />
-            <span>Payment Options</span>
-          </h3>
+      {/* Payment Options - Only show when there's an outstanding balance */}
+      {hasRemainingBalance && (
+        <div className="space-y-6">
+          <div className="text-center space-y-2">
+            <h3 className="text-lg font-semibold flex items-center justify-center space-x-2">
+              <CreditCard className="w-5 h-5 text-primary" />
+              <span>Ready to Pay?</span>
+            </h3>
+            <p className="text-sm text-content-secondary">
+              Choose how you'd like to settle your bill
+            </p>
+          </div>
 
           {/* Payment Action Buttons */}
-          <div className="grid grid-cols-1 gap-3">
-            {/* Full Payment */}
+          <div className="space-y-3">
+            {/* Full Payment Button */}
             <Button
               onClick={initiatePayment}
               size="lg"
-              className="w-full flex items-center justify-center space-x-2"
+              className="w-full h-14 flex items-center justify-center space-x-3 bg-gradient-to-r from-primary to-primary-hover shadow-lg hover:shadow-xl transition-all duration-200"
             >
-              <CreditCard className="w-4 h-4" />
-              <span>Pay Full Amount • ${bill.summary.remainingBalance.toFixed(2)}</span>
+              <CreditCard className="w-5 h-5" />
+              <div className="flex flex-col items-center">
+                <span className="font-semibold">Pay Full Amount</span>
+                <span className="text-sm opacity-90">${bill.summary.remainingBalance.toFixed(2)}</span>
+              </div>
             </Button>
 
             {/* Split Payment - only show if multiple users */}
@@ -306,38 +346,77 @@ const TableSessionBillComponent = ({
                 onClick={initiateSplitPayment}
                 variant="outline"
                 size="lg"
-                className="w-full flex items-center justify-center space-x-2"
+                className="w-full h-14 flex items-center justify-center space-x-3 border-2 border-primary/20 hover:border-primary/40 hover:bg-primary/5 transition-all duration-200"
               >
-                <Split className="w-4 h-4" />
-                <span>Split Bill</span>
-                <Users className="w-4 h-4" />
-                <span>({users.length} people)</span>
+                <Split className="w-5 h-5 text-primary" />
+                <div className="flex flex-col items-center">
+                  <span className="font-semibold">Split Bill</span>
+                  <div className="flex items-center space-x-1 text-sm text-content-secondary">
+                    <Users className="w-3 h-3" />
+                    <span>{users.length} people</span>
+                  </div>
+                </div>
               </Button>
             )}
           </div>
 
-          {/* Info for multiple diners */}
+          {/* Enhanced info for multiple diners */}
           {users.length > 1 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="flex items-center space-x-2 text-sm text-blue-800">
-                <Users className="w-4 h-4" />
-                <span>
-                  {users.length} people are dining at this table. Use "Split Bill" to divide the payment among participants.
-                </span>
+            <div className="bg-gradient-to-r from-surface to-surface-secondary border border-default rounded-xl p-4">
+              <div className="flex items-start space-x-3">
+                <Users className="w-5 h-5 text-status-info mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-medium text-status-info">Multiple Diners Detected</p>
+                  <p className="text-sm text-status-info">
+                    {users.length} people are dining at this table. You can pay the full amount or split the bill fairly among everyone.
+                  </p>
+                </div>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Payment Complete */}
+      {/* Enhanced Payment Complete Section */}
       {bill.summary.isFullyPaid && (
-        <div className="bg-success/10 border border-success/20 rounded-lg p-4 text-center">
-          <div className="text-4xl mb-2">✅</div>
-          <h3 className="font-semibold text-success mb-1">Payment Complete!</h3>
-          <p className="text-sm text-content-secondary">
-            Thank you for dining with us!
-          </p>
+        <div className="relative overflow-hidden bg-gradient-to-br from-surface via-surface-secondary to-surface-tertiary border-2 border-status-success/30 rounded-2xl p-8 text-center shadow-lg">
+          {/* Decorative background pattern */}
+          <div className="absolute inset-0 opacity-5">
+            <div className="absolute top-4 left-4 w-16 h-16 bg-status-success/20 rounded-full"></div>
+            <div className="absolute bottom-4 right-4 w-12 h-12 bg-status-success/20 rounded-full"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-status-success/20 rounded-full"></div>
+          </div>
+
+          <div className="relative z-10 space-y-4">
+            {/* Animated checkmark */}
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-status-success/10 rounded-full mb-2">
+              <div className="text-5xl animate-bounce">🎉</div>
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-2xl font-bold text-status-success">Payment Complete!</h3>
+              <p className="text-status-success font-medium">
+                All settled! Thank you for dining with us.
+              </p>
+
+              {/* Payment summary */}
+              <div className="inline-flex items-center justify-center bg-surface/60 backdrop-blur-sm border border-status-success/30 rounded-full px-4 py-2 mt-4">
+                <span className="text-sm font-semibold text-status-success">
+                  Total Paid: ${bill.summary.totalPaid.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Additional message based on user count */}
+            <div className="pt-4 border-t border-status-success/30">
+              <p className="text-sm text-status-success">
+                {users.length > 1
+                  ? `Hope you all enjoyed your meal together! 🍽️`
+                  : `Hope you enjoyed your meal! Come back soon! 🍽️`
+                }
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>
