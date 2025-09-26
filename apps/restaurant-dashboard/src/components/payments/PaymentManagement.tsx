@@ -12,7 +12,8 @@ import {
   RefreshCw,
   Download,
   Filter,
-  Banknote
+  Banknote,
+  Users
 } from 'lucide-react'
 import { tabsyClient } from '@tabsy/api-client'
 import { PaymentOverview } from './PaymentOverview'
@@ -20,12 +21,13 @@ import { ActivePayments, ActivePaymentsRef } from './ActivePayments'
 import { PaymentHistory } from './PaymentHistory'
 import { PaymentAnalytics } from './PaymentAnalytics'
 import { PendingCashPayments } from './PendingCashPayments'
+import { SplitPaymentMonitoring } from './SplitPaymentMonitoring'
 
 interface PaymentManagementProps {
   restaurantId: string
 }
 
-type PaymentTab = 'overview' | 'active' | 'pending_cash' | 'history' | 'analytics'
+type PaymentTab = 'overview' | 'active' | 'pending_cash' | 'split_payments' | 'history' | 'analytics'
 
 export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
   const [activeTab, setActiveTab] = useState<PaymentTab>('overview')
@@ -51,6 +53,12 @@ export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
       label: 'Pending Cash',
       icon: Banknote,
       description: 'Manage pending cash payments'
+    },
+    {
+      id: 'split_payments' as PaymentTab,
+      label: 'Split Payments',
+      icon: Users,
+      description: 'Monitor split payment progress'
     },
     {
       id: 'history' as PaymentTab,
@@ -228,6 +236,16 @@ export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
         >
           <div className="p-6 overflow-y-auto h-full">
             <PendingCashPayments restaurantId={restaurantId} />
+          </div>
+        </div>
+
+        <div
+          className={`h-full transition-opacity duration-300 ease-in-out ${
+            activeTab === 'split_payments' ? 'opacity-100' : 'opacity-0 hidden'
+          }`}
+        >
+          <div className="p-6 overflow-y-auto h-full">
+            <SplitPaymentMonitoring restaurantId={restaurantId} />
           </div>
         </div>
 

@@ -101,11 +101,42 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
     addNotification(notification)
   }, [])
 
+  // Utility functions for data processing
+  const formatCurrency = (amount: unknown): string => {
+    if (typeof amount === 'number' && !isNaN(amount)) {
+      return amount.toFixed(2)
+    }
+
+    if (typeof amount === 'string') {
+      const parsed = parseFloat(amount)
+      return !isNaN(parsed) ? parsed.toFixed(2) : '0.00'
+    }
+
+    return '0.00'
+  }
+
+  const formatPaymentMethod = (method: unknown): string => {
+    if (typeof method !== 'string' || !method.trim()) {
+      return 'unknown method'
+    }
+
+    return method
+      .replace(/_/g, ' ')
+      .toLowerCase()
+      .replace(/\b\w/g, letter => letter.toUpperCase())
+  }
+
   const handlePaymentCreated = useCallback((data: any) => {
+    const amount = data?.amount ?? data?.total ?? 0
+    const method = data?.method ?? data?.paymentMethod ?? 'unknown'
+
+    const formattedAmount = formatCurrency(amount)
+    const formattedMethod = formatPaymentMethod(method)
+
     const notification = createNotification(
       'info',
       'New Payment Started',
-      `Payment of $${data.amount.toFixed(2)} initiated via ${data.method.replace('_', ' ').toLowerCase()}`,
+      `Payment of $${formattedAmount} initiated via ${formattedMethod}`,
       data.paymentId,
       data.orderId,
       3000

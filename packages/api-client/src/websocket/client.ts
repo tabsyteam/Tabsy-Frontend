@@ -184,6 +184,8 @@ export class TabsyWebSocketClient {
   subscribeToPaymentUpdates(restaurantId: string, callback: (data: any) => void): void {
     if (this.socket) {
       this.joinRoom(`restaurant:${restaurantId}`);
+      this.socket.on('payment:created', callback);
+      this.socket.on('payment:status_updated', callback);
       this.socket.on('payment:completed', callback);
       this.socket.on('payment:failed', callback);
       this.socket.on('payment:refunded', callback);
@@ -274,6 +276,15 @@ export class TabsyWebSocketClient {
   off(event: string, callback?: (data: any) => void): void {
     if (this.socket) {
       this.socket.off(event, callback);
+    }
+  }
+
+  /**
+   * Listen to all events (debug/monitoring purposes)
+   */
+  onAny(callback: (eventName: string, ...args: any[]) => void): void {
+    if (this.socket) {
+      this.socket.onAny(callback);
     }
   }
 

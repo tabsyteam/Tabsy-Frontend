@@ -103,10 +103,27 @@ export function PaymentOverview({ restaurantId }: PaymentOverviewProps) {
   }, [queryClient, restaurantId, selectedPeriod])
 
   const handlePaymentCreated = useCallback((data: any) => {
-    console.log('🆕 Payment created - updating metrics:', data)
+    console.log('🆕🎯 [PaymentOverview] Payment created - updating metrics:', data)
+    console.log('🆕🎯 [PaymentOverview] Payment data keys:', Object.keys(data || {}))
+    console.log('🆕🎯 [PaymentOverview] Current restaurant ID:', restaurantId)
+
     // Invalidate metrics to update transaction counts
     queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-metrics', restaurantId, selectedPeriod] })
     setRealtimeUpdates(prev => prev + 1)
+
+    console.log('🆕✅ [PaymentOverview] Payment created - metrics invalidated')
+  }, [queryClient, restaurantId, selectedPeriod])
+
+  // Handler for table session payment updates (actual payment creation events from backend)
+  const handleTableSessionPaymentUpdated = useCallback((data: any) => {
+    console.log('🆕🎯 [PaymentOverview] Table session payment updated (payment created):', data)
+    console.log('🆕🎯 [PaymentOverview] Event data keys:', Object.keys(data || {}))
+    console.log('🆕🎯 [PaymentOverview] Current restaurant ID:', restaurantId)
+
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-metrics', restaurantId, selectedPeriod] })
+    setRealtimeUpdates(prev => prev + 1)
+
+    console.log('🆕✅ [PaymentOverview] Table session payment updated - metrics invalidated')
   }, [queryClient, restaurantId, selectedPeriod])
 
   // Register WebSocket event listeners
@@ -114,6 +131,7 @@ export function PaymentOverview({ restaurantId }: PaymentOverviewProps) {
   useWebSocketEvent('payment:failed', handlePaymentFailed, [handlePaymentFailed])
   useWebSocketEvent('payment:refunded', handlePaymentRefunded, [handlePaymentRefunded])
   useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated])
+  useWebSocketEvent('table_session:payment_updated', handleTableSessionPaymentUpdated, [handleTableSessionPaymentUpdated])
 
   function getDateFrom(period: string): string {
     const now = new Date()

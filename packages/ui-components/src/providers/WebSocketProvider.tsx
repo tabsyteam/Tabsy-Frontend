@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react'
 import { TabsyWebSocketClient, WebSocketEventMap, WebSocketEventListener } from '@tabsy/api-client'
+import { useWebSocketEventRegistry } from '../hooks/useWebSocketEventRegistry'
 
 interface WebSocketContextValue {
   client: TabsyWebSocketClient | null
@@ -106,6 +107,7 @@ export function WebSocketProvider({
         setError(null)
         clearReconnectTimeout()
       })
+
 
       client.on('disconnect', () => {
         console.log('🔌❌ [WebSocket] Disconnected - Setting isConnected to false')
@@ -297,8 +299,7 @@ export function useWebSocketEvent<K extends keyof WebSocketEventMap>(
 ) {
   const { client } = useWebSocket()
 
-  // Import the registry hook dynamically to avoid circular imports
-  const { useWebSocketEventRegistry } = require('../hooks/useWebSocketEventRegistry')
+  // Use the imported registry hook
 
   // Get component name from stack trace if not provided
   const finalComponentName = componentName || (() => {
@@ -306,6 +307,13 @@ export function useWebSocketEvent<K extends keyof WebSocketEventMap>(
     const match = stack.split('\n')[3]?.match(/at (\w+)/)
     return match?.[1] || 'UnknownComponent'
   })()
+
+  console.log(`🎯 [useWebSocketEvent] Setting up event listener for ${event} in ${finalComponentName}`, {
+    hasClient: !!client,
+    clientConnected: client?.isConnected?.() || false,
+    event,
+    componentName: finalComponentName
+  })
 
   const { registrationId, isRegistered } = useWebSocketEventRegistry(
     client,

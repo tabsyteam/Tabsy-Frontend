@@ -6,6 +6,7 @@ import {
   useRestaurantDashboard,
   type UseWebSocketOptions
 } from '@tabsy/api-client'
+import { useAuth } from '@tabsy/ui-components'
 
 interface RestaurantWebSocketOptions {
   restaurantId: string
@@ -31,13 +32,15 @@ export function useRestaurantWebSocket({
   onAnalyticsUpdate
 }: RestaurantWebSocketOptions) {
   const [isConnected, setIsConnected] = useState(false)
+  const [lastMessage, setLastMessage] = useState<any>(null)
+  const { session } = useAuth()
 
   const wsOptions: UseWebSocketOptions = {
     url: process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:5001',
     auth: {
       namespace: 'restaurant',
       restaurantId: restaurantId,
-      // token would come from auth context/localStorage
+      token: session?.token, // Now properly using token from auth context
     },
     onConnect: () => {
       console.log(`[useRestaurantWebSocket] Connected for restaurant ${restaurantId}`)
@@ -58,12 +61,30 @@ export function useRestaurantWebSocket({
 
   // Use the restaurant dashboard hook that sets up all the event listeners
   useRestaurantDashboard(null, restaurantId, {
-    onOrderUpdate,
-    onTableUpdate,
-    onPaymentUpdate,
-    onKitchenUpdate,
-    onStaffNotification,
-    onAnalyticsUpdate
+    onOrderUpdate: (data) => {
+      setLastMessage({ type: 'order', data })
+      onOrderUpdate?.(data)
+    },
+    onTableUpdate: (data) => {
+      setLastMessage({ type: 'table', data })
+      onTableUpdate?.(data)
+    },
+    onPaymentUpdate: (data) => {
+      setLastMessage({ type: 'payment', data })
+      onPaymentUpdate?.(data)
+    },
+    onKitchenUpdate: (data) => {
+      setLastMessage({ type: 'kitchen', data })
+      onKitchenUpdate?.(data)
+    },
+    onStaffNotification: (data) => {
+      setLastMessage({ type: 'notification', data })
+      onStaffNotification?.(data)
+    },
+    onAnalyticsUpdate: (data) => {
+      setLastMessage({ type: 'analytics', data })
+      onAnalyticsUpdate?.(data)
+    }
   })
 
   // Join restaurant-specific rooms
@@ -83,6 +104,7 @@ export function useRestaurantWebSocket({
 
   return {
     isConnected,
+    lastMessage,
     disconnect
   }
 }

@@ -321,7 +321,9 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
 
   // Payment event handlers
   const handlePaymentCreated = useCallback((data: any) => {
-    console.log('💳 Payment created via WebSocket:', data)
+    console.log('💳🎯 [OrdersManagement] Payment created via WebSocket:', data)
+    console.log('💳🎯 [OrdersManagement] Payment data keys:', Object.keys(data || {}))
+    console.log('💳🎯 [OrdersManagement] Current restaurant ID:', restaurantId)
 
     // Invalidate payment-related queries to refresh order cards
     if (data.orderId) {
@@ -329,13 +331,20 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
       queryClient.invalidateQueries({
         queryKey: ['payments', 'order', data.orderId]
       })
+
+      // Also invalidate main orders query to update payment status in order cards
+      queryClient.invalidateQueries({
+        queryKey: ['orders', 'restaurant', restaurantId]
+      })
     }
 
     // Show notification
     toast.info('Payment Created', {
       description: `${data.paymentMethod === 'CASH' ? 'Cash' : 'Card'} payment requested for order #${data.orderNumber || data.orderId}`
     })
-  }, [queryClient])
+
+    console.log('💳✅ [OrdersManagement] Payment created - queries invalidated and toast shown')
+  }, [queryClient, restaurantId])
 
   const handlePaymentCompleted = useCallback((data: any) => {
     console.log('✅ Payment completed via WebSocket:', data)
@@ -379,10 +388,29 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
   useWebSocketEvent('order:updated', handleOrderUpdate, [handleOrderUpdate])
   useWebSocketEvent('order:status_updated', handleOrderStatusChange, [handleOrderStatusChange])
 
+  // Handler for table session payment updates (actual payment creation events from backend)
+  const handleTableSessionPaymentUpdated = useCallback((data: any) => {
+    console.log('💳🎯 [OrdersManagement] Table session payment updated (payment created):', data)
+    console.log('💳🎯 [OrdersManagement] Event data keys:', Object.keys(data || {}))
+    console.log('💳🎯 [OrdersManagement] Current restaurant ID:', restaurantId)
+
+    if (data.tableSessionId) {
+      queryClient.invalidateQueries({ queryKey: ['payments', 'table-session', data.tableSessionId] })
+      queryClient.invalidateQueries({ queryKey: ['orders', 'restaurant', restaurantId] })
+      queryClient.invalidateQueries({ queryKey: ['table-sessions', restaurantId] })
+    }
+
+    toast.info('Payment Created', {
+      description: `Payment has been initiated for table session`
+    })
+    console.log('💳✅ [OrdersManagement] Table session payment updated - queries invalidated and toast shown')
+  }, [queryClient, restaurantId])
+
   // Payment event listeners
   useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated])
   useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted])
   useWebSocketEvent('payment:cancelled', handlePaymentCancelled, [handlePaymentCancelled])
+  useWebSocketEvent('table_session:payment_updated', handleTableSessionPaymentUpdated, [handleTableSessionPaymentUpdated])
   
   // Update selected order when orders data changes
   // Use more efficient comparison instead of expensive JSON.stringify

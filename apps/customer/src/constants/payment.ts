@@ -15,11 +15,11 @@ export enum PaymentType {
  */
 export enum SplitBillType {
   /** Split the bill equally among all participants */
-  EQUAL = 'equal',
+  EQUAL = 'EQUAL',
   /** Split by selecting specific items for each person */
-  BY_ITEMS = 'by_items',
+  BY_ITEMS = 'BY_ITEMS',
   /** Split by percentage for each person */
-  BY_PERCENTAGE = 'by_percentage',
+  BY_PERCENTAGE = 'BY_PERCENTAGE',
   /** Split by custom amount for each person */
-  BY_AMOUNT = 'by_amount'
+  BY_AMOUNT = 'BY_AMOUNT'
 }

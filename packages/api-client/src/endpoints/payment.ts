@@ -153,6 +153,66 @@ export class PaymentAPI {
   }
 
   /**
+   * PATCH /payments/split/:groupId/participant/:participantId - Update split payment participant
+   */
+  async updateSplitParticipant(
+    groupId: string,
+    participantId: string,
+    data: {
+      amount?: number
+      tipAmount?: number
+      hasPaid?: boolean
+    }
+  ): Promise<ApiResponse<Payment>> {
+    return this.client.patch(`/payments/split/${groupId}/participant/${participantId}`, data)
+  }
+
+  /**
+   * GET /payments/split/:groupId/status - Get split payment group status
+   */
+  async getSplitPaymentStatus(groupId: string): Promise<ApiResponse<{
+    groupId: string
+    totalAmount: number
+    paidAmount: number
+    remainingAmount: number
+    completedParticipants: number
+    totalParticipants: number
+    isComplete: boolean
+    participants: Array<{
+      participantId: string
+      participantName: string
+      amount: number
+      tipAmount?: number
+      hasPaid: boolean
+      paymentId?: string
+    }>
+  }>> {
+    return this.client.get(`/payments/split/${groupId}/status`)
+  }
+
+  /**
+   * POST /payments/split/:groupId/cancel - Cancel split payment group
+   */
+  async cancelSplitPayment(groupId: string, reason?: string): Promise<ApiResponse<{
+    groupId: string
+    cancelled: boolean
+    refundsProcessed: number
+  }>> {
+    return this.client.post(`/payments/split/${groupId}/cancel`, { reason })
+  }
+
+  /**
+   * POST /payments/split/:groupId/participant/:participantId/remind - Send payment reminder
+   */
+  async sendSplitPaymentReminder(
+    groupId: string,
+    participantId: string,
+    message?: string
+  ): Promise<ApiResponse<{ sent: boolean }>> {
+    return this.client.post(`/payments/split/${groupId}/participant/${participantId}/remind`, { message })
+  }
+
+  /**
    * POST /payments/webhooks/stripe - Stripe webhook handler
    */
   async handleStripeWebhook(event: StripeWebhookEvent): Promise<ApiResponse<void>> {
@@ -189,5 +249,17 @@ export class PaymentAPI {
     const queryString = createQueryString(createFilterParams(filters || {}))
     const url = `/restaurants/${restaurantId}/payments${queryString ? `?${queryString}` : ''}`
     return this.client.get(url)
+  }
+
+  /**
+   * POST /payments/:id/simulate-webhook - Simulate webhook success (development only)
+   */
+  async simulateWebhookSuccess(
+    paymentId: string,
+    stripePaymentIntentId: string
+  ): Promise<ApiResponse<{ payment: Payment; simulated: boolean }>> {
+    return this.client.post(`/payments/${paymentId}/simulate-webhook`, {
+      stripePaymentIntentId
+    })
   }
 }

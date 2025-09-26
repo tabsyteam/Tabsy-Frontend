@@ -79,14 +79,27 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
 
   // WebSocket event handlers for real-time payment updates
   const handlePaymentCreated = useCallback((data: any) => {
-    console.log('🆕 Payment created:', data)
-    // Invalidate and refetch active payments to include new payment
+    console.log('🆕🎯 [ActivePayments] Payment created event received:', data)
+    console.log('🆕🎯 [ActivePayments] Current restaurant ID:', restaurantId)
+    console.log('🆕🎯 [ActivePayments] Event data restaurant ID:', data?.restaurantId)
+    console.log('🆕🎯 [ActivePayments] Payment data keys:', Object.keys(data || {}))
+
+    // Force immediate refetch like order handlers do
     queryClient.invalidateQueries({ queryKey: ['restaurant', 'active-payments', restaurantId] })
+
+    // Also invalidate payments list to refresh payment components
+    queryClient.invalidateQueries({
+      queryKey: ['restaurants', restaurantId, 'payments']
+    })
+
     setRealtimeUpdates(prev => prev + 1)
+
+    // Add toast notification like OrdersManagement does
+    console.log('💳✅ [ActivePayments] Payment created - queries invalidated and UI updated')
   }, [queryClient, restaurantId])
 
   const handlePaymentStatusUpdated = useCallback((data: any) => {
-    console.log('🔄 Payment status updated:', data)
+    console.log('🔄🎯 [ActivePayments] Payment status updated event received:', data)
     // Update cached payment data
     queryClient.setQueryData(['restaurant', 'active-payments', restaurantId], (oldData: Payment[] | undefined) => {
       if (!oldData) return oldData
@@ -104,7 +117,7 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
   }, [queryClient, restaurantId])
 
   const handlePaymentCompleted = useCallback((data: any) => {
-    console.log('✅ Payment completed:', data)
+    console.log('✅🎯 [ActivePayments] Payment completed event received:', data)
     // Remove completed payment from active payments
     queryClient.setQueryData(['restaurant', 'active-payments', restaurantId], (oldData: Payment[] | undefined) => {
       if (!oldData) return oldData
@@ -138,12 +151,29 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
     setRealtimeUpdates(prev => prev + 1)
   }, [queryClient, restaurantId])
 
+  // Handler for table session payment updates (actual payment creation events from backend)
+  const handleTableSessionPaymentUpdated = useCallback((data: any) => {
+    console.log('🆕🎯 [ActivePayments] Table session payment updated (payment created):', data)
+    console.log('🆕🎯 [ActivePayments] Current restaurant ID:', restaurantId)
+    console.log('🆕🎯 [ActivePayments] Event data keys:', Object.keys(data || {}))
+
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'active-payments', restaurantId] })
+    queryClient.invalidateQueries({ queryKey: ['restaurants', restaurantId, 'payments'] })
+    queryClient.invalidateQueries({ queryKey: ['table-sessions', restaurantId] })
+
+    setRealtimeUpdates(prev => prev + 1)
+    console.log('💳✅ [ActivePayments] Table session payment updated - queries invalidated and UI updated')
+  }, [queryClient, restaurantId])
+
   // Register WebSocket event listeners
+  console.log('🎯🔥 [ActivePayments] Registering WebSocket event listeners for restaurant:', restaurantId)
   useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated])
   useWebSocketEvent('payment:status_updated', handlePaymentStatusUpdated, [handlePaymentStatusUpdated])
   useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted])
   useWebSocketEvent('payment:failed', handlePaymentFailed, [handlePaymentFailed])
   useWebSocketEvent('payment:cancelled', handlePaymentCancelled, [handlePaymentCancelled])
+  useWebSocketEvent('table_session:payment_updated', handleTableSessionPaymentUpdated, [handleTableSessionPaymentUpdated])
+  console.log('🎯🔥 [ActivePayments] All WebSocket event listeners registered')
 
   const getPaymentMethodIcon = (method: PaymentMethod) => {
     switch (method) {

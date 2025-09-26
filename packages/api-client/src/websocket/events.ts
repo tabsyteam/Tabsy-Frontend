@@ -84,12 +84,14 @@ export interface PaymentCompletedEvent extends BaseWebSocketEvent {
   type: 'payment:completed';
   data: {
     paymentId: string;
-    orderId: string;
+    orderId?: string;        // Optional for table session payments
+    tableSessionId?: string; // Support for table session payments
     amount: number;
     method: 'card' | 'cash' | 'digital_wallet' | 'split';
     transactionId: string;
     tip?: number;
     processedAt: Date;
+    paymentType?: 'order' | 'table_session' | 'split';  // Clarify payment type
   };
 }
 
@@ -97,12 +99,14 @@ export interface PaymentFailedEvent extends BaseWebSocketEvent {
   type: 'payment:failed';
   data: {
     paymentId: string;
-    orderId: string;
+    orderId?: string;        // Optional for table session payments
+    tableSessionId?: string; // Support for table session payments
     amount: number;
     method: string;
     errorCode: string;
     errorMessage: string;
     attemptedAt: Date;
+    paymentType?: 'order' | 'table_session' | 'split';  // Clarify payment type
   };
 }
 
@@ -111,11 +115,13 @@ export interface PaymentRefundedEvent extends BaseWebSocketEvent {
   data: {
     originalPaymentId: string;
     refundId: string;
-    orderId: string;
+    orderId?: string;        // Optional for table session payments
+    tableSessionId?: string; // Support for table session payments
     amount: number;
     reason: string;
     processedAt: Date;
     processedBy: string;
+    paymentType?: 'order' | 'table_session' | 'split';  // Clarify payment type
   };
 }
 
@@ -328,10 +334,12 @@ export interface PaymentCreatedEvent extends BaseWebSocketEvent {
   type: 'payment:created';
   data: {
     paymentId: string;
-    orderId: string;
+    orderId?: string;        // Optional for table session payments
+    tableSessionId?: string; // Support for table session payments
     amount: number;
     method: string;
     createdAt: Date;
+    paymentType?: 'order' | 'table_session' | 'split';  // Clarify payment type
   };
 }
 
@@ -339,9 +347,11 @@ export interface PaymentCancelledEvent extends BaseWebSocketEvent {
   type: 'payment:cancelled';
   data: {
     paymentId: string;
-    orderId: string;
+    orderId?: string;        // Optional for table session payments
+    tableSessionId?: string; // Support for table session payments
     cancelledAt: Date;
     reason: string;
+    paymentType?: 'order' | 'table_session' | 'split';  // Clarify payment type
   };
 }
 
@@ -349,9 +359,11 @@ export interface PaymentStatusUpdatedEvent extends BaseWebSocketEvent {
   type: 'payment:status_updated';
   data: {
     paymentId: string;
-    orderId: string;
+    orderId?: string;        // Optional for table session payments
+    tableSessionId?: string; // Support for table session payments
     status: string;
     updatedAt: Date;
+    paymentType?: 'order' | 'table_session' | 'split';  // Clarify payment type
   };
 }
 
@@ -499,6 +511,152 @@ export interface TableSessionUpdatedEvent extends BaseWebSocketEvent {
   };
 }
 
+// Split Payment Events
+export interface SplitPaymentCreatedEvent extends BaseWebSocketEvent {
+  type: 'payment:split_created';
+  data: {
+    groupId: string;
+    orderId: string;
+    tableSessionId?: string;
+    totalAmount: number;
+    totalParticipants: number;
+    splitType: 'EQUAL' | 'BY_ITEMS' | 'BY_PERCENTAGE' | 'BY_AMOUNT';
+    createdBy: {
+      participantId: string;
+      participantName: string;
+    };
+    participants: Array<{
+      participantId: string;
+      participantName: string;
+      amount: number;
+      tipAmount?: number;
+    }>;
+  };
+}
+
+export interface SplitPaymentParticipantUpdatedEvent extends BaseWebSocketEvent {
+  type: 'payment:split_participant_updated';
+  data: {
+    groupId: string;
+    participantId: string;
+    participantName: string;
+    amount: number;
+    tipAmount?: number;
+    hasPaid: boolean;
+    paymentId?: string;
+    updatedAt: Date;
+  };
+}
+
+export interface SplitPaymentProgressEvent extends BaseWebSocketEvent {
+  type: 'payment:split_progress';
+  data: {
+    groupId: string;
+    orderId: string;
+    totalAmount: number;
+    paidAmount: number;
+    remainingAmount: number;
+    completedParticipants: number;
+    totalParticipants: number;
+    progressPercentage: number;
+    recentActivity: {
+      participantName: string;
+      amount: number;
+      action: 'paid' | 'updated' | 'cancelled';
+      timestamp: Date;
+    };
+  };
+}
+
+export interface SplitPaymentCompletedEvent extends BaseWebSocketEvent {
+  type: 'payment:split_completed';
+  data: {
+    groupId: string;
+    orderId: string;
+    totalAmount: number;
+    completedAt: Date;
+    participants: Array<{
+      participantId: string;
+      participantName: string;
+      amount: number;
+      tipAmount?: number;
+      paymentId: string;
+    }>;
+    summary: {
+      subtotal: number;
+      tips: number;
+      total: number;
+      paymentMethods: Record<string, number>;
+    };
+  };
+}
+
+export interface SplitPaymentCancelledEvent extends BaseWebSocketEvent {
+  type: 'payment:split_cancelled';
+  data: {
+    groupId: string;
+    orderId: string;
+    cancelledBy: {
+      participantId?: string;
+      participantName?: string;
+      role?: string;
+    };
+    reason: string;
+    cancelledAt: Date;
+    refundsProcessed: number;
+    affectedParticipants: string[];
+  };
+}
+
+export interface SplitPaymentReminderSentEvent extends BaseWebSocketEvent {
+  type: 'payment:split_reminder_sent';
+  data: {
+    groupId: string;
+    participantId: string;
+    participantName: string;
+    amount: number;
+    reminderType: 'automated' | 'manual';
+    sentAt: Date;
+  };
+}
+
+// Real-time Split Calculation Events
+export interface SplitCalculationUpdatedEvent extends BaseWebSocketEvent {
+  type: 'split:calculation_updated';
+  data: {
+    tableSessionId: string;
+    updatedBy: string;
+    updatedUser?: string;
+    splitCalculation: {
+      splitType: 'EQUAL' | 'BY_ITEMS' | 'BY_PERCENTAGE' | 'BY_AMOUNT';
+      participants: string[];
+      splitAmounts: { [userId: string]: number };
+      totalAmount: number;
+      percentages?: { [userId: string]: number };
+      amounts?: { [userId: string]: number };
+      itemAssignments?: { [itemId: string]: string };
+      valid: boolean;
+      timestamp: Date;
+    };
+    timestamp: Date;
+  };
+}
+
+export interface SplitCalculationConflictEvent extends BaseWebSocketEvent {
+  type: 'split:conflict_detected';
+  data: {
+    tableSessionId: string;
+    conflictType: 'percentage_overflow' | 'amount_overflow' | 'concurrent_update';
+    conflictingUsers: string[];
+    conflictDetails: {
+      expected: any;
+      actual: any;
+      conflictAt: Date;
+    };
+    resolutionSuggestion?: string;
+  };
+}
+
 // Union type for all possible WebSocket events
 export type TabsyWebSocketEvent =
   | OrderCreatedEvent
@@ -536,7 +694,15 @@ export type TabsyWebSocketEvent =
   | TableSessionNewRoundEvent
   | TableSessionBillRequestedEvent
   | TableSessionClosedEvent
-  | TableSessionUpdatedEvent;
+  | TableSessionUpdatedEvent
+  | SplitPaymentCreatedEvent
+  | SplitPaymentParticipantUpdatedEvent
+  | SplitPaymentProgressEvent
+  | SplitPaymentCompletedEvent
+  | SplitPaymentCancelledEvent
+  | SplitPaymentReminderSentEvent
+  | SplitCalculationUpdatedEvent
+  | SplitCalculationConflictEvent;
 
 // Event type mapping for type safety
 export type WebSocketEventMap = {
@@ -576,6 +742,14 @@ export type WebSocketEventMap = {
   'table:bill_requested': TableSessionBillRequestedEvent['data'];
   'table:session_closed': TableSessionClosedEvent['data'];
   'table:session_updated': TableSessionUpdatedEvent['data'];
+  'payment:split_created': SplitPaymentCreatedEvent['data'];
+  'payment:split_participant_updated': SplitPaymentParticipantUpdatedEvent['data'];
+  'payment:split_progress': SplitPaymentProgressEvent['data'];
+  'payment:split_completed': SplitPaymentCompletedEvent['data'];
+  'payment:split_cancelled': SplitPaymentCancelledEvent['data'];
+  'payment:split_reminder_sent': SplitPaymentReminderSentEvent['data'];
+  'split:calculation_updated': SplitCalculationUpdatedEvent['data'];
+  'split:conflict_detected': SplitCalculationConflictEvent['data'];
 };
 
 // Type-safe event listener

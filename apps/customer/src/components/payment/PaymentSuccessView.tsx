@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@tabsy/ui-components'
 import {
   CheckCircle,
@@ -159,8 +159,18 @@ export function PaymentSuccessView() {
 
           // Add split payment info if applicable
           if (isSplit) {
+            // Get actual participant count from payment metadata or table session
+            let totalParticipants = 1 // Default for individual payment
+
+            if (paymentData.metadata?.splitPayment) {
+              totalParticipants = paymentData.metadata.splitPayment.totalParticipants || 1
+            } else if (tableBillData && tableBillData.guestSessions) {
+              // Use actual number of users in table session
+              totalParticipants = tableBillData.guestSessions.length
+            }
+
             enhancedPayment.splitInfo = {
-              totalParticipants: 1, // This would come from split payment data
+              totalParticipants,
               userAmount: paymentData.amount,
               isComplete: true
             }
@@ -592,121 +602,145 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
                 <span className="text-content-primary">Total Paid</span>
                 <span className="text-content-primary">
                   ${(() => {
-                    if (payment.tableBill) {
-                      // For table sessions, show the total paid amount from the bill
-                      return payment.tableBill.summary.totalPaid.toFixed(2);
-                    } else {
-                      // For individual payments, use payment amount (should already include tip if any)
-                      return Number(payment.amount || payment.totalAmount || 0).toFixed(2);
-                    }
+                    // Always show the actual payment amount that was just processed
+                    // Don't rely on tableBill.summary.totalPaid as it may not be updated yet
+                    // since payment might still be in PROCESSING status
+                    return Number(payment.amount || payment.totalAmount || 0).toFixed(2);
                   })()}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Detailed Receipt */}
-          {showDetailedReceipt && (
-            <div className="mt-6 p-4 bg-surface-secondary rounded-lg border border-border-secondary">
-              {payment.tableBill ? (
-                // Table Session Bill Details
-                <div>
-                  <h4 className="font-medium text-content-primary mb-3">Table Session Orders</h4>
-                  <div className="space-y-4">
-                    {Object.entries(payment.tableBill.billByRound).map(([roundNum, round]) => (
-                      <div key={roundNum}>
-                        <h5 className="text-sm font-medium text-content-primary mb-2">Round {roundNum}</h5>
-                        <div className="space-y-2">
-                          {round.orders.map(order => (
-                            <div key={order.orderId} className="border border-border-secondary/50 rounded p-2">
-                              <div className="flex justify-between items-start mb-1">
-                                <span className="text-xs font-medium text-content-primary">
-                                  Order #{order.orderNumber} by {order.placedBy}
-                                </span>
-                                <span className="text-xs font-medium text-content-primary">
-                                  ${Number(order.total || 0).toFixed(2)}
-                                </span>
-                              </div>
-                              <div className="space-y-1">
-                                {order.items.map((item: any, idx: number) => (
-                                  <div key={idx} className="flex justify-between text-xs text-content-secondary">
-                                    <span>{item.quantity}x {item.name}</span>
-                                    <span>${Number(item.subtotal || 0).toFixed(2)}</span>
+          {/* Detailed Receipt with Slide Animation */}
+          <AnimatePresence>
+            {showDetailedReceipt && (
+              <motion.div
+                initial={{
+                  height: 0,
+                  opacity: 0,
+                  marginTop: 0
+                }}
+                animate={{
+                  height: "auto",
+                  opacity: 1,
+                  marginTop: 24
+                }}
+                exit={{
+                  height: 0,
+                  opacity: 0,
+                  marginTop: 0
+                }}
+                transition={{
+                  duration: 0.4,
+                  ease: [0.4, 0.0, 0.2, 1], // Custom bezier curve for smooth professional feel
+                  opacity: { duration: 0.3 },
+                }}
+                style={{ overflow: "hidden" }}
+                className="bg-surface-secondary rounded-lg border border-border-secondary"
+              >
+                <div className="p-4">
+                  {payment.tableBill ? (
+                    // Table Session Bill Details
+                    <div>
+                      <h4 className="font-medium text-content-primary mb-3">Table Session Orders</h4>
+                      <div className="space-y-4">
+                        {Object.entries(payment.tableBill.billByRound).map(([roundNum, round]) => (
+                          <div key={roundNum}>
+                            <h5 className="text-sm font-medium text-content-primary mb-2">Round {roundNum}</h5>
+                            <div className="space-y-2">
+                              {round.orders.map(order => (
+                                <div key={order.orderId} className="border border-border-secondary/50 rounded p-2">
+                                  <div className="flex justify-between items-start mb-1">
+                                    <span className="text-xs font-medium text-content-primary">
+                                      Order #{order.orderNumber} by {order.placedBy}
+                                    </span>
+                                    <span className="text-xs font-medium text-content-primary">
+                                      ${Number(order.total || 0).toFixed(2)}
+                                    </span>
                                   </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div className="flex justify-between text-sm font-medium mt-2 pt-2 border-t border-border-secondary">
-                          <span>Round {roundNum} Total</span>
-                          <span>${round.roundTotal.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-border-secondary space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-content-secondary">Subtotal</span>
-                      <span className="text-content-primary">${payment.tableBill.summary.subtotal.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-content-secondary">Tax</span>
-                      <span className="text-content-primary">${payment.tableBill.summary.tax.toFixed(2)}</span>
-                    </div>
-                    {payment.tableBill.summary.tip > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-content-secondary">Tip</span>
-                        <span className="text-content-primary">${payment.tableBill.summary.tip.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-sm font-semibold pt-1 border-t">
-                      <span>Grand Total</span>
-                      <span>${payment.tableBill.summary.grandTotal.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-              ) : payment.order?.items && (
-                // Individual Order Details (fallback)
-                <div>
-                  <h4 className="font-medium text-content-primary mb-3">Order Items</h4>
-                  <div className="space-y-2">
-                    {payment.order.items.map((item: any, index: number) => (
-                      <div key={index} className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-content-primary">
-                            {item.quantity}x {item.menuItem?.name || item.name}
-                          </div>
-                          {item.customizations?.length > 0 && (
-                            <div className="text-xs text-content-secondary mt-1">
-                              {item.customizations.map((custom: any, idx: number) => (
-                                <div key={idx}>+ {custom.name} (+${Number(custom.price || 0).toFixed(2)})</div>
+                                  <div className="space-y-1">
+                                    {order.items.map((item: any, idx: number) => (
+                                      <div key={idx} className="flex justify-between text-xs text-content-secondary">
+                                        <span>{item.quantity}x {item.name}</span>
+                                        <span>${Number(item.subtotal || 0).toFixed(2)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               ))}
                             </div>
-                          )}
+                            <div className="flex justify-between text-sm font-medium mt-2 pt-2 border-t border-border-secondary">
+                              <span>Round {roundNum} Total</span>
+                              <span>${round.roundTotal.toFixed(2)}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 pt-3 border-t border-border-secondary space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-content-secondary">Subtotal</span>
+                          <span className="text-content-primary">${payment.tableBill.summary.subtotal.toFixed(2)}</span>
                         </div>
-                        <div className="text-sm font-medium text-content-primary">
-                          ${(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}
+                        <div className="flex justify-between text-sm">
+                          <span className="text-content-secondary">Tax</span>
+                          <span className="text-content-primary">${payment.tableBill.summary.tax.toFixed(2)}</span>
+                        </div>
+                        {payment.tableBill.summary.tip > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span className="text-content-secondary">Tip</span>
+                            <span className="text-content-primary">${payment.tableBill.summary.tip.toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-sm font-semibold pt-1 border-t">
+                          <span>Grand Total</span>
+                          <span>${payment.tableBill.summary.grandTotal.toFixed(2)}</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ) : payment.order?.items && (
+                    // Individual Order Details (fallback)
+                    <div>
+                      <h4 className="font-medium text-content-primary mb-3">Order Items</h4>
+                      <div className="space-y-2">
+                        {payment.order.items.map((item: any, index: number) => (
+                          <div key={index} className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="text-sm font-medium text-content-primary">
+                                {item.quantity}x {item.menuItem?.name || item.name}
+                              </div>
+                              {item.customizations?.length > 0 && (
+                                <div className="text-xs text-content-secondary mt-1">
+                                  {item.customizations.map((custom: any, idx: number) => (
+                                    <div key={idx}>+ {custom.name} (+${Number(custom.price || 0).toFixed(2)})</div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div className="text-sm font-medium text-content-primary">
+                              ${(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
 
-                  <div className="mt-4 pt-3 border-t border-border-secondary space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-content-secondary">Subtotal</span>
-                      <span className="text-content-primary">${Number(payment.order.subtotal || 0).toFixed(2)}</span>
+                      <div className="mt-4 pt-3 border-t border-border-secondary space-y-1">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-content-secondary">Subtotal</span>
+                          <span className="text-content-primary">${Number(payment.order.subtotal || 0).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-content-secondary">Tax</span>
+                          <span className="text-content-primary">${Number(payment.order.tax || 0).toFixed(2)}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-content-secondary">Tax</span>
-                      <span className="text-content-primary">${Number(payment.order.tax || 0).toFixed(2)}</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
-              )}
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
         {/* Action Buttons */}

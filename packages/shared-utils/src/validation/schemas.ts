@@ -164,6 +164,76 @@ export const paymentMethodSchema = z.enum([
 // Language code validation (ISO 639-1)
 export const languageCodeSchema = z.enum(['en', 'es', 'fr', 'de', 'it', 'pt', 'zh', 'ja', 'ar']);
 
+// Split payment validation schemas
+export const splitTypeSchema = z.enum(['EQUAL', 'BY_ITEMS', 'BY_PERCENTAGE', 'BY_AMOUNT']);
+
+export const splitParticipantSchema = z.object({
+  participantName: z.string().min(1, 'Participant name is required').max(50, 'Name cannot exceed 50 characters'),
+  amount: priceSchema,
+  tipAmount: priceSchema.optional(),
+  participantId: uuidSchema.optional()
+});
+
+export const splitPaymentDetailsSchema = z.object({
+  splitType: splitTypeSchema,
+  totalParticipants: z.number().int().min(2, 'At least 2 participants required').max(20, 'Maximum 20 participants allowed'),
+  userAmount: priceSchema,
+  userTipAmount: priceSchema.optional(),
+  isComplete: z.boolean(),
+  otherParticipants: z.array(z.object({
+    guestSessionId: uuidSchema,
+    userName: z.string().min(1, 'Username is required'),
+    amount: priceSchema,
+    tipAmount: priceSchema.optional(),
+    hasPaid: z.boolean()
+  })).optional()
+});
+
+export const createSplitPaymentRequestSchema = z.object({
+  orderId: uuidSchema,
+  participants: z.array(splitParticipantSchema).min(2, 'At least 2 participants required')
+});
+
+export const splitPaymentOptionSchema = z.object({
+  type: z.enum(['equal', 'by_items', 'by_percentage', 'by_amount']),
+  participants: z.array(z.string()).min(2, 'At least 2 participants required'),
+  percentages: z.record(z.string(), percentageSchema).optional(),
+  amounts: z.record(z.string(), priceSchema).optional(),
+  itemAssignments: z.record(z.string(), z.string()).optional()
+}).refine((data) => {
+  if (data.type === 'by_percentage' && !data.percentages) {
+    return false;
+  }
+  if (data.type === 'by_amount' && !data.amounts) {
+    return false;
+  }
+  if (data.type === 'by_items' && !data.itemAssignments) {
+    return false;
+  }
+  return true;
+}, {
+  message: 'Split payment data must match the selected split type'
+});
+
+// Table session payment validation
+export const tableSessionPaymentRequestSchema = z.object({
+  paymentMethod: paymentMethodSchema,
+  includeOrders: z.array(uuidSchema).optional(),
+  amount: priceSchema.optional(),
+  tipAmount: priceSchema.optional()
+});
+
+// Payment status validation
+export const paymentStatusSchema = z.enum([
+  'PENDING',
+  'PROCESSING',
+  'COMPLETED',
+  'FAILED',
+  'CANCELLED',
+  'REFUNDED',
+  'PARTIALLY_REFUNDED'
+]);
+
 export default {
   email: emailSchema,
   password: passwordSchema,
@@ -188,5 +258,12 @@ export default {
   tipPreset: tipPresetSchema,
   orderStatus: orderStatusSchema,
   paymentMethod: paymentMethodSchema,
-  languageCode: languageCodeSchema
+  paymentStatus: paymentStatusSchema,
+  languageCode: languageCodeSchema,
+  splitType: splitTypeSchema,
+  splitParticipant: splitParticipantSchema,
+  splitPaymentDetails: splitPaymentDetailsSchema,
+  createSplitPaymentRequest: createSplitPaymentRequestSchema,
+  splitPaymentOption: splitPaymentOptionSchema,
+  tableSessionPaymentRequest: tableSessionPaymentRequestSchema
 };

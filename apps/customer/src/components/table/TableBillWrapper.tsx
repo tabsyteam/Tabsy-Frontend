@@ -70,7 +70,19 @@ export function TableBillWrapper() {
         }
 
         const tableSessionData = usersResponse.data
-        const sessionUsers = tableSessionData.users || []
+        const rawUsers = tableSessionData.users || []
+
+        console.log('[TableBillWrapper] Raw API response users:', rawUsers)
+
+        // Map backend guestSession structure to frontend TableSessionUser structure
+        const sessionUsers: TableSessionUser[] = rawUsers.map((user: any) => ({
+          id: user.id,                              // Keep backend id
+          guestSessionId: user.id,                  // Backend uses 'id', frontend expects 'guestSessionId'
+          userName: user.userName || `User ${user.id?.slice(-4) || ''}`,  // Use partial ID instead of "Guest"
+          isHost: user.isHost || false,
+          createdAt: user.createdAt,
+          lastActivity: user.lastActivity
+        }))
 
         // Find current user in the session
         console.log('[TableBillWrapper] Debug session matching:', {
@@ -93,20 +105,10 @@ export function TableBillWrapper() {
             currentSessionUser = sessionUsers[0]
           }
 
-          // If still not found, create a synthetic user record
-          if (!currentSessionUser) {
-            console.warn('[TableBillWrapper] Creating fallback user record')
-            currentSessionUser = {
-              id: `fallback-${session.sessionId}`,
-              guestSessionId: session.sessionId,
-              userName: 'Guest User',
-              isHost: sessionUsers.length === 0, // Make host if no other users
-              createdAt: new Date().toISOString(),
-              lastActivity: new Date().toISOString()
-            }
-
-            // Add to users array for consistency
-            sessionUsers.push(currentSessionUser)
+          // Don't create synthetic users - this was inflating the count
+          if (!currentSessionUser && sessionUsers.length > 0) {
+            console.warn('[TableBillWrapper] Using first available user as current user')
+            currentSessionUser = sessionUsers[0]
           }
         }
 

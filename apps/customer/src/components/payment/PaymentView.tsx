@@ -68,7 +68,7 @@ const transformApiOrderToLocal = (apiOrder: any): Order => ({
   tip: typeof apiOrder.tip === 'string' ? parseFloat(apiOrder.tip) : (apiOrder.tip || 0),
   total: typeof apiOrder.total === 'string' ? parseFloat(apiOrder.total) : (apiOrder.total || 0),
   guestInfo: {
-    name: apiOrder.customerName || 'Guest',
+    name: apiOrder.customerName || `Customer ${apiOrder.id?.slice(-4) || ''}`,  // Use partial order ID instead of "Guest"
     phone: apiOrder.customerPhone,
     email: apiOrder.customerEmail
   },
@@ -272,7 +272,7 @@ export function PaymentView() {
       if (paymentTypeParam === PaymentType.SPLIT_BILL) {
         setPaymentType(PaymentType.SPLIT_BILL)
         setShowSplitBill(true)
-      } else if (tableSessionId || SessionManager.getDiningSession()) {
+      } else if (SessionManager.getDiningSession()) {
         setPaymentType(PaymentType.TABLE_SESSION)
       } else if (orderId) {
         setPaymentType(PaymentType.ORDER)
@@ -307,6 +307,14 @@ export function PaymentView() {
           const session = SessionManager.getDiningSession()
           const sessionId = tableSessionId || session?.tableSessionId
 
+          console.log('[PaymentView] Loading table session data:', {
+            sessionId,
+            session,
+            tableSessionIdFromUrl: tableSessionId,
+            sessionFromManager: session,
+            sessionTableSessionId: session?.tableSessionId
+          })
+
           if (!sessionId) {
             throw new Error('No table session found')
           }
@@ -317,16 +325,62 @@ export function PaymentView() {
             api.tableSession.getBill(sessionId)
           ])
 
+          console.log('[PaymentView] API responses:', { usersResponse, billResponse })
+
           if (usersResponse.success && usersResponse.data) {
             const sessionData = usersResponse.data
-            setSessionUsers(sessionData.users || [])
+            const rawUsers = sessionData.users || []
 
-            // Find current user
-            const currentSessionUser = sessionData.users?.find(u =>
+            console.log('[PaymentView] Raw API response users:', rawUsers)
+
+            // Map backend guestSession structure to frontend TableSessionUser structure
+            const mappedUsers: TableSessionUser[] = rawUsers.map((user: any) => ({
+              guestSessionId: user.id,                    // Backend uses 'id', frontend expects 'guestSessionId'
+              userName: user.userName || `User ${user.id?.slice(-4) || ''}`,  // Use partial ID instead of "Guest"
+              email: '',                                  // Not provided by backend, set to empty
+              phoneNumber: '',                            // Not provided by backend, set to empty
+              isActive: true,                            // Assume active if returned by API
+              lastActivity: user.lastActivity,
+              totalSpent: 0,                             // Not calculated here, set to 0
+              isHost: user.isHost || false               // Include host information
+            }))
+
+            console.log('[PaymentView] Mapped session users:', mappedUsers)
+            setSessionUsers(mappedUsers)
+
+            if (mappedUsers.length === 0) {
+              console.warn('[PaymentView] No users found in table session')
+              toast.warning('No active users found in this table session. Split bill may not work properly.')
+            }
+
+            // Find current user using the correct field mapping
+            const currentSessionUser = mappedUsers.find(u =>
               u.guestSessionId === session?.sessionId
             )
+
+            console.log('[PaymentView] Current session user lookup:', {
+              lookingFor: session?.sessionId,
+              found: currentSessionUser,
+              allUserIds: mappedUsers.map(u => u.guestSessionId)
+            })
+
             if (currentSessionUser) {
               setCurrentUser(currentSessionUser)
+            } else {
+              console.warn('[PaymentView] Current user not found in session users')
+              console.warn('[PaymentView] SessionId from SessionManager:', session?.sessionId)
+              console.warn('[PaymentView] Available user IDs:', mappedUsers.map(u => ({ id: u.guestSessionId, name: u.userName })))
+
+              // Don't create fallback users - this was causing the extra count
+              // Instead, just set the first user as current user if available
+              if (mappedUsers.length > 0) {
+                console.log('[PaymentView] Using first available user as current user')
+                setCurrentUser(mappedUsers[0])
+              } else {
+                console.error('[PaymentView] No users available - this should not happen')
+                toast.error('Unable to load user information. Please refresh the page.')
+                return
+              }
             }
 
             // Create table session object
@@ -343,10 +397,16 @@ export function PaymentView() {
               lastActivity: new Date().toISOString()
             }
             setTableSession(tableSessionData)
+          } else {
+            console.error('[PaymentView] Failed to load users:', usersResponse)
+            toast.error('Failed to load table session users')
           }
 
           if (billResponse.success && billResponse.data) {
             setTableBill(billResponse.data)
+          } else {
+            console.error('[PaymentView] Failed to load bill:', billResponse)
+            toast.error('Failed to load table session bill')
           }
         }
       } catch (err: any) {
@@ -621,7 +681,7 @@ export function PaymentView() {
     } else if (paymentType === PaymentType.TABLE_SESSION) {
       // Check for existing table session payments
       const session = SessionManager.getDiningSession()
-      const sessionId = tableSessionId || session?.tableSessionId
+      const sessionId = session?.tableSessionId
 
       if (sessionId) {
         const paymentStatus = await api.tableSession.getPaymentStatus(sessionId)
@@ -960,7 +1020,7 @@ export function PaymentView() {
     }
   }
 
-  const handlePaymentSuccess = (stripePaymentIntentId: string) => {
+  const handlePaymentSuccess = async (stripePaymentIntentId: string) => {
     toast.success('Payment completed successfully!', {
       description: 'Thank you for your payment',
       duration: 4000
@@ -971,6 +1031,34 @@ export function PaymentView() {
       console.error('Internal payment ID not found')
       toast.error('Payment completed but unable to show details')
       return
+    }
+
+    // In development, trigger webhook simulation to complete the payment
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        console.log(`[PaymentView] 🧪 [DEV] Triggering webhook simulation for payment ${paymentId} with intent ${stripePaymentIntentId}`)
+        const webhookResponse = await api.payment.simulateWebhookSuccess(paymentId, stripePaymentIntentId)
+
+        if (webhookResponse.success) {
+          console.log(`[PaymentView] ✅ [DEV] Webhook simulation completed:`, webhookResponse.data)
+          toast.success('Development: Payment webhook simulated', {
+            description: 'Payment status updated to COMPLETED',
+            duration: 2000
+          })
+        } else {
+          console.error('[PaymentView] ❌ [DEV] Webhook simulation failed:', webhookResponse)
+          toast.warning('Payment succeeded but webhook simulation failed', {
+            description: 'Payment may still be processing',
+            duration: 3000
+          })
+        }
+      } catch (webhookError) {
+        console.error('[PaymentView] ❌ [DEV] Error calling webhook simulation:', webhookError)
+        toast.warning('Payment succeeded but webhook simulation failed', {
+          description: 'Payment may still be processing',
+          duration: 3000
+        })
+      }
     }
 
     // Get guest session from multiple sources for reliability
@@ -1072,7 +1160,41 @@ export function PaymentView() {
   }
 
   const handleSplitBillPayment = () => {
+    console.log('[PaymentView] Opening split bill:', { tableBill, currentUser, sessionUsers })
+
+    // Validate table bill is available
+    if (!tableBill) {
+      toast.error('Unable to split bill - no bill information available')
+      return
+    }
+
+    // Validate remaining balance
+    if (tableBill.summary.remainingBalance <= 0) {
+      toast.error('Bill has already been fully paid')
+      return
+    }
+
+    // Validate we have proper user data
+    if (!currentUser) {
+      toast.error('Unable to identify current user for split payment')
+      return
+    }
+
+    if (sessionUsers.length === 0) {
+      toast.error('Unable to load table session users. Please refresh and try again.')
+      return
+    }
+
+    // Set payment type to split bill for consistency
+    setPaymentType(PaymentType.SPLIT_BILL)
     setShowSplitBill(true)
+
+    // Update URL to reflect split bill state (optional - helps with navigation consistency)
+    const currentUrl = new URL(window.location.href)
+    currentUrl.searchParams.set('type', PaymentType.SPLIT_BILL)
+    window.history.pushState(null, '', currentUrl.toString())
+
+    console.log('[PaymentView] Split bill modal opened successfully')
   }
 
   const handleSplitPaymentComplete = (paymentId: string) => {
@@ -1141,7 +1263,21 @@ export function PaymentView() {
   }
 
   const handleBackFromSplit = () => {
+    // Reset split bill state and ensure clean navigation
     setShowSplitBill(false)
+
+    // If we came from a split bill URL, reset to table session payment type
+    if (paymentType === PaymentType.SPLIT_BILL) {
+      setPaymentType(PaymentType.TABLE_SESSION)
+
+      // Update URL to remove split bill type but stay on payment page
+      const currentUrl = new URL(window.location.href)
+      currentUrl.searchParams.set('type', PaymentType.TABLE_SESSION)
+      window.history.replaceState(null, '', currentUrl.toString())
+    }
+
+    // Stay on the current payment page - don't navigate away
+    console.log('[PaymentView] Returning from split bill to payment view')
   }
 
   const handleBack = () => {
@@ -1197,6 +1333,9 @@ export function PaymentView() {
           currentUser={currentUser}
           users={sessionUsers}
           api={api}
+          sessionId={tableSessionId || SessionManager.getDiningSession()?.tableSessionId}
+          restaurantId={restaurantId || undefined}
+          tableId={tableId || undefined}
           onPaymentComplete={handleSplitPaymentComplete}
           onCancel={handleBackFromSplit}
         />
@@ -1226,10 +1365,10 @@ export function PaymentView() {
               <p className="text-sm text-content-tertiary">
                 {paymentType === PaymentType.ORDER && order ? (
                   `Order #${order.orderNumber}`
-                ) : paymentType === PaymentType.TABLE_SESSION ? (
-                  'Table Session Payment'
-                ) : (
+                ) : paymentType === PaymentType.SPLIT_BILL ? (
                   'Split Bill Payment'
+                ) : (
+                  'Table Session Payment'
                 )}
               </p>
               {paymentType !== PaymentType.ORDER && tableBill && (
@@ -1332,7 +1471,7 @@ export function PaymentView() {
                             .map((roundOrder) => (
                               <div key={roundOrder.orderId} className="space-y-1">
                                 <div className="text-xs text-content-tertiary mb-1">
-                                  Order by {roundOrder.placedBy || 'Guest'}
+                                  Order by {roundOrder.placedBy || `Order ${roundOrder.orderId?.slice(-4) || ''}`}
                                 </div>
                                 {roundOrder.items.map((item: any, idx: number) => (
                                   <div key={idx} className="flex justify-between items-center text-sm">

@@ -33,6 +33,10 @@ export function useWebSocketEventRegistry<K extends keyof WebSocketEventMap>(
 } {
   const registrationRef = useRef<string | undefined>(undefined)
   const cleanupRef = useRef<(() => void) | null>(null)
+  const handlerRef = useRef<WebSocketEventListener<K>>(handler)
+
+  // Keep handler ref updated
+  handlerRef.current = handler
 
   // Generate unique registration ID
   const registrationId = registrationRef.current || `${component}-${event}-${Date.now()}-${Math.random()}`
@@ -40,7 +44,7 @@ export function useWebSocketEventRegistry<K extends keyof WebSocketEventMap>(
     registrationRef.current = registrationId
   }
 
-  // Central event dispatcher that handles deduplication
+  // Central event dispatcher that handles deduplication (memoized to prevent re-registrations)
   const centralDispatcher = useCallback((data: WebSocketEventMap[K]) => {
     const eventKey = event as string
     const registrations = globalEventRegistry[eventKey] || []
@@ -48,9 +52,12 @@ export function useWebSocketEventRegistry<K extends keyof WebSocketEventMap>(
     // Extract event ID if available for deduplication
     const eventId = (data as any)?.eventId || (data as any)?.timestamp || Date.now()
 
-    console.log(`🎯 WebSocket Event Registry: Dispatching '${eventKey}' to ${registrations.length} handlers`, {
+    console.log(`🎯🔥 WebSocket Event Registry: Dispatching '${eventKey}' to ${registrations.length} handlers`, {
       eventId,
-      registrations: registrations.map(r => ({ id: r.id, component: r.component }))
+      eventData: data,
+      registrations: registrations.map(r => ({ id: r.id, component: r.component })),
+      eventKey,
+      hasMultiplePaymentListeners: eventKey.includes('payment') && registrations.length > 1
     })
 
     // Process each registration
@@ -65,18 +72,18 @@ export function useWebSocketEventRegistry<K extends keyof WebSocketEventMap>(
       registration.lastEventId = eventId
 
       try {
-        // Call the component's handler
+        // Call the component's handler using the current ref (to avoid stale closures)
         registration.handler(data)
         console.log(`✅ Processed ${eventKey} for ${registration.component}`)
       } catch (error) {
         console.error(`❌ Error processing ${eventKey} for ${registration.component}:`, error)
       }
     })
-  }, [event])
+  }, [event]) // Only depend on event, not handler
 
   // Register this component's handler
   useEffect(() => {
-    if (!client || !event || !handler) return
+    if (!client || !event) return
 
     const eventKey = event as string
 
@@ -89,15 +96,15 @@ export function useWebSocketEventRegistry<K extends keyof WebSocketEventMap>(
     const existingIndex = globalEventRegistry[eventKey].findIndex(r => r.id === registrationId)
 
     if (existingIndex >= 0) {
-      // Update existing registration
-      globalEventRegistry[eventKey][existingIndex].handler = handler
+      // Update existing registration with current handler ref
+      globalEventRegistry[eventKey][existingIndex].handler = (data: any) => handlerRef.current(data)
       console.log(`🔄 Updated WebSocket handler for ${component}:${eventKey}`)
     } else {
       // Add new registration
       const registration: EventRegistration<K> = {
         id: registrationId,
         component,
-        handler
+        handler: (data: any) => handlerRef.current(data) // Use ref to avoid stale closures
       }
 
       globalEventRegistry[eventKey].push(registration)
@@ -134,7 +141,18 @@ export function useWebSocketEventRegistry<K extends keyof WebSocketEventMap>(
         }
       }
     }
-  }, [client, event, handler, component, registrationId, centralDispatcher, ...(Array.isArray(deps) ? deps : [])])
+  }, [client, event, component, registrationId, centralDispatcher]) // Remove handler and deps from dependencies
+
+  // Update handler registration when dependencies change (but don't re-register WebSocket listener)
+  useEffect(() => {
+    const eventKey = event as string
+    const existingIndex = globalEventRegistry[eventKey]?.findIndex(r => r.id === registrationId)
+
+    if (existingIndex >= 0) {
+      // Update the handler without re-registering the WebSocket listener
+      globalEventRegistry[eventKey][existingIndex].handler = (data: any) => handlerRef.current(data)
+    }
+  }, deps)
 
   return {
     registrationId,

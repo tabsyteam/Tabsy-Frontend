@@ -119,6 +119,34 @@ export interface UpdatePaymentTipResponse {
   updatedAt: string
 }
 
+export interface CreateSplitCalculationRequest {
+  splitType: 'EQUAL' | 'BY_ITEMS' | 'BY_PERCENTAGE' | 'BY_AMOUNT'
+  participants: string[]
+  percentages?: { [userId: string]: number }
+  amounts?: { [userId: string]: number }
+  itemAssignments?: { [itemId: string]: string }
+}
+
+export interface UpdateSplitCalculationRequest {
+  percentage?: number
+  amount?: number
+  itemAssignments?: { [itemId: string]: string }
+}
+
+export interface SplitCalculationResponse {
+  splitType: 'EQUAL' | 'BY_ITEMS' | 'BY_PERCENTAGE' | 'BY_AMOUNT'
+  participants: string[]
+  splitAmounts: { [userId: string]: number }
+  totalAmount: number
+  percentages?: { [userId: string]: number }
+  amounts?: { [userId: string]: number }
+  itemAssignments?: { [itemId: string]: string }
+  valid: boolean
+  timestamp: string
+  lastUpdatedBy?: string
+  lastUpdatedAt?: string
+}
+
 export class TableSessionAPI {
   constructor(private client: TabsyApiClient) {}
 
@@ -208,6 +236,46 @@ export class TableSessionAPI {
     data: UpdatePaymentTipRequest
   ): Promise<ApiResponse<UpdatePaymentTipResponse>> {
     return this.client.patch(`/table-sessions/${sessionId}/payments/${paymentId}/tip`, data)
+  }
+
+  /**
+   * POST /table-sessions/:sessionId/split-calculation - Create split calculation
+   */
+  async createSplitCalculation(
+    sessionId: string,
+    data: CreateSplitCalculationRequest,
+    options?: { guestSessionId?: string }
+  ): Promise<ApiResponse<SplitCalculationResponse>> {
+    const headers: Record<string, string> = {}
+    if (options?.guestSessionId) {
+      headers['x-session-id'] = options.guestSessionId
+    }
+
+    return this.client.post(`/table-sessions/${sessionId}/split-calculation`, data, { headers })
+  }
+
+  /**
+   * PATCH /table-sessions/:sessionId/split-calculation/:userId - Update user's split
+   */
+  async updateSplitCalculation(
+    sessionId: string,
+    userId: string,
+    data: UpdateSplitCalculationRequest,
+    options?: { guestSessionId?: string }
+  ): Promise<ApiResponse<SplitCalculationResponse>> {
+    const headers: Record<string, string> = {}
+    if (options?.guestSessionId) {
+      headers['x-session-id'] = options.guestSessionId
+    }
+
+    return this.client.patch(`/table-sessions/${sessionId}/split-calculation/${userId}`, data, { headers })
+  }
+
+  /**
+   * GET /table-sessions/:sessionId/split-calculation - Get split calculation status
+   */
+  async getSplitCalculation(sessionId: string): Promise<ApiResponse<SplitCalculationResponse | null>> {
+    return this.client.get(`/table-sessions/${sessionId}/split-calculation`)
   }
 
 }
