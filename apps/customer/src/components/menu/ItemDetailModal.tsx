@@ -132,7 +132,10 @@ export function ItemDetailModal({
   const options = item?.options || []
 
   useEffect(() => {
-    console.log('[ItemDetailModal] Modal state changed - isOpen:', isOpen, 'item:', item, 'existingCartItem:', existingCartItem, 'mode:', mode)
+    // Only log significant modal state changes
+    if (isOpen && item) {
+      console.log('[ItemDetailModal] Opening for item:', item.name)
+    }
     if (isOpen && item) {
       // Reset UI state
       setCurrentImageIndex(0)

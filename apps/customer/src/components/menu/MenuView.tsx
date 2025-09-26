@@ -1023,7 +1023,6 @@ export function MenuView() {
                         finalPrice = rawPrice / 100;
                       }
 
-                      console.log(`[MenuView] Item ${item.name}: raw=${rawPrice}, final=${finalPrice}, options=${item.options ? item.options.length : 'undefined'}`);
                       return finalPrice;
                     })(),
                     image: item.image,

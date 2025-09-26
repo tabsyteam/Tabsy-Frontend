@@ -48,15 +48,6 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
   const [localQuantity, setLocalQuantity] = useState(quantity || 0)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
 
-  // Debug logging to check options data
-  React.useEffect(() => {
-    console.log(`🔍 MenuItemCard Debug - Item: ${item.name}`, {
-      hasOptions: !!(item.options && item.options.length > 0),
-      optionsLength: item.options?.length,
-      options: item.options,
-      itemId: item.id
-    })
-  }, [item])
 
   // Sync local state with prop changes (when cart is updated from ItemDetailModal)
   useEffect(() => {

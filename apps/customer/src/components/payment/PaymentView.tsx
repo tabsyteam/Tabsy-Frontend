@@ -272,7 +272,7 @@ export function PaymentView() {
       if (paymentTypeParam === PaymentType.SPLIT_BILL) {
         setPaymentType(PaymentType.SPLIT_BILL)
         setShowSplitBill(true)
-      } else if (tableSessionId || (!orderId && SessionManager.getDiningSession())) {
+      } else if (tableSessionId || SessionManager.getDiningSession()) {
         setPaymentType(PaymentType.TABLE_SESSION)
       } else if (orderId) {
         setPaymentType(PaymentType.ORDER)

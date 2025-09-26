@@ -55,9 +55,11 @@ export function WebSocketProvider({
 
   // Connect to WebSocket with proper error handling
   const connect = useCallback(() => {
+    console.log('🔄 [WebSocket] Connect function called')
+
     // Validate required auth parameters based on namespace
     if (!authToken) {
-      console.warn('WebSocket: Cannot connect without auth token')
+      console.warn('⚠️ [WebSocket] Cannot connect without auth token')
       return
     }
 
@@ -92,20 +94,28 @@ export function WebSocketProvider({
 
       // Set up connection event listeners
       client.on('connect', () => {
-        console.log('WebSocket: Connected successfully')
+        console.log('🔌 [WebSocket] Connected successfully')
+        console.log('🔍 [WebSocket] Connection details:', {
+          namespace,
+          restaurantId,
+          tableId,
+          authToken: authToken ? `${authToken.substring(0, 8)}...` : 'none'
+        })
+        console.log('🔄 [WebSocket] Setting isConnected to true')
         setIsConnected(true)
         setError(null)
         clearReconnectTimeout()
       })
 
       client.on('disconnect', () => {
-        console.log('WebSocket: Disconnected')
+        console.log('🔌❌ [WebSocket] Disconnected - Setting isConnected to false')
         setIsConnected(false)
       })
 
       client.on('error', (err: Error) => {
-        console.error('WebSocket: Connection error', err)
+        console.error('🚨 [WebSocket] Connection error:', err)
         setError(err)
+        console.log('🔄 [WebSocket] Setting isConnected to false due to error')
         setIsConnected(false)
 
         // Auto-reconnect after 5 seconds
@@ -221,7 +231,7 @@ export function WebSocketProvider({
     }
   }, [autoConnect, authToken, connect, clearReconnectTimeout])
 
-  // Reconnect when auth token or restaurant changes
+  // Reconnect when auth token, restaurant, or table changes
   useEffect(() => {
     if (isConnected && clientRef.current) {
       disconnect()
@@ -229,7 +239,27 @@ export function WebSocketProvider({
         setTimeout(connect, 100) // Small delay to ensure cleanup
       }
     }
-  }, [authToken, restaurantId])
+  }, [authToken, restaurantId, tableId])
+
+  // Connect when session data becomes available (fixes initial connection timing)
+  useEffect(() => {
+    console.log('🔍 [WebSocket] Session data check:', {
+      isConnected,
+      autoConnect,
+      hasAuthToken: !!authToken,
+      restaurantId,
+      tableId,
+      namespace
+    })
+
+    if (!isConnected && autoConnect && authToken &&
+        (namespace === 'restaurant' || (namespace === 'customer' && restaurantId && tableId))) {
+      console.log('🚀 [WebSocket] Session data now available, attempting connection...')
+      connect()
+    } else {
+      console.log('⏸️ [WebSocket] Connection conditions not met')
+    }
+  }, [isConnected, autoConnect, authToken, restaurantId, tableId, namespace, connect])
 
   const value: WebSocketContextValue = {
     client: clientRef.current,

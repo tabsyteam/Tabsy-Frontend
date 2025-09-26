@@ -29,7 +29,7 @@ export class TabsyWebSocketClient {
 
   constructor(config: TabsyWebSocketConfig = {}) {
     this.config = {
-      url: config.url || 'http://localhost:5001',
+      url: config.url || 'http://192.168.68.51:5001',
       autoConnect: config.autoConnect ?? true,
       reconnectAttempts: config.reconnectAttempts ?? 5,
       reconnectDelay: config.reconnectDelay ?? 1000,
@@ -240,7 +240,23 @@ export class TabsyWebSocketClient {
   on(event: string, callback: (data: any) => void): void {
     if (this.socket) {
       this.socket.on(event, (...args: any[]) => {
-        console.log(`🔌 WebSocket event received: ${event}`, args);
+        console.log(`🎯 [WebSocket] Event received: ${event}`, {
+          namespace: this.config.auth.namespace,
+          tableId: this.config.auth.tableId,
+          restaurantId: this.config.auth.restaurantId,
+          sessionId: this.config.auth.sessionId ? `${this.config.auth.sessionId.substring(0, 8)}...` : 'none',
+          payloadPreview: args.length > 0 ? {
+            hasData: !!args[0],
+            dataKeys: args[0] && typeof args[0] === 'object' ? Object.keys(args[0]) : 'non-object',
+            orderInfo: args[0]?.order ? {
+              id: args[0].order.id,
+              tableId: args[0].order.tableId,
+              tableSessionId: args[0].order.tableSessionId,
+              guestSessionId: args[0].order.guestSessionId
+            } : 'no order data'
+          } : 'no args'
+        });
+
         if (args.length === 1) {
           callback(args[0]);
         } else if (args.length > 1) {

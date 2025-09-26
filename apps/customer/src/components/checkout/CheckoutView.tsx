@@ -182,7 +182,12 @@ export function CheckoutView() {
       }
       console.log('Using existing guest session:', session)
 
+      // Get session data for proper order association
+      const sessionData = SessionManager.getDiningSession()
+      console.log('Session data for order:', sessionData)
+
       // Prepare order data according to backend OrderRequest type
+      // Note: tableSessionId and guestSessionId are handled by backend middleware via x-session-id header
       const orderData = {
         restaurantId: restaurantId!,
         tableId: tableId!,

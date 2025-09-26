@@ -137,9 +137,9 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
     <motion.nav
       initial={{ y: 100 }}
       animate={{ y: 0 }}
-      className={`fixed bottom-0 left-0 right-0 z-50 bg-surface/90 border-t border-default/50 backdrop-blur-xl shadow-2xl safe-bottom ${className}`}
+      className={`fixed bottom-0 left-0 right-0 z-50 bg-surface/90 border-t border-default/50 backdrop-blur-xl shadow-2xl ${className}`}
     >
-      <div className="flex items-center justify-around h-20 px-3">
+      <div className="flex items-center justify-around h-20 px-3 pb-[env(safe-area-inset-bottom)]">
         {navItems.map((item) => {
           const IconComponent = item.icon
           const active = isActive(item)
