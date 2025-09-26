@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Button, CartItemDisplay } from '@tabsy/ui-components'
+import { Button, CartItemDisplay, LoadingSpinner } from '@tabsy/ui-components'
 import { ArrowLeft, Clock, CheckCircle, User, Phone, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApi } from '@/components/providers/api-provider'
@@ -460,19 +460,71 @@ export function CheckoutView() {
               <Button
                 onClick={handlePlaceOrder}
                 size="lg"
-                className="w-full"
+                className={`w-full relative overflow-hidden transition-all duration-300 ${
+                  placing
+                    ? 'bg-primary/80 cursor-not-allowed transform'
+                    : 'hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]'
+                }`}
                 disabled={placing || !guestInfo.name.trim()}
+                aria-label={placing ? 'Placing your order, please wait' : 'Place order'}
+                aria-busy={placing}
               >
-                {placing ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Placing Order...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="w-4 h-4" />
-                    <span>Place Order</span>
-                  </div>
+                <motion.div
+                  className="flex items-center justify-center space-x-3"
+                  initial={false}
+                  animate={placing ? { opacity: 1 } : { opacity: 1 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {placing ? (
+                    <>
+                      <motion.div
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ duration: 0.3, ease: "easeOut" }}
+                        className="relative"
+                      >
+                        <LoadingSpinner size="sm" color="white" />
+                        <motion.div
+                          className="absolute inset-0 rounded-full border-2 border-white/30"
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                        />
+                      </motion.div>
+                      <motion.span
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1, duration: 0.3 }}
+                        className="font-medium"
+                      >
+                        Placing Order...
+                      </motion.span>
+                    </>
+                  ) : (
+                    <>
+                      <motion.div
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        transition={{ duration: 0.1 }}
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                      </motion.div>
+                      <span className="font-semibold">Place Order</span>
+                    </>
+                  )}
+                </motion.div>
+
+                {/* Subtle loading pulse effect */}
+                {placing && (
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                    initial={{ x: "-100%" }}
+                    animate={{ x: "100%" }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  />
                 )}
               </Button>
 
