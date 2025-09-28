@@ -13,6 +13,9 @@ export function QRScanner() {
   const [isScanning, setIsScanning] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null)
+  const [isSafari, setIsSafari] = useState(false)
+  const [hasMediaDevices, setHasMediaDevices] = useState(false)
+  const [isClient, setIsClient] = useState(false)
   const scannerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const { api } = useApi()
@@ -174,6 +177,12 @@ export function QRScanner() {
 
   const checkCameraPermissions = async (): Promise<boolean> => {
     try {
+      // Check if mediaDevices API is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.error('MediaDevices API not supported in this browser')
+        return false
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ video: true })
       stream.getTracks().forEach(track => track.stop()) // Stop the stream immediately
       return true
@@ -184,32 +193,73 @@ export function QRScanner() {
   }
 
   const startScanning = async () => {
-    if (!scannerRef.current || isScanning) return
+    if (isScanning) return
 
     try {
-      // Check camera permissions first
-      const hasPermission = await checkCameraPermissions()
-      if (!hasPermission) {
-        toast.error('Camera access required', {
-          description: 'Please allow camera access to scan QR codes. Check your browser settings and try again.',
+      // Check if mediaDevices API is available (especially important for Safari)
+      if (!hasMediaDevices) {
+        const errorTitle = isSafari ? 'Safari Camera Restriction' : 'Camera not supported'
+        const errorDescription = isSafari
+          ? 'Safari requires HTTPS for camera access. Please use "Upload Image" to scan your QR code from a photo.'
+          : 'Camera access is not supported in this browser. Please use the "Upload Image" option instead.'
+
+        toast.error(errorTitle, {
+          description: errorDescription,
           action: {
-            label: 'Retry',
-            onClick: () => startScanning()
+            label: 'Upload Image',
+            onClick: () => document.getElementById('qr-upload')?.click()
           }
         })
         return
       }
 
+      // Check camera permissions
+      const hasPermission = await checkCameraPermissions()
+      if (!hasPermission) {
+        toast.error('Camera access required', {
+          description: 'Please allow camera access to scan QR codes. In Safari, camera access requires HTTPS or you can use "Upload Image" instead.',
+          action: {
+            label: 'Upload Image',
+            onClick: () => document.getElementById('qr-upload')?.click()
+          }
+        })
+        return
+      }
+
+      // Clear any existing scanner first
+      if (scanner) {
+        try {
+          await scanner.clear()
+        } catch (e) {
+          console.log('Cleared existing scanner')
+        }
+      }
+
       setIsScanning(true)
 
-      const newScanner = new Html5QrcodeScanner(
-        'qr-scanner-container',
-        config,
-        false
-      )
+      // Wait a moment for DOM to update
+      setTimeout(async () => {
+        try {
+          const newScanner = new Html5QrcodeScanner(
+            'qr-scanner-container',
+            config,
+            false
+          )
 
-      newScanner.render(handleScanSuccess, handleScanError)
-      setScanner(newScanner)
+          newScanner.render(handleScanSuccess, handleScanError)
+          setScanner(newScanner)
+        } catch (renderError: any) {
+          console.error('Failed to render scanner:', renderError)
+          setIsScanning(false)
+          toast.error('Failed to start camera', {
+            description: 'Please try again or use the upload image option.',
+            action: {
+              label: 'Try Again',
+              onClick: () => startScanning()
+            }
+          })
+        }
+      }, 100)
     } catch (error: any) {
       console.error('Failed to start scanner:', error)
 
@@ -267,6 +317,15 @@ export function QRScanner() {
     }
   }
 
+  // Browser detection effect
+  useEffect(() => {
+    setIsClient(true)
+    if (typeof navigator !== 'undefined') {
+      setIsSafari(navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome'))
+      setHasMediaDevices(Boolean(navigator.mediaDevices && navigator.mediaDevices.getUserMedia))
+    }
+  }, [])
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -303,18 +362,21 @@ export function QRScanner() {
   }
 
   return (
-    <div id="qr-scanner" className="space-y-8">
-      <div className="text-center space-y-3">
-        <h2 className="text-3xl font-bold text-content-primary">
+    <div id="qr-scanner" className="space-y-6 md:space-y-8">
+      <div className="text-center space-y-2 md:space-y-3">
+        <h2 className="text-xl md:text-3xl font-bold text-content-primary">
           Scan QR Code
         </h2>
-        <p className="text-lg text-content-secondary max-w-md mx-auto">
-          Point your camera at the QR code on your table to get started
+        <p className="text-sm md:text-lg text-content-secondary max-w-md mx-auto px-4">
+          Simply scan the code at your table to get started instantly
         </p>
       </div>
 
       {/* Scanner Area */}
-      <div className="relative bg-surface border border-default rounded-3xl max-w-sm mx-auto overflow-hidden shadow-xl">
+      <div className="relative bg-surface border border-default rounded-2xl md:rounded-3xl max-w-xs md:max-w-sm mx-auto overflow-hidden shadow-xl">
+        {/* Scanner container - always present */}
+        <div ref={scannerRef} id="qr-scanner-container" className={`${isScanning ? '[&>div]:!border-0 [&>div]:!rounded-3xl' : 'hidden'}`} />
+
         {isScanning ? (
           <div className="relative">
             <Button
@@ -325,7 +387,6 @@ export function QRScanner() {
             >
               <X className="w-5 h-5" />
             </Button>
-            <div ref={scannerRef} id="qr-scanner-container" className="[&>div]:!border-0 [&>div]:!rounded-3xl" />
 
             {/* Scanning overlay */}
             <div className="absolute inset-4 border-2 border-primary rounded-2xl animate-pulse pointer-events-none">
@@ -358,52 +419,103 @@ export function QRScanner() {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-center">
-        <Button
-          size="lg"
-          onClick={isScanning ? stopScanning : startScanning}
-          className="flex items-center gap-3 px-8 shadow-lg hover:shadow-xl transition-all duration-300"
-        >
-          {isScanning ? (
-            <>
-              <X className="w-5 h-5" />
-              Stop Camera
-            </>
-          ) : (
-            <>
-              <Camera className="w-5 h-5" />
-              Start Camera
-            </>
-          )}
-        </Button>
+      <div className="flex flex-col md:flex-row gap-4 justify-center mt-6">
+        {isClient && (
+          <>
+            {/* Camera Button - hidden for Safari without HTTPS */}
+            {(!isSafari || hasMediaDevices) && (
+              <Button
+                size="lg"
+                onClick={isScanning ? stopScanning : startScanning}
+                className="flex items-center gap-3 px-8 shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto mx-auto"
+              >
+                {isScanning ? (
+                  <>
+                    <X className="w-5 h-5" />
+                    Stop Camera
+                  </>
+                ) : (
+                  <>
+                    <Camera className="w-5 h-5" />
+                    Start Camera
+                  </>
+                )}
+              </Button>
+            )}
 
-        <div className="relative">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileUpload}
-            className="absolute inset-0 opacity-0 cursor-pointer"
-            id="qr-upload"
-          />
-          <Button
-            variant="outline"
-            size="lg"
-            className="flex items-center gap-3 w-full px-8 border-primary/30 hover:bg-primary/5 transition-all duration-300"
-            asChild
-          >
-            <label htmlFor="qr-upload" className="cursor-pointer">
-              <Upload className="w-5 h-5" />
-              Upload Image
-            </label>
-          </Button>
-        </div>
+            {/* Upload Button - primary for Safari users */}
+            <div className="relative w-full sm:w-auto mx-auto">
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+                id="qr-upload"
+              />
+              <Button
+                variant={isSafari && !hasMediaDevices ? "default" : "outline"}
+                size="lg"
+                className={`flex items-center gap-3 w-full px-8 transition-all duration-300 ${
+                  isSafari && !hasMediaDevices
+                    ? "shadow-lg hover:shadow-xl"
+                    : "border-primary/30 hover:bg-primary/5"
+                }`}
+                asChild
+              >
+                <label htmlFor="qr-upload" className="cursor-pointer">
+                  <Upload className="w-5 h-5" />
+                  {isSafari && !hasMediaDevices ? "Scan QR Code from Photo" : "Upload Image"}
+                </label>
+              </Button>
+            </div>
+          </>
+        )}
+
+        {/* Fallback for SSR */}
+        {!isClient && (
+          <div className="relative w-full sm:w-auto mx-auto">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileUpload}
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              id="qr-upload"
+            />
+            <Button
+              variant="outline"
+              size="lg"
+              className="flex items-center gap-3 w-full px-8 border-primary/30 hover:bg-primary/5 transition-all duration-300"
+              asChild
+            >
+              <label htmlFor="qr-upload" className="cursor-pointer">
+                <Upload className="w-5 h-5" />
+                Upload Image
+              </label>
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Help Text */}
-      <div className="text-center space-y-3">
-        <p className="text-content-secondary">
-          Can't scan the code?
-        </p>
+      <div className="text-center space-y-4">
+        <div className="space-y-2">
+          <p className="text-content-secondary">
+            Can't scan the code?
+          </p>
+
+          {/* Safari-specific instructions */}
+          {isClient && isSafari && !hasMediaDevices && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm">
+              <p className="text-amber-800 dark:text-amber-200 font-medium mb-1">
+                🍎 Safari Users
+              </p>
+              <p className="text-amber-700 dark:text-amber-300">
+                Camera access requires HTTPS. Use "Upload Image" or visit the site with HTTPS for camera scanning.
+              </p>
+            </div>
+          )}
+        </div>
+
         <Button
           variant="ghost"
           className="text-primary hover:text-primary-hover font-medium"

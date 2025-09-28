@@ -1,5 +1,14 @@
-import { useErrorHandler, type ApiError } from '@tabsy/ui-components'
-import { useToast } from '@tabsy/ui-components'
+import { useErrorHandler, useToast } from '@tabsy/ui-components'
+
+// Define ApiError interface locally if not exported
+interface ApiError {
+  message: string
+  status?: number
+  code?: string
+  details?: any
+  timestamp: string
+  requestId?: string
+}
 
 export interface ApiCallOptions {
   showErrorToast?: boolean

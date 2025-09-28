@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { TabsyAPI, tabsyClient } from '@tabsy/api-client'
+import { PaymentStatus } from '@tabsy/shared-types'
 
 // ===========================
 // STANDARD PATTERN: Payment Hook Factory
@@ -115,15 +116,16 @@ export function useUpdatePaymentStatus() {
 }
 
 
-export function useRecordCashPayment() {
+export function useCompleteCashPayment() {
   const queryClient = useQueryClient()
-  
+
   return useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: { paymentId: string }) => {
       const client = tabsyClient
-      return await client.payment.recordCash(data)
+      return await client.payment.updateStatus(data.paymentId, PaymentStatus.COMPLETED)
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['payment', variables.paymentId] })
       queryClient.invalidateQueries({ queryKey: ['payments'] })
     }
   })

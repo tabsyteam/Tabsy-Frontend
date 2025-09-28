@@ -419,8 +419,9 @@ export function PaymentView() {
   }
 
   const getFinalTotal = (): number => {
-    // If payment is completed, show $0.00
-    if (!cashPaymentPending && paymentId && (paymentBreakdown || tableBill?.summary.paidAmount > 0)) {
+    // If payment is actually completed, show $0.00
+    // Only show 0 when payment is truly completed, not just initialized
+    if (!cashPaymentPending && paymentId && tableBill?.summary.paidAmount > 0) {
       return 0
     }
 
@@ -458,8 +459,9 @@ export function PaymentView() {
   }
 
   const getPaymentAmount = (): number => {
-    // If payment is completed, show $0.00
-    if (!cashPaymentPending && paymentId && (paymentBreakdown || tableBill?.summary.paidAmount > 0)) {
+    // If payment is actually completed, show $0.00
+    // Only show 0 when payment is truly completed, not just initialized
+    if (!cashPaymentPending && paymentId && tableBill?.summary.paidAmount > 0) {
       return 0
     }
 
@@ -959,9 +961,9 @@ export function PaymentView() {
         // No need to send amounts from frontend since backend validates order.total = subtotal + tax + tip
         response = await api.payment.createOrderPayment({
           orderId: orderId!,
-          amount: order.total,
           currency: 'USD',
           paymentMethod: selectedPaymentMethod
+          // amount field omitted - server calculates from orderId for security
         })
       } else if (paymentType === PaymentType.TABLE_SESSION) {
         // Use table-wide payment endpoint
@@ -1180,10 +1182,21 @@ export function PaymentView() {
 
       if (paymentType === PaymentType.ORDER) {
         // Individual order payment with cash method
-        response = await api.payment.recordCash({
+        // Create payment intent in PENDING status, then update to COMPLETED
+        // Amount calculation is done server-side based on orderId for security
+        const createResponse = await api.payment.createOrderPayment({
           orderId: orderId!,
-          amount: order.total
+          currency: 'USD',
+          paymentMethod: PaymentMethod.CASH
+          // amount field omitted - server calculates from orderId for security
         })
+
+        if (createResponse.success) {
+          // Payment created in PENDING status, now update to COMPLETED for cash payments
+          response = await api.payment.updateStatus(createResponse.data.id, PaymentStatus.COMPLETED)
+        } else {
+          throw new Error(createResponse.error || 'Failed to create payment intent')
+        }
       } else if (paymentType === PaymentType.TABLE_SESSION) {
         // Table session payment with cash method
         const session = SessionManager.getDiningSession()
@@ -2042,7 +2055,7 @@ export function PaymentView() {
             >
               <h3 className="text-xl font-semibold text-content-primary mb-6">
                 Payment Summary
-                {!cashPaymentPending && paymentId ? (
+                {!cashPaymentPending && paymentId && tableBill?.summary.paidAmount > 0 ? (
                   <span className="text-xs text-green-600 ml-2 font-normal">✓ Payment Complete</span>
                 ) : paymentBreakdown ? (
                   <span className="text-xs text-green-600 ml-2 font-normal">✓ Server Confirmed</span>

@@ -42,35 +42,35 @@ export function WelcomeScreen() {
   }
 
   return (
-    <div className="text-center space-y-10">
+    <div className="text-center space-y-6 md:space-y-10">
       {/* Quick Access Section for Returning Users */}
       {(hasSession || hasOrders) && (
-        <div className="bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20 rounded-3xl p-6 shadow-lg backdrop-blur-sm">
-          <div className="space-y-4">
-            <div className="flex items-center justify-center space-x-3">
-              <div className="w-4 h-4 bg-accent rounded-full animate-pulse shadow-lg"></div>
-              <h2 className="text-xl font-bold text-content-primary">
+        <div className="bg-gradient-to-r from-primary/5 to-secondary/5 border border-primary/20 rounded-2xl p-4 md:p-6 shadow-lg backdrop-blur-sm">
+          <div className="space-y-3 md:space-y-4">
+            <div className="flex items-center justify-center space-x-2">
+              <div className="w-3 h-3 bg-accent rounded-full animate-pulse shadow-lg"></div>
+              <h2 className="text-lg md:text-xl font-bold text-content-primary">
                 Welcome Back!
               </h2>
             </div>
 
             {hasSession && sessionInfo.restaurantName && (
-              <p className="text-content-secondary">
+              <p className="text-sm md:text-base text-content-secondary">
                 Continue your dining at <span className="font-semibold text-primary">{sessionInfo.restaurantName}</span>
                 {sessionInfo.tableName && <span className="text-content-tertiary"> • Table {sessionInfo.tableName}</span>}
               </p>
             )}
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
+            <div className="flex flex-col md:flex-row gap-4 justify-center mt-6">
               {hasSession && (
                 <Button
                   onClick={handleContinueToMenu}
-                  className="flex items-center justify-center space-x-2 px-8 shadow-lg"
-                  size="lg"
+                  className="flex items-center justify-center space-x-2 px-6 shadow-lg w-full sm:w-auto"
+                  size="default"
                 >
-                  <Utensils className="w-5 h-5" />
+                  <Utensils className="w-4 h-4" />
                   <span>Continue to Menu</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3 h-3" />
                 </Button>
               )}
 
@@ -78,10 +78,10 @@ export function WelcomeScreen() {
                 <Button
                   onClick={handleViewOrders}
                   variant="outline"
-                  className="flex items-center justify-center space-x-2 px-8 border-primary/30 hover:bg-primary/5"
-                  size="lg"
+                  className="flex items-center justify-center space-x-2 px-6 border-primary/30 hover:bg-primary/5 w-full sm:w-auto"
+                  size="default"
                 >
-                  <ClipboardList className="w-5 h-5" />
+                  <ClipboardList className="w-4 h-4" />
                   <span>View Orders</span>
                 </Button>
               )}
@@ -91,26 +91,26 @@ export function WelcomeScreen() {
       )}
 
       {/* Hero Section */}
-      <div className="space-y-8">
+      <div className="space-y-4 md:space-y-6">
         <div className="relative">
-          <div className="w-24 h-24 mx-auto bg-gradient-to-br from-primary to-secondary rounded-3xl flex items-center justify-center shadow-2xl shadow-primary/20 relative overflow-hidden">
+          <div className="w-16 h-16 md:w-20 md:h-20 mx-auto bg-gradient-to-br from-primary to-secondary rounded-2xl md:rounded-3xl flex items-center justify-center shadow-xl shadow-primary/20 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-            <Utensils className="w-12 h-12 text-white relative z-10" />
+            <Utensils className="w-8 h-8 md:w-10 md:h-10 text-white relative z-10" />
           </div>
         </div>
 
-        <div className="space-y-4">
-          <h1 className="text-4xl md:text-5xl font-bold text-content-primary leading-tight">
+        <div className="space-y-3 md:space-y-4">
+          <h1 className="text-2xl md:text-4xl font-bold text-content-primary leading-tight">
             Welcome to <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-secondary">Tabsy</span>
           </h1>
-          <p className="text-xl text-content-secondary max-w-2xl mx-auto leading-relaxed">
+          <p className="text-base md:text-xl text-content-secondary max-w-lg mx-auto leading-relaxed px-4">
             Scan the QR code at your table to start ordering delicious food instantly
           </p>
         </div>
       </div>
 
-      {/* Features Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
+      {/* Features Grid - Hidden on mobile to save space */}
+      <div className="hidden md:grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
         <div className="group hover:scale-105 transition-all duration-300">
           <div className="flex flex-col items-center space-y-4 p-8 rounded-3xl bg-surface shadow-lg border border-default/50 hover:border-primary/30 hover:shadow-xl transition-all duration-300">
             <div className="w-16 h-16 bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl flex items-center justify-center group-hover:from-primary/20 group-hover:to-primary/10 transition-all duration-300">
@@ -154,8 +154,8 @@ export function WelcomeScreen() {
         </div>
       </div>
 
-      {/* CTA Section */}
-      <div className="mt-16 space-y-6">
+      {/* CTA Section - Hidden on mobile to save space */}
+      <div className="hidden md:block mt-16 space-y-6">
         <div className="space-y-3">
           <h2 className="text-2xl font-bold text-content-primary">
             Ready to get started?

@@ -57,10 +57,8 @@ function OrderCardComponent({ order, onStatusUpdate, onViewDetails }: OrderCardP
     setProcessingCashPayment(true)
     try {
       const orderTotal = Number(order.total)
-      const response = await tabsyClient.payment.recordCash({
-        orderId: order.id,
-        amount: orderTotal
-      })
+      // Update existing pending payment status to COMPLETED
+      const response = await tabsyClient.payment.updateStatus(paymentId, PaymentStatus.COMPLETED)
 
       if (response.success) {
         toast.success('Cash Payment Confirmed', {

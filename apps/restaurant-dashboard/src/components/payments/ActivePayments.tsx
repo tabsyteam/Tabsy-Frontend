@@ -106,44 +106,101 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
 
   const handlePaymentStatusUpdated = useCallback((data: any) => {
     console.log('🔄🎯 [ActivePayments] Payment status updated event received:', data)
+    console.log('🔄🎯 [ActivePayments] Event data keys:', Object.keys(data || {}))
+    console.log('🔄🎯 [ActivePayments] Event restaurantId:', data?.restaurantId, 'type:', typeof data?.restaurantId)
+    console.log('🔄🎯 [ActivePayments] Current restaurantId:', restaurantId, 'type:', typeof restaurantId)
+    console.log('🔄🎯 [ActivePayments] PaymentId in event:', data?.paymentId)
+    console.log('🔄🎯 [ActivePayments] New status:', data?.status)
 
-    // Only process events for this restaurant
-    if (data?.restaurantId !== restaurantId) {
-      console.log('🔄❌ [ActivePayments] Ignoring status update - different restaurant:', data?.restaurantId, 'vs', restaurantId)
+    // Check for restaurantId in nested data structure or at root level
+    const eventRestaurantId = data?.restaurantId || data?.data?.restaurantId
+
+    // Only process events for this restaurant (convert both to strings for comparison)
+    if (eventRestaurantId && String(eventRestaurantId) !== String(restaurantId)) {
+      console.log('🔄❌ [ActivePayments] Ignoring status update - different restaurant:', eventRestaurantId, 'vs', restaurantId)
       return
     }
+
+    // Get paymentId from data or nested data structure
+    const paymentId = data?.paymentId || data?.data?.paymentId
+    const newStatus = data?.status || data?.data?.status
+
+    if (!paymentId) {
+      console.log('🔄❌ [ActivePayments] No paymentId found in status update event')
+      return
+    }
+
+    console.log('🔄✅ [ActivePayments] Processing payment status update for payment:', paymentId, 'to status:', newStatus)
 
     // Update cached payment data
     queryClient.setQueryData(['restaurant', 'active-payments', restaurantId], (oldData: Payment[] | undefined) => {
       if (!oldData) return oldData
 
-      return oldData.map(payment =>
-        payment.id === data.paymentId
-          ? { ...payment, status: data.status as PaymentStatus, updatedAt: data.updatedAt }
+      const updatedData = oldData.map(payment =>
+        payment.id === paymentId
+          ? { ...payment, status: newStatus as PaymentStatus, updatedAt: data.updatedAt || new Date().toISOString() }
           : payment
       ).filter(payment =>
         // Keep only pending/processing payments for active view
         ['PENDING', 'PROCESSING'].includes(payment.status)
       )
+
+      console.log('🔄✅ [ActivePayments] Payment status updated. Before:', oldData.length, 'After:', updatedData.length)
+
+      // If payment was completed, also invalidate queries to ensure consistency
+      if (newStatus === 'COMPLETED') {
+        console.log('🔄✅ [ActivePayments] Payment completed via status update, invalidating queries')
+        queryClient.invalidateQueries({ queryKey: ['restaurant', 'active-payments', restaurantId] })
+        queryClient.invalidateQueries({ queryKey: ['restaurants', restaurantId, 'payments'] })
+      }
+
+      return updatedData
     })
     setRealtimeUpdates(prev => prev + 1)
   }, [queryClient, restaurantId])
 
   const handlePaymentCompleted = useCallback((data: any) => {
     console.log('✅🎯 [ActivePayments] Payment completed event received:', data)
+    console.log('✅🎯 [ActivePayments] Event data keys:', Object.keys(data || {}))
+    console.log('✅🎯 [ActivePayments] Event restaurantId:', data?.restaurantId, 'type:', typeof data?.restaurantId)
+    console.log('✅🎯 [ActivePayments] Current restaurantId:', restaurantId, 'type:', typeof restaurantId)
+    console.log('✅🎯 [ActivePayments] PaymentId in event:', data?.paymentId)
 
-    // Only process events for this restaurant
-    if (data?.restaurantId !== restaurantId) {
-      console.log('✅❌ [ActivePayments] Ignoring completion - different restaurant:', data?.restaurantId, 'vs', restaurantId)
+    // Check for restaurantId in nested data structure or at root level
+    const eventRestaurantId = data?.restaurantId || data?.data?.restaurantId
+
+    // Only process events for this restaurant (convert both to strings for comparison)
+    if (eventRestaurantId && String(eventRestaurantId) !== String(restaurantId)) {
+      console.log('✅❌ [ActivePayments] Ignoring completion - different restaurant:', eventRestaurantId, 'vs', restaurantId)
       return
     }
 
-    // Remove completed payment from active payments
+    // Get paymentId from data or nested data structure
+    const paymentId = data?.paymentId || data?.data?.paymentId
+
+    if (!paymentId) {
+      console.log('✅❌ [ActivePayments] No paymentId found in event data')
+      return
+    }
+
+    console.log('✅✅ [ActivePayments] Processing payment completion for payment:', paymentId)
+
+    // Remove completed payment from active payments and force refetch to ensure consistency
     queryClient.setQueryData(['restaurant', 'active-payments', restaurantId], (oldData: Payment[] | undefined) => {
       if (!oldData) return oldData
-      return oldData.filter(payment => payment.id !== data.paymentId)
+      const filteredData = oldData.filter(payment => payment.id !== paymentId)
+      console.log('✅✅ [ActivePayments] Filtered out completed payment. Before:', oldData.length, 'After:', filteredData.length)
+      return filteredData
     })
+
+    // Also invalidate the query to ensure fresh data
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'active-payments', restaurantId] })
+
+    // Invalidate other payment-related queries
+    queryClient.invalidateQueries({ queryKey: ['restaurants', restaurantId, 'payments'] })
+
     setRealtimeUpdates(prev => prev + 1)
+    console.log('✅✅ [ActivePayments] Payment completed event processed successfully')
   }, [queryClient, restaurantId])
 
   const handlePaymentFailed = useCallback((data: any) => {
@@ -188,14 +245,20 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
   // Handler for table session payment updates (actual payment creation events from backend)
   const handleTableSessionPaymentUpdated = useCallback((data: any) => {
     console.log('🆕🎯 [ActivePayments] Table session payment updated (payment created):', data)
-    console.log('🆕🎯 [ActivePayments] Current restaurant ID:', restaurantId)
     console.log('🆕🎯 [ActivePayments] Event data keys:', Object.keys(data || {}))
+    console.log('🆕🎯 [ActivePayments] Event restaurantId:', data?.restaurantId, 'type:', typeof data?.restaurantId)
+    console.log('🆕🎯 [ActivePayments] Current restaurant ID:', restaurantId, 'type:', typeof restaurantId)
 
-    // Only process events for this restaurant
-    if (data?.restaurantId !== restaurantId) {
-      console.log('🆕❌ [ActivePayments] Ignoring table session update - different restaurant:', data?.restaurantId, 'vs', restaurantId)
+    // Check for restaurantId in nested data structure or at root level
+    const eventRestaurantId = data?.restaurantId || data?.data?.restaurantId
+
+    // Only process events for this restaurant (convert both to strings for comparison)
+    if (eventRestaurantId && String(eventRestaurantId) !== String(restaurantId)) {
+      console.log('🆕❌ [ActivePayments] Ignoring table session update - different restaurant:', eventRestaurantId, 'vs', restaurantId)
       return
     }
+
+    console.log('🆕✅ [ActivePayments] Processing table session payment update')
 
     queryClient.invalidateQueries({ queryKey: ['restaurant', 'active-payments', restaurantId] })
     queryClient.invalidateQueries({ queryKey: ['restaurants', restaurantId, 'payments'] })

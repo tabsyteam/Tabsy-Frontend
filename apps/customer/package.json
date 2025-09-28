@@ -6,6 +6,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev --port 3002",
+    "dev:https": "next dev --port 3002 --experimental-https",
     "lint": "next lint",
     "start": "next start",
     "type-check": "tsc --noEmit",
@@ -74,6 +75,7 @@
     "autoprefixer": "^10.4.20",
     "eslint": "^9.16.0",
     "eslint-config-next": "^15.1.3",
+    "https-localhost": "^4.7.1",
     "jsdom": "^25.0.1",
     "playwright": "^1.49.1",
     "postcss": "^8.5.6",

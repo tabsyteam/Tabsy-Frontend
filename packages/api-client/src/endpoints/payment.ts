@@ -10,7 +10,7 @@ import { createQueryString, createFilterParams } from '@tabsy/shared-utils'
 
 export interface CreatePaymentIntentRequest {
   orderId: string
-  amount: number
+  amount?: number // SECURITY: Optional to prevent frontend amount manipulation - server calculates from orderId
   currency: string
   paymentMethod?: PaymentMethod
   customerId?: string
@@ -46,7 +46,7 @@ export interface SplitPaymentResponse {
 
 export interface CashPaymentRequest {
   orderId: string
-  amount: number
+  amount?: number // SECURITY: Optional to prevent frontend amount manipulation - server calculates from orderId
 }
 
 export interface StripeWebhookEvent {

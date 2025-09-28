@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "turbo run dev --parallel",
     "dev:customer": "turbo run dev --filter=@tabsy/customer",
+    "dev:customer:https": "turbo run dev:https --filter=@tabsy/customer",
     "dev:restaurant": "turbo run dev --filter=@tabsy/restaurant-dashboard",
     "dev:admin": "turbo run dev --filter=@tabsy/admin-portal",
     "build": "turbo run build",

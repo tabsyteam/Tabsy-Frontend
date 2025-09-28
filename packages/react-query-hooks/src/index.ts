@@ -62,7 +62,7 @@ export {
   useCreatePaymentIntent,
   useCreateOrderPayment,
   useUpdatePaymentStatus,
-  useRecordCashPayment,
+  useCompleteCashPayment,
   useCreateSplitPayment,
   useDeletePayment
 } from './payment-hooks'

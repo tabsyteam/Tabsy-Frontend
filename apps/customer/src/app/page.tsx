@@ -12,12 +12,12 @@ export const metadata: Metadata = {
 export default function HomePage(): JSX.Element {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5">
-      <div className="container mx-auto px-4 py-8 safe-top safe-bottom">
+      <div className="container mx-auto px-4 py-4 md:py-8 safe-top safe-bottom">
         <Suspense fallback={<LoadingSpinner />}>
           <WelcomeScreen />
         </Suspense>
-        
-        <div className="mt-8">
+
+        <div className="mt-4 md:mt-8 pb-8 md:pb-0">
           <Suspense fallback={<LoadingSpinner />}>
             <QRScanner />
           </Suspense>
