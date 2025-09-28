@@ -110,6 +110,8 @@ export function MenuView() {
   // URL parameters with validation
   const urlRestaurantId = searchParams.get('restaurant')
   const urlTableId = searchParams.get('table')
+  const urlTableSessionId = searchParams.get('tableSession')
+  const urlGuestSessionId = searchParams.get('guestSession')
   const qrCode = searchParams.get('qr')
 
   // Validate URL parameters and fall back to session if invalid
@@ -265,7 +267,11 @@ export function MenuView() {
         throw new Error('No guest session available. Please refresh the page.')
       }
 
-      console.log('Using existing guest session:', currentSessionId)
+      console.log('[MenuView] Using guest session for API calls:', currentSessionId)
+      console.log('[MenuView] API client session state:', {
+        hasGuestSession: !!api.getGuestSessionId(),
+        guestSessionId: api.getGuestSessionId()
+      })
       setSessionReady(true)
 
       // 2. Load menu data (this uses customer-facing endpoint with guest session)
@@ -281,6 +287,21 @@ export function MenuView() {
         } catch (error: any) {
           retryCount++
           console.warn(`Menu API attempt ${retryCount} failed:`, error.message)
+
+          // Handle authentication errors specially - don't retry, redirect to new session
+          if (error?.status === 401 || error?.response?.status === 401 || error?.message?.includes('Unauthorized')) {
+            console.error('Authentication failed - guest session is invalid. Redirecting to create new session.')
+
+            // Clear invalid session
+            api.setGuestSession('')
+            sessionStorage.removeItem('tabsy-guest-session-id')
+
+            // Redirect to QR scan page with helpful message
+            const redirectUrl = `/?restaurant=${restaurantId}&table=${tableId}&message=session_expired`
+            toast.error('Your session has expired. Please scan the QR code to start a new session.')
+            router.push(redirectUrl)
+            return
+          }
 
           if (retryCount >= maxRetries) {
             throw new Error(`Failed to load menu after ${maxRetries} attempts`)
@@ -357,10 +378,20 @@ export function MenuView() {
     }
   }, [api, restaurantId, tableId, qrCode])
 
-  // Load data on mount
+  // Restore guest session from URL parameter and then load data
   useEffect(() => {
-    loadMenuData()
-  }, [loadMenuData])
+    if (urlGuestSessionId) {
+      console.log('[MenuView] Restoring guest session from URL:', urlGuestSessionId)
+      api.setGuestSession(urlGuestSessionId)
+      // Load data after setting the session
+      setTimeout(() => {
+        loadMenuData()
+      }, 100) // Small delay to ensure session is set
+    } else {
+      // Load data immediately if no guest session to restore
+      loadMenuData()
+    }
+  }, [api, urlGuestSessionId, loadMenuData])
 
   // Load favorites and recent searches
   useEffect(() => {
@@ -387,7 +418,8 @@ export function MenuView() {
       // Only update if no existing session, or if restaurant/table changed
       if (!existingSession ||
           existingSession.restaurantId !== urlRestaurantId ||
-          existingSession.tableId !== urlTableId) {
+          existingSession.tableId !== urlTableId ||
+          existingSession.tableSessionId !== urlTableSessionId) {
 
         // Preserve existing session data if available
         SessionManager.setDiningSession({
@@ -395,14 +427,14 @@ export function MenuView() {
           tableId: urlTableId,
           restaurantName: restaurant?.name,
           tableName: table?.number,
-          // Preserve critical session fields if they exist
+          // Use URL parameters if available, otherwise preserve existing
           sessionId: existingSession?.sessionId,
-          tableSessionId: existingSession?.tableSessionId,
+          tableSessionId: urlTableSessionId || existingSession?.tableSessionId,
           createdAt: existingSession?.createdAt || Date.now() // Preserve original creation time or use current
         })
       }
     }
-  }, [hasValidUrlParams, urlRestaurantId, urlTableId, restaurant?.name, table?.number])
+  }, [hasValidUrlParams, urlRestaurantId, urlTableId, urlTableSessionId, restaurant?.name, table?.number])
 
   // Process categories for display
   const processedCategories = useMemo((): Category[] => {
@@ -655,11 +687,10 @@ export function MenuView() {
           <h1 className="text-h1 font-bold text-error mb-4">Oops!</h1>
           <p className="text-body text-content-secondary mb-6">{error}</p>
           <Button
-            onClick={() => router.push('/')}
+            onClick={() => window.location.reload()}
             className="btn-food bg-primary text-primary-foreground"
           >
-            <ArrowLeft size={16} className="mr-2" />
-            Back to Home
+            Try Again
           </Button>
         </div>
       </div>

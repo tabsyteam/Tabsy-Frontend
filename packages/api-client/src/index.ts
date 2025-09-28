@@ -15,6 +15,7 @@ export * from "./endpoints/restaurant-table-session"
 export * from "./endpoints/qr-access"
 export * from "./endpoints/health"
 export * from "./endpoints/feedback"
+export * from "./endpoints/admin"
 
 // WebSocket exports
 export * from './websocket'
@@ -37,6 +38,7 @@ import { RestaurantTableSessionAPI } from './endpoints/restaurant-table-session'
 import { QRAccessAPI } from './endpoints/qr-access'
 import { HealthAPI } from './endpoints/health'
 import { FeedbackAPI } from './endpoints/feedback'
+import { AdminAPI } from './endpoints/admin'
 
 /**
  * Main Tabsy API client that provides access to all endpoints
@@ -61,10 +63,11 @@ export class TabsyAPI {
   public qr: QRAccessAPI
   public health: HealthAPI
   public feedback: FeedbackAPI
+  public admin: AdminAPI
 
   constructor(config?: ApiClientConfig) {
     this.client = new TabsyApiClient(config)
-    
+
     // Initialize all API endpoint classes
     this.auth = new AuthAPI(this.client)
     this.restaurant = new RestaurantAPI(this.client)
@@ -82,6 +85,7 @@ export class TabsyAPI {
     this.qr = new QRAccessAPI(this.client)
     this.health = new HealthAPI(this.client)
     this.feedback = new FeedbackAPI(this.client)
+    this.admin = new AdminAPI(this.client)
   }
 
   // Core client methods

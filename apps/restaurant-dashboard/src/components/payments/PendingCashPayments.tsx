@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback, forwardRef, useImperativeHandle } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@tabsy/ui-components'
 import { Banknote, Clock, CheckCircle, XCircle, RefreshCw, AlertTriangle, Users } from 'lucide-react'
 import { Payment, PaymentStatus, PaymentMethod, Order } from '@tabsy/shared-types'
@@ -11,32 +12,41 @@ import { useWebSocketEvent } from '@tabsy/ui-components'
 
 interface PendingCashPaymentsProps {
   restaurantId: string
+  isVisible?: boolean
 }
 
 interface PendingPaymentWithOrder extends Payment {
   order?: Order
 }
 
-export function PendingCashPayments({ restaurantId }: PendingCashPaymentsProps) {
-  const [pendingPayments, setPendingPayments] = useState<PendingPaymentWithOrder[]>([])
-  const [loading, setLoading] = useState(true)
-  const [processingPayments, setProcessingPayments] = useState<Set<string>>(new Set())
+export interface PendingCashPaymentsRef {
+  refetch: () => void
+}
 
-  // Fetch pending cash payments for the restaurant
-  const fetchPendingPayments = useCallback(async () => {
-    try {
-      setLoading(true)
+export const PendingCashPayments = forwardRef<PendingCashPaymentsRef, PendingCashPaymentsProps>(
+  ({ restaurantId, isVisible = true }, ref) => {
+  const [processingPayments, setProcessingPayments] = useState<Set<string>>(new Set())
+  const queryClient = useQueryClient()
+
+  // Use React Query for data fetching - prevents duplicate API calls
+  const { data: pendingPayments = [], isLoading: loading, refetch } = useQuery({
+    queryKey: ['restaurant', 'pending-cash-payments', restaurantId],
+    queryFn: async () => {
+      console.log('[PendingCashPayments] Fetching payments for restaurant:', restaurantId)
       const response = await tabsyClient.payment.getByRestaurant(restaurantId, {
         // We'll need to filter by PENDING status and CASH method on the frontend
         // since the API doesn't have specific filters for this yet
       })
 
+      console.log('[PendingCashPayments] API response:', response)
       if (response.success && response.data) {
+        console.log('[PendingCashPayments] Total payments fetched:', response.data.length)
         // Filter for pending cash payments
         const cashPayments = response.data.filter(payment =>
-          payment.method === PaymentMethod.CASH &&
+          payment.paymentMethod === PaymentMethod.CASH &&
           payment.status === PaymentStatus.PENDING
         )
+        console.log('[PendingCashPayments] Filtered cash payments:', cashPayments.length)
 
         // Fetch order details for each payment
         const paymentsWithOrders = await Promise.all(
@@ -54,19 +64,17 @@ export function PendingCashPayments({ restaurantId }: PendingCashPaymentsProps) 
           })
         )
 
-        setPendingPayments(paymentsWithOrders)
+        return paymentsWithOrders
       }
-    } catch (error) {
-      console.error('Error fetching pending cash payments:', error)
-      toast.error('Failed to load pending cash payments')
-    } finally {
-      setLoading(false)
-    }
-  }, [restaurantId])
+      throw new Error('Failed to fetch pending cash payments')
+    },
+    enabled: !!restaurantId,
+  })
 
-  useEffect(() => {
-    fetchPendingPayments()
-  }, [fetchPendingPayments])
+  // Expose refetch method to parent
+  useImperativeHandle(ref, () => ({
+    refetch
+  }), [refetch])
 
   // Handle cash payment confirmation
   const handleConfirmPayment = async (payment: PendingPaymentWithOrder) => {
@@ -83,8 +91,10 @@ export function PendingCashPayments({ restaurantId }: PendingCashPaymentsProps) 
           description: `Payment of $${payment.amount.toFixed(2)} confirmed for order #${payment.order?.orderNumber || payment.orderId}`
         })
 
-        // Remove from pending list
-        setPendingPayments(prev => prev.filter(p => p.id !== payment.id))
+        // Update React Query cache to remove the payment
+        queryClient.setQueryData(['restaurant', 'pending-cash-payments', restaurantId], (oldData: PendingPaymentWithOrder[] | undefined) => {
+          return oldData?.filter(p => p.id !== payment.id) || []
+        })
       } else {
         throw new Error(response.error || 'Failed to confirm payment')
       }
@@ -114,8 +124,10 @@ export function PendingCashPayments({ restaurantId }: PendingCashPaymentsProps) 
           description: `Cash payment request for order #${payment.order?.orderNumber || payment.orderId} has been cancelled`
         })
 
-        // Remove from pending list
-        setPendingPayments(prev => prev.filter(p => p.id !== payment.id))
+        // Update React Query cache to remove the payment
+        queryClient.setQueryData(['restaurant', 'pending-cash-payments', restaurantId], (oldData: PendingPaymentWithOrder[] | undefined) => {
+          return oldData?.filter(p => p.id !== payment.id) || []
+        })
       } else {
         throw new Error(response.error || 'Failed to cancel payment')
       }
@@ -134,25 +146,35 @@ export function PendingCashPayments({ restaurantId }: PendingCashPaymentsProps) 
   }
 
   // WebSocket event handlers for real-time updates
-  useWebSocketEvent('payment:created', (data: any) => {
+  const handlePaymentCreated = useCallback((data: any) => {
     if (data.paymentMethod === 'CASH' && data.status === 'PENDING') {
-      fetchPendingPayments()
+      // Invalidate React Query cache to refetch
+      queryClient.invalidateQueries({ queryKey: ['restaurant', 'pending-cash-payments', restaurantId] })
     }
-  }, [fetchPendingPayments])
+  }, [queryClient, restaurantId])
 
-  useWebSocketEvent('payment:completed', (data: any) => {
+  const handlePaymentCompleted = useCallback((data: any) => {
     if (data.paymentMethod === 'CASH') {
-      // Remove completed payment from list
-      setPendingPayments(prev => prev.filter(p => p.id !== data.paymentId))
+      // Update React Query cache to remove completed payment
+      queryClient.setQueryData(['restaurant', 'pending-cash-payments', restaurantId], (oldData: PendingPaymentWithOrder[] | undefined) => {
+        return oldData?.filter(p => p.id !== data.paymentId) || []
+      })
     }
-  }, [])
+  }, [queryClient, restaurantId])
 
-  useWebSocketEvent('payment:cancelled', (data: any) => {
+  const handlePaymentCancelled = useCallback((data: any) => {
     if (data.paymentMethod === 'CASH') {
-      // Remove cancelled payment from list
-      setPendingPayments(prev => prev.filter(p => p.id !== data.paymentId))
+      // Update React Query cache to remove cancelled payment
+      queryClient.setQueryData(['restaurant', 'pending-cash-payments', restaurantId], (oldData: PendingPaymentWithOrder[] | undefined) => {
+        return oldData?.filter(p => p.id !== data.paymentId) || []
+      })
     }
-  }, [])
+  }, [queryClient, restaurantId])
+
+  // Register WebSocket event listeners with proper component name
+  useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated], 'PendingCashPayments')
+  useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted], 'PendingCashPayments')
+  useWebSocketEvent('payment:cancelled', handlePaymentCancelled, [handlePaymentCancelled], 'PendingCashPayments')
 
   const formatTimeAgo = (createdAt: string): string => {
     return formatDistanceToNow(new Date(createdAt), { addSuffix: true })
@@ -179,7 +201,8 @@ export function PendingCashPayments({ restaurantId }: PendingCashPaymentsProps) 
   }
 
   return (
-    <div className="bg-card rounded-lg border p-6">
+    <div className="p-4 sm:p-6">
+      <div className="bg-card rounded-lg border p-4 sm:p-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2">
           <Banknote className="w-5 h-5 text-status-warning" />
@@ -188,17 +211,6 @@ export function PendingCashPayments({ restaurantId }: PendingCashPaymentsProps) 
             {pendingPayments.length}
           </span>
         </div>
-
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchPendingPayments}
-          disabled={loading}
-          className="flex items-center space-x-1"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
-        </Button>
       </div>
 
       {pendingPayments.length === 0 ? (
@@ -297,6 +309,9 @@ export function PendingCashPayments({ restaurantId }: PendingCashPaymentsProps) 
           ))}
         </div>
       )}
+      </div>
     </div>
   )
-}
+})
+
+PendingCashPayments.displayName = 'PendingCashPayments'

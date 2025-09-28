@@ -365,7 +365,7 @@ export function createDashboardHooks(useQuery: any) {
         staleTime: 300000, // 5 minutes - increased to reduce API calls
         refetchOnMount: false, // Don't refetch on mount to reduce initial load
         refetchOnWindowFocus: false,
-        retry: (failureCount, error: any) => {
+        retry: (failureCount: number, error: any) => {
           // Don't retry rate limit errors
           if (error?.status === 429 || error?.code === 'RATE_LIMIT_EXCEEDED') {
             return false
@@ -373,7 +373,7 @@ export function createDashboardHooks(useQuery: any) {
           // Only retry up to 2 times for other errors
           return failureCount < 2
         },
-        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000)
+        retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000)
       })
     }
   }

@@ -33,7 +33,7 @@ export class UserAPI {
    */
   async list(filters?: UserListFilters): Promise<ApiResponse<User[]>> {
     const queryString = createQueryString(createFilterParams(filters || {}))
-    const url = `/user${queryString ? `?${queryString}` : ''}`
+    const url = `/users${queryString ? `?${queryString}` : ''}`
     return this.client.get(url)
   }
 
@@ -41,41 +41,41 @@ export class UserAPI {
    * POST /users/ - Create user (admin)
    */
   async create(data: CreateUserRequest): Promise<ApiResponse<User>> {
-    return this.client.post('/user', data)
+    return this.client.post('/users', data)
   }
 
   /**
    * GET /users/:id - Get user by ID (admin)
    */
   async getById(id: string): Promise<ApiResponse<User>> {
-    return this.client.get(`/user/${id}`)
+    return this.client.get(`/users/${id}`)
   }
 
   /**
    * PUT /users/:id - Update user (admin)
    */
   async update(id: string, data: UpdateUserRequest): Promise<ApiResponse<User>> {
-    return this.client.put(`/user/${id}`, data)
+    return this.client.put(`/users/${id}`, data)
   }
 
   /**
    * DELETE /users/:id - Delete user (admin)
    */
   async delete(id: string): Promise<ApiResponse<void>> {
-    return this.client.delete(`/user/${id}`)
+    return this.client.delete(`/users/${id}`)
   }
 
   /**
    * Helper method: Update user status (separate endpoint)
    */
   async updateStatus(id: string, status: UserStatus): Promise<ApiResponse<User>> {
-    return this.client.put(`/user/${id}/status`, { status })
+    return this.client.put(`/users/${id}/status`, { status })
   }
 
   /**
    * Helper method: Update user roles (separate endpoint)
    */
   async updateRoles(id: string, roles: UserRole[]): Promise<ApiResponse<User>> {
-    return this.client.put(`/user/${id}/roles`, { roles })
+    return this.client.put(`/users/${id}/roles`, { roles })
   }
 }

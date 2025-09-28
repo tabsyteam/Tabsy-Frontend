@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button, Card, Badge } from '@tabsy/ui-components'
 import {
   Users,
@@ -18,8 +18,12 @@ import {
   Filter
 } from 'lucide-react'
 import { tabsyClient } from '@tabsy/api-client'
-import { useRestaurantWebSocket } from '@/hooks/useRestaurantWebSocket'
-import { Payment, PaymentStatus, PaymentMethod } from '@tabsy/shared-types'
+import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
+import {
+  Payment,
+  PaymentStatus,
+  PaymentMethod
+} from '@tabsy/shared-types'
 import { formatCurrency } from '@tabsy/shared-utils'
 import { toast } from 'sonner'
 
@@ -72,16 +76,8 @@ export function SplitPaymentMonitoring({ restaurantId }: SplitPaymentMonitoringP
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'partial' | 'complete'>('pending')
   const [refreshing, setRefreshing] = useState(false)
 
-  const { isConnected, lastMessage } = useRestaurantWebSocket({
-    restaurantId,
-    onPaymentUpdate: (data) => {
-      // Handle payment update events for split payments
-      if (data?.type?.startsWith('payment:split_')) {
-        // Trigger reload when split payment events occur
-        loadSplitPayments()
-      }
-    }
-  })
+  // WebSocket connection for real-time updates
+  const { isConnected } = useWebSocket()
 
   // Load split payments
   const loadSplitPayments = async () => {
@@ -100,6 +96,7 @@ export function SplitPaymentMonitoring({ restaurantId }: SplitPaymentMonitoringP
       }
     } catch (error) {
       console.error('Failed to load split payments:', error)
+      console.error('Failed to load split payments for restaurant')
       toast.error('Failed to load split payments')
     } finally {
       setIsLoading(false)
@@ -113,25 +110,53 @@ export function SplitPaymentMonitoring({ restaurantId }: SplitPaymentMonitoringP
     return []
   }
 
-  // Handle WebSocket events
-  useEffect(() => {
-    if (lastMessage?.type.startsWith('payment:split_')) {
-      loadSplitPayments()
+  // Split payment event handlers using correct frontend WebSocket event types
+  const handleSplitPaymentCreated = useCallback((data: any) => {
+    console.log('Split payment created:', data)
+    loadSplitPayments()
+    toast.info(`New split payment created with ${data.totalParticipants} participants`)
+  }, [loadSplitPayments])
 
-      // Show real-time notifications
-      switch (lastMessage.type) {
-        case 'payment:split_progress':
-          toast.info(`Split payment progress updated: ${lastMessage.data.progressPercentage}% complete`)
-          break
-        case 'payment:split_completed':
-          toast.success('Split payment completed successfully!')
-          break
-        case 'payment:split_cancelled':
-          toast.warning('Split payment was cancelled')
-          break
-      }
+  const handleSplitPaymentParticipantUpdated = useCallback((data: any) => {
+    console.log('Split payment participant updated:', data)
+    loadSplitPayments()
+
+    if (data.hasPaid) {
+      toast.success(`${data.participantName} completed their payment of ${formatCurrency(data.amount)}`)
+    } else {
+      toast.info(`${data.participantName} updated their payment details`)
     }
-  }, [lastMessage])
+  }, [loadSplitPayments])
+
+  const handleSplitPaymentProgress = useCallback((data: any) => {
+    console.log('Split payment progress updated:', data)
+    loadSplitPayments()
+
+    const progressMessage = `Split payment ${data.progressPercentage}% complete (${data.completedParticipants}/${data.totalParticipants} paid)`
+    toast.info(progressMessage)
+  }, [loadSplitPayments])
+
+  const handleSplitPaymentCompleted = useCallback((data: any) => {
+    console.log('Split payment completed:', data)
+    loadSplitPayments()
+    toast.success(`Split payment completed! ${data.participants.length} participants paid ${formatCurrency(data.totalAmount)}`)
+  }, [loadSplitPayments])
+
+  const handleSplitPaymentCancelled = useCallback((data: any) => {
+    console.log('Split payment cancelled:', data)
+    loadSplitPayments()
+    toast.warning(`Split payment cancelled by ${data.cancelledBy?.participantName || 'system'} - ${data.refundsProcessed} refunds processed`)
+  }, [loadSplitPayments])
+
+  // Register WebSocket event listeners with proper dependencies
+  // Register WebSocket event listeners for split payment events
+  // These events are defined in the frontend WebSocketEventMap
+  useWebSocketEvent('payment:split_created', handleSplitPaymentCreated, [handleSplitPaymentCreated])
+  useWebSocketEvent('payment:split_participant_updated', handleSplitPaymentParticipantUpdated, [handleSplitPaymentParticipantUpdated])
+  useWebSocketEvent('payment:split_progress', handleSplitPaymentProgress, [handleSplitPaymentProgress])
+  useWebSocketEvent('payment:split_completed', handleSplitPaymentCompleted, [handleSplitPaymentCompleted])
+  useWebSocketEvent('payment:split_cancelled', handleSplitPaymentCancelled, [handleSplitPaymentCancelled])
+
 
   // Initial load
   useEffect(() => {
@@ -174,6 +199,7 @@ export function SplitPaymentMonitoring({ restaurantId }: SplitPaymentMonitoringP
         toast.error('Failed to confirm cash payment')
       }
     } catch (error) {
+      console.error('Failed to confirm cash payment for participant:', groupId, participantId)
       toast.error('Failed to confirm cash payment')
     }
   }
@@ -192,6 +218,7 @@ export function SplitPaymentMonitoring({ restaurantId }: SplitPaymentMonitoringP
         toast.error('Failed to send reminder')
       }
     } catch (error) {
+      console.error('Failed to send payment reminder to participant:', groupId, participantId)
       toast.error('Failed to send reminder')
     }
   }
@@ -207,6 +234,7 @@ export function SplitPaymentMonitoring({ restaurantId }: SplitPaymentMonitoringP
         toast.error('Failed to cancel split payment')
       }
     } catch (error) {
+      console.error('Failed to cancel split payment group:', groupId)
       toast.error('Failed to cancel split payment')
     }
   }

@@ -163,7 +163,7 @@ class AdminAuthService {
           expiresAt,
           lastActivity: now,
           loginTime: now,
-          ipAddress: await this.getClientIP(),
+          ipAddress: undefined, // Removed for privacy
           userAgent: navigator.userAgent
         };
 
@@ -307,42 +307,19 @@ class AdminAuthService {
     }
   }
 
-  // Get client IP (best effort)
-  private async getClientIP(): Promise<string | undefined> {
-    try {
-      const response = await fetch('https://api.ipify.org?format=json');
-      const data = await response.json();
-      return data.ip;
-    } catch {
-      return undefined;
-    }
-  }
 
-  // Log authentication events for audit
+  // Log authentication events for audit (simplified)
   private logAuthEvent(event: string, data?: any) {
     const logEntry = {
       event,
       timestamp: new Date().toISOString(),
       userId: this.session?.user?.id,
       email: this.session?.user?.email,
-      ipAddress: this.session?.ipAddress,
-      userAgent: this.session?.userAgent,
       ...data
     };
 
-    // In production, send to audit logging service
-    console.log('[AUTH AUDIT]', logEntry);
-
-    // Store recent auth events locally
-    const events = JSON.parse(localStorage.getItem('auth_events') || '[]');
-    events.push(logEntry);
-
-    // Keep only last 50 events
-    if (events.length > 50) {
-      events.shift();
-    }
-
-    localStorage.setItem('auth_events', JSON.stringify(events));
+    // In production, send to proper logging service (CloudWatch, DataDog, etc)
+    console.log('[AUTH]', logEntry);
   }
 
   // Public getters
@@ -377,11 +354,6 @@ class AdminAuthService {
       ipAddress: this.session.ipAddress,
       userAgent: this.session.userAgent
     };
-  }
-
-  // Get recent authentication events
-  getAuthEvents(): any[] {
-    return JSON.parse(localStorage.getItem('auth_events') || '[]');
   }
 
   // Update security settings (admin only)

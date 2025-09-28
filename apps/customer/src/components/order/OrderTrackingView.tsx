@@ -43,7 +43,7 @@ const transformApiOrderToLocal = (apiOrder: any): Order => ({
   items: apiOrder.items.map((item: any) => ({
     id: item.id,
     name: item.menuItem?.name || item.name || 'Unknown Item',
-    categoryName: item.menuItem?.categoryName || item.categoryName || 'Unknown Category',
+    categoryName: item.menuItem?.category?.name || item.menuItem?.categoryName || item.categoryName || 'Unknown Category',
     quantity: item.quantity,
     unitPrice: typeof item.price === 'string' ? parseFloat(item.price) : (item.price || 0),
     totalPrice: typeof item.subtotal === 'string' ? parseFloat(item.subtotal) : (item.subtotal || 0),

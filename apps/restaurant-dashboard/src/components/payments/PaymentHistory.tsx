@@ -31,7 +31,7 @@ interface PaymentHistoryProps {
   restaurantId: string
 }
 
-type SortField = 'createdAt' | 'amount' | 'status' | 'method'
+type SortField = 'createdAt' | 'amount' | 'status' | 'paymentMethod'
 type SortDirection = 'asc' | 'desc'
 
 interface PaymentFilters {
@@ -64,7 +64,7 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
         limit: 500,
         dateFrom: getDateFrom(filters.dateRange),
         status: filters.status !== 'all' ? filters.status : undefined,
-        method: filters.method !== 'all' ? filters.method : undefined
+        paymentMethod: filters.method !== 'all' ? filters.method : undefined
       })
 
       if (response.success && response.data) {
@@ -132,9 +132,10 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
 
   const getPaymentMethodIcon = (method: PaymentMethod) => {
     switch (method) {
-      case 'CARD':
+      case 'CREDIT_CARD':
+      case 'DEBIT_CARD':
         return <CreditCard className="w-4 h-4" />
-      case 'DIGITAL_WALLET':
+      case 'MOBILE_PAYMENT':
         return <Smartphone className="w-4 h-4" />
       case 'CASH':
         return <Banknote className="w-4 h-4" />
@@ -235,9 +236,9 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col">
       {/* Header with Search and Filters */}
-      <div className="p-6 border-b border-border-default">
+      <div className="p-4 sm:p-6 border-b border-border-default">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-semibold text-content-primary">Payment History</h2>
@@ -265,15 +266,6 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
             >
               <Filter className="w-4 h-4" />
               <span>Filters</span>
-            </Button>
-            <Button
-              onClick={() => refetch()}
-              variant="outline"
-              size="sm"
-              className="flex items-center space-x-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>Refresh</span>
             </Button>
           </div>
         </div>
@@ -474,24 +466,6 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
                   <ArrowUpDown className="w-3 h-3" />
                 </button>
               </div>
-              <div className="w-24">
-                <button
-                  onClick={() => handleSort('method')}
-                  className="flex items-center space-x-1 hover:text-content-primary"
-                >
-                  <span>Method</span>
-                  <ArrowUpDown className="w-3 h-3" />
-                </button>
-              </div>
-              <div className="w-24">
-                <button
-                  onClick={() => handleSort('status')}
-                  className="flex items-center space-x-1 hover:text-content-primary"
-                >
-                  <span>Status</span>
-                  <ArrowUpDown className="w-3 h-3" />
-                </button>
-              </div>
               <div className="w-20">Actions</div>
             </div>
 
@@ -514,7 +488,7 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
 
                     <div className="flex items-center space-x-2">
                       {getStatusIcon(payment.status)}
-                      {getPaymentMethodIcon(payment.method)}
+                      {getPaymentMethodIcon(payment.paymentMethod)}
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -568,7 +542,7 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
 
                     <div className="text-center">
                       <p className="font-medium text-content-primary">
-                        {payment.method?.replace('_', ' ')}
+                        {payment.paymentMethod?.replace('_', ' ')}
                       </p>
                     </div>
 

@@ -147,6 +147,23 @@ export interface SplitCalculationResponse {
   lastUpdatedAt?: string
 }
 
+export interface TableSessionStatusResponse {
+  tableSessionId: string
+  status: 'ACTIVE' | 'CLOSED' | 'EXPIRED' | 'ORDERING_LOCKED' | 'PAYMENT_PENDING' | 'PAYMENT_COMPLETE'
+  isActive: boolean
+  isClosed: boolean
+  isExpired: boolean
+  canOrder: boolean
+  createdAt: string
+  expiresAt: string
+  closedAt?: string
+  totalAmount: number
+  paidAmount: number
+  remainingAmount: number
+  userCount: number
+}
+
+
 export class TableSessionAPI {
   constructor(private client: TabsyApiClient) {}
 
@@ -170,6 +187,13 @@ export class TableSessionAPI {
    */
   async getOrders(sessionId: string): Promise<ApiResponse<TableSessionOrdersResponse>> {
     return this.client.get(`/table-sessions/${sessionId}/orders`)
+  }
+
+  /**
+   * GET /table-sessions/:sessionId/status - Get table session status
+   */
+  async getStatus(sessionId: string): Promise<ApiResponse<TableSessionStatusResponse>> {
+    return this.client.get(`/table-sessions/${sessionId}/status`)
   }
 
   /**
@@ -277,5 +301,6 @@ export class TableSessionAPI {
   async getSplitCalculation(sessionId: string): Promise<ApiResponse<SplitCalculationResponse | null>> {
     return this.client.get(`/table-sessions/${sessionId}/split-calculation`)
   }
+
 
 }

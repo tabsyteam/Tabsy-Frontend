@@ -88,10 +88,24 @@ export class RestaurantAPI {
   }
 
   /**
+   * GET /restaurants/:id/staff - Get restaurant staff
+   */
+  async getStaff(restaurantId: string): Promise<ApiResponse<User[]>> {
+    return this.client.get(`/restaurants/${restaurantId}/staff`)
+  }
+
+  /**
    * POST /restaurants/:id/staff - Add staff member
    */
   async addStaff(restaurantId: string, data: { userId: string; role: string; permissions?: string[] }): Promise<ApiResponse<void>> {
     return this.client.post(`/restaurants/${restaurantId}/staff`, data)
+  }
+
+  /**
+   * PUT /restaurants/:id/staff/:userId - Update staff member role/permissions
+   */
+  async updateStaff(restaurantId: string, userId: string, data: { role?: string; permissions?: string[] }): Promise<ApiResponse<void>> {
+    return this.client.put(`/restaurants/${restaurantId}/staff/${userId}`, data)
   }
 
   /**

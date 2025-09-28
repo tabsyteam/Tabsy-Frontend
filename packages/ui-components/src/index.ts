@@ -15,6 +15,7 @@ export * from './components/Toast'
 
 // Error Handling Hooks
 export * from './hooks/useErrorHandler'
+export type { ApiError } from './hooks/useErrorHandler'
 
 // WebSocket Event Registry Hooks
 export * from './hooks/useWebSocketEventRegistry'

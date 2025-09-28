@@ -114,7 +114,6 @@ export {
   useFlagFeedback,
   useAdminFeedback,
   useAdminFeedbackStats,
-  useUpdateFeedbackStatus,
   usePrefetchFeedback,
   useInvalidateFeedback,
   FEEDBACK_KEYS

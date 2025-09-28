@@ -138,7 +138,7 @@ export function WebSocketProvider({
       console.error('WebSocket: Failed to create connection', error)
       setError(error)
     }
-  }, [authToken, restaurantId, namespace, autoConnect, clearReconnectTimeout])
+  }, [authToken, restaurantId, tableId, namespace, autoConnect, clearReconnectTimeout])
 
   // Disconnect
   const disconnect = useCallback(() => {

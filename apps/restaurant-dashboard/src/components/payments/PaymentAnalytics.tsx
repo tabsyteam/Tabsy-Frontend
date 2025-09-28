@@ -185,7 +185,7 @@ export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
   }
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header with Period Selector */}
       <div className="flex items-center justify-between">
         <div>

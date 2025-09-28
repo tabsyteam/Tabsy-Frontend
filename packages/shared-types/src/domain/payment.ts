@@ -32,7 +32,7 @@ export interface Payment {
   tipAmount: number
   totalAmount: number
   currency: string
-  method: PaymentMethod
+  paymentMethod: PaymentMethod
   provider: PaymentProvider
   status: PaymentStatus
   paymentIntentId?: string
@@ -402,7 +402,7 @@ export interface LivePaymentUpdate {
   restaurantId: string
   status: PaymentStatus
   amount: number
-  method: PaymentMethod
+  paymentMethod: PaymentMethod
   timestamp: string
   customerInfo?: {
     id?: string
@@ -600,4 +600,182 @@ export interface PaymentMetricsQuery {
   restaurantId?: string
   includeHourlyData?: boolean
   includeTrendData?: boolean
+}
+
+// WebSocket Payment Event Types
+export interface PaymentCompletedEvent {
+  paymentId: string
+  orderId?: string
+  amount: number
+  tip?: number
+  totalAmount: number
+  method: PaymentMethod
+  provider: PaymentProvider
+  timestamp: string
+  restaurantId: string
+  tableSessionId?: string
+  customerId?: string
+}
+
+export interface PaymentFailedEvent {
+  paymentId: string
+  orderId?: string
+  amount: number
+  paymentMethod: PaymentMethod
+  provider: PaymentProvider
+  error: string
+  errorMessage: string
+  timestamp: string
+  restaurantId: string
+  tableSessionId?: string
+  customerId?: string
+}
+
+export interface PaymentCreatedEvent {
+  paymentId: string
+  orderId?: string
+  amount: number
+  total: number
+  paymentMethod: PaymentMethod
+  provider: PaymentProvider
+  status: PaymentStatus
+  timestamp: string
+  restaurantId: string
+  tableSessionId?: string
+  customerId?: string
+}
+
+export interface PaymentRefundedEvent {
+  paymentId: string
+  refundId: string
+  orderId?: string
+  amount: number
+  refundAmount: number
+  originalAmount: number
+  reason?: string
+  timestamp: string
+  restaurantId: string
+  tableSessionId?: string
+  customerId?: string
+}
+
+export interface PaymentCancelledEvent {
+  paymentId: string
+  orderId?: string
+  amount: number
+  reason?: string
+  timestamp: string
+  restaurantId: string
+  tableSessionId?: string
+  customerId?: string
+}
+
+// Split Payment WebSocket Events
+export interface SplitPaymentUpdatedEvent {
+  groupId: string
+  participantId?: string
+  amount?: number
+  status: 'updated' | 'participant_joined' | 'participant_left'
+  timestamp: string
+  restaurantId: string
+  orderId?: string
+}
+
+export interface SplitPaymentCompletedEvent {
+  groupId: string
+  totalAmount: number
+  participantCount: number
+  timestamp: string
+  restaurantId: string
+  orderId?: string
+}
+
+export interface SplitPaymentCancelledEvent {
+  groupId: string
+  reason?: string
+  refundsProcessed: number
+  timestamp: string
+  restaurantId: string
+  orderId?: string
+}
+
+// Union type for all payment WebSocket events
+export type PaymentWebSocketEvent =
+  | PaymentCompletedEvent
+  | PaymentFailedEvent
+  | PaymentCreatedEvent
+  | PaymentRefundedEvent
+  | PaymentCancelledEvent
+  | SplitPaymentUpdatedEvent
+  | SplitPaymentCompletedEvent
+  | SplitPaymentCancelledEvent
+
+// WebSocket event type mapping
+export interface PaymentWebSocketEventMap {
+  'payment:completed': PaymentCompletedEvent
+  'payment:failed': PaymentFailedEvent
+  'payment:created': PaymentCreatedEvent
+  'payment:refunded': PaymentRefundedEvent
+  'payment:cancelled': PaymentCancelledEvent
+  'payment:split_updated': SplitPaymentUpdatedEvent
+  'payment:split_completed': SplitPaymentCompletedEvent
+  'payment:split_cancelled': SplitPaymentCancelledEvent
+}
+
+// Payment Error Types
+export class PaymentError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public details?: Record<string, any>
+  ) {
+    super(message)
+    this.name = 'PaymentError'
+  }
+}
+
+export class PaymentMetricsError extends PaymentError {
+  constructor(
+    message: string,
+    public restaurantId: string,
+    public period: string,
+    public originalError?: Error
+  ) {
+    super(message, 'PAYMENT_METRICS_ERROR', {
+      restaurantId,
+      period,
+      originalError: originalError?.message
+    })
+    this.name = 'PaymentMetricsError'
+  }
+}
+
+export class SplitPaymentError extends PaymentError {
+  constructor(
+    message: string,
+    public groupId: string,
+    public participantId?: string,
+    public action?: string
+  ) {
+    super(message, 'SPLIT_PAYMENT_ERROR', {
+      groupId,
+      participantId,
+      action
+    })
+    this.name = 'SplitPaymentError'
+  }
+}
+
+export class PaymentWebSocketError extends PaymentError {
+  constructor(
+    message: string,
+    public eventType: string,
+    public eventData?: any
+  ) {
+    super(message, 'PAYMENT_WEBSOCKET_ERROR', {
+      eventType,
+      eventData
+    })
+    this.name = 'PaymentWebSocketError'
+  }
 }

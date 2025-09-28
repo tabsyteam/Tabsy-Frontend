@@ -619,12 +619,12 @@ export default function PaymentsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <PaymentMethodIcon method={payment.method || PaymentMethod.CREDIT_CARD} />
+                              <PaymentMethodIcon method={payment.paymentMethod || PaymentMethod.CREDIT_CARD} />
                               <span className="text-sm text-content-primary ml-2">
-                                {payment.method === PaymentMethod.CREDIT_CARD ? 'Credit Card' :
-                                 payment.method === PaymentMethod.DEBIT_CARD ? 'Debit Card' :
-                                 payment.method === PaymentMethod.MOBILE_PAYMENT ? 'Mobile Payment' :
-                                 payment.method === PaymentMethod.CASH ? 'Cash' : 'Credit Card'}
+                                {payment.paymentMethod === PaymentMethod.CREDIT_CARD ? 'Credit Card' :
+                                 payment.paymentMethod === PaymentMethod.DEBIT_CARD ? 'Debit Card' :
+                                 payment.paymentMethod === PaymentMethod.MOBILE_PAYMENT ? 'Mobile Payment' :
+                                 payment.paymentMethod === PaymentMethod.CASH ? 'Cash' : 'Credit Card'}
                               </span>
                             </div>
                           </td>

@@ -19,7 +19,8 @@ import { Button } from '@tabsy/ui-components'
 import { toast } from 'sonner'
 import { TabsyAPI } from '@tabsy/api-client'
 import { SessionManager } from '@/lib/session'
-import type { Payment, PaymentMethod, PaymentStatus } from '@tabsy/shared-types'
+import { PaymentMethod, PaymentStatus } from '@tabsy/shared-types'
+import type { Payment } from '@tabsy/shared-types'
 
 interface PaymentHistoryProps {
   tableSessionId?: string
@@ -266,13 +267,13 @@ export function PaymentHistory({ tableSessionId, orderId, api }: PaymentHistoryP
           <div key={payment.id} className="p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
-                {getPaymentMethodIcon(payment.method)}
+                {getPaymentMethodIcon(payment.paymentMethod)}
                 <div>
                   <div className="font-medium text-content-primary">
                     ${payment.totalAmount.toFixed(2)}
                   </div>
                   <div className="text-sm text-content-secondary">
-                    {getPaymentMethodLabel(payment.method)}
+                    {getPaymentMethodLabel(payment.paymentMethod)}
                   </div>
                 </div>
               </div>

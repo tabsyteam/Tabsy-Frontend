@@ -409,7 +409,7 @@ export function DashboardClient(): JSX.Element {
         isLoggingOut={isLoggingOut}
       />
 
-      <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 min-h-[calc(100vh-4rem)]">
+      <main className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 h-[calc(100vh-4rem)]">
         {currentView === 'overview' ? (
           <>
             {/* Stats Grid */}

@@ -155,24 +155,22 @@ export default function AddRestaurantModal({
           data: updateData
         });
       } else {
-        // Create uses nested structure
+        // Create uses flat structure (matching backend validator)
         const createData: CreateRestaurantRequest = {
           name: formData.name,
           description: formData.description,
-          address: {
-            street: formData.address,
-            city: formData.city,
-            state: formData.state,
-            zipCode: formData.zipCode,
-            country: formData.country
-          },
-          contact: {
-            phone: formData.phone,
-            email: formData.email,
-            website: formData.website || undefined
-          },
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          zipCode: formData.zipCode,
+          country: formData.country,
+          phoneNumber: formData.phone,
+          email: formData.email,
+          website: formData.website || undefined,
           cuisine: formData.cuisine ? formData.cuisine.split(',').map(c => c.trim()) : [],
-          priceRange: 2 as const // Default to moderate pricing
+          priceRange: 2 as const, // Default to moderate pricing
+          active: true,
+          openingHours: formData.openingHours
         };
 
         await createRestaurant.mutateAsync(createData);

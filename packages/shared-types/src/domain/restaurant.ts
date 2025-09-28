@@ -66,20 +66,21 @@ export interface RestaurantSettings {
 export interface CreateRestaurantRequest {
   name: string;
   description: string;
-  address: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
-    country: string;
-  };
-  contact: {
-    phone: string;
-    email: string;
-    website?: string;
-  };
-  cuisine: string[];
-  priceRange: 1 | 2 | 3 | 4;
+  // Flat address fields to match backend validator
+  address: string;
+  city: string;
+  state: string;
+  zipCode: string;
+  country: string;
+  // Flat contact fields to match backend validator
+  phoneNumber: string;
+  email: string;
+  website?: string;
+  // Additional fields
+  cuisine?: string[];
+  priceRange?: 1 | 2 | 3 | 4;
+  active?: boolean;
+  openingHours?: string | Record<string, { open: string; close: string; closed: boolean }>;
 }
 
 export interface UpdateRestaurantRequest {

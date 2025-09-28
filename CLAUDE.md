@@ -281,3 +281,10 @@ For detailed implementation examples and troubleshooting, see [THEME_SYSTEM.md](
 - Packages must be built before apps (handled by `turbo build` dependencies)
 - Customer app includes bundle analyzer and PWA capabilities
 - All apps configured for production builds with proper caching
+
+### Instruction:
+- Always carefully examine existing code before making changes
+  - Check if functionality already exists elsewhere
+  - Avoid creating duplicate APIs or methods
+  - Understand the existing architecture and patterns
+  - Don't rush to add new code without thorough investigation

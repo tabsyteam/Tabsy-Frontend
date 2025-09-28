@@ -177,9 +177,10 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
 
   const getPaymentMethodIcon = (method: PaymentMethod) => {
     switch (method) {
-      case 'CARD':
+      case 'CREDIT_CARD':
+      case 'DEBIT_CARD':
         return <CreditCard className="w-4 h-4" />
-      case 'DIGITAL_WALLET':
+      case 'MOBILE_PAYMENT':
         return <Smartphone className="w-4 h-4" />
       case 'CASH':
         return <Banknote className="w-4 h-4" />
@@ -264,7 +265,7 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
             payment.id.slice(-8),
             `$${Number(payment.amount || 0).toFixed(2)}`,
             payment.status,
-            payment.method,
+            payment.paymentMethod,
             payment.orderId?.slice(-8) || 'N/A',
             new Date(payment.createdAt).toLocaleString()
           ].join(','))
@@ -313,9 +314,9 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex flex-col">
       {/* Header */}
-      <div className="p-6 border-b border-border-default">
+      <div className="p-4 sm:p-6 border-b border-border-default">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-content-primary">Active Payments</h2>
@@ -456,7 +457,7 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-2">
                         {getStatusIcon(payment.status)}
-                        {getPaymentMethodIcon(payment.method)}
+                        {getPaymentMethodIcon(payment.paymentMethod)}
                       </div>
 
                       <div>
@@ -499,7 +500,7 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
                     <div className="flex items-center space-x-2">
                       <div className="text-right text-sm text-content-secondary">
                         <p>{format(new Date(payment.createdAt), 'h:mm a')}</p>
-                        <p>{payment.method}</p>
+                        <p>{payment.paymentMethod}</p>
                       </div>
 
                       <Button

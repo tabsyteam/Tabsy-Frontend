@@ -164,7 +164,7 @@ export function ValidatedRegisterForm({
               </select>
               {form.formState.errors.role && (
                 <p className="text-sm font-medium text-destructive">
-                  {form.formState.errors.role.message}
+                  {form.formState.errors.role.message || 'Role is required'}
                 </p>
               )}
             </div>

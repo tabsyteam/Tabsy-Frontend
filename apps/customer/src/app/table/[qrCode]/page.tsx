@@ -71,10 +71,21 @@ export default function QRCodePage({ params }: QRCodePageProps) {
         const tableId = searchParams.get('t') || table.id
 
         try {
+          // Use existing guest session ID as device identifier for backend comparison
+          const existingGuestSessionId = api.getGuestSessionId() ||
+                                       sessionStorage.getItem(`guestSession-${tableId}`) ||
+                                       localStorage.getItem('tabsy-guest-session-id')
+
+          console.log('[QR Page] Creating QR session with device context:', {
+            hasExistingSession: !!existingGuestSessionId,
+            deviceSessionId: existingGuestSessionId || 'new device'
+          })
+
           const sessionResponse = await api.qr.createGuestSession({
             qrCode,
             tableId,
-            restaurantId
+            restaurantId,
+            deviceSessionId: existingGuestSessionId || undefined
           })
 
           if (sessionResponse.success && sessionResponse.data) {

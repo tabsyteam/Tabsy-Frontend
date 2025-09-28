@@ -29,6 +29,7 @@ export interface CreateGuestSessionRequest {
   qrCode?: string;  // Optional - only required for QR code validation
   tableId: string;
   restaurantId: string;
+  deviceSessionId?: string;  // Optional - unique device identifier for reliable device differentiation
   customerInfo?: {
     name?: string;
     phone?: string;

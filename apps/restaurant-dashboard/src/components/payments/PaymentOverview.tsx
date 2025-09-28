@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@tabsy/ui-components'
 import {
@@ -21,6 +21,7 @@ import {
 import { tabsyClient } from '@tabsy/api-client'
 import { format } from 'date-fns'
 import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
+import { PaymentMetricsError } from '@tabsy/shared-types'
 
 interface PaymentOverviewProps {
   restaurantId: string
@@ -67,7 +68,7 @@ export function PaymentOverview({ restaurantId }: PaymentOverviewProps) {
       if (response.success && response.data) {
         return calculateMetrics(response.data)
       }
-      throw new Error('Failed to fetch payment metrics')
+      throw new PaymentMetricsError('Unable to fetch payment metrics', restaurantId, selectedPeriod, error)
     },
     staleTime: 300000, // 5 minutes - rely on WebSocket for real-time updates
     retry: (failureCount, error) => {
@@ -83,22 +84,66 @@ export function PaymentOverview({ restaurantId }: PaymentOverviewProps) {
   // WebSocket event handlers for real-time metrics updates
   const handlePaymentCompleted = useCallback((data: any) => {
     console.log('💰 Payment completed - updating metrics:', data)
-    // Invalidate metrics to trigger refetch with new completed payment
-    queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-metrics', restaurantId, selectedPeriod] })
+
+    // Optimistically update metrics instead of full invalidation
+    queryClient.setQueryData(['restaurant', 'payment-metrics', restaurantId, selectedPeriod], (oldMetrics: PaymentMetrics | undefined) => {
+      if (!oldMetrics) return oldMetrics
+
+      const amount = typeof data.amount === 'number' ? data.amount : 0
+      return {
+        ...oldMetrics,
+        todayRevenue: oldMetrics.todayRevenue + amount,
+        todayTransactions: oldMetrics.todayTransactions + 1,
+        successRate: oldMetrics.todayTransactions > 0
+          ? ((oldMetrics.todayTransactions * oldMetrics.successRate / 100) + 1) / (oldMetrics.todayTransactions + 1) * 100
+          : 100,
+        averageTransaction: oldMetrics.todayTransactions > 0
+          ? (oldMetrics.todayRevenue + amount) / (oldMetrics.todayTransactions + 1)
+          : amount
+      }
+    })
+
     setRealtimeUpdates(prev => prev + 1)
   }, [queryClient, restaurantId, selectedPeriod])
 
   const handlePaymentFailed = useCallback((data: any) => {
     console.log('💥 Payment failed - updating metrics:', data)
-    // Invalidate metrics to update failure rates
-    queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-metrics', restaurantId, selectedPeriod] })
+
+    // Optimistically update failure metrics
+    queryClient.setQueryData(['restaurant', 'payment-metrics', restaurantId, selectedPeriod], (oldMetrics: PaymentMetrics | undefined) => {
+      if (!oldMetrics) return oldMetrics
+
+      const totalTransactions = oldMetrics.todayTransactions + 1
+      const successfulTransactions = Math.round(oldMetrics.todayTransactions * oldMetrics.successRate / 100)
+
+      return {
+        ...oldMetrics,
+        todayTransactions: totalTransactions,
+        failureRate: ((oldMetrics.todayTransactions * oldMetrics.failureRate / 100) + 1) / totalTransactions * 100,
+        successRate: successfulTransactions / totalTransactions * 100
+      }
+    })
+
     setRealtimeUpdates(prev => prev + 1)
   }, [queryClient, restaurantId, selectedPeriod])
 
   const handlePaymentRefunded = useCallback((data: any) => {
     console.log('🔄 Payment refunded - updating metrics:', data)
-    // Invalidate metrics to update refund counts
-    queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-metrics', restaurantId, selectedPeriod] })
+
+    // Optimistically update refund metrics
+    queryClient.setQueryData(['restaurant', 'payment-metrics', restaurantId, selectedPeriod], (oldMetrics: PaymentMetrics | undefined) => {
+      if (!oldMetrics) return oldMetrics
+
+      const refundAmount = typeof data.refundAmount === 'number' ? data.refundAmount : (typeof data.amount === 'number' ? data.amount : 0)
+
+      return {
+        ...oldMetrics,
+        refundCount: oldMetrics.refundCount + 1,
+        refundAmount: oldMetrics.refundAmount + refundAmount,
+        todayRevenue: oldMetrics.todayRevenue - refundAmount // Subtract refund from revenue
+      }
+    })
+
     setRealtimeUpdates(prev => prev + 1)
   }, [queryClient, restaurantId, selectedPeriod])
 
@@ -107,11 +152,21 @@ export function PaymentOverview({ restaurantId }: PaymentOverviewProps) {
     console.log('🆕🎯 [PaymentOverview] Payment data keys:', Object.keys(data || {}))
     console.log('🆕🎯 [PaymentOverview] Current restaurant ID:', restaurantId)
 
-    // Invalidate metrics to update transaction counts
-    queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-metrics', restaurantId, selectedPeriod] })
-    setRealtimeUpdates(prev => prev + 1)
+    // Optimistically update pending payment metrics
+    queryClient.setQueryData(['restaurant', 'payment-metrics', restaurantId, selectedPeriod], (oldMetrics: PaymentMetrics | undefined) => {
+      if (!oldMetrics) return oldMetrics
 
-    console.log('🆕✅ [PaymentOverview] Payment created - metrics invalidated')
+      const amount = typeof data.amount === 'number' ? data.amount : 0
+
+      return {
+        ...oldMetrics,
+        pendingPayments: oldMetrics.pendingPayments + 1,
+        pendingAmount: oldMetrics.pendingAmount + amount
+      }
+    })
+
+    setRealtimeUpdates(prev => prev + 1)
+    console.log('🆕✅ [PaymentOverview] Payment created - metrics updated optimistically')
   }, [queryClient, restaurantId, selectedPeriod])
 
   // Handler for table session payment updates (actual payment creation events from backend)
@@ -120,10 +175,22 @@ export function PaymentOverview({ restaurantId }: PaymentOverviewProps) {
     console.log('🆕🎯 [PaymentOverview] Event data keys:', Object.keys(data || {}))
     console.log('🆕🎯 [PaymentOverview] Current restaurant ID:', restaurantId)
 
-    queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-metrics', restaurantId, selectedPeriod] })
-    setRealtimeUpdates(prev => prev + 1)
+    // Use optimistic update for table session payments as well
+    queryClient.setQueryData(['restaurant', 'payment-metrics', restaurantId, selectedPeriod], (oldMetrics: PaymentMetrics | undefined) => {
+      if (!oldMetrics) return oldMetrics
 
-    console.log('🆕✅ [PaymentOverview] Table session payment updated - metrics invalidated')
+      const amount = typeof data.amount === 'number' ? data.amount : 0
+
+      return {
+        ...oldMetrics,
+        todayTransactions: oldMetrics.todayTransactions + 1,
+        pendingPayments: oldMetrics.pendingPayments + 1,
+        pendingAmount: oldMetrics.pendingAmount + amount
+      }
+    })
+
+    setRealtimeUpdates(prev => prev + 1)
+    console.log('🆕✅ [PaymentOverview] Table session payment updated - metrics updated optimistically')
   }, [queryClient, restaurantId, selectedPeriod])
 
   // Register WebSocket event listeners

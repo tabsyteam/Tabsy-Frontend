@@ -155,6 +155,45 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
     }
   }, [tableId, router]), [tableId, router])
 
+  // Handle session replacement when different device is detected
+  useWebSocketEvent('sessionReplaced', useCallback((data: any) => {
+    console.log('[TableSessionManager] Session replaced due to different device:', data)
+
+    // Show notification to user about session replacement
+    toast.error(
+      data.message || 'Your session has been replaced by a new customer. Please refresh the page.',
+      {
+        duration: 10000, // Show for 10 seconds
+        action: {
+          label: 'Refresh',
+          onClick: () => window.location.reload()
+        }
+      }
+    )
+
+    // Clear session state
+    setSessionState({
+      tableSession: null,
+      users: [],
+      currentUser: null,
+      isHost: false,
+      isConnected: false
+    })
+
+    // Clear stored session data
+    api.setGuestSession('')
+    sessionStorage.removeItem('tabsy-guest-session-id')
+    sessionStorage.removeItem(`guestSession-${tableId}`)
+
+    // If shouldRefresh is true, automatically refresh after a short delay
+    if (data.shouldRefresh) {
+      setTimeout(() => {
+        console.log('[TableSessionManager] Auto-refreshing page due to session replacement')
+        window.location.reload()
+      }, 3000) // 3 second delay to allow user to see the message
+    }
+  }, [tableId, router, api]), [tableId, router, api])
+
   useWebSocketEvent('table:session_updated', useCallback((data: any) => {
     if (data.tableId === tableId) {
       setSessionState(prev => ({
@@ -356,10 +395,21 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
           const operationKey = `createSession-${tableId}-${restaurantId}-${qrCode}`
 
           const sessionResponse = await strictModeGuard.executeOnce(operationKey, async () => {
+            // Use existing guest session ID as device identifier for backend comparison
+            const existingGuestSessionId = api.getGuestSessionId() ||
+                                         sessionStorage.getItem(`guestSession-${tableId}`) ||
+                                         localStorage.getItem('tabsy-guest-session-id')
+
+            console.log('[TableSessionManager] Creating QR session with device context:', {
+              hasExistingSession: !!existingGuestSessionId,
+              deviceSessionId: existingGuestSessionId || 'new device'
+            })
+
             return await api.qr.createGuestSession({
               qrCode,
               tableId,
-              restaurantId
+              restaurantId,
+              deviceSessionId: existingGuestSessionId || undefined // Send existing session as device ID
               // Note: No userName - will be asked during order placement
             })
           })

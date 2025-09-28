@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
 import {
   CheckCircle,
@@ -12,6 +12,14 @@ import {
   X,
   Bell
 } from 'lucide-react'
+import type {
+  PaymentMethod,
+  PaymentCompletedEvent,
+  PaymentFailedEvent,
+  PaymentCreatedEvent,
+  PaymentRefundedEvent,
+  PaymentCancelledEvent
+} from '@tabsy/shared-types'
 
 interface NotificationItem {
   id: string
@@ -29,8 +37,19 @@ interface PaymentNotificationsProps {
   onNotification?: (notification: NotificationItem) => void
 }
 
+// Configuration constants
+const NOTIFICATION_DURATIONS = {
+  SUCCESS: 5000,
+  ERROR: 8000,
+  WARNING: 6000,
+  INFO: 3000
+} as const
+
+const MAX_NOTIFICATIONS = 5
+
 export function PaymentNotifications({ restaurantId, onNotification }: PaymentNotificationsProps) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [timeoutIds, setTimeoutIds] = useState<Map<string, NodeJS.Timeout>>(new Map())
   const { isConnected } = useWebSocket()
 
   // Helper function to create notification
@@ -60,49 +79,42 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
     return notification
   }
 
-  // Add notification to state
-  const addNotification = (notification: NotificationItem) => {
-    setNotifications(prev => [notification, ...prev])
+  // Add notification to state with memory leak prevention
+  const addNotification = useCallback((notification: NotificationItem) => {
+    setNotifications(prev => {
+      const updated = [notification, ...prev]
+      // Limit total notifications to prevent UI overflow
+      return updated.slice(0, MAX_NOTIFICATIONS)
+    })
 
-    // Auto-remove after duration
+    // Auto-remove after duration with cleanup tracking
     if (notification.duration > 0) {
-      setTimeout(() => {
-        setNotifications(prev => prev.filter(n => n.id !== notification.id))
+      const timeoutId = setTimeout(() => {
+        removeNotification(notification.id)
       }, notification.duration)
+
+      setTimeoutIds(prev => new Map(prev).set(notification.id, timeoutId))
     }
-  }
+  }, [])
 
-  // Remove notification manually
-  const removeNotification = (id: string) => {
+  // Remove notification manually with timeout cleanup
+  const removeNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id))
-  }
 
-  // WebSocket event handlers for payment notifications
-  const handlePaymentCompleted = useCallback((data: any) => {
-    const notification = createNotification(
-      'success',
-      'Payment Completed',
-      `Payment of $${data.amount.toFixed(2)} completed successfully${data.tip ? ` (Tip: $${data.tip.toFixed(2)})` : ''}`,
-      data.paymentId,
-      data.orderId
-    )
-    addNotification(notification)
-  }, [])
+    // Clear associated timeout
+    const timeoutId = timeoutIds.get(id)
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+      setTimeoutIds(prev => {
+        const newMap = new Map(prev)
+        newMap.delete(id)
+        return newMap
+      })
+    }
+  }, [timeoutIds])
 
-  const handlePaymentFailed = useCallback((data: any) => {
-    const notification = createNotification(
-      'error',
-      'Payment Failed',
-      `Payment of $${data.amount.toFixed(2)} failed: ${data.errorMessage}`,
-      data.paymentId,
-      data.orderId,
-      8000 // Longer duration for errors
-    )
-    addNotification(notification)
-  }, [])
-
-  // Utility functions for data processing
-  const formatCurrency = (amount: unknown): string => {
+  // Memoized utility functions for data processing
+  const formatCurrency = useMemo(() => (amount: unknown): string => {
     if (typeof amount === 'number' && !isNaN(amount)) {
       return amount.toFixed(2)
     }
@@ -113,9 +125,9 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
     }
 
     return '0.00'
-  }
+  }, [])
 
-  const formatPaymentMethod = (method: unknown): string => {
+  const formatPaymentMethod = useMemo(() => (method: unknown): string => {
     if (typeof method !== 'string' || !method.trim()) {
       return 'unknown method'
     }
@@ -124,11 +136,42 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
       .replace(/_/g, ' ')
       .toLowerCase()
       .replace(/\b\w/g, letter => letter.toUpperCase())
-  }
+  }, [])
 
-  const handlePaymentCreated = useCallback((data: any) => {
-    const amount = data?.amount ?? data?.total ?? 0
-    const method = data?.method ?? data?.paymentMethod ?? 'unknown'
+  // WebSocket event handlers for payment notifications
+  const handlePaymentCompleted = useCallback((data: PaymentCompletedEvent) => {
+    const amount = formatCurrency(data.amount)
+    const tip = data.tip ? formatCurrency(data.tip) : null
+
+    const notification = createNotification(
+      'success',
+      'Payment Completed',
+      `Payment of $${amount} completed successfully${tip ? ` (Tip: $${tip})` : ''}`,
+      data.paymentId,
+      data.orderId,
+      NOTIFICATION_DURATIONS.SUCCESS
+    )
+    addNotification(notification)
+  }, [addNotification, formatCurrency])
+
+  const handlePaymentFailed = useCallback((data: PaymentFailedEvent) => {
+    const amount = formatCurrency(data.amount)
+    const errorMessage = data.errorMessage || data.error || 'Unknown error'
+
+    const notification = createNotification(
+      'error',
+      'Payment Failed',
+      `Payment of $${amount} failed: ${errorMessage}`,
+      data.paymentId,
+      data.orderId,
+      NOTIFICATION_DURATIONS.ERROR
+    )
+    addNotification(notification)
+  }, [addNotification, formatCurrency])
+
+  const handlePaymentCreated = useCallback((data: PaymentCreatedEvent) => {
+    const amount = data.amount ?? data.total ?? 0
+    const method = data.method ?? data.paymentMethod ?? 'unknown'
 
     const formattedAmount = formatCurrency(amount)
     const formattedMethod = formatPaymentMethod(method)
@@ -139,36 +182,48 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
       `Payment of $${formattedAmount} initiated via ${formattedMethod}`,
       data.paymentId,
       data.orderId,
-      3000
+      NOTIFICATION_DURATIONS.INFO
     )
     addNotification(notification)
-  }, [])
+  }, [addNotification, formatCurrency, formatPaymentMethod])
 
-  const handlePaymentRefunded = useCallback((data: any) => {
+  const handlePaymentRefunded = useCallback((data: PaymentRefundedEvent) => {
+    const amount = formatCurrency(data.amount)
+    const reason = data.reason || ''
+
     const notification = createNotification(
       'warning',
       'Payment Refunded',
-      `Refund of $${data.amount.toFixed(2)} processed${data.reason ? ` - ${data.reason}` : ''}`,
+      `Refund of $${amount} processed${reason ? ` - ${reason}` : ''}`,
       data.refundId,
-      data.orderId,
-      6000
+      data?.orderId,
+      NOTIFICATION_DURATIONS.WARNING
     )
     addNotification(notification)
-  }, [])
+  }, [addNotification])
 
-  const handlePaymentCancelled = useCallback((data: any) => {
+  const handlePaymentCancelled = useCallback((data: PaymentCancelledEvent) => {
+    const reason = data.reason || ''
+
     const notification = createNotification(
       'warning',
       'Payment Cancelled',
-      `Payment cancelled${data.reason ? ` - ${data.reason}` : ''}`,
+      `Payment cancelled${reason ? ` - ${reason}` : ''}`,
       data.paymentId,
       data.orderId,
-      4000
+      NOTIFICATION_DURATIONS.WARNING
     )
     addNotification(notification)
-  }, [])
+  }, [addNotification])
 
-  // Register WebSocket event listeners
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      timeoutIds.forEach(timeoutId => clearTimeout(timeoutId))
+    }
+  }, [timeoutIds])
+
+  // Register WebSocket event listeners with proper dependencies
   useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted])
   useWebSocketEvent('payment:failed', handlePaymentFailed, [handlePaymentFailed])
   useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated])

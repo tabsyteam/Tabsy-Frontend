@@ -183,9 +183,8 @@ export function useRestaurantStaff(restaurantId: string) {
   return useQuery({
     queryKey: ['admin', 'restaurant', restaurantId, 'staff'],
     queryFn: async () => {
-      // TODO: Implement getStaff endpoint in the API
-      // For now, return empty array as placeholder
-      return [];
+      const response = await tabsyClient.restaurant.getStaff(restaurantId);
+      return response.data || [];
     },
     enabled: isAuthenticated && !!restaurantId
   });

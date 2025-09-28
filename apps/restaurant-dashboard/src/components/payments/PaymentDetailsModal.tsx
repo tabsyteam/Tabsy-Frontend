@@ -15,11 +15,14 @@ import {
   XCircle,
   RefreshCw,
   Receipt,
+  Banknote,
+  Smartphone,
   BanknoteArrowDownIcon as Refund
 } from 'lucide-react'
 import { tabsyClient } from '@tabsy/api-client'
 import { format } from 'date-fns'
-import type { Payment, PaymentStatus, PaymentMethod } from '@tabsy/shared-types'
+import { PaymentMethod } from '@tabsy/shared-types'
+import type { Payment, PaymentStatus } from '@tabsy/shared-types'
 
 interface PaymentDetailsModalProps {
   paymentId: string
@@ -50,15 +53,20 @@ export function PaymentDetailsModal({
       setIsLoading(true)
       setError(null)
 
+      console.log('[PaymentDetailsModal] Loading payment details for ID:', paymentId)
       const response = await tabsyClient.payment.getById(paymentId)
+      console.log('[PaymentDetailsModal] Payment API response:', response)
 
       if (response.success && response.data) {
+        console.log('[PaymentDetailsModal] Payment data:', response.data)
+        console.log('[PaymentDetailsModal] Payment method:', response.data.method)
         setPayment(response.data)
       } else {
+        console.error('[PaymentDetailsModal] API error:', response.error)
         throw new Error(response.error?.message || 'Failed to load payment details')
       }
     } catch (error: any) {
-      console.error('Error loading payment details:', error)
+      console.error('[PaymentDetailsModal] Error loading payment details:', error)
       setError(error.message || 'Failed to load payment details')
     } finally {
       setIsLoading(false)
@@ -119,17 +127,48 @@ export function PaymentDetailsModal({
     }
   }
 
-  const getPaymentMethodIcon = (method: PaymentMethod) => {
-    switch (method) {
-      case PaymentMethod.CREDIT_CARD:
-      case PaymentMethod.DEBIT_CARD:
+  const getPaymentMethodIcon = (method: PaymentMethod | string | undefined) => {
+    if (!method) return <CreditCard className="w-4 h-4" />
+
+    const normalizedMethod = String(method).toUpperCase()
+
+    switch (normalizedMethod) {
+      case 'CREDIT_CARD':
+      case 'DEBIT_CARD':
+      case 'CARD':
         return <CreditCard className="w-4 h-4" />
-      case PaymentMethod.MOBILE_PAYMENT:
-        return <DollarSign className="w-4 h-4" />
-      case PaymentMethod.CASH:
+      case 'MOBILE_PAYMENT':
+      case 'DIGITAL_WALLET':
+        return <Smartphone className="w-4 h-4" />
+      case 'CASH':
+        return <Banknote className="w-4 h-4" />
+      case 'BANK_TRANSFER':
         return <DollarSign className="w-4 h-4" />
       default:
         return <CreditCard className="w-4 h-4" />
+    }
+  }
+
+  const getPaymentMethodDisplayName = (method: PaymentMethod | string | undefined) => {
+    if (!method || method === 'undefined' || method === 'null') return 'Not Specified'
+
+    const normalizedMethod = String(method).toUpperCase()
+
+    switch (normalizedMethod) {
+      case 'CREDIT_CARD':
+      case 'CARD':
+        return 'Credit Card'
+      case 'DEBIT_CARD':
+        return 'Debit Card'
+      case 'MOBILE_PAYMENT':
+      case 'DIGITAL_WALLET':
+        return 'Digital Wallet'
+      case 'CASH':
+        return 'Cash'
+      case 'BANK_TRANSFER':
+        return 'Bank Transfer'
+      default:
+        return normalizedMethod.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())
     }
   }
 
@@ -198,8 +237,8 @@ export function PaymentDetailsModal({
                   <div>
                     <h4 className="text-sm font-medium text-content-secondary mb-2">Payment Method</h4>
                     <div className="flex items-center space-x-2">
-                      {getPaymentMethodIcon(payment.method)}
-                      <span className="text-content-primary">{payment.method}</span>
+                      {getPaymentMethodIcon(payment.paymentMethod)}
+                      <span className="text-content-primary">{getPaymentMethodDisplayName(payment.paymentMethod)}</span>
                     </div>
                   </div>
 

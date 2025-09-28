@@ -123,7 +123,7 @@ export default function PaymentDetailsModal({
   };
 
   const StatusIcon = getStatusIcon(payment.status);
-  const MethodIcon = getPaymentMethodIcon(payment.method || PaymentMethod.CREDIT_CARD);
+  const MethodIcon = getPaymentMethodIcon(payment.paymentMethod || PaymentMethod.CREDIT_CARD);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-modal animate-fadeIn">
@@ -175,7 +175,7 @@ export default function PaymentDetailsModal({
               <span className="text-xs text-primary">Method</span>
             </div>
             <div className="text-sm font-medium text-content-primary">
-              {payment.method || 'Card'}
+              {payment.paymentMethod || 'Card'}
             </div>
           </div>
 
@@ -269,7 +269,7 @@ export default function PaymentDetailsModal({
                     <div className="flex items-center mt-1">
                       <MethodIcon className="h-4 w-4 mr-2 text-content-tertiary" />
                       <p className="text-sm font-medium text-content-primary">
-                        {payment.method || 'Card'}
+                        {payment.paymentMethod || 'Card'}
                       </p>
                     </div>
                   </div>

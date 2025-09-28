@@ -381,7 +381,7 @@ export default function AdminDashboard(): JSX.Element {
                       <div key={payment.id} className="flex items-center justify-between p-3 bg-surface-secondary rounded-lg">
                         <div>
                           <p className="text-sm font-medium text-content-primary">${payment.amount}</p>
-                          <p className="text-xs text-content-secondary">{payment.method} • {payment.restaurantName}</p>
+                          <p className="text-xs text-content-secondary">{payment.paymentMethod} • {payment.restaurantName}</p>
                         </div>
                         <span className="px-2 py-1 text-xs font-medium rounded-full badge-warning">
                           {payment.status}

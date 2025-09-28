@@ -164,9 +164,9 @@ export function PaymentSuccessView() {
 
             if (paymentData.metadata?.splitPayment) {
               totalParticipants = paymentData.metadata.splitPayment.totalParticipants || 1
-            } else if (tableBillData && tableBillData.guestSessions) {
+            } else if (enhancedPayment.tableBill && enhancedPayment.tableBill.guestSessions) {
               // Use actual number of users in table session
-              totalParticipants = tableBillData.guestSessions.length
+              totalParticipants = enhancedPayment.tableBill.guestSessions.length
             }
 
             enhancedPayment.splitInfo = {
@@ -374,10 +374,8 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
   const handleOrderAgain = () => {
     const currentGuestSessionId = api.getGuestSessionId()
 
-    if (tableSessionId && restaurantId && tableId) {
-      const guestParam = currentGuestSessionId ? `&guestSession=${currentGuestSessionId}` : ''
-      router.push(`/table/menu?restaurant=${restaurantId}&table=${tableId}&tableSession=${tableSessionId}${guestParam}`)
-    } else if (restaurantId && tableId) {
+    if (restaurantId && tableId) {
+      // Simply navigate to menu page - let backend handle session management
       const guestParam = currentGuestSessionId ? `&guestSession=${currentGuestSessionId}` : ''
       router.push(`/menu?restaurant=${restaurantId}&table=${tableId}${guestParam}`)
     } else {

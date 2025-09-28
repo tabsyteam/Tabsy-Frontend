@@ -39,14 +39,15 @@ export function useCreateFeedback(
   options?: UseMutationOptions<
     { success: boolean; data?: Feedback; error?: string },
     Error,
-    CreateFeedbackRequest
+    CreateFeedbackRequest,
+    { previousFeedback: [readonly unknown[], unknown][] }
   >
 ) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: (data: CreateFeedbackRequest) => api.feedback.create(data),
-    onMutate: async (newFeedback) => {
+    onMutate: async (newFeedback): Promise<{ previousFeedback: [readonly unknown[], unknown][] }> => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: FEEDBACK_KEYS.lists() })
 
@@ -67,7 +68,13 @@ export function useCreateFeedback(
             categories: newFeedback.categories,
             quickFeedback: newFeedback.quickFeedback,
             comment: newFeedback.comment,
-            photos: newFeedback.photos || [],
+            photos: newFeedback.photos?.map(photo => ({
+              ...photo,
+              originalName: photo.filename,
+              url: '', // Will be filled by server
+              thumbnailUrl: '', // Will be filled by server
+              uploadedAt: new Date().toISOString()
+            })) || [],
             guestInfo: newFeedback.guestInfo,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -252,14 +259,15 @@ export function useFlagFeedback(
   options?: UseMutationOptions<
     { success: boolean; error?: string },
     Error,
-    { feedbackId: string; data: FlagFeedbackRequest }
+    { feedbackId: string; data: FlagFeedbackRequest },
+    { previousFeedback: Feedback | undefined }
   >
 ) {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({ feedbackId, data }) => api.feedback.flag(feedbackId, data),
-    onMutate: async ({ feedbackId }) => {
+    onMutate: async ({ feedbackId }): Promise<{ previousFeedback: Feedback | undefined }> => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: FEEDBACK_KEYS.detail(feedbackId) })
 
