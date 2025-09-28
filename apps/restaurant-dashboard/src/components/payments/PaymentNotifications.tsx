@@ -228,6 +228,7 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
   useWebSocketEvent('payment:failed', handlePaymentFailed, [handlePaymentFailed])
   useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated])
   useWebSocketEvent('payment:refunded', handlePaymentRefunded, [handlePaymentRefunded])
+  useWebSocketEvent('payment:partially_refunded', handlePaymentRefunded, [handlePaymentRefunded])
   useWebSocketEvent('payment:cancelled', handlePaymentCancelled, [handlePaymentCancelled])
 
   // Get icon for notification type

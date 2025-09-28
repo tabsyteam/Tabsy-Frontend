@@ -125,6 +125,7 @@ export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
   useWebSocketEvent('payment:failed', handlePaymentEvent, [handlePaymentEvent])
   useWebSocketEvent('payment:created', handlePaymentEvent, [handlePaymentEvent])
   useWebSocketEvent('payment:refunded', handlePaymentEvent, [handlePaymentEvent])
+  useWebSocketEvent('payment:partially_refunded', handlePaymentEvent, [handlePaymentEvent])
   useWebSocketEvent('payment:cancelled', handlePaymentEvent, [handlePaymentEvent])
 
 

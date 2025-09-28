@@ -84,6 +84,12 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
     console.log('🆕🎯 [ActivePayments] Event data restaurant ID:', data?.restaurantId)
     console.log('🆕🎯 [ActivePayments] Payment data keys:', Object.keys(data || {}))
 
+    // Only process events for this restaurant
+    if (data?.restaurantId !== restaurantId) {
+      console.log('🆕❌ [ActivePayments] Ignoring event - different restaurant:', data?.restaurantId, 'vs', restaurantId)
+      return
+    }
+
     // Force immediate refetch like order handlers do
     queryClient.invalidateQueries({ queryKey: ['restaurant', 'active-payments', restaurantId] })
 
@@ -100,6 +106,13 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
 
   const handlePaymentStatusUpdated = useCallback((data: any) => {
     console.log('🔄🎯 [ActivePayments] Payment status updated event received:', data)
+
+    // Only process events for this restaurant
+    if (data?.restaurantId !== restaurantId) {
+      console.log('🔄❌ [ActivePayments] Ignoring status update - different restaurant:', data?.restaurantId, 'vs', restaurantId)
+      return
+    }
+
     // Update cached payment data
     queryClient.setQueryData(['restaurant', 'active-payments', restaurantId], (oldData: Payment[] | undefined) => {
       if (!oldData) return oldData
@@ -118,6 +131,13 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
 
   const handlePaymentCompleted = useCallback((data: any) => {
     console.log('✅🎯 [ActivePayments] Payment completed event received:', data)
+
+    // Only process events for this restaurant
+    if (data?.restaurantId !== restaurantId) {
+      console.log('✅❌ [ActivePayments] Ignoring completion - different restaurant:', data?.restaurantId, 'vs', restaurantId)
+      return
+    }
+
     // Remove completed payment from active payments
     queryClient.setQueryData(['restaurant', 'active-payments', restaurantId], (oldData: Payment[] | undefined) => {
       if (!oldData) return oldData
@@ -128,6 +148,13 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
 
   const handlePaymentFailed = useCallback((data: any) => {
     console.log('❌ Payment failed:', data)
+
+    // Only process events for this restaurant
+    if (data?.restaurantId !== restaurantId) {
+      console.log('❌❌ [ActivePayments] Ignoring failure - different restaurant:', data?.restaurantId, 'vs', restaurantId)
+      return
+    }
+
     // Update payment status and error message
     queryClient.setQueryData(['restaurant', 'active-payments', restaurantId], (oldData: Payment[] | undefined) => {
       if (!oldData) return oldData
@@ -143,6 +170,13 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
 
   const handlePaymentCancelled = useCallback((data: any) => {
     console.log('🚫 Payment cancelled:', data)
+
+    // Only process events for this restaurant
+    if (data?.restaurantId !== restaurantId) {
+      console.log('🚫❌ [ActivePayments] Ignoring cancellation - different restaurant:', data?.restaurantId, 'vs', restaurantId)
+      return
+    }
+
     // Remove cancelled payment from active payments
     queryClient.setQueryData(['restaurant', 'active-payments', restaurantId], (oldData: Payment[] | undefined) => {
       if (!oldData) return oldData
@@ -157,6 +191,12 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
     console.log('🆕🎯 [ActivePayments] Current restaurant ID:', restaurantId)
     console.log('🆕🎯 [ActivePayments] Event data keys:', Object.keys(data || {}))
 
+    // Only process events for this restaurant
+    if (data?.restaurantId !== restaurantId) {
+      console.log('🆕❌ [ActivePayments] Ignoring table session update - different restaurant:', data?.restaurantId, 'vs', restaurantId)
+      return
+    }
+
     queryClient.invalidateQueries({ queryKey: ['restaurant', 'active-payments', restaurantId] })
     queryClient.invalidateQueries({ queryKey: ['restaurants', restaurantId, 'payments'] })
     queryClient.invalidateQueries({ queryKey: ['table-sessions', restaurantId] })
@@ -167,12 +207,12 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
 
   // Register WebSocket event listeners
   console.log('🎯🔥 [ActivePayments] Registering WebSocket event listeners for restaurant:', restaurantId)
-  useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated])
-  useWebSocketEvent('payment:status_updated', handlePaymentStatusUpdated, [handlePaymentStatusUpdated])
-  useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted])
-  useWebSocketEvent('payment:failed', handlePaymentFailed, [handlePaymentFailed])
-  useWebSocketEvent('payment:cancelled', handlePaymentCancelled, [handlePaymentCancelled])
-  useWebSocketEvent('table_session:payment_updated', handleTableSessionPaymentUpdated, [handleTableSessionPaymentUpdated])
+  useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated], 'ActivePayments-created')
+  useWebSocketEvent('payment:status_updated', handlePaymentStatusUpdated, [handlePaymentStatusUpdated], 'ActivePayments-status')
+  useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted], 'ActivePayments-completed')
+  useWebSocketEvent('payment:failed', handlePaymentFailed, [handlePaymentFailed], 'ActivePayments-failed')
+  useWebSocketEvent('payment:cancelled', handlePaymentCancelled, [handlePaymentCancelled], 'ActivePayments-cancelled')
+  useWebSocketEvent('table_session:payment_updated', handleTableSessionPaymentUpdated, [handleTableSessionPaymentUpdated], 'ActivePayments-table-session')
   console.log('🎯🔥 [ActivePayments] All WebSocket event listeners registered')
 
   const getPaymentMethodIcon = (method: PaymentMethod) => {

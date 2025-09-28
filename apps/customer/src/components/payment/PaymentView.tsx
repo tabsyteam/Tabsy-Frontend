@@ -102,6 +102,7 @@ export function PaymentView() {
   const [processing, setProcessing] = useState(false)
   const [selectedTip, setSelectedTip] = useState<number>(0)
   const [customTip, setCustomTip] = useState<string>('')
+  const [tipSelectionMade, setTipSelectionMade] = useState<boolean>(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CREDIT_CARD)
   const [error, setError] = useState<string | null>(null)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
@@ -138,10 +139,11 @@ export function PaymentView() {
 
   // Handle WebSocket table session updates (replaces polling)
   const handleTableSessionUpdate = useCallback(async (data: any) => {
-    if (data.type === 'payment_completed' || data.type === 'payment_status_update') {
+    if (data.type === 'payment_completed' || data.type === 'payment_status_update' || data.type === 'payment_cancelled') {
       try {
         // Check if this is our payment that was completed
-        const isOurPayment = data.paymentId === paymentId
+        const eventPaymentId = data.paymentId || data.payment?.id
+        const isOurPayment = eventPaymentId === paymentId
 
         // Refresh the table bill to show updated amounts
         const session = SessionManager.getDiningSession()
@@ -153,8 +155,18 @@ export function PaymentView() {
             setTableBill(billResponse.data)
 
             if (data.type === 'payment_completed') {
+              console.log('[PaymentView] Payment completed event:', {
+                isOurPayment,
+                cashPaymentPending,
+                eventPaymentId,
+                currentPaymentId: paymentId,
+                dataStructure: { hasPaymentId: !!data.paymentId, hasPaymentObj: !!data.payment, paymentObjId: data.payment?.id },
+                data
+              })
+
               if (isOurPayment && cashPaymentPending) {
                 // Our cash payment was confirmed by staff
+                console.log('[PaymentView] Processing our cash payment completion')
                 setCashPaymentPending(false)
                 toast.success('Cash Payment Confirmed!', {
                   description: 'Your server has confirmed receipt of your cash payment',
@@ -178,6 +190,33 @@ export function PaymentView() {
                 // Another user's payment was completed
                 toast.success('Payment completed by another user', {
                   description: 'Bill has been updated with the new payment',
+                  duration: 3000
+                })
+              }
+            } else if (data.type === 'payment_cancelled') {
+              console.log('[PaymentView] Payment cancelled event:', {
+                isOurPayment,
+                eventPaymentId,
+                currentPaymentId: paymentId,
+                data
+              })
+
+              if (isOurPayment) {
+                // Our payment was cancelled - reset UI state
+                setClientSecret(null)
+                setPaymentId(null)
+                setProcessing(false)
+                setCashPaymentPending(false)
+                setChangingPaymentMethod(false)
+
+                toast.info('Payment Cancelled', {
+                  description: 'Your payment has been cancelled successfully',
+                  duration: 3000
+                })
+              } else {
+                // Another user's payment was cancelled
+                toast.info('Payment cancelled by another user', {
+                  description: 'Bill has been updated',
                   duration: 3000
                 })
               }
@@ -207,6 +246,13 @@ export function PaymentView() {
     }
   }, [handleTableSessionUpdate, tableSessionId, session?.tableSessionId], 'PaymentView-completed')
 
+  // Listen for payment cancellations
+  useWebSocketEvent('payment:cancelled', (data: any) => {
+    if (data.tableSessionId === (tableSessionId || session?.tableSessionId)) {
+      handleTableSessionUpdate({ type: 'payment_cancelled', ...data })
+    }
+  }, [handleTableSessionUpdate, tableSessionId, session?.tableSessionId], 'PaymentView-cancelled')
+
   // Listen for table session updates
   useWebSocketEvent('table:session_updated', (data: any) => {
     if (data.tableSessionId === (tableSessionId || session?.tableSessionId)) {
@@ -214,17 +260,113 @@ export function PaymentView() {
     }
   }, [handleTableSessionUpdate, tableSessionId, session?.tableSessionId], 'PaymentView-session')
 
-  // Calculate tip options based on subtotal
+  // Restore tip state when paymentBreakdown is available OR when there's existing tip in table bill
+  useEffect(() => {
+    // Handle tip from payment breakdown (existing payment intent)
+    if (paymentBreakdown && paymentBreakdown.tip > 0 && paymentBreakdown.subtotal > 0) {
+      const subtotal = paymentBreakdown.subtotal
+      const standardTipOptions = [
+        { percentage: 15, amount: subtotal * 0.15 },
+        { percentage: 18, amount: subtotal * 0.18 },
+        { percentage: 20, amount: subtotal * 0.20 },
+        { percentage: 25, amount: subtotal * 0.25 }
+      ]
+
+      const matchingOption = standardTipOptions.find(option =>
+        Math.abs(option.amount - paymentBreakdown.tip) < 0.01
+      )
+
+      if (matchingOption) {
+        setSelectedTip(matchingOption.amount)
+        setCustomTip('')
+        setTipSelectionMade(true)
+      } else {
+        setSelectedTip(0)
+        setCustomTip(paymentBreakdown.tip.toFixed(2))
+        setTipSelectionMade(true)
+      }
+
+      console.log('[PaymentView] Restored tip state from payment breakdown:', {
+        paymentBreakdownTip: paymentBreakdown.tip,
+        subtotal: subtotal,
+        matchingOption: matchingOption ? `${matchingOption.percentage}% (${matchingOption.amount})` : 'none'
+      })
+    }
+    // Handle existing tip from table bill summary (no payment intent yet)
+    else if (paymentType === PaymentType.TABLE_SESSION && tableBill && tableBill.summary.tip > 0 && !paymentBreakdown) {
+      const existingTip = tableBill.summary.tip
+
+      // Calculate what the current tip options would be
+      const tipOptions = getTipOptions()
+
+      // Check if the existing tip matches any current tip option
+      const matchingOption = tipOptions.find(option =>
+        Math.abs(option.amount - existingTip) < 0.01
+      )
+
+      if (matchingOption) {
+        setSelectedTip(matchingOption.amount)
+        setCustomTip('')
+        setTipSelectionMade(false) // This is restoring existing state, not a new selection
+      } else {
+        setSelectedTip(0)
+        setCustomTip(existingTip.toFixed(2))
+        setTipSelectionMade(false) // This is restoring existing state, not a new selection
+      }
+
+      console.log('[PaymentView] Restored tip state from table bill summary:', {
+        existingTip: existingTip,
+        matchingOption: matchingOption ? `${matchingOption.label} (${matchingOption.amount})` : 'none'
+      })
+    }
+  }, [paymentBreakdown, tableBill, paymentType]) // Run when any of these change
+
+  // Calculate tip options based on unpaid orders subtotal only
   const getTipOptions = (): TipOption[] => {
     let subtotal = 0
 
-    if (paymentType === PaymentType.ORDER && order) {
+    // If we have a server-confirmed payment breakdown, use its subtotal for consistent tip calculations
+    if (paymentBreakdown) {
+      subtotal = paymentBreakdown.subtotal
+
+      console.log('[PaymentView] Using server breakdown for tip calculation:', {
+        serverSubtotal: paymentBreakdown.subtotal,
+        currentTip: paymentBreakdown.tip,
+        total: paymentBreakdown.total
+      })
+    } else if (paymentType === PaymentType.ORDER && order) {
       subtotal = order.subtotal
     } else if (paymentType === PaymentType.TABLE_SESSION && tableBill) {
-      subtotal = tableBill.summary.subtotal
+      // Check if there's an existing tip in the bill summary
+      const existingTip = tableBill.summary.tip || 0
+      const remainingBalance = tableBill.summary.remainingBalance || 0
+
+      // The remaining balance includes existing tip, so we need to extract just the unpaid subtotal
+      // remainingBalance = unpaidSubtotal + unpaidTax + existingTip (if it's in the outstanding amount)
+      const remainingWithoutExistingTip = remainingBalance - existingTip
+
+      // Calculate the subtotal portion of the remaining balance (without existing tip)
+      const totalSubtotal = tableBill.summary.subtotal || 0
+      const totalTax = tableBill.summary.tax || 0
+      const taxRate = totalSubtotal > 0 ? totalTax / totalSubtotal : 0
+
+      // Extract subtotal from remaining balance: remainingBalance / (1 + taxRate)
+      const unpaidSubtotal = remainingWithoutExistingTip / (1 + taxRate)
+
+      subtotal = unpaidSubtotal
+
+      console.log('[PaymentView] Tip calculation with existing tip handling:', {
+        remainingBalance: remainingBalance,
+        existingTip: existingTip,
+        remainingWithoutExistingTip: remainingWithoutExistingTip,
+        totalSubtotal: totalSubtotal,
+        totalTax: totalTax,
+        taxRate: taxRate,
+        calculatedUnpaidSubtotal: unpaidSubtotal
+      })
     }
 
-    if (subtotal === 0) return []
+    if (subtotal === 0 || isNaN(subtotal)) return []
 
     return [
       { percentage: 15, label: '15%', amount: subtotal * 0.15 },
@@ -234,12 +376,54 @@ export function PaymentView() {
     ]
   }
 
+  // Restore existing payment state when returning to a payment intent with tip
+  const restoreExistingPaymentState = async (sessionId: string, paymentId: string) => {
+    try {
+      // Get payment status to check if there's an existing tip
+      const statusResponse = await api.tableSession.getPaymentStatus(sessionId)
+
+      if (statusResponse.success && statusResponse.data?.payments) {
+        const currentPayment = statusResponse.data.payments.find(p => p.id === paymentId)
+
+        if (currentPayment && currentPayment.amount > 0) {
+          console.log('[PaymentView] Found existing payment:', {
+            paymentId: currentPayment.id,
+            amount: currentPayment.amount,
+            status: currentPayment.status,
+            clientSecret: currentPayment.clientSecret
+          })
+
+          // Restore payment breakdown if available
+          if (currentPayment.breakdown) {
+            setPaymentBreakdown(currentPayment.breakdown)
+            console.log('[PaymentView] Restored payment breakdown:', currentPayment.breakdown)
+          }
+
+          // If clientSecret is missing, try to get it by re-fetching the payment
+          if (!currentPayment.clientSecret && currentPayment.id) {
+            console.log('[PaymentView] ClientSecret missing, attempting to refresh payment...')
+            // The payment exists but might need to be refreshed
+            // This can happen if the payment was created but clientSecret wasn't stored properly
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[PaymentView] Failed to restore existing payment state:', error)
+      // Don't show error to user, just log it
+    }
+  }
+
   const getCustomTipAmount = (): number => {
     const amount = parseFloat(customTip)
     return isNaN(amount) ? 0 : amount
   }
 
   const getFinalTotal = (): number => {
+    // If payment is completed, show $0.00
+    if (!cashPaymentPending && paymentId && (paymentBreakdown || tableBill?.summary.paidAmount > 0)) {
+      return 0
+    }
+
     // Use server-calculated breakdown if available (from payment intent updates)
     if (paymentBreakdown) {
       return paymentBreakdown.total
@@ -249,19 +433,54 @@ export function PaymentView() {
     if (paymentType === PaymentType.ORDER && order) {
       return order.total  // Server already calculated: subtotal + tax + tip
     } else if (paymentType === PaymentType.TABLE_SESSION && tableBill) {
-      // For table sessions, still add tip locally since table bills don't use order tip system
-      const tipAmount = selectedTip > 0 ? selectedTip : getCustomTipAmount()
-      return tableBill.summary.remainingBalance + tipAmount
+      const remainingBalance = tableBill.summary.remainingBalance || 0
+      const existingTip = tableBill.summary.tip || 0
+      const currentTipAmount = selectedTip > 0 ? selectedTip : getCustomTipAmount()
+
+      // Calculate base amount without any tips
+      const baseAmount = remainingBalance - existingTip
+
+      // If user has made a tip selection (including 0 for "No Tip"), use the new tip amount
+      if (tipSelectionMade) {
+        return baseAmount + currentTipAmount
+      }
+
+      // Default: no tip selections made yet, show existing tip
+      if (existingTip > 0) {
+        return remainingBalance // Include existing tip
+      }
+
+      // No tips at all
+      return remainingBalance
     }
 
     return 0
   }
 
   const getPaymentAmount = (): number => {
+    // If payment is completed, show $0.00
+    if (!cashPaymentPending && paymentId && (paymentBreakdown || tableBill?.summary.paidAmount > 0)) {
+      return 0
+    }
+
+    // SECURITY: Always prioritize server-calculated breakdown when available
+    if (paymentBreakdown) {
+      return paymentBreakdown.total - (paymentBreakdown.tip || 0) // Base amount without tip
+    }
+
     if (paymentType === PaymentType.ORDER && order) {
       return order.total
     } else if (paymentType === PaymentType.TABLE_SESSION && tableBill) {
-      return tableBill.summary.remainingBalance
+      const remainingBalance = tableBill.summary.remainingBalance || 0
+      const existingTip = tableBill.summary.tip || 0
+
+      // If there's an existing tip, show the amount due WITHOUT the tip
+      // The tip will be displayed separately
+      if (existingTip > 0) {
+        return remainingBalance - existingTip // Base amount without tip
+      }
+
+      return remainingBalance // No existing tip, show full remaining balance
     }
     return 0
   }
@@ -470,6 +689,7 @@ export function PaymentView() {
   const handleTipSelection = async (amount: number) => {
     setSelectedTip(amount)
     setCustomTip('')
+    setTipSelectionMade(true) // Mark that user has made a selection
 
     // Update tip on server for security
     if (paymentType === PaymentType.ORDER && orderId) {
@@ -526,6 +746,7 @@ export function PaymentView() {
   const handleCustomTipChange = async (value: string) => {
     setCustomTip(value)
     setSelectedTip(0)
+    setTipSelectionMade(true) // Mark that user has made a selection
 
     const tipAmount = parseFloat(value) || 0
 
@@ -686,19 +907,43 @@ export function PaymentView() {
       if (sessionId) {
         const paymentStatus = await api.tableSession.getPaymentStatus(sessionId)
         if (paymentStatus.success && paymentStatus.data) {
+          console.log('[PaymentView] All payments found:', paymentStatus.data.payments)
+          console.log('[PaymentView] Looking for payments by guest:', session?.sessionId)
+
           const existingCardPayment = paymentStatus.data.payments?.find((p: any) =>
             (p.paymentMethod === PaymentMethod.CREDIT_CARD || p.paymentMethod === PaymentMethod.DEBIT_CARD || p.paymentMethod === PaymentMethod.MOBILE_PAYMENT) &&
             (p.status === PaymentStatus.PENDING || p.status === PaymentStatus.PROCESSING) &&
             p.paidBy === session?.sessionId // Only check payments created by this guest
           )
 
+          console.log('[PaymentView] Existing card payment found:', existingCardPayment)
+
           if (existingCardPayment) {
-            toast.info('Payment Already In Progress', {
-              description: 'You already have a payment being processed for this table session'
+            console.log('[PaymentView] Found existing payment:', {
+              id: existingCardPayment.id,
+              status: existingCardPayment.status,
+              hasClientSecret: !!existingCardPayment.clientSecret
             })
-            setClientSecret(existingCardPayment.clientSecret || null)
+
             setPaymentId(existingCardPayment.id)
-            return
+
+            // Check if clientSecret exists
+            if (existingCardPayment.clientSecret) {
+              toast.info('Payment Already In Progress', {
+                description: 'You already have a payment being processed for this table session'
+              })
+              setClientSecret(existingCardPayment.clientSecret)
+
+              // Restore existing payment breakdown and tip state
+              await restoreExistingPaymentState(sessionId, existingCardPayment.id)
+              return
+            } else {
+              console.log('[PaymentView] Existing payment found but clientSecret missing, will need to reinitialize')
+              toast.warning('Payment Recovery Required', {
+                description: 'Found existing payment but need to reinitialize. Click "Initialize Payment" to continue.'
+              })
+              // Don't return - let user reinitialize the payment
+            }
           }
         }
       }
@@ -745,10 +990,11 @@ export function PaymentView() {
       }
 
       if (response?.success && response.data?.clientSecret) {
-        setClientSecret(response.data.clientSecret)
-        // Store the internal payment ID (not Stripe PaymentIntent ID) for success page
-        // For table sessions, use the table session payment ID; for orders, use the order payment ID
-        setPaymentId(response.data.id || response.data.paymentId)
+        const newPaymentId = response.data.id || response.data.paymentId
+        const newClientSecret = response.data.clientSecret
+
+        setClientSecret(newClientSecret)
+        setPaymentId(newPaymentId)
 
         // Store payment breakdown if available (for table session payments)
         if (response.data.breakdown) {
@@ -1168,8 +1414,9 @@ export function PaymentView() {
       return
     }
 
-    // Validate remaining balance
-    if (tableBill.summary.remainingBalance <= 0) {
+    // Validate remaining balance (excluding tips)
+    const unpaidAmount = tableBill.summary.remainingBalance - tableBill.summary.tip
+    if (unpaidAmount <= 0) {
       toast.error('Bill has already been fully paid')
       return
     }
@@ -1373,7 +1620,7 @@ export function PaymentView() {
               </p>
               {paymentType !== PaymentType.ORDER && tableBill && (
                 <p className="text-xs text-content-secondary">
-                  Remaining: ${tableBill.summary.remainingBalance.toFixed(2)} of ${tableBill.summary.grandTotal.toFixed(2)}
+                  Remaining: ${(tableBill.summary.remainingBalance - tableBill.summary.tip).toFixed(2)} of ${(tableBill.summary.subtotal + tableBill.summary.tax).toFixed(2)}
                 </p>
               )}
             </div>
@@ -1511,7 +1758,7 @@ export function PaymentView() {
                     </div>
                     <div className="flex justify-between text-content-secondary">
                       <span>Total</span>
-                      <span>${tableBill.summary.grandTotal.toFixed(2)}</span>
+                      <span>${(tableBill.summary.subtotal + tableBill.summary.tax).toFixed(2)}</span>
                     </div>
                     {tableBill.summary.totalPaid > 0 && (
                       <div className="flex justify-between text-green-600">
@@ -1521,7 +1768,7 @@ export function PaymentView() {
                     )}
                     <div className="flex justify-between font-semibold text-content-primary border-t pt-2">
                       <span>Amount Due</span>
-                      <span>${tableBill.summary.remainingBalance.toFixed(2)}</span>
+                      <span>${(tableBill.summary.remainingBalance - tableBill.summary.tip).toFixed(2)}</span>
                     </div>
                   </div>
                 </>
@@ -1541,18 +1788,24 @@ export function PaymentView() {
               </h3>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                {tipOptions.map((tip) => (
-                  <Button
-                    key={tip.percentage}
-                    variant={selectedTip === tip.amount ? 'default' : 'outline'}
-                    onClick={() => handleTipSelection(tip.amount)}
-                    className="h-12 flex-col"
-                    disabled={processing || updatingTip}
-                  >
-                    <span className="text-sm font-semibold">{tip.label}</span>
-                    <span className="text-xs">${tip.amount.toFixed(2)}</span>
-                  </Button>
-                ))}
+                {tipOptions.map((tip) => {
+                  // Check if this tip amount matches either selectedTip or existing paymentBreakdown tip
+                  const isSelected = selectedTip === tip.amount ||
+                    (paymentBreakdown && Math.abs(paymentBreakdown.tip - tip.amount) < 0.01)
+
+                  return (
+                    <Button
+                      key={tip.percentage}
+                      variant={isSelected ? 'default' : 'outline'}
+                      onClick={() => handleTipSelection(tip.amount)}
+                      className="h-12 flex-col"
+                      disabled={processing || updatingTip}
+                    >
+                      <span className="text-sm font-semibold">{tip.label}</span>
+                      <span className="text-xs">${tip.amount.toFixed(2)}</span>
+                    </Button>
+                  )
+                })}
               </div>
 
               <div className="space-y-3">
@@ -1713,8 +1966,8 @@ export function PaymentView() {
                           )}
                         </Button>
 
-                        {/* Show cancel button for table session payments when payment is initialized */}
-                        {paymentType === PaymentType.TABLE_SESSION && clientSecret && paymentId && (
+                      {/* Show cancel button for table session payments when payment is initialized */}
+                      {paymentType === PaymentType.TABLE_SESSION && clientSecret && paymentId && (
                           <Button
                             onClick={handlePaymentCancel}
                             variant="outline"
@@ -1789,6 +2042,13 @@ export function PaymentView() {
             >
               <h3 className="text-xl font-semibold text-content-primary mb-6">
                 Payment Summary
+                {!cashPaymentPending && paymentId ? (
+                  <span className="text-xs text-green-600 ml-2 font-normal">✓ Payment Complete</span>
+                ) : paymentBreakdown ? (
+                  <span className="text-xs text-green-600 ml-2 font-normal">✓ Server Confirmed</span>
+                ) : (
+                  <span className="text-xs text-orange-600 ml-2 font-normal">~ Estimated</span>
+                )}
               </h3>
 
               <div className="space-y-3 mb-6">
@@ -1797,12 +2057,28 @@ export function PaymentView() {
                   <span>${getPaymentAmount().toFixed(2)}</span>
                 </div>
 
-                {(selectedTip > 0 || getCustomTipAmount() > 0 || (paymentBreakdown && paymentBreakdown.tip > 0)) && (
-                  <div className="flex justify-between text-content-secondary">
-                    <span>Tip</span>
-                    <span>${(paymentBreakdown?.tip || (selectedTip > 0 ? selectedTip : getCustomTipAmount())).toFixed(2)}</span>
-                  </div>
-                )}
+                {(() => {
+                  // Determine the current tip amount
+                  let currentTipAmount = 0
+
+                  if (paymentBreakdown?.tip) {
+                    currentTipAmount = paymentBreakdown.tip
+                  } else if (tipSelectionMade) {
+                    // User has made a selection, use it (including 0 for "No Tip")
+                    currentTipAmount = selectedTip > 0 ? selectedTip : getCustomTipAmount()
+                  } else if (paymentType === PaymentType.TABLE_SESSION && tableBill?.summary.tip) {
+                    // No selection made yet, show existing tip
+                    currentTipAmount = tableBill.summary.tip
+                  }
+
+                  // Only show tip line if there's a tip amount > 0
+                  return currentTipAmount > 0 ? (
+                    <div className="flex justify-between text-content-secondary">
+                      <span>Tip</span>
+                      <span>${currentTipAmount.toFixed(2)}</span>
+                    </div>
+                  ) : null
+                })()}
 
                 <div className="border-t pt-3">
                   <div className="flex justify-between text-xl font-bold text-content-primary">
@@ -1810,6 +2086,33 @@ export function PaymentView() {
                     <span>${getFinalTotal().toFixed(2)}</span>
                   </div>
                 </div>
+
+                {/* Show breakdown details when available from server */}
+                {paymentBreakdown && (
+                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="text-xs text-green-700 font-medium mb-2">Server-Confirmed Breakdown:</div>
+                    <div className="space-y-1 text-xs text-green-600">
+                      <div className="flex justify-between">
+                        <span>Subtotal:</span>
+                        <span>${paymentBreakdown.subtotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Tax:</span>
+                        <span>${paymentBreakdown.tax.toFixed(2)}</span>
+                      </div>
+                      {paymentBreakdown.tip > 0 && (
+                        <div className="flex justify-between">
+                          <span>Tip:</span>
+                          <span>${paymentBreakdown.tip.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-medium border-t border-green-300 pt-1">
+                        <span>Total:</span>
+                        <span>${paymentBreakdown.total.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {paymentType === PaymentType.TABLE_SESSION && sessionUsers.length > 1 && (
                   <div className="mt-4 p-3 bg-status-info/10 border border-status-info/20 rounded-lg">
@@ -1848,6 +2151,18 @@ export function PaymentView() {
                     </div>
                   )}
                 </Button>
+              )}
+
+              {selectedPaymentMethod === PaymentMethod.CASH && !cashPaymentPending && paymentId && (
+                <div className="space-y-3">
+                  <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-center justify-center space-x-2 text-sm text-green-700">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span className="font-medium">Payment Complete!</span>
+                    </div>
+                    <p className="text-xs text-green-600 mt-1">Redirecting to confirmation page...</p>
+                  </div>
+                </div>
               )}
 
               {selectedPaymentMethod === PaymentMethod.CASH && cashPaymentPending && (

@@ -28,6 +28,8 @@ export const PendingCashPayments = forwardRef<PendingCashPaymentsRef, PendingCas
   const [processingPayments, setProcessingPayments] = useState<Set<string>>(new Set())
   const queryClient = useQueryClient()
 
+  console.log('🏪💰 [PendingCashPayments] Component rendered with restaurantId:', restaurantId)
+
   // Use React Query for data fetching - prevents duplicate API calls
   const { data: pendingPayments = [], isLoading: loading, refetch } = useQuery({
     queryKey: ['restaurant', 'pending-cash-payments', restaurantId],
@@ -41,10 +43,10 @@ export const PendingCashPayments = forwardRef<PendingCashPaymentsRef, PendingCas
       console.log('[PendingCashPayments] API response:', response)
       if (response.success && response.data) {
         console.log('[PendingCashPayments] Total payments fetched:', response.data.length)
-        // Filter for pending cash payments
+        // Filter for pending/processing cash payments
         const cashPayments = response.data.filter(payment =>
           payment.paymentMethod === PaymentMethod.CASH &&
-          payment.status === PaymentStatus.PENDING
+          (payment.status === PaymentStatus.PENDING || payment.status === PaymentStatus.PROCESSING)
         )
         console.log('[PendingCashPayments] Filtered cash payments:', cashPayments.length)
 
@@ -81,14 +83,12 @@ export const PendingCashPayments = forwardRef<PendingCashPaymentsRef, PendingCas
     setProcessingPayments(prev => new Set([...prev, payment.id]))
 
     try {
-      const response = await tabsyClient.payment.recordCash({
-        orderId: payment.orderId,
-        amount: payment.amount
-      })
+      // Update existing payment status from PENDING/PROCESSING to COMPLETED
+      const response = await tabsyClient.payment.updateStatus(payment.id, PaymentStatus.COMPLETED)
 
       if (response.success) {
         toast.success('Cash Payment Confirmed', {
-          description: `Payment of $${payment.amount.toFixed(2)} confirmed for order #${payment.order?.orderNumber || payment.orderId}`
+          description: `Payment of $${Number(payment.amount || 0).toFixed(2)} confirmed for order #${payment.order?.orderNumber || payment.orderId}`
         })
 
         // Update React Query cache to remove the payment
@@ -147,34 +147,108 @@ export const PendingCashPayments = forwardRef<PendingCashPaymentsRef, PendingCas
 
   // WebSocket event handlers for real-time updates
   const handlePaymentCreated = useCallback((data: any) => {
-    if (data.paymentMethod === 'CASH' && data.status === 'PENDING') {
+    console.log('🆕💰 [PendingCashPayments] Payment created event:', data)
+
+    // Extract payment details from nested object structure if needed
+    const paymentMethod = data?.payment?.paymentMethod || data?.paymentMethod
+    const paymentStatus = data?.payment?.status || data?.status
+    const eventRestaurantId = data?.restaurantId
+
+    // Only process cash payments for this restaurant
+    if (paymentMethod === 'CASH' &&
+        (paymentStatus === 'PENDING' || paymentStatus === 'PROCESSING') &&
+        eventRestaurantId === restaurantId) {
+      console.log('🆕✅ [PendingCashPayments] Processing cash payment creation')
       // Invalidate React Query cache to refetch
       queryClient.invalidateQueries({ queryKey: ['restaurant', 'pending-cash-payments', restaurantId] })
+    } else {
+      console.log('🆕❌ [PendingCashPayments] Ignoring event - not for this restaurant or not cash payment:', {
+        paymentMethod,
+        paymentStatus,
+        eventRestaurantId,
+        expectedRestaurantId: restaurantId
+      })
     }
   }, [queryClient, restaurantId])
 
   const handlePaymentCompleted = useCallback((data: any) => {
-    if (data.paymentMethod === 'CASH') {
+    console.log('✅💰 [PendingCashPayments] Payment completed event:', data)
+
+    // Extract payment method from nested object structure if needed
+    const paymentMethod = data?.payment?.paymentMethod || data?.paymentMethod
+    const eventRestaurantId = data?.restaurantId
+
+    // Only process cash payments for this restaurant
+    if (paymentMethod === 'CASH' && eventRestaurantId === restaurantId) {
+      console.log('✅✅ [PendingCashPayments] Processing cash payment completion')
       // Update React Query cache to remove completed payment
       queryClient.setQueryData(['restaurant', 'pending-cash-payments', restaurantId], (oldData: PendingPaymentWithOrder[] | undefined) => {
         return oldData?.filter(p => p.id !== data.paymentId) || []
+      })
+    } else {
+      console.log('✅❌ [PendingCashPayments] Ignoring completion - not for this restaurant or not cash payment:', {
+        paymentMethod,
+        eventRestaurantId,
+        expectedRestaurantId: restaurantId
       })
     }
   }, [queryClient, restaurantId])
 
   const handlePaymentCancelled = useCallback((data: any) => {
-    if (data.paymentMethod === 'CASH') {
-      // Update React Query cache to remove cancelled payment
+    console.log('🚫💰 [PendingCashPayments] Payment cancelled event:', data)
+    console.log('🚫💰 [PendingCashPayments] Full event object keys:', Object.keys(data || {}))
+
+    // For now, let's update the UI for ANY cancellation from this restaurant
+    // since the paymentMethod might not be included in the event
+    if (data?.restaurantId === restaurantId) {
+      console.log('🚫✅ [PendingCashPayments] Processing payment cancellation for this restaurant')
+
+      // Force refetch instead of updating cache directly
+      queryClient.invalidateQueries({ queryKey: ['restaurant', 'pending-cash-payments', restaurantId] })
+
+      // Also try updating cache directly as backup
       queryClient.setQueryData(['restaurant', 'pending-cash-payments', restaurantId], (oldData: PendingPaymentWithOrder[] | undefined) => {
-        return oldData?.filter(p => p.id !== data.paymentId) || []
+        if (!oldData) {
+          console.log('🚫⚠️ [PendingCashPayments] No cached data to update')
+          return []
+        }
+        const filtered = oldData.filter(p => p.id !== data.paymentId)
+        console.log('🚫📊 [PendingCashPayments] Filtered payments:', {
+          before: oldData.length,
+          after: filtered.length,
+          removedPaymentId: data.paymentId,
+          oldDataIds: oldData.map(p => p.id),
+          foundPayment: oldData.find(p => p.id === data.paymentId)
+        })
+        return filtered
+      })
+    } else {
+      console.log('🚫❌ [PendingCashPayments] Ignoring cancellation - different restaurant:', {
+        eventRestaurantId: data?.restaurantId,
+        expectedRestaurantId: restaurantId
       })
     }
   }, [queryClient, restaurantId])
 
   // Register WebSocket event listeners with proper component name
-  useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated], 'PendingCashPayments')
-  useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted], 'PendingCashPayments')
-  useWebSocketEvent('payment:cancelled', handlePaymentCancelled, [handlePaymentCancelled], 'PendingCashPayments')
+  useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated], 'PendingCashPayments-created')
+  useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted], 'PendingCashPayments-completed')
+  useWebSocketEvent('payment:cancelled', handlePaymentCancelled, [handlePaymentCancelled], 'PendingCashPayments-cancelled')
+
+  // Add debugging for all events
+  useWebSocketEvent('payment:status_updated', (data: any) => {
+    console.log('🔄💰 [PendingCashPayments] Payment status updated event:', data)
+  }, [], 'PendingCashPayments-debug-status')
+
+  // Test with a simple handler to see if ANY events come through
+  useWebSocketEvent('payment:cancelled', (data: any) => {
+    console.log('🚨💰 [PendingCashPayments] DIRECT payment:cancelled event received!', {
+      paymentId: data?.paymentId,
+      restaurantId: data?.restaurantId,
+      myRestaurantId: restaurantId,
+      fullData: data
+    })
+  }, [], 'PendingCashPayments-direct-cancel')
 
   const formatTimeAgo = (createdAt: string): string => {
     return formatDistanceToNow(new Date(createdAt), { addSuffix: true })
@@ -232,7 +306,7 @@ export const PendingCashPayments = forwardRef<PendingCashPaymentsRef, PendingCas
                 <div className="flex items-center space-x-3 mb-2">
                   <div className="flex items-center space-x-2">
                     <Banknote className="w-4 h-4 text-status-warning" />
-                    <span className="font-semibold text-lg">${payment.amount.toFixed(2)}</span>
+                    <span className="font-semibold text-lg">${Number(payment.amount || 0).toFixed(2)}</span>
                   </div>
 
                   <div className="text-sm text-content-secondary">

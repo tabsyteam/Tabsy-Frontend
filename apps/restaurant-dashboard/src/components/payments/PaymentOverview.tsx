@@ -202,6 +202,7 @@ export function PaymentOverview({ restaurantId, isVisible = true }: PaymentOverv
   useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted])
   useWebSocketEvent('payment:failed', handlePaymentFailed, [handlePaymentFailed])
   useWebSocketEvent('payment:refunded', handlePaymentRefunded, [handlePaymentRefunded])
+  useWebSocketEvent('payment:partially_refunded', handlePaymentRefunded, [handlePaymentRefunded])
   useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated])
   useWebSocketEvent('table_session:payment_updated', handleTableSessionPaymentUpdated, [handleTableSessionPaymentUpdated])
 

@@ -89,6 +89,7 @@ export interface TableSessionPaymentStatusResponse {
     paymentMethod: PaymentMethod
     createdAt: string
     paidBy?: string
+    clientSecret?: string
   }>
   paymentSummary: {
     byMethod: Record<string, number>
