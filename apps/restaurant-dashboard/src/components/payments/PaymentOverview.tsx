@@ -25,6 +25,7 @@ import { PaymentMetricsError } from '@tabsy/shared-types'
 
 interface PaymentOverviewProps {
   restaurantId: string
+  isVisible?: boolean
 }
 
 interface PaymentMetrics {
@@ -51,7 +52,7 @@ interface PaymentMetrics {
   transactionTrend: number
 }
 
-export function PaymentOverview({ restaurantId }: PaymentOverviewProps) {
+export function PaymentOverview({ restaurantId, isVisible = true }: PaymentOverviewProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('today')
   const [realtimeUpdates, setRealtimeUpdates] = useState(0)
   const queryClient = useQueryClient()
@@ -60,17 +61,21 @@ export function PaymentOverview({ restaurantId }: PaymentOverviewProps) {
   const { data: metrics, isLoading, error, refetch } = useQuery({
     queryKey: ['restaurant', 'payment-metrics', restaurantId, selectedPeriod],
     queryFn: async () => {
+      console.log('[PaymentOverview] Fetching payments for restaurant:', restaurantId)
       const response = await tabsyClient.payment.getByRestaurant(restaurantId, {
         limit: 1000,
         dateFrom: getDateFrom(selectedPeriod)
       })
 
+      console.log('[PaymentOverview] API response:', response)
       if (response.success && response.data) {
+        console.log('[PaymentOverview] Total payments fetched:', response.data.length)
         return calculateMetrics(response.data)
       }
       throw new PaymentMetricsError('Unable to fetch payment metrics', restaurantId, selectedPeriod, error)
     },
-    staleTime: 300000, // 5 minutes - rely on WebSocket for real-time updates
+    refetchOnMount: true,
+    staleTime: 0, // Force fresh data on mount
     retry: (failureCount, error) => {
       // Don't retry if we're getting client errors
       if (error && typeof error === 'object' && 'status' in error) {
@@ -327,7 +332,7 @@ export function PaymentOverview({ restaurantId }: PaymentOverviewProps) {
   }
 
   return (
-    <div className="p-6 space-y-6 overflow-y-auto">
+    <div className="space-y-4 sm:space-y-6">
       {/* Period Selector */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">

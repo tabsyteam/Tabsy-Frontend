@@ -252,7 +252,7 @@ Tax: $${Number(payment.order.tax || 0).toFixed(2)}
 
     receiptContent += `
 -------------------------------------
-Payment Method: ${payment.method}
+Payment Method: ${payment.paymentMethod}
 Amount Paid: $${Number(payment.totalAmount || 0).toFixed(2)}
 ${payment.tipAmount ? `Tip: $${Number(payment.tipAmount || 0).toFixed(2)}` : ''}
 
@@ -585,7 +585,7 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
 
             <div className="flex justify-between">
               <span className="text-content-secondary">Payment Method</span>
-              <span className="font-medium text-content-primary">{payment.method}</span>
+              <span className="font-medium text-content-primary">{payment.paymentMethod}</span>
             </div>
 
             <div className="flex justify-between">

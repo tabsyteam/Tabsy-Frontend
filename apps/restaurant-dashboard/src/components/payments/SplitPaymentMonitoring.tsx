@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback, forwardRef, useImperativeHandle } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button, Card, Badge } from '@tabsy/ui-components'
 import {
   Users,
@@ -53,6 +54,11 @@ interface SplitPaymentGroup {
 
 interface SplitPaymentMonitoringProps {
   restaurantId: string
+  isVisible?: boolean
+}
+
+export interface SplitPaymentMonitoringRef {
+  refetch: () => void
 }
 
 // Utility function for formatting time
@@ -69,20 +75,20 @@ const formatTimeAgo = (date: Date): string => {
   return `${diffDays}d ago`
 }
 
-export function SplitPaymentMonitoring({ restaurantId }: SplitPaymentMonitoringProps) {
-  const [splitPayments, setSplitPayments] = useState<SplitPaymentGroup[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, SplitPaymentMonitoringProps>(
+  ({ restaurantId, isVisible = true }, ref) => {
   const [selectedGroup, setSelectedGroup] = useState<SplitPaymentGroup | null>(null)
   const [filterStatus, setFilterStatus] = useState<'all' | 'pending' | 'partial' | 'complete'>('pending')
-  const [refreshing, setRefreshing] = useState(false)
+  const queryClient = useQueryClient()
 
   // WebSocket connection for real-time updates
   const { isConnected } = useWebSocket()
 
-  // Load split payments
-  const loadSplitPayments = async () => {
-    try {
-      setRefreshing(true)
+  // Use React Query for data fetching - prevents duplicate API calls
+  const { data: splitPayments = [], isLoading, refetch } = useQuery({
+    queryKey: ['restaurant', 'split-payments', restaurantId],
+    queryFn: async () => {
+      console.log('[SplitPaymentMonitoring] Loading split payments for restaurant:', restaurantId)
       // This would need to be implemented in the API client
       const response = await tabsyClient.payment.getByRestaurant(restaurantId, {
         // splitPaymentsOnly: true, // This would need to be implemented in the API
@@ -92,17 +98,17 @@ export function SplitPaymentMonitoring({ restaurantId }: SplitPaymentMonitoringP
         // Transform the data to match our interface
         // This is a simplified example - actual implementation would depend on backend structure
         const groupedPayments = groupBySplitPayment(response.data)
-        setSplitPayments(groupedPayments)
+        return groupedPayments
       }
-    } catch (error) {
-      console.error('Failed to load split payments:', error)
-      console.error('Failed to load split payments for restaurant')
-      toast.error('Failed to load split payments')
-    } finally {
-      setIsLoading(false)
-      setRefreshing(false)
-    }
-  }
+      throw new Error('Failed to load split payments')
+    },
+    enabled: !!restaurantId,
+  })
+
+  // Expose refetch method to parent
+  useImperativeHandle(ref, () => ({
+    refetch
+  }), [refetch])
 
   // Group payments by split payment group
   const groupBySplitPayment = (payments: Payment[]): SplitPaymentGroup[] => {
@@ -113,40 +119,40 @@ export function SplitPaymentMonitoring({ restaurantId }: SplitPaymentMonitoringP
   // Split payment event handlers using correct frontend WebSocket event types
   const handleSplitPaymentCreated = useCallback((data: any) => {
     console.log('Split payment created:', data)
-    loadSplitPayments()
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
     toast.info(`New split payment created with ${data.totalParticipants} participants`)
-  }, [loadSplitPayments])
+  }, [queryClient, restaurantId])
 
   const handleSplitPaymentParticipantUpdated = useCallback((data: any) => {
     console.log('Split payment participant updated:', data)
-    loadSplitPayments()
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
 
     if (data.hasPaid) {
       toast.success(`${data.participantName} completed their payment of ${formatCurrency(data.amount)}`)
     } else {
       toast.info(`${data.participantName} updated their payment details`)
     }
-  }, [loadSplitPayments])
+  }, [queryClient, restaurantId])
 
   const handleSplitPaymentProgress = useCallback((data: any) => {
     console.log('Split payment progress updated:', data)
-    loadSplitPayments()
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
 
     const progressMessage = `Split payment ${data.progressPercentage}% complete (${data.completedParticipants}/${data.totalParticipants} paid)`
     toast.info(progressMessage)
-  }, [loadSplitPayments])
+  }, [queryClient, restaurantId])
 
   const handleSplitPaymentCompleted = useCallback((data: any) => {
     console.log('Split payment completed:', data)
-    loadSplitPayments()
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
     toast.success(`Split payment completed! ${data.participants.length} participants paid ${formatCurrency(data.totalAmount)}`)
-  }, [loadSplitPayments])
+  }, [queryClient, restaurantId])
 
   const handleSplitPaymentCancelled = useCallback((data: any) => {
     console.log('Split payment cancelled:', data)
-    loadSplitPayments()
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
     toast.warning(`Split payment cancelled by ${data.cancelledBy?.participantName || 'system'} - ${data.refundsProcessed} refunds processed`)
-  }, [loadSplitPayments])
+  }, [queryClient, restaurantId])
 
   // Register WebSocket event listeners with proper dependencies
   // Register WebSocket event listeners for split payment events
@@ -158,10 +164,6 @@ export function SplitPaymentMonitoring({ restaurantId }: SplitPaymentMonitoringP
   useWebSocketEvent('payment:split_cancelled', handleSplitPaymentCancelled, [handleSplitPaymentCancelled])
 
 
-  // Initial load
-  useEffect(() => {
-    loadSplitPayments()
-  }, [restaurantId, filterStatus])
 
   const getStatusBadge = (group: SplitPaymentGroup) => {
     if (group.isComplete) {
@@ -194,7 +196,7 @@ export function SplitPaymentMonitoring({ restaurantId }: SplitPaymentMonitoringP
 
       if (response.success) {
         toast.success('Cash payment confirmed')
-        loadSplitPayments()
+        queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
       } else {
         toast.error('Failed to confirm cash payment')
       }
@@ -229,7 +231,7 @@ export function SplitPaymentMonitoring({ restaurantId }: SplitPaymentMonitoringP
 
       if (response.success) {
         toast.success('Split payment cancelled successfully')
-        loadSplitPayments()
+        queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
       } else {
         toast.error('Failed to cancel split payment')
       }
@@ -261,130 +263,140 @@ export function SplitPaymentMonitoring({ restaurantId }: SplitPaymentMonitoringP
     )
   }
 
+  if (isLoading) {
+    return (
+      <div className="p-4 sm:p-6">
+        <div className="bg-card rounded-lg border p-4 sm:p-6">
+          <div className="flex items-center space-x-2 mb-4">
+            <Users className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold">Split Payment Monitoring</h2>
+          </div>
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <span className="ml-2 text-content-secondary">Loading split payments...</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Users className="w-6 h-6 text-primary" />
-          <div>
-            <h2 className="text-2xl font-bold">Split Payment Monitoring</h2>
-            <p className="text-content-secondary">Monitor and manage ongoing split payments</p>
+    <div className="p-4 sm:p-6">
+      <div className="bg-card rounded-lg border p-4 sm:p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <Users className="w-5 h-5 text-primary" />
+            <h2 className="text-lg font-semibold">Split Payment Monitoring</h2>
+            {!isConnected && (
+              <Badge variant="destructive" className="ml-2">
+                <AlertCircle className="w-3 h-3 mr-1" />
+                Disconnected
+              </Badge>
+            )}
           </div>
-          {!isConnected && (
-            <Badge variant="destructive">
-              <AlertCircle className="w-3 h-3 mr-1" />
-              Disconnected
-            </Badge>
-          )}
         </div>
-        <Button
-          onClick={loadSplitPayments}
-          disabled={refreshing}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Users className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-content-secondary">Active Split Payments</p>
-              <p className="text-xl font-semibold">{splitPayments.filter(g => !g.isComplete).length}</p>
+        {/* Stats Overview */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="bg-surface p-3 rounded-lg border">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-blue-100 rounded">
+                <Users className="w-4 h-4 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xs text-content-secondary">Active</p>
+                <p className="text-lg font-semibold">{splitPayments.filter(g => !g.isComplete).length}</p>
+              </div>
             </div>
           </div>
-        </Card>
 
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <Clock className="w-5 h-5 text-yellow-600" />
-            </div>
-            <div>
-              <p className="text-sm text-content-secondary">Pending Participants</p>
-              <p className="text-xl font-semibold">
-                {splitPayments.reduce((sum, g) => sum + (g.totalParticipants - g.completedParticipants), 0)}
-              </p>
+          <div className="bg-surface p-3 rounded-lg border">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-yellow-100 rounded">
+                <Clock className="w-4 h-4 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-xs text-content-secondary">Pending</p>
+                <p className="text-lg font-semibold">
+                  {splitPayments.reduce((sum, g) => sum + (g.totalParticipants - g.completedParticipants), 0)}
+                </p>
+              </div>
             </div>
           </div>
-        </Card>
 
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <DollarSign className="w-5 h-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-sm text-content-secondary">Pending Amount</p>
-              <p className="text-xl font-semibold">
-                {formatCurrency(splitPayments.reduce((sum, g) => sum + g.remainingAmount, 0))}
-              </p>
+          <div className="bg-surface p-3 rounded-lg border">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-green-100 rounded">
+                <DollarSign className="w-4 h-4 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xs text-content-secondary">Amount</p>
+                <p className="text-lg font-semibold">
+                  {formatCurrency(splitPayments.reduce((sum, g) => sum + g.remainingAmount, 0))}
+                </p>
+              </div>
             </div>
           </div>
-        </Card>
 
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <TrendingUp className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <p className="text-sm text-content-secondary">Completion Rate</p>
-              <p className="text-xl font-semibold">
-                {splitPayments.length > 0
-                  ? Math.round((splitPayments.filter(g => g.isComplete).length / splitPayments.length) * 100)
-                  : 0
-                }%
-              </p>
+          <div className="bg-surface p-3 rounded-lg border">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-purple-100 rounded">
+                <TrendingUp className="w-4 h-4 text-purple-600" />
+              </div>
+              <div>
+                <p className="text-xs text-content-secondary">Rate</p>
+                <p className="text-lg font-semibold">
+                  {splitPayments.length > 0
+                    ? Math.round((splitPayments.filter(g => g.isComplete).length / splitPayments.length) * 100)
+                    : 0
+                  }%
+                </p>
+              </div>
             </div>
           </div>
-        </Card>
-      </div>
-
-      {/* Filter Controls */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-content-secondary" />
-          <span className="text-sm font-medium">Filter:</span>
         </div>
-        <div className="flex gap-2">
-          {(['all', 'pending', 'partial', 'complete'] as const).map((status) => (
-            <Button
-              key={status}
-              variant={filterStatus === status ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setFilterStatus(status)}
-              className="capitalize"
-            >
-              {status === 'all' ? 'All' : status}
-            </Button>
-          ))}
-        </div>
-      </div>
 
-      {/* Split Payments List */}
-      <div className="space-y-4">
+        {/* Filter Controls */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-content-secondary" />
+            <span className="text-sm font-medium">Filter:</span>
+          </div>
+          <div className="flex gap-2">
+            {(['all', 'pending', 'partial', 'complete'] as const).map((status) => (
+              <Button
+                key={status}
+                variant={filterStatus === status ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setFilterStatus(status)}
+                className="capitalize"
+              >
+                {status === 'all' ? 'All' : status}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Split Payments List */}
         {filteredPayments.length === 0 ? (
-          <Card className="p-8 text-center">
-            <Users className="w-12 h-12 text-content-secondary mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Split Payments Found</h3>
-            <p className="text-content-secondary">
-              {filterStatus === 'all'
-                ? "There are no active split payments at the moment."
-                : `No ${filterStatus} split payments found.`
-              }
-            </p>
-          </Card>
+          <div className="text-center py-8">
+            <div className="flex flex-col items-center space-y-2">
+              <Users className="w-12 h-12 text-content-secondary/50" />
+              <h3 className="text-lg font-medium text-content-primary">
+                {filterStatus === 'all' ? 'No Split Payments' : `No ${filterStatus.charAt(0).toUpperCase() + filterStatus.slice(1)} Split Payments`}
+              </h3>
+              <p className="text-sm text-content-secondary">
+                {filterStatus === 'all'
+                  ? "There are no active split payments at the moment"
+                  : `No ${filterStatus} split payments found`}
+              </p>
+            </div>
+          </div>
         ) : (
-          filteredPayments.map((group) => (
-            <Card key={group.groupId} className="p-6">
+          <div className="space-y-4">
+            {filteredPayments.map((group) => (
+              <div key={group.groupId} className="border rounded-lg p-4 bg-surface-secondary/30 hover:bg-surface-secondary/50 transition-colors">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
@@ -519,10 +531,13 @@ export function SplitPaymentMonitoring({ restaurantId }: SplitPaymentMonitoringP
                   </div>
                 </div>
               )}
-            </Card>
-          ))
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>
   )
-}
+})
+
+SplitPaymentMonitoring.displayName = 'SplitPaymentMonitoring'
