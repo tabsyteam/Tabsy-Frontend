@@ -119,7 +119,7 @@ export function useTableSessionWebSocket(
   const handleSplitCalculationUpdated = useCallback((data: any) => {
     if (data.tableSessionId === tableSessionId) {
       console.log(`[useTableSessionWebSocket] Split calculation updated for table session ${tableSessionId}:`, data)
-      onTableSessionUpdate?.({ type: 'split_calculation_updated', ...data })
+      onTableSessionUpdate?.({ type: 'split:calculation_updated', ...data })
     }
   }, [tableSessionId, onTableSessionUpdate])
 
