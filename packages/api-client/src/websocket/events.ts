@@ -151,6 +151,39 @@ export interface SessionExpiredEvent extends BaseWebSocketEvent {
   };
 }
 
+// Session Replacement Events (for handling table transitions)
+export interface SessionReplacingEvent extends BaseWebSocketEvent {
+  type: 'sessionReplacing';
+  data: {
+    sessionId: string;
+    tableId: string;
+    newSessionId?: string;
+    message?: string;
+    graceTime?: number; // Time in ms before actual disconnection
+  };
+}
+
+export interface SessionReplacedEvent extends BaseWebSocketEvent {
+  type: 'sessionReplaced';
+  data: {
+    previousSessionId: string;
+    newSessionId: string;
+    tableId: string;
+    replacedAt: Date;
+  };
+}
+
+export interface InvalidSessionEvent extends BaseWebSocketEvent {
+  type: 'invalidSession';
+  data: {
+    sessionId?: string;
+    tableId?: string;
+    errorCode: string;
+    errorMessage: string;
+    suggestion?: string;
+  };
+}
+
 // Kitchen Events
 export interface KitchenNewOrderEvent extends BaseWebSocketEvent {
   type: 'kitchen:new-order';
@@ -676,6 +709,9 @@ export type TabsyWebSocketEvent =
   | PaymentStatusUpdatedEvent
   | SessionUpdatedEvent
   | SessionExpiredEvent
+  | SessionReplacingEvent
+  | SessionReplacedEvent
+  | InvalidSessionEvent
   | KitchenNewOrderEvent
   | KitchenOrderReadyEvent
   | KitchenOrderCancelledEvent
@@ -723,6 +759,12 @@ export type WebSocketEventMap = {
   'payment:status_updated': PaymentStatusUpdatedEvent['data'];
   'session:updated': SessionUpdatedEvent['data'];
   'session:expired': SessionExpiredEvent['data'];
+  'sessionReplacing': SessionReplacingEvent['data'];
+  'sessionReplaced': SessionReplacedEvent['data'];
+  'invalidSession': InvalidSessionEvent['data'];
+  'disconnect': string;  // Built-in socket.io event
+  'error': any;  // Built-in socket.io event
+  'connect': void;  // Built-in socket.io event
   'kitchen:new-order': KitchenNewOrderEvent['data'];
   'kitchen:order-ready': KitchenOrderReadyEvent['data'];
   'kitchen:order-cancelled': KitchenOrderCancelledEvent['data'];

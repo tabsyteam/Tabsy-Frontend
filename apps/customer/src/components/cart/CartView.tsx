@@ -455,17 +455,17 @@ export function CartView() {
 
                         {/* Quantity Controls and Price */}
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2 bg-gray-50 rounded-lg p-1">
+                          <div className="flex items-center space-x-2 bg-surface-secondary rounded-lg p-1">
                             <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => handleUpdateQuantity(item.cartItemId, item.quantity - 1)}
-                              className="w-8 h-8 p-0 hover:bg-white"
+                              className="w-8 h-8 p-0 bg-surface-secondary border-2 border-secondary hover:bg-interactive-hover hover:border-primary transition-all"
                             >
-                              <Minus className="w-4 h-4" />
+                              <Minus className="w-4 h-4 text-content-primary" />
                             </Button>
 
-                            <span className="text-sm font-semibold min-w-[2rem] text-center">
+                            <span className="text-sm font-semibold min-w-[2rem] text-center px-2 py-1 bg-surface-secondary rounded-lg border">
                               {item.quantity}
                             </span>
 
@@ -473,9 +473,9 @@ export function CartView() {
                               size="sm"
                               variant="ghost"
                               onClick={() => handleUpdateQuantity(item.cartItemId, item.quantity + 1)}
-                              className="w-8 h-8 p-0 hover:bg-white"
+                              className="w-8 h-8 p-0 bg-primary text-primary-foreground border-2 border-primary hover:bg-primary-hover transition-all"
                             >
-                              <Plus className="w-4 h-4" />
+                              <Plus className="w-4 h-4 text-primary-foreground" />
                             </Button>
                           </div>
 

@@ -6,6 +6,8 @@ import { ThemeProvider } from '@/components/theme/theme-provider'
 import { ApiProvider } from '@/components/providers/api-provider'
 import { CartProvider } from '@/hooks/useCart'
 import { NavigationProvider } from '@/components/providers/navigation-provider'
+import { SessionReplacementHandler } from '@/components/session/SessionReplacementHandler'
+import { WebSocketErrorBoundary } from '@/components/session/WebSocketErrorBoundary'
 
 // NEW: Import unified providers for testing alongside existing ones
 import { ConnectionProvider, WebSocketProvider, SessionProvider } from '@tabsy/ui-components'
@@ -174,14 +176,18 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <QueryClientProvider client={queryClient}>
         <ApiProvider>
           <ConnectionProvider apiClient={tabsyClient}>
-            <WebSocketWithSessionIntegration>
-              <CartProvider>
-                <NavigationProvider>
-                  {children}
-                  {/* Dev tools temporarily disabled due to type conflicts */}
-                </NavigationProvider>
-              </CartProvider>
-            </WebSocketWithSessionIntegration>
+            <WebSocketErrorBoundary>
+              <WebSocketWithSessionIntegration>
+                <CartProvider>
+                  <SessionReplacementHandler>
+                    <NavigationProvider>
+                      {children}
+                      {/* Dev tools temporarily disabled due to type conflicts */}
+                    </NavigationProvider>
+                  </SessionReplacementHandler>
+                </CartProvider>
+              </WebSocketWithSessionIntegration>
+            </WebSocketErrorBoundary>
           </ConnectionProvider>
         </ApiProvider>
       </QueryClientProvider>

@@ -495,7 +495,7 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
                       onClick={() => handleQuantityChange(localQuantity - 1)}
                       whileTap={{ scale: 0.9 }}
                       whileHover={{ scale: 1.1 }}
-                      className="w-8 h-8 sm:w-10 sm:h-10 btn-circle bg-surface border-2 border-default flex items-center justify-center hover:bg-interactive-hover hover:border-primary transition-all duration-200 shadow-sm"
+                      className="w-8 h-8 sm:w-10 sm:h-10 btn-circle bg-surface-secondary border-2 border-secondary flex items-center justify-center hover:bg-interactive-hover hover:border-primary transition-all duration-200 shadow-sm"
                     >
                       <Minus size={14} className="sm:w-4 sm:h-4 text-content-primary" />
                     </motion.button>

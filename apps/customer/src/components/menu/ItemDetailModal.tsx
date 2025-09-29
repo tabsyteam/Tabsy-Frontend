@@ -935,7 +935,7 @@ export function ItemDetailModal({
                                     value.id,
                                     e.target.checked
                                   )}
-                                  className="text-primary focus:ring-primary"
+                                  className="w-4 h-4 text-primary bg-surface-secondary border-2 border-secondary focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background rounded checked:bg-primary checked:border-primary"
                                 />
                                 <div>
                                   <div className="font-medium text-content-primary">

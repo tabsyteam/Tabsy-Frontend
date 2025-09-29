@@ -178,7 +178,11 @@ export function TableSessionInitializer({ restaurantId, tableId }: TableSessionI
     }
 
     validateTableAccess()
-  }, [restaurantId, tableId, qrCode, api, router])
+    // Remove 'api' from dependencies to prevent re-execution when api object changes
+    // The api object is stable from ApiProvider and doesn't need to trigger re-runs
+    // We already have hasValidated.current guard for additional safety
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [restaurantId, tableId, qrCode, router])
 
   if (error) {
     return (

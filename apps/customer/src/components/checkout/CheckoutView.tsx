@@ -411,7 +411,7 @@ export function CheckoutView() {
                 <h3 className="text-lg font-semibold text-content-primary mb-3">
                   Special Instructions
                 </h3>
-                <p className="text-content-secondary bg-gray-50 p-3 rounded-lg">
+                <p className="text-content-secondary bg-surface-secondary p-3 rounded-lg">
                   {specialInstructions}
                 </p>
               </motion.div>

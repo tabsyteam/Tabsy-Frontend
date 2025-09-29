@@ -16,7 +16,11 @@ import {
   Send,
   XCircle,
   TrendingUp,
-  Filter
+  Filter,
+  Lock,
+  Unlock,
+  Shield,
+  Zap
 } from 'lucide-react'
 import { tabsyClient } from '@tabsy/api-client'
 import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
@@ -41,6 +45,12 @@ interface SplitPaymentGroup {
   isComplete: boolean
   createdAt: string
   splitType: 'EQUAL' | 'BY_ITEMS' | 'BY_PERCENTAGE' | 'BY_AMOUNT'
+  // New split calculation locking fields
+  isLocked?: boolean
+  lockedAt?: string
+  lockedBy?: string
+  lockReason?: string
+  paymentIntentIds?: string[]
   participants: Array<{
     participantId: string
     participantName: string
@@ -155,6 +165,37 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
   }, [queryClient, restaurantId])
 
   // Register WebSocket event listeners with proper dependencies
+  // New split calculation synchronization event handlers
+  const handleSplitCalculationUpdated = useCallback((data: any) => {
+    console.log('Split calculation updated:', data)
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
+    toast.info(`Split calculation updated on ${data.tableName || 'table'} - ${data.splitType} split`)
+  }, [queryClient, restaurantId])
+
+  const handleSplitCalculationLocked = useCallback((data: any) => {
+    console.log('Split calculation locked:', data)
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
+    toast.warning(`🔒 Split payment locked on ${data.tableName || 'table'} - ${data.lockReason || 'Payment being processed'}`)
+  }, [queryClient, restaurantId])
+
+  const handleSplitCalculationUnlocked = useCallback((data: any) => {
+    console.log('Split calculation unlocked:', data)
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
+    toast.success(`🔓 Split payment unlocked on ${data.tableName || 'table'} - Customers can modify split again`)
+  }, [queryClient, restaurantId])
+
+  const handleSplitUserJoined = useCallback((data: any) => {
+    console.log('Split user joined:', data)
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
+    toast.info(`👥 ${data.userName} joined split payment on ${data.tableName || 'table'}`)
+  }, [queryClient, restaurantId])
+
+  const handleSplitUserLeft = useCallback((data: any) => {
+    console.log('Split user left:', data)
+    queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
+    toast.info(`👋 ${data.userName} left split payment on ${data.tableName || 'table'}`)
+  }, [queryClient, restaurantId])
+
   // Register WebSocket event listeners for split payment events
   // These events are defined in the frontend WebSocketEventMap
   useWebSocketEvent('payment:split_created', handleSplitPaymentCreated, [handleSplitPaymentCreated])
@@ -163,9 +204,34 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
   useWebSocketEvent('payment:split_completed', handleSplitPaymentCompleted, [handleSplitPaymentCompleted])
   useWebSocketEvent('payment:split_cancelled', handleSplitPaymentCancelled, [handleSplitPaymentCancelled])
 
+  // New split calculation synchronization events
+  useWebSocketEvent('split:calculation_updated', handleSplitCalculationUpdated, [handleSplitCalculationUpdated])
+  useWebSocketEvent('split:calculation_locked', handleSplitCalculationLocked, [handleSplitCalculationLocked])
+  useWebSocketEvent('split:calculation_unlocked', handleSplitCalculationUnlocked, [handleSplitCalculationUnlocked])
+  useWebSocketEvent('split:user_joined', handleSplitUserJoined, [handleSplitUserJoined])
+  useWebSocketEvent('split:user_left', handleSplitUserLeft, [handleSplitUserLeft])
+
 
 
   const getStatusBadge = (group: SplitPaymentGroup) => {
+    // Priority: Lock status takes precedence, then completion status
+    if (group.isLocked) {
+      return (
+        <div className="flex items-center gap-2">
+          <Badge variant="destructive" className="flex items-center gap-1">
+            <Lock className="w-3 h-3" />
+            Locked - {group.lockReason || 'Payment Processing'}
+          </Badge>
+          {group.paymentIntentIds && group.paymentIntentIds.length > 0 && (
+            <Badge variant="outline" className="flex items-center gap-1">
+              <CreditCard className="w-3 h-3" />
+              {group.paymentIntentIds.length} Payment{group.paymentIntentIds.length > 1 ? 's' : ''}
+            </Badge>
+          )}
+        </div>
+      )
+    }
+
     if (group.isComplete) {
       return <Badge variant="success" className="flex items-center gap-1">
         <CheckCircle className="w-3 h-3" />
@@ -241,6 +307,40 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
     }
   }
 
+  // New lock management handlers for staff
+  const handleForceUnlockSplit = async (tableSessionId: string, tableName?: string) => {
+    try {
+      const response = await tabsyClient.tableSession.forceUnlockSplitCalculation(tableSessionId)
+
+      if (response.success) {
+        toast.success(`🔓 Force unlocked split payment on ${tableName || 'table'}`)
+        queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
+      } else {
+        toast.error('Failed to force unlock split payment')
+      }
+    } catch (error) {
+      console.error('Failed to force unlock split calculation:', tableSessionId)
+      toast.error('Failed to force unlock split payment')
+    }
+  }
+
+  const handleCleanupStaleLocks = async () => {
+    try {
+      const response = await tabsyClient.tableSession.cleanupStaleSplitLocks()
+
+      if (response.success && response.data) {
+        const { cleanedCount, affectedTableSessions } = response.data
+        toast.success(`🧹 Cleaned up ${cleanedCount} stale locks across ${affectedTableSessions.length} table sessions`)
+        queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
+      } else {
+        toast.info('No stale locks found to cleanup')
+      }
+    } catch (error) {
+      console.error('Failed to cleanup stale split locks')
+      toast.error('Failed to cleanup stale locks')
+    }
+  }
+
   const filteredPayments = splitPayments.filter(group => {
     switch (filterStatus) {
       case 'pending':
@@ -294,6 +394,28 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
                 Disconnected
               </Badge>
             )}
+          </div>
+
+          {/* Administrative Tools */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCleanupStaleLocks}
+              className="flex items-center gap-1"
+            >
+              <Zap className="w-4 h-4" />
+              Cleanup Stale Locks
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              className="flex items-center gap-1"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh
+            </Button>
           </div>
         </div>
 
@@ -420,7 +542,20 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
                     {selectedGroup?.groupId === group.groupId ? 'Hide' : 'Details'}
                   </Button>
 
-                  {!group.isComplete && (
+                  {/* Force unlock button for locked splits */}
+                  {group.isLocked && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleForceUnlockSplit(group.groupId, group.tableName)}
+                      className="text-orange-600 hover:text-orange-700"
+                    >
+                      <Unlock className="w-4 h-4 mr-1" />
+                      Force Unlock
+                    </Button>
+                  )}
+
+                  {!group.isComplete && !group.isLocked && (
                     <Button
                       variant="outline"
                       size="sm"

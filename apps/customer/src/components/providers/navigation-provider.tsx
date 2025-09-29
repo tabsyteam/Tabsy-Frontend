@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import BottomNav from '@/components/navigation/BottomNav'
 import { useCart } from '@/hooks/useCart'
 
@@ -23,7 +24,8 @@ interface NavigationProviderProps {
   children: React.ReactNode
 }
 
-export function NavigationProvider({ children }: NavigationProviderProps) {
+// Inner component that uses cart hook
+function NavigationProviderInner({ children }: NavigationProviderProps) {
   const [showBottomNav, setShowBottomNav] = useState(true)
   const { cart } = useCart()
 
@@ -38,6 +40,30 @@ export function NavigationProvider({ children }: NavigationProviderProps) {
       </div>
     </NavigationContext.Provider>
   )
+}
+
+// Wrapper component that handles SSR gracefully
+export function NavigationProvider({ children }: NavigationProviderProps) {
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // During SSR or before mount, render without cart access
+  if (!mounted) {
+    return (
+      <NavigationContext.Provider value={{ showBottomNav: true, setShowBottomNav: () => {} }}>
+        <div className="relative min-h-screen">
+          {children}
+          <BottomNav cartItemCount={0} showNav={true} />
+        </div>
+      </NavigationContext.Provider>
+    )
+  }
+
+  // After mount, render with cart access
+  return <NavigationProviderInner>{children}</NavigationProviderInner>
 }
 
 export default NavigationProvider

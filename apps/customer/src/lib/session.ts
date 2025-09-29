@@ -370,6 +370,71 @@ export class SessionManager {
     }
   }
 
+  // Clear all session data (for session replacement scenarios)
+  static clearAllSessionData(): void {
+    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
+      return
+    }
+
+    try {
+      // Clear dining session
+      this.clearDiningSession()
+
+      // Clear current order
+      this.clearCurrentOrder()
+
+      // Clear order history
+      this.clearOrderHistory()
+
+      // Clear guest session ID
+      sessionStorage.removeItem('tabsy-guest-session-id')
+
+      // Clear any cached authentication data
+      sessionStorage.removeItem('tabsy-auth-token')
+
+      // Clear any other app-specific session data
+      const keysToRemove: string[] = []
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key && key.startsWith('tabsy-')) {
+          keysToRemove.push(key)
+        }
+      }
+
+      keysToRemove.forEach(key => {
+        sessionStorage.removeItem(key)
+      })
+
+      console.log('✅ All session data cleared successfully')
+    } catch (error) {
+      console.error('Failed to clear all session data:', error)
+    }
+  }
+
+  // Check if session is being replaced
+  static isSessionReplaced(): boolean {
+    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
+      return false
+    }
+
+    const isReplaced = sessionStorage.getItem('tabsy-session-replaced') === 'true'
+    return isReplaced
+  }
+
+  // Mark session as replaced
+  static markSessionAsReplaced(): void {
+    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
+      return
+    }
+
+    sessionStorage.setItem('tabsy-session-replaced', 'true')
+
+    // Clear the flag after a short time to prevent persistent issues
+    setTimeout(() => {
+      sessionStorage.removeItem('tabsy-session-replaced')
+    }, 5000)
+  }
+
   // Validate session compatibility for table operations
   static validateTableSessionContext(tableSessionId?: string): {
     isValid: boolean

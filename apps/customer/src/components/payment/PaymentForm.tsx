@@ -36,25 +36,29 @@ export function PaymentForm({
   const [cardError, setCardError] = useState<string | null>(null)
 
   const handlePayment = async () => {
-    if (!stripe || !elements || !clientSecret) {
-      onPaymentError('Payment system not initialized. Please refresh and try again.')
-      return
-    }
-
-    const cardElement = elements.getElement(CardElement)
-    if (!cardElement) {
-      onPaymentError('Card information not found. Please refresh and try again.')
-      return
-    }
-
-    if (!cardValid) {
-      onPaymentError('Please enter valid card information.')
-      return
-    }
-
+    // Show loading state immediately for better UX
     setProcessing(true)
 
     try {
+      // Validation checks with proper error handling
+      if (!stripe || !elements || !clientSecret) {
+        onPaymentError('Payment system not initialized. Please refresh and try again.')
+        return
+      }
+
+      const cardElement = elements.getElement(CardElement)
+      if (!cardElement) {
+        onPaymentError('Card information not found. Please refresh and try again.')
+        return
+      }
+
+      if (!cardValid) {
+        onPaymentError('Please enter valid card information.')
+        return
+      }
+
+      // All validations passed, continue with payment processing
+
       // Confirm the payment with Stripe
       const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {

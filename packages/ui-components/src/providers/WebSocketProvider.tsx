@@ -109,9 +109,28 @@ export function WebSocketProvider({
       })
 
 
-      client.on('disconnect', () => {
-        console.log('🔌❌ [WebSocket] Disconnected - Setting isConnected to false')
+      client.on('disconnect', (reason: any) => {
+        console.log('🔌❌ [WebSocket] Disconnected - Setting isConnected to false', { reason })
         setIsConnected(false)
+
+        // Check disconnect reason
+        if (reason === 'io server disconnect') {
+          console.log('📊 [WebSocket] Server-initiated disconnect - likely session replacement')
+          // Server forced disconnect, don't auto-reconnect
+          setError(new Error('Session has been replaced or ended by the server'))
+        } else if (reason === 'io client disconnect') {
+          console.log('👤 [WebSocket] Client-initiated disconnect')
+          // Client initiated, normal behavior
+        } else {
+          console.log('🌐 [WebSocket] Network or unknown disconnect:', reason)
+          // Network issues or unknown, might want to reconnect
+          if (autoConnect && !reconnectTimeoutRef.current) {
+            reconnectTimeoutRef.current = setTimeout(() => {
+              console.log('🔄 [WebSocket] Attempting reconnection after disconnect...')
+              connect()
+            }, 3000)
+          }
+        }
       })
 
       client.on('error', (err: Error) => {
@@ -120,7 +139,19 @@ export function WebSocketProvider({
         console.log('🔄 [WebSocket] Setting isConnected to false due to error')
         setIsConnected(false)
 
-        // Auto-reconnect after 5 seconds
+        // Check if it's a session-related error
+        const errorMessage = err?.message || ''
+        const isSessionError = errorMessage.includes('Invalid session') ||
+                              errorMessage.includes('Session expired') ||
+                              errorMessage.includes('Session replaced')
+
+        if (isSessionError) {
+          console.log('🔒 [WebSocket] Session error detected, not auto-reconnecting')
+          // Don't auto-reconnect for session errors
+          return
+        }
+
+        // Auto-reconnect after 5 seconds for other errors
         if (autoConnect) {
           clearReconnectTimeout()
           reconnectTimeoutRef.current = setTimeout(() => {

@@ -350,7 +350,7 @@ const TableSessionBillComponent = ({
               >
                 <Split className="w-5 h-5 text-primary" />
                 <div className="flex flex-col items-center">
-                  <span className="font-semibold">Split Bill</span>
+                  <span className="font-semibold text-content-secondary">Split Bill</span>
                   <div className="flex items-center space-x-1 text-sm text-content-secondary">
                     <Users className="w-3 h-3" />
                     <span>{users.length} people</span>

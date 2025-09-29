@@ -146,6 +146,53 @@ export interface SplitCalculationResponse {
   timestamp: string
   lastUpdatedBy?: string
   lastUpdatedAt?: string
+  // New locking fields
+  isLocked?: boolean
+  lockedAt?: string
+  lockedBy?: string
+  lockReason?: string
+  paymentIntentIds?: string[]
+}
+
+export interface SplitCalculationLockRequest {
+  lockReason?: string
+}
+
+export interface SplitCalculationLockResponse {
+  tableSessionId: string
+  isLocked: boolean
+  lockedAt: string
+  lockedBy: string
+  lockReason: string
+  message: string
+}
+
+export interface SplitCalculationLockStatusResponse {
+  tableSessionId: string
+  isLocked: boolean
+  lockedAt?: string
+  lockedBy?: string
+  lockReason?: string
+  paymentIntentIds?: string[]
+  canModify: boolean
+  message?: string
+}
+
+export interface RecoverSplitLockResponse {
+  recovered: boolean
+  cleaned: boolean
+  lockStatus: {
+    isLocked: boolean
+    lockedBy?: string
+    lockReason?: string
+  }
+  message: string
+}
+
+export interface CleanupStaleSplitLocksResponse {
+  cleanedCount: number
+  affectedTableSessions: string[]
+  message: string
 }
 
 export interface TableSessionStatusResponse {
@@ -303,5 +350,71 @@ export class TableSessionAPI {
     return this.client.get(`/table-sessions/${sessionId}/split-calculation`)
   }
 
+  /**
+   * POST /table-sessions/:sessionId/split-calculation/lock - Lock split calculation
+   */
+  async lockSplitCalculation(
+    sessionId: string,
+    data?: SplitCalculationLockRequest,
+    options?: { guestSessionId?: string }
+  ): Promise<ApiResponse<SplitCalculationLockResponse>> {
+    const headers: Record<string, string> = {}
+    if (options?.guestSessionId) {
+      headers['x-session-id'] = options.guestSessionId
+    }
+
+    return this.client.post(`/table-sessions/${sessionId}/split-calculation/lock`, data || {}, { headers })
+  }
+
+  /**
+   * DELETE /table-sessions/:sessionId/split-calculation/lock - Unlock split calculation
+   */
+  async unlockSplitCalculation(
+    sessionId: string,
+    options?: { guestSessionId?: string }
+  ): Promise<ApiResponse<SplitCalculationLockResponse>> {
+    const headers: Record<string, string> = {}
+    if (options?.guestSessionId) {
+      headers['x-session-id'] = options.guestSessionId
+    }
+
+    return this.client.delete(`/table-sessions/${sessionId}/split-calculation/lock`, { headers })
+  }
+
+  /**
+   * GET /table-sessions/:sessionId/split-calculation/lock-status - Get split calculation lock status
+   */
+  async getSplitCalculationLockStatus(sessionId: string): Promise<ApiResponse<SplitCalculationLockStatusResponse>> {
+    return this.client.get(`/table-sessions/${sessionId}/split-calculation/lock-status`)
+  }
+
+  /**
+   * POST /table-sessions/:sessionId/split-calculation/recover-lock - Recover split lock for reconnected users
+   */
+  async recoverSplitLock(
+    sessionId: string,
+    options?: { guestSessionId?: string }
+  ): Promise<ApiResponse<RecoverSplitLockResponse>> {
+    const headers: Record<string, string> = {}
+    if (options?.guestSessionId) {
+      headers['x-session-id'] = options.guestSessionId
+    }
+
+    return this.client.post(`/table-sessions/${sessionId}/split-calculation/recover-lock`, {}, { headers })
+  }
+
+  /**
+   * POST /table-sessions/:sessionId/split-calculation/force-unlock - Force unlock split calculation (staff only)
+   */
+  async forceUnlockSplitCalculation(sessionId: string): Promise<ApiResponse<SplitCalculationLockResponse>> {
+    return this.client.post(`/table-sessions/${sessionId}/split-calculation/force-unlock`, {})
+  }
+
+  /**
+   * POST /table-sessions/split-calculation/cleanup-stale-locks - Cleanup stale split locks (admin only)
+   */
+  async cleanupStaleSplitLocks(): Promise<ApiResponse<CleanupStaleSplitLocksResponse>> {
+    return this.client.post('/table-sessions/split-calculation/cleanup-stale-locks', {})
+  }
 
 }
