@@ -3,6 +3,8 @@
 import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Button, useAuth } from '@tabsy/ui-components'
 import { BarChart3, ShoppingCart, Users, Utensils, TrendingUp, Clock, Star, CreditCard } from 'lucide-react'
+import { logger } from '@/lib/logger'
+import { QUERY_STALE_TIME, QUERY_REFETCH_INTERVAL, REDIRECT_DELAY, PAYMENT_INVALIDATION_DELAY, RETRY_CONFIG, NOTIFICATION_LIMITS } from '@/lib/constants'
 import { OrdersManagement } from '@/components/orders/OrdersManagement'
 import { MenuManagement } from '@/components/menu/MenuManagement'
 import { TableManagement } from '@/components/tables/TableManagement'
@@ -57,9 +59,8 @@ export function DashboardClient(): JSX.Element {
   const queryClient = useQueryClient()
   
   // Debug logging for restaurant data
-  console.log('🏪 Dashboard - Restaurant data:', {
+  logger.restaurant('Restaurant data loaded', {
     restaurantId,
-    restaurant,
     hasRestaurantAccess,
     restaurantLoading,
     restaurantName: restaurant?.name
@@ -82,9 +83,9 @@ export function DashboardClient(): JSX.Element {
       if (error?.status === 429 || error?.code === 'RATE_LIMIT_EXCEEDED' || error?.status === 401 || error?.status === 403) {
         return false
       }
-      return failureCount < 2
+      return failureCount < RETRY_CONFIG.MAX_ATTEMPTS
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000)
+    retryDelay: (attemptIndex) => Math.min(RETRY_CONFIG.BASE_DELAY * 2 ** attemptIndex, RETRY_CONFIG.MAX_DELAY)
   })
 
   // RE-ENABLE WEEKLY STATS WITH ENHANCED SAFEGUARDS
@@ -93,14 +94,14 @@ export function DashboardClient(): JSX.Element {
     isLoading: weeklyLoading
   } = dashboardHooks.useWeeklyOrderStats(restaurantId || '', {
     enabled: !!restaurantId && !!auth?.session?.token,
-    staleTime: 600000, // 10 minutes (less frequent updates for weekly data)
+    staleTime: QUERY_STALE_TIME.LONG,
     retry: (failureCount, error: any) => {
       if (error?.status === 429 || error?.code === 'RATE_LIMIT_EXCEEDED' || error?.status === 401 || error?.status === 403) {
         return false
       }
-      return failureCount < 2
+      return failureCount < RETRY_CONFIG.MAX_ATTEMPTS
     },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000)
+    retryDelay: (attemptIndex) => Math.min(RETRY_CONFIG.BASE_DELAY * 2 ** attemptIndex, RETRY_CONFIG.MAX_DELAY)
   })
 
   // Assistance alerts and notifications
@@ -119,11 +120,11 @@ export function DashboardClient(): JSX.Element {
     data: notificationsData,
     refetch: refetchNotifications
   } = notificationHooks.useUserNotifications(
-    { limit: 50, unreadOnly: false },
+    { limit: NOTIFICATION_LIMITS.DASHBOARD, unreadOnly: false },
     {
       enabled: !!user?.id,
-      refetchInterval: 60000, // Reduced frequency to 1 minute
-      staleTime: 30000,
+      refetchInterval: QUERY_REFETCH_INTERVAL.NORMAL,
+      staleTime: QUERY_STALE_TIME.SHORT,
       refetchOnWindowFocus: false
     }
   )
@@ -131,19 +132,10 @@ export function DashboardClient(): JSX.Element {
   // Use unified WebSocket provider
   const { isConnected: wsConnected } = useWebSocket()
 
-  console.log('Dashboard - State:', {
-    restaurantId,
-    hasRestaurantAccess,
-    metricsData,
-    metricsLoading,
-    metricsError,
-    weeklyData,
-    authToken: auth?.session?.token ? '***present***' : 'missing',
-    authUser: auth?.user ? `${auth?.user.firstName} ${auth?.user.lastName}` : 'no user'
-  })
+  // Removed: Security risk - authentication token logging
 
   // Additional debug logging for dashboard data issues
-  console.log('Dashboard - Detailed metrics analysis:', {
+  logger.debug('Dashboard metrics analysis', {
     metricsDataType: typeof metricsData,
     metricsDataKeys: metricsData ? Object.keys(metricsData) : 'no data',
     todayOrders: metricsData?.todayOrders,
@@ -156,7 +148,7 @@ export function DashboardClient(): JSX.Element {
   useEffect(() => {
     // Check if user has restaurant access
     if (!hasRestaurantAccess) {
-      console.warn('User does not have restaurant access')
+      logger.warn('User does not have restaurant access')
       // You might want to redirect or show an error message
     }
   }, [hasRestaurantAccess])
@@ -167,7 +159,7 @@ export function DashboardClient(): JSX.Element {
       // Auto redirect to login after a short delay to show user the error
       const redirectTimer = setTimeout(() => {
         router.push('/login?error=no_restaurant_access')
-      }, 3000)
+      }, REDIRECT_DELAY.ERROR)
 
       return () => clearTimeout(redirectTimer)
     }
@@ -201,7 +193,7 @@ export function DashboardClient(): JSX.Element {
 
   // WebSocket event listeners for real-time assistance requests
   const handleAssistanceRequested = useCallback((payload: any) => {
-    console.log('🚨 Assistance requested:', payload)
+    logger.assistance('Assistance requested', payload)
 
     // Play assistance sound immediately
     playAssistanceSound()
@@ -233,7 +225,7 @@ export function DashboardClient(): JSX.Element {
   // when the Header component invalidates the orders cache
 
   const handlePaymentCompleted = useCallback((payload: any) => {
-    console.log('💰 Payment completed:', payload)
+    logger.payment('Payment completed', payload)
     // Only invalidate revenue-related queries with throttling
     setTimeout(() => {
       queryClient.invalidateQueries({
@@ -244,7 +236,7 @@ export function DashboardClient(): JSX.Element {
         queryKey: ['weekly-stats', restaurantId],
         exact: false
       })
-    }, 2000) // Longer delay for revenue updates as they're less frequent
+    }, PAYMENT_INVALIDATION_DELAY)
   }, [queryClient, restaurantId])
 
   // Listen for payment events to keep dashboard in sync
@@ -272,7 +264,7 @@ export function DashboardClient(): JSX.Element {
       await auth?.logout()
       router.push('/login')
     } catch (error) {
-      console.error('Logout error:', error)
+      logger.error('Logout error:', error as Error)
     } finally {
       setIsLoggingOut(false)
     }
@@ -350,13 +342,12 @@ export function DashboardClient(): JSX.Element {
 
   // Handle API error
   if (metricsError) {
-    console.error('Dashboard metrics error:', metricsError)
-    console.error('Error details:', {
+    logger.error('Dashboard metrics error', metricsError)
+    logger.error('Error details', {
       status: (metricsError as any)?.status,
       code: (metricsError as any)?.code,
       message: metricsError.message,
-      details: (metricsError as any)?.details,
-      stack: metricsError.stack
+      details: (metricsError as any)?.details
     })
     
     // Check if it's an authentication error

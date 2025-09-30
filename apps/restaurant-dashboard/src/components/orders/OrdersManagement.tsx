@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react'
 import { tabsyClient } from '@tabsy/api-client'
 import { useAuth } from '@tabsy/ui-components'
 import { Button } from '@tabsy/ui-components'
-import { Order, OrderStatus } from '@tabsy/shared-types'
+import { Order, OrderStatus, ApiResponse } from '@tabsy/shared-types'
 import { OrderCard } from './OrderCard'
 import { OrderDetailSlidePanel } from './OrderDetailSlidePanel'
 import { Filter, RefreshCw, AlertCircle, ShoppingCart } from 'lucide-react'
@@ -13,6 +13,8 @@ import { createOrderHooks } from '@tabsy/react-query-hooks'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useContext } from 'react'
 import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
+import { logger } from '@/lib/logger'
+import { QUERY_STALE_TIME } from '@/lib/constants'
 
 interface OrdersManagementProps {
   restaurantId: string
@@ -56,7 +58,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     isFetching: ordersFetching
   } = orderHooks.useOrdersByRestaurant(restaurantId, undefined, {
     enabled: !!restaurantId && !!session?.token && !authLoading,
-    staleTime: 300000, // 5 minutes
+    staleTime: QUERY_STALE_TIME.MEDIUM,
     refetchOnMount: false,
     refetchOnWindowFocus: false,
     refetchInterval: false,
@@ -64,12 +66,15 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
   })
 
 
-  // Extract orders from the proper hook response
+  // Extract orders from the proper hook response with type safety
   let orders: Order[] = []
-  
-  // Use the proper useOrdersByRestaurant response
-  if (ordersResponse && (ordersResponse as any).data?.orders) {
-    orders = (ordersResponse as any).data.orders
+
+  // Use the proper useOrdersByRestaurant response with ApiResponse type
+  if (ordersResponse) {
+    const typedResponse = ordersResponse as ApiResponse<{ orders: Order[]; totalCount?: number }>
+    if (typedResponse.data?.orders) {
+      orders = typedResponse.data.orders
+    }
   }
   
   // Final orders to display
@@ -93,7 +98,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     // Join restaurant room for real-time updates
     if (isConnected && restaurantId) {
       joinRoom(`restaurant:${restaurantId}`)
-      console.log(`Joined restaurant room: restaurant:${restaurantId}`)
+      logger.websocket('Joined restaurant room', { room: `restaurant:${restaurantId}` })
     }
 
     return () => {
@@ -105,10 +110,10 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
 
   // Clean WebSocket event handling with proper cleanup (fixes duplicate order bug)
   const handleNewOrder = useCallback((data: any) => {
-    console.log('📦 New order received via WebSocket:', data)
+    logger.order('New order received via WebSocket', data)
 
     // Try to extract order data from different possible formats
-    let order = null
+    let order: Order | null = null
     if (data?.data?.id) {
       order = data.data
     } else if (data?.id) {
@@ -118,7 +123,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     }
 
     if (!order?.id) {
-      console.error('❌ Invalid order data received:', data)
+      logger.error('Invalid order data received', data)
       refetchOrders()
       return
     }
@@ -135,19 +140,21 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
 
     toast.success(`New order #${order.id} received`)
 
-    // Update orders cache
-    queryClient.setQueryData(['orders', 'restaurant', restaurantId, undefined], (oldData: any) => {
-      if (oldData?.data?.orders) {
-        const updatedOrders = [order, ...oldData.data.orders]
-        return {
-          ...oldData,
-          data: {
-            ...oldData.data,
-            orders: updatedOrders,
-            totalCount: (oldData.data.totalCount || 0) + 1
+    // Update orders cache with proper typing
+    queryClient.setQueryData<ApiResponse<{ orders: Order[]; totalCount?: number }>>(
+      ['orders', 'restaurant', restaurantId, undefined],
+      (oldData) => {
+        if (oldData?.data?.orders) {
+          const updatedOrders = [order, ...oldData.data.orders]
+          return {
+            ...oldData,
+            data: {
+              ...oldData.data,
+              orders: updatedOrders,
+              totalCount: (oldData.data.totalCount || 0) + 1
+            }
           }
-        }
-      } else {
+        } else {
         return {
           data: {
             orders: [order],

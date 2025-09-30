@@ -34,6 +34,9 @@ import { formatNotificationContent, formatRelativeTime, getNotificationPriorityC
 import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
 import { playAssistanceSound, playOrderSound, notificationSoundService } from '@/lib/notificationSound'
 import { useNotificationMute } from '@/contexts/NotificationMuteContext'
+import { debounce } from '@/lib/debounce'
+import { logger } from '@/lib/logger'
+import { QUERY_STALE_TIME, QUERY_REFETCH_INTERVAL, WEBSOCKET_DEBOUNCE, NOTIFICATION_LIMITS } from '@/lib/constants'
 
 interface HeaderProps {
   user: UserType | null
@@ -108,10 +111,11 @@ export function Header({
     { status: OrderStatus.RECEIVED }, // Only fetch RECEIVED orders for badge
     {
       enabled: !!restaurant?.id,
-      staleTime: 300000, // 5 minutes - rely on WebSocket for real-time updates
+      staleTime: QUERY_STALE_TIME.MEDIUM,
       refetchOnMount: false,
-      refetchOnWindowFocus: false
-      // Removed refetchInterval - rely on WebSocket events for real-time badge updates
+      refetchOnWindowFocus: false,
+      // Disable polling when WebSocket is connected - rely on WebSocket events for real-time badge updates
+      refetchInterval: wsConnected ? false : QUERY_REFETCH_INTERVAL.NORMAL
     }
   )
 
@@ -122,12 +126,13 @@ export function Header({
     isLoading: notificationsLoading,
     error: notificationsError
   } = notificationHooks.useUserNotifications({
-    limit: 10,
+    limit: NOTIFICATION_LIMITS.HEADER,
     unreadOnly: false
   }, {
     enabled: !!user?.id,
-    refetchInterval: 30000, // Refresh every 30 seconds
-    staleTime: 10000
+    // Disable polling when WebSocket is connected - rely on real-time updates
+    refetchInterval: wsConnected ? false : QUERY_REFETCH_INTERVAL.FAST,
+    staleTime: QUERY_STALE_TIME.SHORT
   })
 
   // Mark notification as read mutation
@@ -151,48 +156,63 @@ export function Header({
   // Use unified WebSocket provider
   const { isConnected: wsConnected } = useWebSocket()
 
+  // Debounced query invalidation to prevent request storms
+  const debouncedInvalidateOrders = useMemo(
+    () => debounce(() => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] })
+    }, WEBSOCKET_DEBOUNCE.ORDERS),
+    [queryClient]
+  )
+
   // WebSocket event listeners for real-time updates
-  // OPTIMIZATION: Memoize WebSocket event handlers
+  // OPTIMIZATION: Memoize WebSocket event handlers with debounced invalidation
   const handleOrderCreated = useCallback((payload: any) => {
-    console.log('Header: New order created:', payload)
+    logger.order('New order created', payload)
 
     // Play order sound for new orders (audio will be muted if notifications OR audio is muted)
     const shouldPlaySound = !notificationsMuted && !audioMuted
-    console.log('🔊 Header: Sound check', { notificationsMuted, audioMuted, shouldPlay: shouldPlaySound })
+    logger.debug('Sound check', { notificationsMuted, audioMuted, shouldPlay: shouldPlaySound })
     if (shouldPlaySound) {
       playOrderSound('normal')
     }
 
-    // Increment the real-time order count immediately
+    // Increment the real-time order count immediately (optimistic update)
     setRealtimeOrderCount(prev => prev + 1)
-    // Remove setTimeout delay for better responsiveness
-    queryClient.invalidateQueries({ queryKey: ['orders'] })
-  }, [queryClient, notificationsMuted, audioMuted])
+    // Debounced refetch to prevent request storms
+    debouncedInvalidateOrders()
+  }, [debouncedInvalidateOrders, notificationsMuted, audioMuted])
 
   useWebSocketEvent('order:created', handleOrderCreated, [handleOrderCreated])
 
   const handleOrderStatusUpdated = useCallback((payload: any) => {
-    console.log('Header: Order status updated:', payload)
-    // Remove setTimeout delay for better responsiveness
-    queryClient.invalidateQueries({ queryKey: ['orders'] })
-  }, [queryClient])
+    logger.order('Order status updated', payload)
+    // Debounced refetch to prevent request storms
+    debouncedInvalidateOrders()
+  }, [debouncedInvalidateOrders])
 
   useWebSocketEvent('order:status_updated', handleOrderStatusUpdated, [handleOrderStatusUpdated])
 
+  const debouncedInvalidateNotifications = useMemo(
+    () => debounce(() => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    }, WEBSOCKET_DEBOUNCE.NOTIFICATIONS),
+    [queryClient]
+  )
+
   const handleAssistanceRequested = useCallback((payload: any) => {
-    console.log('Header: Assistance requested:', payload)
+    logger.assistance('Assistance requested', payload)
 
     // Play assistance sound based on urgency (audio will be muted if notifications OR audio is muted)
     const shouldPlaySound = !notificationsMuted && !audioMuted
-    console.log('🔊 Header: Assistance sound check', { notificationsMuted, audioMuted, shouldPlay: shouldPlaySound })
+    logger.debug('Assistance sound check', { notificationsMuted, audioMuted, shouldPlay: shouldPlaySound })
     if (shouldPlaySound) {
       const urgency = payload.urgency || 'normal'
       playAssistanceSound(urgency)
     }
 
-    // Only refetch notifications to sync with backend (no manual counter increment)
-    queryClient.invalidateQueries({ queryKey: ['notifications'] })
-  }, [queryClient, notificationsMuted, audioMuted])
+    // Debounced refetch to sync with backend (no manual counter increment)
+    debouncedInvalidateNotifications()
+  }, [debouncedInvalidateNotifications, notificationsMuted, audioMuted])
 
   useWebSocketEvent('assistance:requested', handleAssistanceRequested, [handleAssistanceRequested])
 

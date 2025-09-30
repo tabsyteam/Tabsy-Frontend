@@ -5,6 +5,8 @@ import { useEffect, useState, Suspense } from 'react';
 import { ChefHat } from 'lucide-react';
 import { LoginForm, useAuth } from '@tabsy/ui-components';
 import { UserRole, User } from '@tabsy/shared-types';
+import { logger } from '@/lib/logger';
+import { LOADING_TIMEOUT, APP_URLS } from '@/lib/constants';
 
 function RestaurantLoginContent() {
   const router = useRouter();
@@ -27,17 +29,17 @@ function RestaurantLoginContent() {
 
   // Debug logs
   useEffect(() => {
-    console.log('Auth State:', { isAuthenticated, user: (user as User)?.role, isLoading, isVerifying });
+    logger.debug('Auth State', { isAuthenticated, userRole: (user as User)?.role, isLoading, isVerifying });
   }, [isAuthenticated, user, isLoading, isVerifying]);
 
   // Set a timeout for loading state to prevent infinite loading
   useEffect(() => {
     const timer = setTimeout(() => {
       if (isLoading) {
-        console.warn('Auth loading timeout reached, forcing load completion');
+        logger.warn('Auth loading timeout reached, forcing load completion');
         setLoadingTimeout(true);
       }
-    }, 5000); // 5 second timeout
+    }, LOADING_TIMEOUT.AUTH);
 
     return () => clearTimeout(timer);
   }, [isLoading]);
@@ -53,7 +55,7 @@ function RestaurantLoginContent() {
   useEffect(() => {
     if (isAuthenticated && user && 'role' in user && !isVerifying && !isLoading) {
       const typedUser = user as User;
-      console.log('User authenticated with complete profile, redirecting...', typedUser.role);
+      logger.debug('User authenticated with complete profile, redirecting', { role: typedUser.role });
       // Check if user has restaurant access
       const userRole = typedUser.role;
       if (userRole === UserRole.RESTAURANT_OWNER || userRole === UserRole.RESTAURANT_STAFF) {
@@ -62,8 +64,8 @@ function RestaurantLoginContent() {
         router.push('/admin/dashboard');
       } else {
         // Not a restaurant or admin user, redirect to customer app
-        console.log('Invalid role for restaurant dashboard:', userRole);
-        window.location.href = 'http://localhost:3001';
+        logger.info('Invalid role for restaurant dashboard, redirecting to customer app', { userRole });
+        window.location.href = APP_URLS.CUSTOMER;
       }
     }
   }, [isAuthenticated, user, router, isVerifying, isLoading]);
@@ -93,7 +95,7 @@ function RestaurantLoginContent() {
 
   // Show warning if loading timed out
   if (loadingTimeout) {
-    console.warn('Authentication loading timed out, showing login form');
+    logger.warn('Authentication loading timed out, showing login form');
   }
 
   return (
@@ -178,7 +180,7 @@ function RestaurantLoginContent() {
                   </a>
                   <span className="text-theme-border-dark">•</span>
                   <a
-                    href="http://localhost:3001"
+                    href={APP_URLS.CUSTOMER}
                     className="flex items-center space-x-1 hover:text-primary transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

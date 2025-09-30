@@ -1,194 +1,194 @@
-/* Modern Food App Theme - Soft, Appetizing Colors */
+/* Modern Food App Theme - Vibrant Blue & Orange Brand Colors (2025) */
 :root {
-  /* Primary Colors - Warm Coral for food enthusiasm */
-  --primary: 255 107 107; /* #FF6B6B - Warm coral */
-  --primary-hover: 255 82 82; /* #FF5252 - Darker coral */
-  --primary-active: 239 68 68; /* #EF4444 - Active coral */
-  --primary-light: 254 242 242; /* #FEF2F2 - Light coral tint */
-  --primary-dark: 220 38 38; /* #DC2626 - Dark coral */
+  /* Primary Colors - Vibrant Blue for trust and modernity */
+  --primary: 59 130 246; /* #3B82F6 - Vibrant blue */
+  --primary-hover: 37 99 235; /* #2563EB - Darker blue */
+  --primary-active: 29 78 216; /* #1D4ED8 - Active blue */
+  --primary-light: 239 246 255; /* #EFF6FF - Light blue tint */
+  --primary-dark: 30 58 138; /* #1E3A8A - Logo blue */
   --primary-foreground: 255 255 255;
 
-  /* Secondary Colors - Sage Green for freshness */
-  --secondary: 135 169 107; /* #87A96B - Sage green */
-  --secondary-hover: 124 158 92; /* Darker sage */
-  --secondary-active: 113 147 77; /* Active sage */
-  --secondary-light: 240 249 235; /* #F0F9EB - Light sage tint */
-  --secondary-dark: 102 139 61; /* Dark sage */
+  /* Secondary Colors - Cyan/Teal for freshness and energy */
+  --secondary: 6 182 212; /* #06B6D4 - Cyan/teal */
+  --secondary-hover: 8 145 178; /* #0891B2 - Darker cyan */
+  --secondary-active: 14 116 144; /* #0E7490 - Active cyan */
+  --secondary-light: 236 254 255; /* #ECFEFF - Light cyan tint */
+  --secondary-dark: 21 94 117; /* #155E75 - Dark cyan */
   --secondary-foreground: 255 255 255;
 
-  /* Accent Colors - Warm Golden Amber for highlights */
-  --accent: 251 191 36; /* #FBBF24 - Warm golden amber */
-  --accent-hover: 245 158 11; /* #F59E0B - Darker amber */
-  --accent-active: 217 119 6; /* #D97706 - Active amber */
-  --accent-light: 255 251 235; /* #FFFBEB - Light amber tint */
-  --accent-dark: 180 83 9; /* #B45309 - Dark amber */
-  --accent-foreground: 92 84 72; /* Dark text on amber */
+  /* Accent Colors - Logo Orange for enthusiasm and CTAs */
+  --accent: 249 115 22; /* #F97316 - Orange from logo */
+  --accent-hover: 234 88 12; /* #EA580C - Darker orange */
+  --accent-active: 194 65 12; /* #C2410C - Active orange */
+  --accent-light: 255 247 237; /* #FFF7ED - Light orange tint */
+  --accent-dark: 154 52 18; /* #9A3412 - Dark orange */
+  --accent-foreground: 255 255 255;
 
-  /* Surface Colors - Clean whites and off-whites */
+  /* Surface Colors - Clean whites with subtle blue tints */
   --surface: 255 255 255; /* Pure white */
-  --surface-secondary: 250 249 247; /* #FAF9F7 - Soft off-white */
-  --surface-tertiary: 245 244 240; /* #F5F4F0 - Slightly darker off-white */
+  --surface-secondary: 249 250 251; /* #F9FAFB - Soft blue-tinted off-white */
+  --surface-tertiary: 243 244 246; /* #F3F4F6 - Slightly darker blue-tinted */
   --surface-elevated: 255 255 255; /* Elevated white with shadow */
   --surface-overlay: 0 0 0 / 0.4; /* Subtle overlay */
 
-  /* Background Colors - Warm, appetizing neutrals */
-  --background: 250 249 247; /* #FAF9F7 - Primary soft background */
-  --background-secondary: 245 244 240; /* #F5F4F0 - Secondary background */
-  --background-tertiary: 254 242 242; /* Light coral for accent sections */
-  --background-inverse: 41 37 36; /* #292524 - Dark warm gray */
+  /* Background Colors - Modern, blue-tinted neutrals */
+  --background: 249 250 251; /* #F9FAFB - Primary soft blue-tinted background */
+  --background-secondary: 243 244 246; /* #F3F4F6 - Secondary background */
+  --background-tertiary: 239 246 255; /* Light blue tint for accent sections */
+  --background-inverse: 17 24 39; /* #111827 - Dark slate gray */
 
   /* Content/Text Colors - High contrast, readable */
-  --content-primary: 41 37 36; /* #292524 - Primary dark text */
-  --content-secondary: 68 64 60; /* #44403C - Secondary text */
-  --content-tertiary: 120 113 108; /* #78716C - Tertiary text */
-  --content-disabled: 168 162 158; /* #A8A29E - Disabled text */
+  --content-primary: 17 24 39; /* #111827 - Primary dark text */
+  --content-secondary: 55 65 81; /* #374151 - Secondary text */
+  --content-tertiary: 107 114 128; /* #6B7280 - Tertiary text */
+  --content-disabled: 156 163 175; /* #9CA3AF - Disabled text */
   --content-inverse: 255 255 255; /* White text on dark */
-  --content-brand: 255 107 107; /* Coral for brand highlights */
+  --content-brand: 59 130 246; /* Blue for brand highlights */
 
-  /* Border Colors - Subtle, modern */
+  /* Border Colors - Subtle, modern blue-tinted */
   --border: 229 231 235; /* #E5E7EB - Neutral light gray border */
-  --border-secondary: 214 211 209; /* #D6D3D1 - Darker border */
-  --border-tertiary: 245 244 240; /* Slightly darker off-white border */
-  --border-focus: 156 163 175; /* #9CA3AF - Subtle gray focus for light mode */
-  --border-focus-subtle: 209 213 219; /* #D1D5DB - Very subtle focus border */
+  --border-secondary: 209 213 219; /* #D1D5DB - Darker border */
+  --border-tertiary: 243 244 246; /* Blue-tinted border */
+  --border-focus: 59 130 246; /* Blue focus ring */
+  --border-focus-subtle: 191 219 254; /* #BFD7FE - Very subtle blue focus border */
   --border-error: 239 68 68; /* Error red */
 
-  /* Status Colors - Updated for food app */
-  --status-success: 102 139 61; /* Sage green for success */
-  --status-success-light: 240 249 235; /* Light sage */
-  --status-success-dark: 82 109 46; /* Dark sage */
+  /* Status Colors - Modern, vibrant status indicators */
+  --status-success: 34 197 94; /* #22C55E - Modern green for success */
+  --status-success-light: 240 253 244; /* #F0FDF4 - Light green */
+  --status-success-dark: 21 128 61; /* #15803D - Dark green */
   --status-success-foreground: 255 255 255;
-  --status-success-border: 187 224 145; /* Light sage border */
+  --status-success-border: 134 239 172; /* #86EFAC - Light green border */
 
-  --status-warning: 251 191 36; /* Warm amber for warnings */
-  --status-warning-light: 255 251 235; /* Light amber */
-  --status-warning-dark: 180 83 9; /* Dark amber */
-  --status-warning-foreground: 92 84 72; /* Dark text on amber */
-  --status-warning-border: 252 211 77; /* Amber border */
+  --status-warning: 249 115 22; /* #F97316 - Orange for warnings (brand accent) */
+  --status-warning-light: 255 247 237; /* #FFF7ED - Light orange */
+  --status-warning-dark: 154 52 18; /* #9A3412 - Dark orange */
+  --status-warning-foreground: 255 255 255;
+  --status-warning-border: 251 146 60; /* #FB923C - Orange border */
 
-  --status-error: 239 68 68; /* Coral red for errors */
-  --status-error-light: 254 242 242; /* Light coral */
-  --status-error-dark: 185 28 28; /* Dark red */
+  --status-error: 239 68 68; /* #EF4444 - Red for errors */
+  --status-error-light: 254 242 242; /* #FEF2F2 - Light red */
+  --status-error-dark: 185 28 28; /* #B91C1C - Dark red */
   --status-error-foreground: 255 255 255;
-  --status-error-border: 254 202 202; /* Light red border */
+  --status-error-border: 252 165 165; /* #FCA5A5 - Light red border */
 
-  --status-info: 255 107 107; /* Coral for info */
-  --status-info-light: 254 242 242; /* Light coral */
-  --status-info-dark: 220 38 38; /* Dark coral */
+  --status-info: 59 130 246; /* #3B82F6 - Blue for info (brand primary) */
+  --status-info-light: 239 246 255; /* #EFF6FF - Light blue */
+  --status-info-dark: 29 78 216; /* #1D4ED8 - Dark blue */
   --status-info-foreground: 255 255 255;
-  --status-info-border: 254 202 202; /* Light coral border */
+  --status-info-border: 147 197 253; /* #93C5FD - Light blue border */
 
-  /* Interactive States - Updated */
-   --interactive-hover: 254 242 242; /* Light coral tint for hover - more visible */
-  --interactive-active: 229 231 235; /* Darker gray for pressed state */
-  --interactive-disabled: 168 162 158; /* Disabled state */
-  --interactive-focus: 255 107 107; /* Coral focus ring */
+  /* Interactive States - Modern blue-tinted states */
+  --interactive-hover: 239 246 255; /* Light blue tint for hover */
+  --interactive-active: 219 234 254; /* Darker blue tint for pressed state */
+  --interactive-disabled: 156 163 175; /* Disabled state */
+  --interactive-focus: 59 130 246; /* Blue focus ring */
 
   /* Override shadcn/ui component variables - using HSL format for compatibility */
-  --ring: 0 71% 71%; /* Coral in HSL for focus ring */
-  --input: 46 20% 96%; /* Soft off-white input background in HSL */
-  --muted: 46 20% 98%; /* Light background in HSL */
-  --muted-foreground: 25 13% 45%; /* Secondary text in HSL */
+  --ring: 217 91% 60%; /* Blue in HSL for focus ring (#3B82F6) */
+  --input: 214 32% 98%; /* Soft blue-tinted input background in HSL */
+  --muted: 210 40% 98%; /* Light blue-tinted background in HSL */
+  --muted-foreground: 215 16% 47%; /* Secondary text in HSL */
   --destructive: 0 84% 60%; /* Error red in HSL */
   --destructive-foreground: 0 0% 100%; /* White text in HSL */
   --card: 0 0% 100%; /* White card background in HSL */
-  --card-foreground: 16 20% 22%; /* Primary dark text in HSL */
+  --card-foreground: 222 47% 11%; /* Primary dark text in HSL (#111827) */
   --popover: 0 0% 100%; /* White popover in HSL */
-  --popover-foreground: 16 20% 22%; /* Primary dark text in HSL */
-  --foreground: 16 20% 22%; /* Primary dark text in HSL */
+  --popover-foreground: 222 47% 11%; /* Primary dark text in HSL */
+  --foreground: 222 47% 11%; /* Primary dark text in HSL */
   --radius: 0.75rem;
 }
 
-/* Dark mode variables - Modern food app dark theme */
+/* Dark mode variables - Modern blue/orange dark theme (2025) */
 .dark {
-  --primary: 255 139 139; /* Lighter coral for dark mode */
-  --primary-hover: 255 107 107; /* Standard coral */
-  --primary-active: 255 82 82; /* Darker coral */
-  --primary-light: 41 37 36; /* Dark background */
-  --primary-dark: 254 242 242; /* Light coral tint */
-  --primary-foreground: 41 37 36; /* Dark text on coral */
+  --primary: 96 165 250; /* #60A5FA - Lighter blue for dark mode */
+  --primary-hover: 59 130 246; /* #3B82F6 - Standard blue */
+  --primary-active: 37 99 235; /* #2563EB - Darker blue */
+  --primary-light: 30 41 59; /* #1E293B - Dark blue background */
+  --primary-dark: 239 246 255; /* #EFF6FF - Light blue tint */
+  --primary-foreground: 15 23 42; /* #0F172A - Dark text on blue */
 
-  --secondary: 167 201 139; /* Lighter sage for dark mode */
-  --secondary-hover: 135 169 107; /* Standard sage */
-  --secondary-active: 124 158 92; /* Darker sage */
-  --secondary-light: 41 37 36; /* Dark background */
-  --secondary-dark: 240 249 235; /* Light sage tint */
-  --secondary-foreground: 41 37 36; /* Dark text on sage */
+  --secondary: 34 211 238; /* #22D3EE - Lighter cyan for dark mode */
+  --secondary-hover: 6 182 212; /* #06B6D4 - Standard cyan */
+  --secondary-active: 8 145 178; /* #0891B2 - Darker cyan */
+  --secondary-light: 30 41 59; /* Dark background */
+  --secondary-dark: 236 254 255; /* #ECFEFF - Light cyan tint */
+  --secondary-foreground: 15 23 42; /* Dark text on cyan */
 
-  --accent: 253 211 68; /* Lighter amber for dark mode */
-  --accent-hover: 251 191 36; /* Standard amber */
-  --accent-active: 245 158 11; /* Darker amber */
-  --accent-light: 41 37 36; /* Dark background */
-  --accent-dark: 255 251 235; /* Light amber tint */
-  --accent-foreground: 41 37 36; /* Dark text on amber */
+  --accent: 251 146 60; /* #FB923C - Lighter orange for dark mode */
+  --accent-hover: 249 115 22; /* #F97316 - Standard orange */
+  --accent-active: 234 88 12; /* #EA580C - Darker orange */
+  --accent-light: 30 41 59; /* Dark background */
+  --accent-dark: 255 247 237; /* #FFF7ED - Light orange tint */
+  --accent-foreground: 15 23 42; /* Dark text on orange */
 
-  --surface: 41 37 36; /* Warm dark surface */
-  --surface-secondary: 31 27 24; /* Darker warm surface */
-  --surface-tertiary: 23 20 18; /* Darkest warm surface */
-  --surface-elevated: 68 64 60; /* Elevated warm surface - IMPROVED for better hover visibility */
+  --surface: 30 41 59; /* #1E293B - Dark slate surface */
+  --surface-secondary: 15 23 42; /* #0F172A - Darker slate surface */
+  --surface-tertiary: 2 6 23; /* #020617 - Darkest slate surface */
+  --surface-elevated: 51 65 85; /* #334155 - Elevated slate surface */
 
-  --background: 23 20 18; /* Primary dark background */
-  --background-secondary: 31 27 24; /* Secondary dark background */
-  --background-tertiary: 41 37 36; /* Tertiary dark background */
-  --background-inverse: 250 249 247; /* Light background for contrast */
+  --background: 15 23 42; /* #0F172A - Primary dark background */
+  --background-secondary: 30 41 59; /* #1E293B - Secondary dark background */
+  --background-tertiary: 51 65 85; /* #334155 - Tertiary dark background */
+  --background-inverse: 249 250 251; /* #F9FAFB - Light background for contrast */
 
-  --content-primary: 250 249 247; /* Light text */
-  --content-secondary: 231 229 228; /* Secondary light text */
-  --content-tertiary: 168 162 158; /* Tertiary light text */
-  --content-disabled: 120 113 108; /* Disabled text */
-  --content-inverse: 41 37 36; /* Dark text on light */
-  --content-brand: 255 139 139; /* Light coral for highlights */
+  --content-primary: 248 250 252; /* #F8FAFC - Light text */
+  --content-secondary: 226 232 240; /* #E2E8F0 - Secondary light text */
+  --content-tertiary: 148 163 184; /* #94A3B8 - Tertiary light text */
+  --content-disabled: 100 116 139; /* #64748B - Disabled text */
+  --content-inverse: 15 23 42; /* #0F172A - Dark text on light */
+  --content-brand: 96 165 250; /* #60A5FA - Light blue for highlights */
 
-  --border: 68 64 60; /* Dark border */
-  --border-secondary: 87 83 78; /* Lighter dark border */
-  --border-tertiary: 51 47 44; /* Darkest border */
-  --border-focus: 255 139 139; /* Coral focus */
-  --border-focus-subtle: 120 113 108; /* Subtle focus border for inputs in dark mode */
-  --border-error: 255 139 139; /* Light coral for errors */
+  --border: 51 65 85; /* #334155 - Dark border */
+  --border-secondary: 71 85 105; /* #475569 - Lighter dark border */
+  --border-tertiary: 30 41 59; /* #1E293B - Darkest border */
+  --border-focus: 96 165 250; /* #60A5FA - Blue focus */
+  --border-focus-subtle: 71 85 105; /* #475569 - Subtle focus border */
+  --border-error: 248 113 113; /* #F87171 - Light red for errors */
 
   /* Interactive States - Dark mode overrides */
-  --interactive-hover: 68 64 60; /* IMPROVED: More visible elevated warm surface for hover */
-  --interactive-active: 87 83 78; /* Lighter dark for active/pressed state */
-  --interactive-disabled: 68 64 60; /* Disabled state */
-  --interactive-focus: 255 139 139; /* Light coral focus */
+  --interactive-hover: 51 65 85; /* #334155 - Elevated slate surface for hover */
+  --interactive-active: 71 85 105; /* #475569 - Lighter slate for active state */
+  --interactive-disabled: 51 65 85; /* Disabled state */
+  --interactive-focus: 96 165 250; /* #60A5FA - Light blue focus */
 
-  /* Dark Mode Status Colors - Properly adjusted for dark backgrounds */
-  --status-success: 134 239 172; /* Light green for dark mode */
-  --status-success-light: 20 83 45; /* Dark green background */
-  --status-success-dark: 187 247 208; /* Very light green */
-  --status-success-foreground: 20 83 45; /* Dark text */
-  --status-success-border: 74 222 128; /* Medium green border */
+  /* Dark Mode Status Colors - Vibrant for dark backgrounds */
+  --status-success: 74 222 128; /* #4ADE80 - Bright green for dark mode */
+  --status-success-light: 20 83 45; /* #14532D - Dark green background */
+  --status-success-dark: 187 247 208; /* #BBF7D0 - Very light green */
+  --status-success-foreground: 255 255 255; /* White text */
+  --status-success-border: 34 197 94; /* #22C55E - Medium green border */
 
-  --status-warning: 253 224 71; /* Light yellow for dark mode */
-  --status-warning-light: 133 77 14; /* Dark yellow background */
-  --status-warning-dark: 254 240 138; /* Very light yellow */
-  --status-warning-foreground: 133 77 14; /* Dark text */
-  --status-warning-border: 250 204 21; /* Medium yellow border */
+  --status-warning: 251 146 60; /* #FB923C - Bright orange for dark mode */
+  --status-warning-light: 69 26 3; /* #451A03 - Dark orange background */
+  --status-warning-dark: 254 215 170; /* #FED7AA - Very light orange */
+  --status-warning-foreground: 255 255 255; /* White text */
+  --status-warning-border: 249 115 22; /* #F97316 - Medium orange border */
 
-  --status-error: 248 113 113; /* Light red for dark mode */
-  --status-error-light: 127 29 29; /* Dark red background */
-  --status-error-dark: 254 202 202; /* Very light red */
+  --status-error: 248 113 113; /* #F87171 - Bright red for dark mode */
+  --status-error-light: 127 29 29; /* #7F1D1D - Dark red background */
+  --status-error-dark: 254 202 202; /* #FECACA - Very light red */
   --status-error-foreground: 255 255 255; /* White text */
-  --status-error-border: 239 68 68; /* Medium red border */
+  --status-error-border: 239 68 68; /* #EF4444 - Medium red border */
 
-  --status-info: 147 197 253; /* Light blue for dark mode */
-  --status-info-light: 30 58 138; /* Dark blue background */
-  --status-info-dark: 219 234 254; /* Very light blue */
+  --status-info: 147 197 253; /* #93C5FD - Bright blue for dark mode */
+  --status-info-light: 30 58 138; /* #1E3A8A - Dark blue background */
+  --status-info-dark: 219 234 254; /* #DBEAFE - Very light blue */
   --status-info-foreground: 255 255 255; /* White text */
-  --status-info-border: 96 165 250; /* Medium blue border */
+  --status-info-border: 96 165 250; /* #60A5FA - Medium blue border */
 
   /* shadcn/ui dark mode variables in HSL */
-  --foreground: 46 20% 98%; /* Light text in HSL */
-  --muted: 25 13% 16%; /* Dark muted background in HSL */
-  --muted-foreground: 0 71% 77%; /* Light coral muted text in HSL */
-  --card: 25 13% 16%; /* Dark card background in HSL */
-  --card-foreground: 46 20% 98%; /* Light text in HSL */
-  --popover: 25 13% 16%; /* Dark popover in HSL */
-  --popover-foreground: 46 20% 98%; /* Light text in HSL */
-  --ring: 0 71% 77%; /* Light coral ring in HSL */
-  --input: 25 13% 16%; /* Dark input background in HSL */
-  --destructive: 0 71% 77%; /* Light coral destructive in HSL */
-  --destructive-foreground: 25 13% 16%; /* Dark text on coral in HSL */
+  --foreground: 210 40% 98%; /* #F8FAFC - Light text in HSL */
+  --muted: 217 33% 17%; /* #1E293B - Dark muted background in HSL */
+  --muted-foreground: 215 20% 65%; /* #94A3B8 - Light blue-gray muted text in HSL */
+  --card: 217 33% 17%; /* #1E293B - Dark card background in HSL */
+  --card-foreground: 210 40% 98%; /* #F8FAFC - Light text in HSL */
+  --popover: 217 33% 17%; /* #1E293B - Dark popover in HSL */
+  --popover-foreground: 210 40% 98%; /* #F8FAFC - Light text in HSL */
+  --ring: 217 91% 68%; /* #60A5FA - Light blue ring in HSL */
+  --input: 217 33% 17%; /* #1E293B - Dark input background in HSL */
+  --destructive: 0 84% 71%; /* #F87171 - Light red destructive in HSL */
+  --destructive-foreground: 222 84% 5%; /* #0F172A - Dark text on red in HSL */
 }
 
 /* Semantic utility classes */
@@ -339,72 +339,72 @@
     background-clip: text;
   }
 
-  /* Modern Glassmorphism & Enhanced UI Classes */
+  /* Modern Glassmorphism & Enhanced UI Classes - Blue Theme */
   .glass-card {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(30, 58, 138, 0.1);
-    box-shadow: 0 8px 32px rgba(30, 58, 138, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    box-shadow: 0 8px 32px rgba(59, 130, 246, 0.12);
   }
 
   .glass-header {
     background: rgba(255, 255, 255, 0.90);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid rgba(30, 58, 138, 0.15);
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
   }
 
   .glass-surface {
     background: rgba(255, 255, 255, 0.80);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(30, 58, 138, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.12);
   }
 
-  /* Enhanced Card Effects */
+  /* Enhanced Card Effects - Blue/Orange Theme */
   .card-modern {
     background: linear-gradient(135deg,
       rgba(255, 255, 255, 0.95) 0%,
-      rgba(252, 248, 243, 0.95) 100%);
+      rgba(239, 246, 255, 0.95) 100%);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(30, 58, 138, 0.12);
-    box-shadow: 0 4px 24px rgba(30, 58, 138, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.15);
+    box-shadow: 0 4px 24px rgba(59, 130, 246, 0.1);
     @apply transition-all duration-300 ease-out;
   }
 
   .card-modern:hover {
     background: linear-gradient(135deg,
       rgba(255, 255, 255, 0.98) 0%,
-      rgba(252, 248, 243, 0.98) 100%);
-    box-shadow: 0 8px 40px rgba(30, 58, 138, 0.15);
-    border-color: rgba(30, 58, 138, 0.2);
+      rgba(239, 246, 255, 0.98) 100%);
+    box-shadow: 0 8px 40px rgba(59, 130, 246, 0.18);
+    border-color: rgba(59, 130, 246, 0.25);
     transform: translateY(-2px) scale(1.02);
   }
 
-  /* Modern Button Styles */
+  /* Modern Button Styles - Blue/Orange Theme */
   .btn-glass {
-    background: rgba(30, 58, 138, 0.1);
+    background: rgba(59, 130, 246, 0.1);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(30, 58, 138, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.25);
     color: rgb(var(--primary));
     @apply transition-all duration-200;
   }
 
   .btn-glass:hover {
-    background: rgba(30, 58, 138, 0.15);
-    border-color: rgba(30, 58, 138, 0.3);
+    background: rgba(59, 130, 246, 0.15);
+    border-color: rgba(59, 130, 246, 0.4);
     transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(30, 58, 138, 0.2);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
   }
 
   .btn-gradient {
     background: linear-gradient(135deg,
       rgb(var(--primary)) 0%,
       rgb(var(--accent)) 100%);
-    box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35);
     @apply transition-all duration-200;
   }
 
@@ -412,22 +412,22 @@
     background: linear-gradient(135deg,
       rgb(var(--primary-hover)) 0%,
       rgb(var(--accent-hover)) 100%);
-    box-shadow: 0 6px 24px rgba(30, 58, 138, 0.4);
+    box-shadow: 0 6px 24px rgba(59, 130, 246, 0.45);
     transform: translateY(-2px);
   }
 
-  /* Enhanced Category Pills */
+  /* Enhanced Category Pills - Blue/Orange Theme */
   .category-pill {
     background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
-    border: 1px solid rgba(30, 58, 138, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.2);
     @apply transition-all duration-200;
   }
 
   .category-pill:hover {
-    background: rgba(30, 58, 138, 0.1);
-    border-color: rgba(30, 58, 138, 0.3);
+    background: rgba(59, 130, 246, 0.1);
+    border-color: rgba(59, 130, 246, 0.35);
     transform: translateY(-1px);
   }
 
@@ -436,7 +436,7 @@
       rgb(var(--primary)) 0%,
       rgb(var(--accent)) 100%);
     color: rgb(var(--primary-foreground));
-    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.3);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.35);
     border: 1px solid transparent;
   }
 
@@ -456,41 +456,41 @@
     transform: translateY(-4px) scale(1.02);
   }
 
-  /* Search Enhancement */
+  /* Search Enhancement - Blue Theme */
   .search-glass {
     background: rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(30, 58, 138, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.25);
   }
 
   .search-glass:focus {
     background: rgba(255, 255, 255, 0.95);
     border-color: rgb(var(--primary));
-    box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
   }
 
-  /* Enhanced Shadows */
+  /* Enhanced Shadows - Blue Tinted */
   .shadow-soft {
-    box-shadow: 0 2px 16px rgba(30, 58, 138, 0.06);
+    box-shadow: 0 2px 16px rgba(59, 130, 246, 0.08);
   }
 
   .shadow-medium {
-    box-shadow: 0 4px 24px rgba(30, 58, 138, 0.1);
+    box-shadow: 0 4px 24px rgba(59, 130, 246, 0.12);
   }
 
   .shadow-strong {
-    box-shadow: 0 8px 40px rgba(30, 58, 138, 0.15);
+    box-shadow: 0 8px 40px rgba(59, 130, 246, 0.18);
   }
 
-  /* Advanced Gradients */
+  /* Advanced Gradients - Blue/Orange Theme */
   .gradient-mesh {
     background: linear-gradient(135deg,
-      rgba(252, 248, 243, 0.4) 0%,
-      rgba(239, 246, 255, 0.4) 25%,
+      rgba(239, 246, 255, 0.4) 0%,
+      rgba(236, 254, 255, 0.4) 25%,
       rgba(255, 247, 237, 0.4) 50%,
-      rgba(252, 248, 243, 0.4) 75%,
-      rgba(239, 246, 255, 0.4) 100%);
+      rgba(239, 246, 255, 0.4) 75%,
+      rgba(236, 254, 255, 0.4) 100%);
   }
 
   /* Modern Horizontal Scroll Indicators */
@@ -543,28 +543,28 @@
     scroll-snap-align: start;
   }
 
-  /* Dark mode glassmorphism */
+  /* Dark mode glassmorphism - Blue/Orange Theme */
   .dark .glass-card {
-    background: rgba(31, 41, 55, 0.95);
-    border: 1px solid rgba(147, 197, 253, 0.15);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    background: rgba(30, 41, 59, 0.95);
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   }
 
   .dark .glass-header {
-    background: rgba(17, 24, 39, 0.90);
-    border-bottom: 1px solid rgba(147, 197, 253, 0.2);
+    background: rgba(15, 23, 42, 0.90);
+    border-bottom: 1px solid rgba(96, 165, 250, 0.25);
   }
 
   .dark .card-modern {
     background: linear-gradient(135deg,
-      rgba(31, 41, 55, 0.95) 0%,
-      rgba(23, 37, 84, 0.95) 100%);
-    border: 1px solid rgba(147, 197, 253, 0.15);
+      rgba(30, 41, 59, 0.95) 0%,
+      rgba(15, 23, 42, 0.95) 100%);
+    border: 1px solid rgba(96, 165, 250, 0.2);
   }
 
   .dark .card-modern:hover {
     background: linear-gradient(135deg,
-      rgba(55, 65, 81, 0.98) 0%,
-      rgba(23, 37, 84, 0.98) 100%);
-    box-shadow: 0 8px 40px rgba(147, 197, 253, 0.2);
+      rgba(51, 65, 85, 0.98) 0%,
+      rgba(30, 41, 59, 0.98) 100%);
+    box-shadow: 0 8px 40px rgba(96, 165, 250, 0.25);
   }

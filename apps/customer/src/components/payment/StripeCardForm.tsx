@@ -125,7 +125,7 @@ export function StripeCardForm({ onValidityChange, onError, disabled = false, on
             type="checkbox"
             checked={showBillingAddress}
             onChange={(e) => setShowBillingAddress(e.target.checked)}
-            className="rounded border-default"
+            className="w-4 h-4 text-primary bg-surface border-2 border-default focus:ring-2 focus:ring-primary focus:ring-offset-0 rounded checked:bg-primary checked:border-primary transition-colors"
             disabled={disabled}
           />
         </div>

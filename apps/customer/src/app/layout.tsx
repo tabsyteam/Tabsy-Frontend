@@ -44,8 +44,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#FFFFFF' },
-    { media: '(prefers-color-scheme: dark)', color: '#1A1A1A' },
+    { media: '(prefers-color-scheme: light)', color: '#3B82F6' }, // Primary blue
+    { media: '(prefers-color-scheme: dark)', color: '#0F172A' },  // Dark slate background
   ],
   colorScheme: 'light dark',
   viewportFit: 'cover',

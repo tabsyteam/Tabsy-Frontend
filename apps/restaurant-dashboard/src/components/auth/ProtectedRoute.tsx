@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { useAuth } from '@tabsy/ui-components';
 import { UserRole } from '@tabsy/shared-types';
+import { logger } from '@/lib/logger';
+import { APP_URLS } from '@/lib/constants';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -45,11 +47,11 @@ export function ProtectedRoute({
           return;
         } else if (typedUser?.role === UserRole.CUSTOMER) {
           // Customer user - redirect to customer app
-          window.location.href = 'http://localhost:3001';
+          window.location.href = APP_URLS.CUSTOMER;
           return;
         } else {
           // Other roles - redirect to login with error message
-          console.warn('User with invalid role trying to access restaurant dashboard:', typedUser?.role)
+          logger.warn('User with invalid role trying to access restaurant dashboard', { role: typedUser?.role });
           router.push('/login?error=unauthorized_role');
           return;
         }
@@ -63,7 +65,7 @@ export function ProtectedRoute({
         const restaurantId = (user as any)?.restaurantOwner?.restaurantId || (user as any)?.restaurantStaff?.restaurantId
 
         if (!hasRestaurantOwner && !hasRestaurantStaff && !restaurantId) {
-          console.warn('Restaurant access required but user has no restaurant relationships')
+          logger.warn('Restaurant access required but user has no restaurant relationships');
           router.push('/login?error=no_restaurant_access');
           return;
         }
@@ -117,7 +119,7 @@ export function ProtectedRoute({
                 Sign In with Different Account
               </button>
               <button
-                onClick={() => window.location.href = 'http://localhost:3001'}
+                onClick={() => window.location.href = APP_URLS.CUSTOMER}
                 className="w-full bg-surface-secondary text-content-secondary px-4 py-2 rounded-lg hover:bg-surface-tertiary transition-colors"
               >
                 Go to Customer App
