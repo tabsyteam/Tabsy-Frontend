@@ -28,6 +28,7 @@ import { SplitBillPayment } from './SplitBillPayment'
 import { StripeCardForm } from './StripeCardForm'
 import { StripeProvider } from '@/components/providers/stripe-provider'
 import { PaymentForm } from './PaymentForm'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { useWebSocketEvent } from '@tabsy/ui-components'
 
 interface Order {
@@ -1554,7 +1555,7 @@ export function PaymentView() {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
+          <LoadingSpinner size="lg" />
           <p className="text-content-secondary">Loading payment details...</p>
         </div>
       </div>
@@ -1565,8 +1566,8 @@ export function PaymentView() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center space-y-6 max-w-md">
-          <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-red-600" />
+          <div className="w-16 h-16 mx-auto bg-status-error-light rounded-full flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-status-error" />
           </div>
           <div>
             <h1 className="text-xl font-semibold text-content-primary mb-2">
@@ -1752,7 +1753,7 @@ export function PaymentView() {
                     {Object.values(tableBill.billByRound).every((round) =>
                       round.orders.every((order) => order.isPaid)
                     ) && (
-                      <div className="text-center py-4 text-content-secondary bg-green-50 rounded-lg border border-green-200">
+                      <div className="text-center py-4 text-content-secondary bg-status-success-light rounded-lg border border-status-success">
                         <div className="text-2xl mb-2">✅</div>
                         <p className="font-medium">All orders have been paid!</p>
                         <p className="text-sm">Thank you for dining with us.</p>
@@ -1774,7 +1775,7 @@ export function PaymentView() {
                       <span>${(tableBill.summary.subtotal + tableBill.summary.tax).toFixed(2)}</span>
                     </div>
                     {tableBill.summary.totalPaid > 0 && (
-                      <div className="flex justify-between text-green-600">
+                      <div className="flex justify-between text-status-success">
                         <span>Already Paid</span>
                         <span>-${tableBill.summary.totalPaid.toFixed(2)}</span>
                       </div>
@@ -1846,7 +1847,7 @@ export function PaymentView() {
                 </Button>
               </div>
 
-              <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+              <div className="mt-4 p-3 bg-surface-tertiary rounded-lg">
                 <div className="flex items-center space-x-2 text-sm text-content-secondary">
                   <Info className="w-4 h-4" />
                   <span>
@@ -1925,12 +1926,12 @@ export function PaymentView() {
                           onClick={handlePaymentCancel}
                           variant="outline"
                           size="sm"
-                          className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                          className="w-full border-status-error text-status-error hover:bg-status-error-light hover:border-status-error"
                           disabled={cancelling || processing || updatingTip}
                         >
                           {cancelling ? (
                             <div className="flex items-center space-x-2">
-                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-status-error"></div>
                               <span>Cancelling...</span>
                             </div>
                           ) : (
@@ -1985,12 +1986,12 @@ export function PaymentView() {
                             onClick={handlePaymentCancel}
                             variant="outline"
                             size="lg"
-                            className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                            className="w-full border-status-error text-status-error hover:bg-status-error-light hover:border-status-error"
                             disabled={cancelling || processing || updatingTip}
                           >
                             {cancelling ? (
                               <div className="flex items-center space-x-2">
-                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-status-error"></div>
                                 <span>Cancelling...</span>
                               </div>
                             ) : (
@@ -2056,11 +2057,11 @@ export function PaymentView() {
               <h3 className="text-xl font-semibold text-content-primary mb-6">
                 Payment Summary
                 {!cashPaymentPending && paymentId && tableBill?.summary.paidAmount > 0 ? (
-                  <span className="text-xs text-green-600 ml-2 font-normal">✓ Payment Complete</span>
+                  <span className="text-xs text-status-success ml-2 font-normal">✓ Payment Complete</span>
                 ) : paymentBreakdown ? (
-                  <span className="text-xs text-green-600 ml-2 font-normal">✓ Server Confirmed</span>
+                  <span className="text-xs text-status-success ml-2 font-normal">✓ Server Confirmed</span>
                 ) : (
-                  <span className="text-xs text-orange-600 ml-2 font-normal">~ Estimated</span>
+                  <span className="text-xs text-status-warning ml-2 font-normal">~ Estimated</span>
                 )}
               </h3>
 
@@ -2102,9 +2103,9 @@ export function PaymentView() {
 
                 {/* Show breakdown details when available from server */}
                 {paymentBreakdown && (
-                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="text-xs text-green-700 font-medium mb-2">Server-Confirmed Breakdown:</div>
-                    <div className="space-y-1 text-xs text-green-600">
+                  <div className="mt-4 p-3 bg-status-success-light border border-status-success rounded-lg">
+                    <div className="text-xs text-status-success font-medium mb-2">Server-Confirmed Breakdown:</div>
+                    <div className="space-y-1 text-xs text-status-success">
                       <div className="flex justify-between">
                         <span>Subtotal:</span>
                         <span>${paymentBreakdown.subtotal.toFixed(2)}</span>
@@ -2119,7 +2120,7 @@ export function PaymentView() {
                           <span>${paymentBreakdown.tip.toFixed(2)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between font-medium border-t border-green-300 pt-1">
+                      <div className="flex justify-between font-medium border-t border-status-success pt-1">
                         <span>Total:</span>
                         <span>${paymentBreakdown.total.toFixed(2)}</span>
                       </div>
@@ -2168,12 +2169,12 @@ export function PaymentView() {
 
               {selectedPaymentMethod === PaymentMethod.CASH && !cashPaymentPending && paymentId && (
                 <div className="space-y-3">
-                  <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <div className="flex items-center justify-center space-x-2 text-sm text-green-700">
-                      <CheckCircle className="w-5 h-5 text-green-600" />
+                  <div className="text-center p-4 bg-status-success-light border border-status-success rounded-lg">
+                    <div className="flex items-center justify-center space-x-2 text-sm text-status-success">
+                      <CheckCircle className="w-5 h-5 text-status-success" />
                       <span className="font-medium">Payment Complete!</span>
                     </div>
-                    <p className="text-xs text-green-600 mt-1">Redirecting to confirmation page...</p>
+                    <p className="text-xs text-status-success mt-1">Redirecting to confirmation page...</p>
                   </div>
                 </div>
               )}
@@ -2191,12 +2192,12 @@ export function PaymentView() {
                     onClick={handlePaymentCancel}
                     variant="outline"
                     size="lg"
-                    className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                    className="w-full border-status-error text-status-error hover:bg-status-error-light hover:border-status-error"
                     disabled={cancelling || processing}
                   >
                     {cancelling ? (
                       <div className="flex items-center space-x-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600"></div>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-status-error"></div>
                         <span>Cancelling...</span>
                       </div>
                     ) : (

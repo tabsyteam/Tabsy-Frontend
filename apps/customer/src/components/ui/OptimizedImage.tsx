@@ -61,10 +61,10 @@ export function OptimizedImage({
     <div className={`relative overflow-hidden ${className}`}>
       {/* Loading animation */}
       {imageLoading && showShimmer && (
-        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 z-10">
+        <div className="absolute inset-0 bg-gradient-to-br from-surface-secondary to-surface-tertiary z-10">
           {/* Shimmer effect */}
           <motion.div
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-surface/30 to-transparent"
             animate={{ x: [-200, 400] }}
             transition={{
               duration: 1.5,

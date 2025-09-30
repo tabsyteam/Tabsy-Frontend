@@ -38,62 +38,62 @@ const FILTER_OPTIONS: FilterOption[] = [
   {
     id: 'active',
     label: 'Active',
-    color: 'text-orange-700',
-    bgColor: 'bg-orange-50',
-    borderColor: 'border-orange-200',
-    activeColor: 'text-white',
-    activeBgColor: 'bg-orange-600',
-    activeBorderColor: 'border-orange-600'
+    color: 'text-status-warning',
+    bgColor: 'bg-status-warning-light',
+    borderColor: 'border-status-warning',
+    activeColor: 'text-content-inverse',
+    activeBgColor: 'bg-status-warning',
+    activeBorderColor: 'border-status-warning'
   },
   {
     id: OrderStatus.RECEIVED,
     label: 'Received',
-    color: 'text-blue-700',
-    bgColor: 'bg-blue-50',
-    borderColor: 'border-blue-200',
-    activeColor: 'text-white',
-    activeBgColor: 'bg-blue-600',
-    activeBorderColor: 'border-blue-600'
+    color: 'text-status-info',
+    bgColor: 'bg-status-info-light',
+    borderColor: 'border-status-info',
+    activeColor: 'text-content-inverse',
+    activeBgColor: 'bg-status-info',
+    activeBorderColor: 'border-status-info'
   },
   {
     id: OrderStatus.PREPARING,
     label: 'Preparing',
-    color: 'text-amber-700',
-    bgColor: 'bg-amber-50',
-    borderColor: 'border-amber-200',
-    activeColor: 'text-white',
-    activeBgColor: 'bg-amber-600',
-    activeBorderColor: 'border-amber-600'
+    color: 'text-accent',
+    bgColor: 'bg-accent-light',
+    borderColor: 'border-accent',
+    activeColor: 'text-content-inverse',
+    activeBgColor: 'bg-accent',
+    activeBorderColor: 'border-accent'
   },
   {
     id: OrderStatus.READY,
     label: 'Ready',
-    color: 'text-purple-700',
-    bgColor: 'bg-purple-50',
-    borderColor: 'border-purple-200',
-    activeColor: 'text-white',
-    activeBgColor: 'bg-purple-600',
-    activeBorderColor: 'border-purple-600'
+    color: 'text-secondary',
+    bgColor: 'bg-secondary-light',
+    borderColor: 'border-secondary',
+    activeColor: 'text-content-inverse',
+    activeBgColor: 'bg-secondary',
+    activeBorderColor: 'border-secondary'
   },
   {
     id: OrderStatus.DELIVERED,
     label: 'Delivered',
-    color: 'text-green-700',
-    bgColor: 'bg-green-50',
-    borderColor: 'border-green-200',
-    activeColor: 'text-white',
-    activeBgColor: 'bg-green-600',
-    activeBorderColor: 'border-green-600'
+    color: 'text-status-success',
+    bgColor: 'bg-status-success-light',
+    borderColor: 'border-status-success',
+    activeColor: 'text-content-inverse',
+    activeBgColor: 'bg-status-success',
+    activeBorderColor: 'border-status-success'
   },
   {
     id: OrderStatus.COMPLETED,
     label: 'Completed',
-    color: 'text-gray-700',
-    bgColor: 'bg-gray-50',
-    borderColor: 'border-gray-200',
-    activeColor: 'text-white',
-    activeBgColor: 'bg-gray-600',
-    activeBorderColor: 'border-gray-600'
+    color: 'text-content-secondary',
+    bgColor: 'bg-surface-tertiary',
+    borderColor: 'border-secondary',
+    activeColor: 'text-content-inverse',
+    activeBgColor: 'bg-content-secondary',
+    activeBorderColor: 'border-content-secondary'
   }
 ]
 
@@ -185,8 +185,8 @@ export function OrderFilterPills({
                       inline-flex items-center justify-center min-w-[18px] h-[18px] px-1
                       rounded-full text-xs font-semibold leading-none
                       ${isSelected
-                        ? 'bg-white/20 text-white'
-                        : 'bg-black/10 text-black/70'
+                        ? 'bg-surface/20 text-content-inverse'
+                        : 'bg-content-primary/10 text-content-primary/70'
                       }
                     `}
                   >

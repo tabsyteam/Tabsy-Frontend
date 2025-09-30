@@ -256,13 +256,13 @@ export default function RestaurantsPage(): JSX.Element {
             {/* Stats */}
             <div className="flex gap-6 mt-4 pt-4 border-t border-border-tertiary">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <div className="w-3 h-3 rounded-full bg-status-success"></div>
                 <span className="text-sm text-content-secondary">
                   Active: {restaurantsData?.filter(r => r.active).length || 0}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-gray-400"></div>
+                <div className="w-3 h-3 rounded-full bg-content-disabled"></div>
                 <span className="text-sm text-content-secondary">
                   Inactive: {restaurantsData?.filter(r => !r.active).length || 0}
                 </span>
@@ -395,7 +395,7 @@ export default function RestaurantsPage(): JSX.Element {
                                     </button>
                                     <button
                                       onClick={() => handleDelete(restaurant)}
-                                      className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                                      className="flex items-center px-4 py-2 text-sm text-status-error hover:bg-status-error-light w-full text-left"
                                     >
                                       <Trash2 className="h-4 w-4 mr-2" />
                                       Delete
@@ -442,7 +442,7 @@ export default function RestaurantsPage(): JSX.Element {
                               onClick={() => setCurrentPage(page)}
                               className={`px-3 py-1 rounded-lg ${
                                 page === currentPage
-                                  ? 'bg-primary text-white'
+                                  ? 'bg-primary text-content-inverse'
                                   : 'hover:bg-surface-secondary'
                               }`}
                             >

@@ -66,14 +66,14 @@ export default function OrderDetailsModal({
 
   const getStatusColor = (status: OrderStatus) => {
     const colors: Record<OrderStatus, string> = {
-      [OrderStatus.RECEIVED]: 'text-yellow-600 bg-yellow-100',
-      [OrderStatus.PREPARING]: 'text-blue-600 bg-blue-100',
-      [OrderStatus.READY]: 'text-green-600 bg-green-100',
-      [OrderStatus.DELIVERED]: 'text-green-600 bg-green-100',
-      [OrderStatus.COMPLETED]: 'text-green-600 bg-green-100',
-      [OrderStatus.CANCELLED]: 'text-red-600 bg-red-100'
+      [OrderStatus.RECEIVED]: 'text-status-warning-dark bg-status-warning-light',
+      [OrderStatus.PREPARING]: 'text-status-info-dark bg-status-info-light',
+      [OrderStatus.READY]: 'text-status-success-dark bg-status-success-light',
+      [OrderStatus.DELIVERED]: 'text-status-success-dark bg-status-success-light',
+      [OrderStatus.COMPLETED]: 'text-status-success-dark bg-status-success-light',
+      [OrderStatus.CANCELLED]: 'text-status-error-dark bg-status-error-light'
     };
-    return colors[status] || 'text-gray-600 bg-gray-100';
+    return colors[status] || 'text-content-secondary bg-surface-tertiary';
   };
 
   const getStatusIcon = (status: OrderStatus) => {
@@ -167,8 +167,8 @@ export default function OrderDetailsModal({
                 <div key={status} className="flex items-center flex-1">
                   <div className="relative">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                      isActive ? 'bg-primary text-white' :
-                      'bg-gray-200 text-gray-400'
+                      isActive ? 'bg-primary text-primary-foreground' :
+                      'bg-surface-tertiary text-content-tertiary'
                     } ${isCurrent ? 'ring-4 ring-primary-light' : ''}`}>
                       <Icon className="h-5 w-5" />
                     </div>
@@ -180,7 +180,7 @@ export default function OrderDetailsModal({
                   </div>
                   {index < statusFlow.length - 1 && (
                     <div className="flex-1 h-1 mx-2">
-                      <div className="h-full bg-gray-200 rounded">
+                      <div className="h-full bg-surface-tertiary rounded">
                         <div
                           className="h-full bg-primary rounded transition-all duration-500"
                           style={{ width: isActive ? '100%' : '0%' }}
@@ -242,7 +242,7 @@ export default function OrderDetailsModal({
               size="sm"
               variant="outline"
               onClick={handleCancelOrder}
-              className="hover-lift text-red-600 border-red-200 hover:bg-red-50"
+              className="hover-lift text-status-error border-status-error-border hover:bg-status-error-light"
             >
               <XCircle className="h-4 w-4 mr-2" />
               Cancel Order
@@ -468,8 +468,8 @@ export default function OrderDetailsModal({
                 {/* Timeline events */}
                 <div className="space-y-4">
                   <div className="flex items-start">
-                    <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
-                      <CheckCircle className="h-4 w-4 text-green-600" />
+                    <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-status-success-light rounded-full">
+                      <CheckCircle className="h-4 w-4 text-status-success-dark" />
                     </div>
                     <div className="ml-4 flex-1">
                       <p className="text-sm font-medium text-content-primary">Order Placed</p>
@@ -481,8 +481,8 @@ export default function OrderDetailsModal({
 
                   {order.status !== OrderStatus.RECEIVED && (
                     <div className="flex items-start">
-                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
-                        <CheckCircle className="h-4 w-4 text-blue-600" />
+                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-status-info-light rounded-full">
+                        <CheckCircle className="h-4 w-4 text-status-info-dark" />
                       </div>
                       <div className="ml-4 flex-1">
                         <p className="text-sm font-medium text-content-primary">Order Confirmed</p>
@@ -493,8 +493,8 @@ export default function OrderDetailsModal({
 
                   {[OrderStatus.PREPARING, OrderStatus.READY, OrderStatus.DELIVERED, OrderStatus.COMPLETED].includes(order.status) && (
                     <div className="flex items-start">
-                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full">
-                        <ChefHat className="h-4 w-4 text-blue-600" />
+                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-status-info-light rounded-full">
+                        <ChefHat className="h-4 w-4 text-status-info-dark" />
                       </div>
                       <div className="ml-4 flex-1">
                         <p className="text-sm font-medium text-content-primary">Preparation Started</p>
@@ -505,8 +505,8 @@ export default function OrderDetailsModal({
 
                   {[OrderStatus.READY, OrderStatus.DELIVERED, OrderStatus.COMPLETED].includes(order.status) && (
                     <div className="flex items-start">
-                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-green-100 rounded-full">
-                        <Package className="h-4 w-4 text-green-600" />
+                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-status-success-light rounded-full">
+                        <Package className="h-4 w-4 text-status-success-dark" />
                       </div>
                       <div className="ml-4 flex-1">
                         <p className="text-sm font-medium text-content-primary">Order Ready</p>
@@ -517,8 +517,8 @@ export default function OrderDetailsModal({
 
                   {order.status === OrderStatus.CANCELLED && (
                     <div className="flex items-start">
-                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-red-100 rounded-full">
-                        <XCircle className="h-4 w-4 text-red-600" />
+                      <div className="relative z-10 flex items-center justify-center w-8 h-8 bg-status-error-light rounded-full">
+                        <XCircle className="h-4 w-4 text-status-error-dark" />
                       </div>
                       <div className="ml-4 flex-1">
                         <p className="text-sm font-medium text-content-primary">Order Cancelled</p>
@@ -548,7 +548,7 @@ export default function OrderDetailsModal({
                   <div className="flex justify-between">
                     <span className="text-xs text-content-secondary">Payment Status</span>
                     <span className={`text-sm font-medium ${
-                      payment?.status === PaymentStatus.COMPLETED ? 'text-green-600' : 'text-yellow-600'
+                      payment?.status === PaymentStatus.COMPLETED ? 'text-status-success-dark' : 'text-status-warning-dark'
                     }`}>
                       {payment?.status || PaymentStatus.PENDING}
                     </span>

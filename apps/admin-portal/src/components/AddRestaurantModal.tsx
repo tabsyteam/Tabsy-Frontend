@@ -181,18 +181,18 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-surface rounded-lg w-full max-w-4xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center space-x-3">
-            <Store className="h-6 w-6 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">Add New Restaurant</h2>
+            <Store className="h-6 w-6 text-primary" />
+            <h2 className="text-xl font-semibold text-content-primary">Add New Restaurant</h2>
           </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-interactive-hover rounded-full transition-colors"
           >
-            <X className="h-5 w-5 text-gray-500" />
+            <X className="h-5 w-5 text-content-secondary" />
           </button>
         </div>
 
@@ -200,13 +200,13 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Restaurant Information */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-              <Store className="h-5 w-5 mr-2 text-blue-600" />
+            <h3 className="text-lg font-medium text-content-primary mb-4 flex items-center">
+              <Store className="h-5 w-5 mr-2 text-primary" />
               Restaurant Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   Restaurant Name *
                 </label>
                 <input
@@ -214,24 +214,24 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.name ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${
+                    errors.name ? 'border-status-error' : 'border-border-secondary'
                   }`}
                   placeholder="Enter restaurant name"
                 />
-                {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+                {errors.name && <p className="mt-1 text-sm text-status-error">{errors.name}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   Cuisine Type *
                 </label>
                 <select
                   name="cuisine"
                   value={formData.cuisine}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.cuisine ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${
+                    errors.cuisine ? 'border-status-error' : 'border-border-secondary'
                   }`}
                 >
                   <option value="">Select cuisine type</option>
@@ -239,11 +239,11 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
                     <option key={cuisine} value={cuisine}>{cuisine}</option>
                   ))}
                 </select>
-                {errors.cuisine && <p className="mt-1 text-sm text-red-600">{errors.cuisine}</p>}
+                {errors.cuisine && <p className="mt-1 text-sm text-status-error">{errors.cuisine}</p>}
               </div>
 
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   Description *
                 </label>
                 <textarea
@@ -251,25 +251,25 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
                   value={formData.description}
                   onChange={handleInputChange}
                   rows={3}
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.description ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${
+                    errors.description ? 'border-status-error' : 'border-border-secondary'
                   }`}
                   placeholder="Describe the restaurant, its specialties, atmosphere, etc."
                 />
-                {errors.description && <p className="mt-1 text-sm text-red-600">{errors.description}</p>}
+                {errors.description && <p className="mt-1 text-sm text-status-error">{errors.description}</p>}
               </div>
             </div>
           </div>
 
           {/* Owner Information */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-              <User className="h-5 w-5 mr-2 text-blue-600" />
+            <h3 className="text-lg font-medium text-content-primary mb-4 flex items-center">
+              <User className="h-5 w-5 mr-2 text-primary" />
               Owner Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   Owner Name *
                 </label>
                 <input
@@ -277,16 +277,16 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
                   name="ownerName"
                   value={formData.ownerName}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.ownerName ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${
+                    errors.ownerName ? 'border-status-error' : 'border-border-secondary'
                   }`}
                   placeholder="Enter owner's full name"
                 />
-                {errors.ownerName && <p className="mt-1 text-sm text-red-600">{errors.ownerName}</p>}
+                {errors.ownerName && <p className="mt-1 text-sm text-status-error">{errors.ownerName}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   Owner Email *
                 </label>
                 <input
@@ -294,25 +294,25 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
                   name="ownerEmail"
                   value={formData.ownerEmail}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.ownerEmail ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${
+                    errors.ownerEmail ? 'border-status-error' : 'border-border-secondary'
                   }`}
                   placeholder="owner@restaurant.com"
                 />
-                {errors.ownerEmail && <p className="mt-1 text-sm text-red-600">{errors.ownerEmail}</p>}
+                {errors.ownerEmail && <p className="mt-1 text-sm text-status-error">{errors.ownerEmail}</p>}
               </div>
             </div>
           </div>
 
           {/* Contact & Location */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-              <MapPin className="h-5 w-5 mr-2 text-blue-600" />
+            <h3 className="text-lg font-medium text-content-primary mb-4 flex items-center">
+              <MapPin className="h-5 w-5 mr-2 text-primary" />
               Contact & Location
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   Phone Number *
                 </label>
                 <input
@@ -320,16 +320,16 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
                   name="phone"
                   value={formData.phone}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.phone ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${
+                    errors.phone ? 'border-status-error' : 'border-border-secondary'
                   }`}
                   placeholder="+1 (555) 123-4567"
                 />
-                {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
+                {errors.phone && <p className="mt-1 text-sm text-status-error">{errors.phone}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   Street Address *
                 </label>
                 <input
@@ -337,16 +337,16 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
                   name="address"
                   value={formData.address}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.address ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${
+                    errors.address ? 'border-status-error' : 'border-border-secondary'
                   }`}
                   placeholder="123 Main Street"
                 />
-                {errors.address && <p className="mt-1 text-sm text-red-600">{errors.address}</p>}
+                {errors.address && <p className="mt-1 text-sm text-status-error">{errors.address}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   City *
                 </label>
                 <input
@@ -354,16 +354,16 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
                   name="city"
                   value={formData.city}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.city ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${
+                    errors.city ? 'border-status-error' : 'border-border-secondary'
                   }`}
                   placeholder="San Francisco"
                 />
-                {errors.city && <p className="mt-1 text-sm text-red-600">{errors.city}</p>}
+                {errors.city && <p className="mt-1 text-sm text-status-error">{errors.city}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   State *
                 </label>
                 <input
@@ -371,16 +371,16 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
                   name="state"
                   value={formData.state}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.state ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${
+                    errors.state ? 'border-status-error' : 'border-border-secondary'
                   }`}
                   placeholder="CA"
                 />
-                {errors.state && <p className="mt-1 text-sm text-red-600">{errors.state}</p>}
+                {errors.state && <p className="mt-1 text-sm text-status-error">{errors.state}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   Zip Code *
                 </label>
                 <input
@@ -388,32 +388,32 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
                   name="zipCode"
                   value={formData.zipCode}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.zipCode ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${
+                    errors.zipCode ? 'border-status-error' : 'border-border-secondary'
                   }`}
                   placeholder="94102"
                 />
-                {errors.zipCode && <p className="mt-1 text-sm text-red-600">{errors.zipCode}</p>}
+                {errors.zipCode && <p className="mt-1 text-sm text-status-error">{errors.zipCode}</p>}
               </div>
             </div>
           </div>
 
           {/* Business Hours & Delivery */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
-              <Clock className="h-5 w-5 mr-2 text-blue-600" />
+            <h3 className="text-lg font-medium text-content-primary mb-4 flex items-center">
+              <Clock className="h-5 w-5 mr-2 text-primary" />
               Business Hours & Delivery
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   Opening Time
                 </label>
                 <select
                   name="openTime"
                   value={formData.openTime}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-border-secondary rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
                 >
                   {businessHours.map(time => (
                     <option key={time} value={time}>{time}</option>
@@ -422,14 +422,14 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   Closing Time
                 </label>
                 <select
                   name="closeTime"
                   value={formData.closeTime}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-border-secondary rounded-md focus:ring-2 focus:ring-primary focus:border-primary"
                 >
                   {businessHours.map(time => (
                     <option key={time} value={time}>{time}</option>
@@ -438,7 +438,7 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   Delivery Fee ($) *
                 </label>
                 <input
@@ -448,16 +448,16 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
                   onChange={handleInputChange}
                   step="0.01"
                   min="0"
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.deliveryFee ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${
+                    errors.deliveryFee ? 'border-status-error' : 'border-border-secondary'
                   }`}
                   placeholder="3.99"
                 />
-                {errors.deliveryFee && <p className="mt-1 text-sm text-red-600">{errors.deliveryFee}</p>}
+                {errors.deliveryFee && <p className="mt-1 text-sm text-status-error">{errors.deliveryFee}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   Minimum Order ($) *
                 </label>
                 <input
@@ -467,16 +467,16 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
                   onChange={handleInputChange}
                   step="0.01"
                   min="0"
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.minimumOrder ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${
+                    errors.minimumOrder ? 'border-status-error' : 'border-border-secondary'
                   }`}
                   placeholder="15.00"
                 />
-                {errors.minimumOrder && <p className="mt-1 text-sm text-red-600">{errors.minimumOrder}</p>}
+                {errors.minimumOrder && <p className="mt-1 text-sm text-status-error">{errors.minimumOrder}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-content-primary mb-2">
                   Delivery Time (minutes) *
                 </label>
                 <input
@@ -485,20 +485,20 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
                   value={formData.estimatedDeliveryTime}
                   onChange={handleInputChange}
                   min="1"
-                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    errors.estimatedDeliveryTime ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-primary focus:border-primary ${
+                    errors.estimatedDeliveryTime ? 'border-status-error' : 'border-border-secondary'
                   }`}
                   placeholder="30"
                 />
-                {errors.estimatedDeliveryTime && <p className="mt-1 text-sm text-red-600">{errors.estimatedDeliveryTime}</p>}
+                {errors.estimatedDeliveryTime && <p className="mt-1 text-sm text-status-error">{errors.estimatedDeliveryTime}</p>}
               </div>
             </div>
           </div>
 
           {/* Submit Error */}
           {errors.submit && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-              <p className="text-sm text-red-600">{errors.submit}</p>
+            <div className="p-4 bg-status-error-light border border-status-error rounded-md">
+              <p className="text-sm text-status-error">{errors.submit}</p>
             </div>
           )}
 
@@ -519,7 +519,7 @@ export default function AddRestaurantModal({ isOpen, onClose, onSuccess }: AddRe
             >
               {isSubmitting ? (
                 <div className="flex items-center">
-                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-content-inverse border-t-transparent rounded-full"></div>
                   Creating...
                 </div>
               ) : (

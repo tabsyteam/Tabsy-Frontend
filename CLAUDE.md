@@ -144,10 +144,10 @@ The system uses CSS custom properties with semantic naming conventions organized
 
 Each app has its own distinct theme while following the same semantic structure:
 
-#### Customer App - Fresh Green/Teal Theme
-- **Primary**: Emerald Green (#10B981) - Fresh, healthy food ordering
-- **Secondary**: Teal (#14B8A6) - Modern, appetizing
-- **Accent**: Amber (#F59E0B) - Call-to-action highlights
+#### Customer App - Modern Blue/Orange Theme (2025)
+- **Primary**: Vibrant Blue (#3B82F6) - Trust and modernity
+- **Secondary**: Cyan/Teal (#06B6D4) - Fresh and energetic
+- **Accent**: Logo Orange (#F97316) - Enthusiasm and CTAs
 
 #### Restaurant Dashboard - Warm Orange Theme
 - **Primary**: Orange (#F97316) - Energetic, hospitality-focused

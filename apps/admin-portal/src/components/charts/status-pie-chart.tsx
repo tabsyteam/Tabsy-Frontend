@@ -21,10 +21,10 @@ export const StatusPieChart: React.FC<StatusPieChartProps> = ({
   const total = chartData.reduce((sum, item) => sum + item.value, 0)
 
   return (
-    <div className="w-full h-80 bg-white p-6 rounded-lg border shadow-sm">
+    <div className="w-full h-80 bg-surface p-6 rounded-lg border shadow-sm">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-        <p className="text-sm text-gray-600">Total: {total.toLocaleString()} users</p>
+        <h3 className="text-lg font-semibold text-content-primary mb-2">{title}</h3>
+        <p className="text-sm text-content-secondary">Total: {total.toLocaleString()} users</p>
       </div>
       
       <div className="flex items-center justify-center h-48">
@@ -52,10 +52,10 @@ export const StatusPieChart: React.FC<StatusPieChartProps> = ({
             }, { elements: [] as React.ReactNode[], percentage: 0 }).elements}
             
             {/* Center circle for donut effect */}
-            <div className="absolute inset-4 bg-white rounded-full shadow-inner flex items-center justify-center">
+            <div className="absolute inset-4 bg-surface rounded-full shadow-inner flex items-center justify-center">
               <div className="text-center">
-                <div className="text-xl font-bold text-gray-900">{total}</div>
-                <div className="text-xs text-gray-500">Total</div>
+                <div className="text-xl font-bold text-content-primary">{total}</div>
+                <div className="text-xs text-content-secondary">Total</div>
               </div>
             </div>
           </div>
@@ -69,10 +69,10 @@ export const StatusPieChart: React.FC<StatusPieChartProps> = ({
                   style={{ backgroundColor: item.color }}
                 />
                 <div>
-                  <div className="text-sm font-medium text-gray-900">
+                  <div className="text-sm font-medium text-content-primary">
                     {item.name}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-content-secondary">
                     {item.value} ({((item.value / total) * 100).toFixed(1)}%)
                   </div>
                 </div>

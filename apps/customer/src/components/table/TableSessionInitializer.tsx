@@ -188,17 +188,17 @@ export function TableSessionInitializer({ restaurantId, tableId }: TableSessionI
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center space-y-6 max-w-md">
-          <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-16 h-16 mx-auto bg-status-error-light rounded-full flex items-center justify-center">
+            <svg className="w-8 h-8 text-status-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
             </svg>
           </div>
 
           <div>
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-xl font-semibold text-content-primary mb-2">
               Unable to Connect
             </h1>
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-content-secondary">
               {error}
             </p>
           </div>
@@ -206,13 +206,13 @@ export function TableSessionInitializer({ restaurantId, tableId }: TableSessionI
           <div className="space-y-3">
             <button
               onClick={() => router.push('/')}
-              className="w-full bg-primary hover:bg-primary-hover text-white font-medium py-3 px-4 rounded-lg transition-colors"
+              className="w-full bg-primary hover:bg-primary-hover text-primary-foreground font-medium py-3 px-4 rounded-lg transition-colors"
             >
               Scan QR Code
             </button>
             <button
               onClick={() => window.location.reload()}
-              className="w-full border border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800 font-medium py-3 px-4 rounded-lg transition-colors"
+              className="w-full border border-default hover:bg-interactive-hover font-medium py-3 px-4 rounded-lg transition-colors"
             >
               Try Again
             </button>
@@ -228,10 +228,10 @@ export function TableSessionInitializer({ restaurantId, tableId }: TableSessionI
         <div className="text-center space-y-4">
           <LoadingSpinner size="lg" />
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <h2 className="text-xl font-semibold text-content-primary">
               Connecting to your table...
             </h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
+            <p className="text-content-secondary mt-2">
               Please wait while we set up your dining experience
             </p>
           </div>

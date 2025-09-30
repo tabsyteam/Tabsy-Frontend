@@ -102,7 +102,7 @@ export function TableDetailsModal({
 
       // Get recent sessions for this table
       const response = await tabsyClient.restaurantTableSession.getAllSessions(
-        { restaurantId: table.restaurantId, tableId: table.id },
+        { tableId: table.id },
         1,
         10 // Get last 10 sessions
       )
@@ -459,7 +459,7 @@ export function TableDetailsModal({
                   onClick={handleReset}
                   disabled={resetTableMutation.isPending}
                   variant="outline"
-                  className="w-full border-status-error text-status-error hover:bg-red-50"
+                  className="w-full border-status-error text-status-error hover:bg-status-error-light"
                 >
                   {resetTableMutation.isPending ? (
                     <>

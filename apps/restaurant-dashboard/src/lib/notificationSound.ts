@@ -108,7 +108,7 @@ class NotificationSoundService {
     oscillator.stop(ctx.currentTime + soundConfig.duration)
 
     // Play multiple notes for certain types
-    if (soundConfig.melody) {
+    if ('melody' in soundConfig && soundConfig.melody) {
       for (let i = 1; i < soundConfig.melody.length; i++) {
         const noteOsc = ctx.createOscillator()
         const noteGain = ctx.createGain()
@@ -117,7 +117,7 @@ class NotificationSoundService {
         noteGain.connect(ctx.destination)
 
         const startTime = ctx.currentTime + (i * 0.15)
-        noteOsc.frequency.setValueAtTime(soundConfig.melody[i], startTime)
+        noteOsc.frequency.setValueAtTime(soundConfig.melody[i] || soundConfig.frequency, startTime)
         noteOsc.type = soundConfig.waveType
 
         noteGain.gain.setValueAtTime(0, startTime)

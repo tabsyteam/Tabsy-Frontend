@@ -72,7 +72,7 @@ export function PaymentOverview({ restaurantId, isVisible = true }: PaymentOverv
         console.log('[PaymentOverview] Total payments fetched:', response.data.length)
         return calculateMetrics(response.data)
       }
-      throw new PaymentMetricsError('Unable to fetch payment metrics', restaurantId, selectedPeriod, error)
+      throw new PaymentMetricsError('Unable to fetch payment metrics', restaurantId, selectedPeriod, error || undefined)
     },
     refetchOnMount: true,
     staleTime: 0, // Force fresh data on mount
@@ -174,37 +174,11 @@ export function PaymentOverview({ restaurantId, isVisible = true }: PaymentOverv
     console.log('🆕✅ [PaymentOverview] Payment created - metrics updated optimistically')
   }, [queryClient, restaurantId, selectedPeriod])
 
-  // Handler for table session payment updates (actual payment creation events from backend)
-  const handleTableSessionPaymentUpdated = useCallback((data: any) => {
-    console.log('🆕🎯 [PaymentOverview] Table session payment updated (payment created):', data)
-    console.log('🆕🎯 [PaymentOverview] Event data keys:', Object.keys(data || {}))
-    console.log('🆕🎯 [PaymentOverview] Current restaurant ID:', restaurantId)
-
-    // Use optimistic update for table session payments as well
-    queryClient.setQueryData(['restaurant', 'payment-metrics', restaurantId, selectedPeriod], (oldMetrics: PaymentMetrics | undefined) => {
-      if (!oldMetrics) return oldMetrics
-
-      const amount = typeof data.amount === 'number' ? data.amount : 0
-
-      return {
-        ...oldMetrics,
-        todayTransactions: oldMetrics.todayTransactions + 1,
-        pendingPayments: oldMetrics.pendingPayments + 1,
-        pendingAmount: oldMetrics.pendingAmount + amount
-      }
-    })
-
-    setRealtimeUpdates(prev => prev + 1)
-    console.log('🆕✅ [PaymentOverview] Table session payment updated - metrics updated optimistically')
-  }, [queryClient, restaurantId, selectedPeriod])
-
   // Register WebSocket event listeners
   useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted])
   useWebSocketEvent('payment:failed', handlePaymentFailed, [handlePaymentFailed])
   useWebSocketEvent('payment:refunded', handlePaymentRefunded, [handlePaymentRefunded])
-  useWebSocketEvent('payment:partially_refunded', handlePaymentRefunded, [handlePaymentRefunded])
   useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated])
-  useWebSocketEvent('table_session:payment_updated', handleTableSessionPaymentUpdated, [handleTableSessionPaymentUpdated])
 
   function getDateFrom(period: string): string {
     const now = new Date()

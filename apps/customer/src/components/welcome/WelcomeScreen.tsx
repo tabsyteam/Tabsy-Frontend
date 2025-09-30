@@ -95,7 +95,7 @@ export function WelcomeScreen() {
         <div className="relative">
           <div className="w-16 h-16 md:w-20 md:h-20 mx-auto bg-gradient-to-br from-primary to-secondary rounded-2xl md:rounded-3xl flex items-center justify-center shadow-xl shadow-primary/20 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent"></div>
-            <Utensils className="w-8 h-8 md:w-10 md:h-10 text-white relative z-10" />
+            <Utensils className="w-8 h-8 md:w-10 md:h-10 text-primary-foreground relative z-10" />
           </div>
         </div>
 

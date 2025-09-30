@@ -12,14 +12,14 @@ import {
   X,
   Bell
 } from 'lucide-react'
+import type { PaymentMethod } from '@tabsy/shared-types'
 import type {
-  PaymentMethod,
   PaymentCompletedEvent,
   PaymentFailedEvent,
   PaymentCreatedEvent,
   PaymentRefundedEvent,
   PaymentCancelledEvent
-} from '@tabsy/shared-types'
+} from '@tabsy/api-client'
 
 interface NotificationItem {
   id: string
@@ -139,7 +139,7 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
   }, [])
 
   // WebSocket event handlers for payment notifications
-  const handlePaymentCompleted = useCallback((data: PaymentCompletedEvent) => {
+  const handlePaymentCompleted = useCallback((data: PaymentCompletedEvent['data']) => {
     const amount = formatCurrency(data.amount)
     const tip = data.tip ? formatCurrency(data.tip) : null
 
@@ -154,9 +154,9 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
     addNotification(notification)
   }, [addNotification, formatCurrency])
 
-  const handlePaymentFailed = useCallback((data: PaymentFailedEvent) => {
+  const handlePaymentFailed = useCallback((data: PaymentFailedEvent['data']) => {
     const amount = formatCurrency(data.amount)
-    const errorMessage = data.errorMessage || data.error || 'Unknown error'
+    const errorMessage = data.errorMessage || 'Unknown error'
 
     const notification = createNotification(
       'error',
@@ -169,9 +169,9 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
     addNotification(notification)
   }, [addNotification, formatCurrency])
 
-  const handlePaymentCreated = useCallback((data: PaymentCreatedEvent) => {
-    const amount = data.amount ?? data.total ?? 0
-    const method = data.method ?? data.paymentMethod ?? 'unknown'
+  const handlePaymentCreated = useCallback((data: PaymentCreatedEvent['data']) => {
+    const amount = data.amount ?? 0
+    const method = data.method ?? 'unknown'
 
     const formattedAmount = formatCurrency(amount)
     const formattedMethod = formatPaymentMethod(method)
@@ -187,7 +187,7 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
     addNotification(notification)
   }, [addNotification, formatCurrency, formatPaymentMethod])
 
-  const handlePaymentRefunded = useCallback((data: PaymentRefundedEvent) => {
+  const handlePaymentRefunded = useCallback((data: PaymentRefundedEvent['data']) => {
     const amount = formatCurrency(data.amount)
     const reason = data.reason || ''
 
@@ -202,7 +202,7 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
     addNotification(notification)
   }, [addNotification])
 
-  const handlePaymentCancelled = useCallback((data: PaymentCancelledEvent) => {
+  const handlePaymentCancelled = useCallback((data: PaymentCancelledEvent['data']) => {
     const reason = data.reason || ''
 
     const notification = createNotification(
@@ -228,7 +228,6 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
   useWebSocketEvent('payment:failed', handlePaymentFailed, [handlePaymentFailed])
   useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated])
   useWebSocketEvent('payment:refunded', handlePaymentRefunded, [handlePaymentRefunded])
-  useWebSocketEvent('payment:partially_refunded', handlePaymentRefunded, [handlePaymentRefunded])
   useWebSocketEvent('payment:cancelled', handlePaymentCancelled, [handlePaymentCancelled])
 
   // Get icon for notification type

@@ -186,10 +186,10 @@ export default function AddUserModal({
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleInputChange}
-                  className={`input-professional w-full ${errors.firstName ? 'border-red-500' : ''}`}
+                  className={`input-professional w-full ${errors.firstName ? 'border-status-error' : ''}`}
                   placeholder="John"
                 />
-                {errors.firstName && <p className="mt-1 text-sm text-red-600">{errors.firstName}</p>}
+                {errors.firstName && <p className="mt-1 text-sm text-status-error">{errors.firstName}</p>}
               </div>
 
               <div>
@@ -201,10 +201,10 @@ export default function AddUserModal({
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleInputChange}
-                  className={`input-professional w-full ${errors.lastName ? 'border-red-500' : ''}`}
+                  className={`input-professional w-full ${errors.lastName ? 'border-status-error' : ''}`}
                   placeholder="Doe"
                 />
-                {errors.lastName && <p className="mt-1 text-sm text-red-600">{errors.lastName}</p>}
+                {errors.lastName && <p className="mt-1 text-sm text-status-error">{errors.lastName}</p>}
               </div>
 
               <div>
@@ -218,12 +218,12 @@ export default function AddUserModal({
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className={`input-professional w-full pl-10 ${errors.email ? 'border-red-500' : ''}`}
+                    className={`input-professional w-full pl-10 ${errors.email ? 'border-status-error' : ''}`}
                     placeholder="john.doe@example.com"
                     disabled={isEditMode}
                   />
                 </div>
-                {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+                {errors.email && <p className="mt-1 text-sm text-status-error">{errors.email}</p>}
                 {isEditMode && (
                   <p className="mt-1 text-xs text-content-tertiary">Email cannot be changed</p>
                 )}
@@ -249,10 +249,10 @@ export default function AddUserModal({
                     name="password"
                     value={formData.password}
                     onChange={handleInputChange}
-                    className={`input-professional w-full ${errors.password ? 'border-red-500' : ''}`}
+                    className={`input-professional w-full ${errors.password ? 'border-status-error' : ''}`}
                     placeholder="••••••••"
                   />
-                  {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
+                  {errors.password && <p className="mt-1 text-sm text-status-error">{errors.password}</p>}
                 </div>
 
                 <div>
@@ -264,10 +264,10 @@ export default function AddUserModal({
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
-                    className={`input-professional w-full ${errors.confirmPassword ? 'border-red-500' : ''}`}
+                    className={`input-professional w-full ${errors.confirmPassword ? 'border-status-error' : ''}`}
                     placeholder="••••••••"
                   />
-                  {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
+                  {errors.confirmPassword && <p className="mt-1 text-sm text-status-error">{errors.confirmPassword}</p>}
                 </div>
               </div>
               {formData.password && (
@@ -327,7 +327,7 @@ export default function AddUserModal({
             >
               {(createUser.isPending || updateUser.isPending) ? (
                 <div className="flex items-center">
-                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-content-inverse border-t-transparent rounded-full"></div>
                   {isEditMode ? 'Updating...' : 'Creating...'}
                 </div>
               ) : (

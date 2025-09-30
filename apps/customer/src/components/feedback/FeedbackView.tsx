@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { FeedbackFormSkeleton, HeaderSkeleton } from '../ui/Skeleton'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { haptics } from '@/lib/haptics'
 import { useApi } from '@/components/providers/api-provider'
 import {
@@ -445,8 +446,8 @@ export function FeedbackView() {
             }}
             className={`${starSize} transition-colors ${
               star <= rating
-                ? 'text-yellow-400 fill-current'
-                : 'text-gray-300 hover:text-yellow-200'
+                ? 'text-status-warning fill-current'
+                : 'text-content-tertiary hover:text-status-warning/50'
             }`}
             disabled={submitting || submitted}
           >
@@ -477,8 +478,8 @@ export function FeedbackView() {
           transition={{ type: "spring", stiffness: 200, damping: 15 }}
           className="text-center space-y-6 max-w-md"
         >
-          <div className="w-24 h-24 mx-auto bg-green-100 rounded-full flex items-center justify-center">
-            <CheckCircle className="w-12 h-12 text-green-600" />
+          <div className="w-24 h-24 mx-auto bg-status-success-light rounded-full flex items-center justify-center">
+            <CheckCircle className="w-12 h-12 text-status-success" />
           </div>
 
           <motion.div
@@ -602,9 +603,9 @@ export function FeedbackView() {
                 onClick={() => toggleQuickFeedback(option.id)}
                 className={`h-auto py-3 px-4 text-left flex items-center space-x-2 ${
                   option.type === 'positive' && selectedQuickFeedback.includes(option.id)
-                    ? 'bg-green-600 hover:bg-green-700'
+                    ? 'bg-status-success hover:bg-status-success'
                     : option.type === 'negative' && selectedQuickFeedback.includes(option.id)
-                    ? 'bg-red-600 hover:bg-red-700'
+                    ? 'bg-status-error hover:bg-status-error'
                     : ''
                 }`}
                 disabled={submitting}
@@ -660,7 +661,7 @@ export function FeedbackView() {
               >
                 {uploadingPhotos ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                    <LoadingSpinner size="sm" color="current" centered={false} />
                     <span>Uploading...</span>
                   </>
                 ) : (
@@ -707,7 +708,7 @@ export function FeedbackView() {
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
-                    className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100"
+                    className="relative group aspect-square rounded-lg overflow-hidden bg-surface-secondary"
                   >
                     <img
                       src={photo.preview}
@@ -718,7 +719,7 @@ export function FeedbackView() {
                     {photo.uploading && (
                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                         <div className="flex flex-col items-center space-y-2 text-white">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                          <LoadingSpinner size="md" color="white" />
                           <span className="text-xs">Uploading...</span>
                         </div>
                       </div>
@@ -766,7 +767,7 @@ export function FeedbackView() {
           >
             {submitting ? (
               <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                <LoadingSpinner size="sm" color="white" centered={false} />
                 <span>Submitting...</span>
               </div>
             ) : (

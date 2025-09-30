@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Button, CartItemDisplay, LoadingSpinner } from '@tabsy/ui-components'
+import { Button, CartItemDisplay } from '@tabsy/ui-components'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { ArrowLeft, Clock, CheckCircle, User, Phone, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApi } from '@/components/providers/api-provider'
@@ -159,19 +160,46 @@ export function CheckoutView() {
       let existingSessionId = api.getGuestSessionId()
       console.log('Existing session ID from API client:', existingSessionId)
 
-      // If not in API client memory, try to restore from sessionStorage
+      // CRITICAL FIX: If not in API client memory, try multiple recovery methods
       if (!existingSessionId) {
-        const storedSessionId = sessionStorage.getItem(`guestSession-${tableId}`)
-        console.log('Stored session ID from sessionStorage:', storedSessionId)
+        console.warn('[CheckoutView] No guest session in API client memory, attempting recovery...')
 
-        if (storedSessionId) {
-          // Restore session to API client
-          api.setGuestSession(storedSessionId)
-          existingSessionId = storedSessionId
-          console.log('Restored session to API client:', existingSessionId)
+        // Attempt 1: Restore from primary sessionStorage key
+        const primaryStoredId = sessionStorage.getItem('tabsy-guest-session-id')
+        if (primaryStoredId) {
+          console.log('[CheckoutView] Found session in primary storage, restoring:', primaryStoredId)
+          api.setGuestSession(primaryStoredId)
+          existingSessionId = primaryStoredId
         } else {
+          // Attempt 2: Try table-specific storage key
+          const storedSessionId = sessionStorage.getItem(`guestSession-${tableId}`)
+          console.log('[CheckoutView] Stored session ID from table-specific storage:', storedSessionId)
+
+          if (storedSessionId) {
+            console.log('[CheckoutView] Restoring session from table-specific storage:', storedSessionId)
+            api.setGuestSession(storedSessionId)
+            // Also save to primary key for consistency
+            sessionStorage.setItem('tabsy-guest-session-id', storedSessionId)
+            existingSessionId = storedSessionId
+          } else {
+            // Attempt 3: Check dining session
+            const diningSession = SessionManager.getDiningSession()
+            if (diningSession?.sessionId) {
+              console.log('[CheckoutView] Found session in dining session, restoring:', diningSession.sessionId)
+              api.setGuestSession(diningSession.sessionId)
+              sessionStorage.setItem('tabsy-guest-session-id', diningSession.sessionId)
+              existingSessionId = diningSession.sessionId
+            }
+          }
+        }
+
+        // If still no session after all recovery attempts, throw error
+        if (!existingSessionId) {
+          console.error('[CheckoutView] Session recovery failed after all attempts')
           throw new Error('No guest session available. Please refresh the page and try again.')
         }
+
+        console.log('[CheckoutView] ✅ Session recovery successful:', existingSessionId)
       }
 
       // Use the existing session instead of creating a new one
@@ -281,7 +309,7 @@ export function CheckoutView() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        <LoadingSpinner size="xl" />
       </div>
     )
   }
@@ -516,7 +544,7 @@ export function CheckoutView() {
                 {/* Subtle loading pulse effect */}
                 {placing && (
                   <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-surface/10 to-transparent"
                     initial={{ x: "-100%" }}
                     animate={{ x: "100%" }}
                     transition={{

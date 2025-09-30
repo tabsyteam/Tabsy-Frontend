@@ -126,7 +126,7 @@ export default function UserDetailsModal({
           <div className="bg-surface rounded-lg p-4 border border-border-tertiary">
             <div className="flex items-center justify-between mb-2">
               <ShoppingBag className="h-5 w-5 text-primary" />
-              <span className="text-xs text-green-600">All Time</span>
+              <span className="text-xs text-status-success">All Time</span>
             </div>
             <div className="text-2xl font-bold text-content-primary">
               {metrics?.totalOrders || 0}
@@ -137,7 +137,7 @@ export default function UserDetailsModal({
           <div className="bg-surface rounded-lg p-4 border border-border-tertiary">
             <div className="flex items-center justify-between mb-2">
               <DollarSign className="h-5 w-5 text-primary" />
-              <span className="text-xs text-blue-600">Lifetime</span>
+              <span className="text-xs text-status-info">Lifetime</span>
             </div>
             <div className="text-2xl font-bold text-content-primary">
               ${metrics?.totalSpent?.toFixed(2) || '0.00'}
@@ -148,7 +148,7 @@ export default function UserDetailsModal({
           <div className="bg-surface rounded-lg p-4 border border-border-tertiary">
             <div className="flex items-center justify-between mb-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              <span className="text-xs text-purple-600">Average</span>
+              <span className="text-xs text-primary">Average</span>
             </div>
             <div className="text-2xl font-bold text-content-primary">
               ${Number(metrics?.avgOrderValue || 0).toFixed(2)}
@@ -159,7 +159,7 @@ export default function UserDetailsModal({
           <div className="bg-surface rounded-lg p-4 border border-border-tertiary">
             <div className="flex items-center justify-between mb-2">
               <Building className="h-5 w-5 text-primary" />
-              <span className="text-xs text-orange-600">Managed</span>
+              <span className="text-xs text-status-warning">Managed</span>
             </div>
             <div className="text-2xl font-bold text-content-primary">
               {restaurants?.length || 0}
@@ -242,7 +242,7 @@ export default function UserDetailsModal({
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-medium text-content-primary">{restaurant.name}</h4>
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            restaurant.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            restaurant.active ? 'bg-status-success-light text-status-success-dark' : 'bg-status-error-light text-status-error-dark'
                           }`}>
                             {restaurant.active ? 'Active' : 'Inactive'}
                           </span>
@@ -312,10 +312,10 @@ export default function UserDetailsModal({
                       <div className="text-right">
                         <p className="font-bold text-content-primary">${order.total?.toFixed(2)}</p>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          order.status === 'completed' ? 'bg-green-100 text-green-800' :
-                          order.status === 'preparing' ? 'bg-blue-100 text-blue-800' :
-                          order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
+                          order.status === 'completed' ? 'bg-status-success-light text-status-success-dark' :
+                          order.status === 'preparing' ? 'bg-status-info-light text-status-info-dark' :
+                          order.status === 'cancelled' ? 'bg-status-error-light text-status-error-dark' :
+                          'bg-status-warning-light text-status-warning-dark'
                         }`}>
                           {order.status}
                         </span>

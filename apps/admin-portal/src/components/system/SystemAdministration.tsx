@@ -187,17 +187,17 @@ export function SystemAdministration({
       case 'running':
       case 'connected':
       case 'healthy':
-        return <CheckCircle className="w-5 h-5 text-green-600" />
+        return <CheckCircle className="w-5 h-5 text-status-success" />
       case 'warning':
       case 'slow':
-        return <AlertCircle className="w-5 h-5 text-yellow-600" />
+        return <AlertCircle className="w-5 h-5 text-status-warning" />
       case 'error':
       case 'stopped':
       case 'disconnected':
       case 'critical':
-        return <XCircle className="w-5 h-5 text-red-600" />
+        return <XCircle className="w-5 h-5 text-status-error" />
       default:
-        return <Info className="w-5 h-5 text-gray-600" />
+        return <Info className="w-5 h-5 text-content-secondary" />
     }
   }
 
@@ -206,17 +206,17 @@ export function SystemAdministration({
       case 'running':
       case 'connected':
       case 'healthy':
-        return 'text-green-600'
+        return 'text-status-success'
       case 'warning':
       case 'slow':
-        return 'text-yellow-600'
+        return 'text-status-warning'
       case 'error':
       case 'stopped':
       case 'disconnected':
       case 'critical':
-        return 'text-red-600'
+        return 'text-status-error'
       default:
-        return 'text-gray-600'
+        return 'text-content-secondary'
     }
   }
 
@@ -224,32 +224,32 @@ export function SystemAdministration({
     switch (level) {
       case 'error':
       case 'critical':
-        return <XCircle className="w-4 h-4 text-red-600" />
+        return <XCircle className="w-4 h-4 text-status-error" />
       case 'warning':
-        return <AlertTriangle className="w-4 h-4 text-yellow-600" />
+        return <AlertTriangle className="w-4 h-4 text-status-warning" />
       case 'info':
-        return <Info className="w-4 h-4 text-blue-600" />
+        return <Info className="w-4 h-4 text-status-info" />
       default:
-        return <Info className="w-4 h-4 text-gray-600" />
+        return <Info className="w-4 h-4 text-content-secondary" />
     }
   }
 
   const getPerformanceColor = (value: number) => {
-    if (value < 50) return 'bg-green-500'
-    if (value < 80) return 'bg-yellow-500'
-    return 'bg-red-500'
+    if (value < 50) return 'bg-status-success'
+    if (value < 80) return 'bg-status-warning'
+    return 'bg-status-error'
   }
 
   if (loading) {
     return (
       <div className="p-6">
         <div className="animate-pulse">
-          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="h-8 bg-surface-secondary rounded w-1/4 mb-6"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-white p-6 rounded-lg border">
-                <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-                <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+              <div key={i} className="bg-surface p-6 rounded-lg border">
+                <div className="h-4 bg-surface-secondary rounded w-1/2 mb-2"></div>
+                <div className="h-8 bg-surface-secondary rounded w-3/4"></div>
               </div>
             ))}
           </div>
@@ -265,14 +265,14 @@ export function SystemAdministration({
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">System Administration</h1>
-          <p className="text-gray-600">Monitor and manage system health and configuration</p>
+          <h1 className="text-2xl font-bold text-content-primary">System Administration</h1>
+          <p className="text-content-secondary">Monitor and manage system health and configuration</p>
         </div>
         
         <div className="flex gap-3">
           <button
             onClick={() => window.location.reload()}
-            className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 border border-border-secondary rounded-md hover:bg-surface-secondary transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             Refresh
@@ -289,10 +289,10 @@ export function SystemAdministration({
 
       {/* System Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-lg border">
+        <div className="bg-surface p-6 rounded-lg border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">System Status</p>
+              <p className="text-sm font-medium text-content-secondary">System Status</p>
               <p className={`text-lg font-semibold capitalize ${getStatusColor(systemStatus.overall)}`}>
                 {systemStatus.overall}
               </p>
@@ -301,52 +301,52 @@ export function SystemAdministration({
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg border">
+        <div className="bg-surface p-6 rounded-lg border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Active Services</p>
-              <p className="text-lg font-semibold text-gray-900">
+              <p className="text-sm font-medium text-content-secondary">Active Services</p>
+              <p className="text-lg font-semibold text-content-primary">
                 {systemStatus.services.filter(s => s.status === 'running').length}/{systemStatus.services.length}
               </p>
             </div>
-            <Server className="w-6 h-6 text-blue-600" />
+            <Server className="w-6 h-6 text-status-info" />
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg border">
+        <div className="bg-surface p-6 rounded-lg border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Database</p>
+              <p className="text-sm font-medium text-content-secondary">Database</p>
               <p className={`text-lg font-semibold capitalize ${getStatusColor(systemStatus.database.status)}`}>
                 {systemStatus.database.status}
               </p>
             </div>
-            <Database className="w-6 h-6 text-green-600" />
+            <Database className="w-6 h-6 text-status-success" />
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg border">
+        <div className="bg-surface p-6 rounded-lg border">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">CPU Usage</p>
-              <p className="text-lg font-semibold text-gray-900">{systemStatus.performance.cpu}%</p>
+              <p className="text-sm font-medium text-content-secondary">CPU Usage</p>
+              <p className="text-lg font-semibold text-content-primary">{systemStatus.performance.cpu}%</p>
             </div>
-            <Cpu className="w-6 h-6 text-orange-600" />
+            <Cpu className="w-6 h-6 text-status-warning" />
           </div>
         </div>
       </div>
 
       {/* Performance Metrics */}
-      <div className="bg-white rounded-lg border p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Performance Metrics</h3>
+      <div className="bg-surface rounded-lg border p-6">
+        <h3 className="text-lg font-semibold text-content-primary mb-4">Performance Metrics</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {Object.entries(systemStatus.performance).map(([key, value]) => (
             <div key={key} className="space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-medium text-gray-600 capitalize">{key}</span>
-                <span className="text-sm font-medium text-gray-900">{value}%</span>
+                <span className="text-sm font-medium text-content-secondary capitalize">{key}</span>
+                <span className="text-sm font-medium text-content-primary">{value}%</span>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="w-full bg-surface-secondary rounded-full h-2">
                 <div 
                   className={`h-2 rounded-full transition-all duration-300 ${getPerformanceColor(value)}`}
                   style={{ width: `${value}%` }}
@@ -358,7 +358,7 @@ export function SystemAdministration({
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
+      <div className="border-b border-border-tertiary">
         <nav className="flex space-x-8">
           {['status', 'settings', 'logs'].map((tab) => (
             <button
@@ -367,7 +367,7 @@ export function SystemAdministration({
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === tab
                   ? 'border-primary text-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  : 'border-transparent text-content-secondary hover:text-content-primary hover:border-border-secondary'
               }`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -380,18 +380,18 @@ export function SystemAdministration({
       {activeTab === 'status' && (
         <div className="space-y-6">
           {/* Services Status */}
-          <div className="bg-white rounded-lg border">
-            <div className="p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Services Status</h3>
+          <div className="bg-surface rounded-lg border">
+            <div className="p-6 border-b border-border-tertiary">
+              <h3 className="text-lg font-semibold text-content-primary">Services Status</h3>
             </div>
-            <div className="divide-y divide-gray-200">
+            <div className="divide-y divide-border-tertiary">
               {systemStatus.services.map((service) => (
                 <div key={service.name} className="p-6 flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     {getStatusIcon(service.status)}
                     <div>
-                      <h4 className="font-medium text-gray-900">{service.name}</h4>
-                      <p className="text-sm text-gray-600">
+                      <h4 className="font-medium text-content-primary">{service.name}</h4>
+                      <p className="text-sm text-content-secondary">
                         Uptime: {service.uptime} | Last check: {format(new Date(service.lastCheck), 'HH:mm:ss')}
                       </p>
                     </div>
@@ -400,17 +400,17 @@ export function SystemAdministration({
                     {service.status === 'error' && (
                       <button
                         onClick={() => onRestart?.(service.name)}
-                        className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                        className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary-dark transition-colors"
                       >
                         Restart
                       </button>
                     )}
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                       service.status === 'running' 
-                        ? 'bg-green-100 text-green-800'
+                        ? 'bg-status-success-light text-status-success-dark'
                         : service.status === 'error'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-gray-100 text-gray-800'
+                        ? 'bg-status-error-light text-status-error-dark'
+                        : 'bg-surface-secondary text-content-secondary'
                     }`}>
                       {service.status}
                     </span>
@@ -421,11 +421,11 @@ export function SystemAdministration({
           </div>
 
           {/* Database Status */}
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Database Status</h3>
+          <div className="bg-surface rounded-lg border p-6">
+            <h3 className="text-lg font-semibold text-content-primary mb-4">Database Status</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <p className="text-sm font-medium text-gray-600">Connection Status</p>
+                <p className="text-sm font-medium text-content-secondary">Connection Status</p>
                 <div className="flex items-center gap-2 mt-1">
                   {getStatusIcon(systemStatus.database.status)}
                   <span className={`font-medium ${getStatusColor(systemStatus.database.status)}`}>
@@ -434,14 +434,14 @@ export function SystemAdministration({
                 </div>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">Active Connections</p>
-                <p className="text-lg font-semibold text-gray-900 mt-1">
+                <p className="text-sm font-medium text-content-secondary">Active Connections</p>
+                <p className="text-lg font-semibold text-content-primary mt-1">
                   {systemStatus.database.connections}/{systemStatus.database.maxConnections}
                 </p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">Avg Query Time</p>
-                <p className="text-lg font-semibold text-gray-900 mt-1">
+                <p className="text-sm font-medium text-content-secondary">Avg Query Time</p>
+                <p className="text-lg font-semibold text-content-primary mt-1">
                   {systemStatus.database.queryTime}ms
                 </p>
               </div>
@@ -453,13 +453,13 @@ export function SystemAdministration({
       {activeTab === 'settings' && (
         <div className="space-y-6">
           {/* Maintenance Mode */}
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Maintenance Mode</h3>
+          <div className="bg-surface rounded-lg border p-6">
+            <h3 className="text-lg font-semibold text-content-primary mb-4">Maintenance Mode</h3>
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium text-gray-900">Enable Maintenance Mode</p>
-                  <p className="text-sm text-gray-600">Temporarily disable access for system maintenance</p>
+                  <p className="font-medium text-content-primary">Enable Maintenance Mode</p>
+                  <p className="text-sm text-content-secondary">Temporarily disable access for system maintenance</p>
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
@@ -475,7 +475,7 @@ export function SystemAdministration({
                     }}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-11 h-6 bg-surface-secondary peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-content-inverse after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                 </label>
               </div>
               {systemSettings.maintenance.enabled && (
@@ -489,7 +489,7 @@ export function SystemAdministration({
                     setSystemSettings(newSettings)
                   }}
                   placeholder="Maintenance message for users..."
-                  className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full p-3 border border-border-secondary rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
                   rows={3}
                 />
               )}
@@ -497,12 +497,12 @@ export function SystemAdministration({
           </div>
 
           {/* Backup Settings */}
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Backup Settings</h3>
+          <div className="bg-surface rounded-lg border p-6">
+            <h3 className="text-lg font-semibold text-content-primary mb-4">Backup Settings</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-content-primary mb-2">
                     Backup Frequency
                   </label>
                   <select
@@ -514,7 +514,7 @@ export function SystemAdministration({
                       }
                       setSystemSettings(newSettings)
                     }}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full border border-border-secondary rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
                   >
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
@@ -522,7 +522,7 @@ export function SystemAdministration({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-content-primary mb-2">
                     Retention Period (days)
                   </label>
                   <input
@@ -535,23 +535,23 @@ export function SystemAdministration({
                       }
                       setSystemSettings(newSettings)
                     }}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full border border-border-secondary rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                 </div>
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-content-secondary">
                 Last backup: {format(new Date(systemSettings.backups.lastBackup), 'PPpp')}
               </p>
             </div>
           </div>
 
           {/* Security Settings */}
-          <div className="bg-white rounded-lg border p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Security Settings</h3>
+          <div className="bg-surface rounded-lg border p-6">
+            <h3 className="text-lg font-semibold text-content-primary mb-4">Security Settings</h3>
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-content-primary mb-2">
                     Minimum Password Length
                   </label>
                   <input
@@ -570,11 +570,11 @@ export function SystemAdministration({
                       }
                       setSystemSettings(newSettings)
                     }}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full border border-border-secondary rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-content-primary mb-2">
                     Session Timeout (seconds)
                   </label>
                   <input
@@ -587,7 +587,7 @@ export function SystemAdministration({
                       }
                       setSystemSettings(newSettings)
                     }}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full border border-border-secondary rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
                 </div>
               </div>
@@ -597,11 +597,11 @@ export function SystemAdministration({
       )}
 
       {activeTab === 'logs' && (
-        <div className="bg-white rounded-lg border">
-          <div className="p-6 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">System Logs</h3>
+        <div className="bg-surface rounded-lg border">
+          <div className="p-6 border-b border-border-tertiary">
+            <h3 className="text-lg font-semibold text-content-primary">System Logs</h3>
           </div>
-          <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
+          <div className="divide-y divide-border-tertiary max-h-96 overflow-y-auto">
             {systemStatus.logs.map((log) => (
               <div key={log.id} className="p-4 flex items-start gap-3">
                 {getLogIcon(log.level)}
@@ -609,19 +609,19 @@ export function SystemAdministration({
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded uppercase ${
                       log.level === 'error' || log.level === 'critical'
-                        ? 'bg-red-100 text-red-800'
+                        ? 'bg-status-error-light text-status-error-dark'
                         : log.level === 'warning'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-blue-100 text-blue-800'
+                        ? 'bg-status-warning-light text-status-warning-dark'
+                        : 'bg-status-info-light text-status-info-dark'
                     }`}>
                       {log.level}
                     </span>
-                    <span className="text-xs text-gray-500">{log.source}</span>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-content-secondary">{log.source}</span>
+                    <span className="text-xs text-content-secondary">
                       {format(new Date(log.timestamp), 'HH:mm:ss')}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-900">{log.message}</p>
+                  <p className="text-sm text-content-primary">{log.message}</p>
                 </div>
               </div>
             ))}

@@ -22,7 +22,7 @@ export default function HomePage(): JSX.Element {
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center">
       <div className="text-center">
-        <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-orange-600 border-t-transparent rounded-full"></div>
+        <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-primary border-t-transparent rounded-full"></div>
         <p className="text-foreground/70">Loading...</p>
       </div>
     </div>

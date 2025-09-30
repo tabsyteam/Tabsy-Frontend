@@ -13,6 +13,7 @@ import { SessionManager } from '@/lib/session'
 import { ItemDetailModal } from '@/components/menu/ItemDetailModal'
 import { calculateTax } from '@/constants/tax'
 import { STORAGE_KEYS } from '@/constants/storage'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 
 
 interface TableInfo {
@@ -210,7 +211,7 @@ export function CartView() {
   if (loading || isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+        <LoadingSpinner size="xl" />
       </div>
     )
   }
@@ -275,7 +276,7 @@ export function CartView() {
                 variant="outline"
                 size="sm"
                 onClick={handleClearCart}
-                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="text-status-error hover:text-status-error hover:bg-status-error-light"
               >
                 <Trash2 className="w-4 h-4 mr-1" />
                 Clear
@@ -293,8 +294,8 @@ export function CartView() {
             animate={{ opacity: 1, y: 0 }}
             className="text-center py-12"
           >
-            <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-              <ShoppingBag className="w-10 h-10 text-gray-400" />
+            <div className="w-24 h-24 mx-auto mb-6 bg-surface-secondary rounded-full flex items-center justify-center">
+              <ShoppingBag className="w-10 h-10 text-content-tertiary" />
             </div>
             <h2 className="text-2xl font-semibold text-content-primary mb-2">
               Your cart is empty
@@ -387,7 +388,7 @@ export function CartView() {
                                     {item.dietaryTypes.map(diet => (
                                       <span
                                         key={diet}
-                                        className="inline-flex items-center space-x-1 px-1.5 py-0.5 bg-green-100 text-green-800 text-xs rounded-full"
+                                        className="inline-flex items-center space-x-1 px-1.5 py-0.5 bg-status-success-light text-status-success text-xs rounded-full"
                                       >
                                         {getDietaryIcon(diet)}
                                         <span>{diet.replace('_', ' ')}</span>
@@ -397,7 +398,7 @@ export function CartView() {
                                 )}
 
                                 {getAllergensList(item.allergyInfo).length > 0 && (
-                                  <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                                  <div className="text-xs text-status-warning bg-status-warning-light px-2 py-1 rounded">
                                     <span className="font-medium">Contains:</span> {getAllergensList(item.allergyInfo).join(', ')}
                                   </div>
                                 )}
@@ -418,7 +419,7 @@ export function CartView() {
 
                             {/* Special Instructions */}
                             {item.specialInstructions && (
-                              <div className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded mb-2">
+                              <div className="text-xs text-status-warning bg-status-warning-light px-2 py-1 rounded mb-2">
                                 <span className="font-medium">Special Instructions:</span>
                                 <div className="mt-1">{item.specialInstructions}</div>
                               </div>
@@ -433,7 +434,7 @@ export function CartView() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => handleEditItem(item.cartItemId)}
-                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 p-1"
+                                className="text-primary hover:text-primary-hover hover:bg-interactive-hover p-1"
                                 title="Edit customizations"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -446,7 +447,7 @@ export function CartView() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleRemoveItem(item.cartItemId)}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1"
+                              className="text-status-error hover:text-status-error hover:bg-status-error-light p-1"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>

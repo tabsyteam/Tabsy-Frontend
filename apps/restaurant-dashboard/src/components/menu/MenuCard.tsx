@@ -55,7 +55,7 @@ export function MenuCard(props: MenuCardProps) {
                 </div>
                 {/* Status indicator dot */}
                 <div className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-card ${
-                  (category as any).active ? 'bg-green-500' : 'bg-gray-400'
+                  (category as any).active ? 'bg-status-success' : 'bg-content-disabled'
                 }`} />
               </div>
               <div className="flex-1 min-w-0">
@@ -63,12 +63,12 @@ export function MenuCard(props: MenuCardProps) {
                   {category.name}
                 </h3>
                 {(category as any).active ? (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-status-success-light text-status-success-dark border border-status-success">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Active
                   </span>
                 ) : (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-surface-tertiary text-content-secondary border border-border-secondary">
                     <XCircle className="h-3 w-3 mr-1" />
                     Inactive
                   </span>
@@ -85,7 +85,7 @@ export function MenuCard(props: MenuCardProps) {
                   e.stopPropagation()
                   onSelect(category)
                 }}
-                className="h-7 w-7 p-0 hover:bg-blue-100 hover:text-blue-600 hover:shadow-md transition-all"
+                className="h-7 w-7 p-0 hover:bg-interactive-hover hover:text-primary hover:shadow-md transition-all"
                 title="View details"
               >
                 <Eye className="h-3.5 w-3.5" />
@@ -97,7 +97,7 @@ export function MenuCard(props: MenuCardProps) {
                   e.stopPropagation()
                   onEdit(category)
                 }}
-                className="h-7 w-7 p-0 hover:bg-blue-100 hover:text-blue-600 hover:shadow-md transition-all"
+                className="h-7 w-7 p-0 hover:bg-interactive-hover hover:text-primary hover:shadow-md transition-all"
                 title="Edit category"
               >
                 <Edit className="h-3.5 w-3.5" />
@@ -109,7 +109,7 @@ export function MenuCard(props: MenuCardProps) {
                   e.stopPropagation()
                   onDelete(category.id)
                 }}
-                className="h-7 w-7 p-0 hover:bg-red-100 hover:text-red-600 hover:shadow-md transition-all"
+                className="h-7 w-7 p-0 hover:bg-status-error-light hover:text-status-error hover:shadow-md transition-all"
                 title="Delete category"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -177,7 +177,7 @@ export function MenuCard(props: MenuCardProps) {
             </div>
             {/* Status indicator */}
             <div className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-card ${
-              (item as any).active ? 'bg-green-500' : 'bg-red-500'
+              (item as any).active ? 'bg-status-success' : 'bg-status-error'
             }`} />
           </div>
 
@@ -188,12 +188,12 @@ export function MenuCard(props: MenuCardProps) {
               </h3>
             </div>
             {(item as any).active ? (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-status-success-light text-status-success-dark border border-status-success">
                 <CheckCircle className="h-3 w-3 mr-1" />
                 Available
               </span>
             ) : (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 border border-red-200">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-status-error-light text-status-error-dark border border-status-error">
                 <XCircle className="h-3 w-3 mr-1" />
                 Unavailable
               </span>
@@ -209,7 +209,7 @@ export function MenuCard(props: MenuCardProps) {
                 e.stopPropagation()
                 onSelect(item)
               }}
-              className="h-7 w-7 p-0 hover:bg-blue-100 hover:text-blue-600 hover:shadow-md transition-all"
+              className="h-7 w-7 p-0 hover:bg-interactive-hover hover:text-primary hover:shadow-md transition-all"
               title="View details"
             >
               <Eye className="h-3.5 w-3.5" />
@@ -221,7 +221,7 @@ export function MenuCard(props: MenuCardProps) {
                 e.stopPropagation()
                 onEdit(item)
               }}
-              className="h-7 w-7 p-0 hover:bg-blue-100 hover:text-blue-600 hover:shadow-md transition-all"
+              className="h-7 w-7 p-0 hover:bg-interactive-hover hover:text-primary hover:shadow-md transition-all"
               title="Edit item"
             >
               <Edit className="h-3.5 w-3.5" />
@@ -233,7 +233,7 @@ export function MenuCard(props: MenuCardProps) {
                 e.stopPropagation()
                 onDelete(item.id)
               }}
-              className="h-7 w-7 p-0 hover:bg-red-100 hover:text-red-600 hover:shadow-md transition-all"
+              className="h-7 w-7 p-0 hover:bg-status-error-light hover:text-status-error hover:shadow-md transition-all"
               title="Delete item"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -272,7 +272,7 @@ export function MenuCard(props: MenuCardProps) {
           </div>
 
           <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1 text-xs text-amber-600">
+            <div className="flex items-center space-x-1 text-xs text-accent">
               <Star className="h-3 w-3 flex-shrink-0" />
               <span>Popular</span>
             </div>

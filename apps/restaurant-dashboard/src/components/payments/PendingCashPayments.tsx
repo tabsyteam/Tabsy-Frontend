@@ -31,7 +31,7 @@ export const PendingCashPayments = forwardRef<PendingCashPaymentsRef, PendingCas
   console.log('🏪💰 [PendingCashPayments] Component rendered with restaurantId:', restaurantId)
 
   // Use React Query for data fetching - prevents duplicate API calls
-  const { data: pendingPayments = [], isLoading: loading, refetch } = useQuery({
+  const { data: pendingPayments = [], isLoading: loading, refetch } = useQuery<PendingPaymentWithOrder[]>({
     queryKey: ['restaurant', 'pending-cash-payments', restaurantId],
     queryFn: async () => {
       console.log('[PendingCashPayments] Fetching payments for restaurant:', restaurantId)
@@ -96,7 +96,7 @@ export const PendingCashPayments = forwardRef<PendingCashPaymentsRef, PendingCas
           return oldData?.filter(p => p.id !== payment.id) || []
         })
       } else {
-        throw new Error(response.error || 'Failed to confirm payment')
+        throw new Error((response.error as any)?.message || 'Failed to confirm payment')
       }
     } catch (error: any) {
       console.error('Error confirming payment:', error)
@@ -129,7 +129,7 @@ export const PendingCashPayments = forwardRef<PendingCashPaymentsRef, PendingCas
           return oldData?.filter(p => p.id !== payment.id) || []
         })
       } else {
-        throw new Error(response.error || 'Failed to cancel payment')
+        throw new Error((response.error as any)?.message || 'Failed to cancel payment')
       }
     } catch (error: any) {
       console.error('Error cancelling payment:', error)
@@ -370,10 +370,10 @@ export const PendingCashPayments = forwardRef<PendingCashPaymentsRef, PendingCas
                   size="sm"
                   onClick={() => handleCancelPayment(payment)}
                   disabled={processingPayments.has(payment.id)}
-                  className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                  className="border-status-error text-status-error hover:bg-status-error-light hover:border-status-error"
                 >
                   {processingPayments.has(payment.id) ? (
-                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-600"></div>
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-status-error"></div>
                   ) : (
                     <XCircle className="w-3 h-3" />
                   )}

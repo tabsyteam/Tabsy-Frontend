@@ -44,34 +44,34 @@ interface TableSessionWithOrders {
 const getSessionStatusColor = (status: string) => {
   switch (status) {
     case 'ACTIVE':
-      return 'bg-green-100 text-green-800'
+      return 'bg-status-success-light text-status-success-dark'
     case 'ORDERING_LOCKED':
-      return 'bg-yellow-100 text-yellow-800'
+      return 'bg-status-warning-light text-status-warning-dark'
     case 'PAYMENT_PENDING':
-      return 'bg-blue-100 text-blue-800'
+      return 'bg-interactive-hover text-status-info-dark'
     case 'CLOSED':
-      return 'bg-gray-100 text-gray-800'
+      return 'bg-surface-tertiary text-content-primary'
     default:
-      return 'bg-gray-100 text-gray-800'
+      return 'bg-surface-tertiary text-content-primary'
   }
 }
 
 const getOrderStatusColor = (status: OrderStatus) => {
   switch (status) {
     case 'RECEIVED':
-      return 'bg-blue-100 text-blue-800'
+      return 'bg-interactive-hover text-status-info-dark'
     case 'PREPARING':
-      return 'bg-yellow-100 text-yellow-800'
+      return 'bg-status-warning-light text-status-warning-dark'
     case 'READY':
-      return 'bg-green-100 text-green-800'
+      return 'bg-status-success-light text-status-success-dark'
     case 'DELIVERED':
-      return 'bg-purple-100 text-purple-800'
+      return 'bg-secondary/10 text-secondary-dark'
     case 'COMPLETED':
-      return 'bg-gray-100 text-gray-800'
+      return 'bg-surface-tertiary text-content-primary'
     case 'CANCELLED':
-      return 'bg-red-100 text-red-800'
+      return 'bg-status-error-light text-status-error-dark'
     default:
-      return 'bg-gray-100 text-gray-800'
+      return 'bg-surface-tertiary text-content-primary'
   }
 }
 
@@ -91,7 +91,7 @@ export function OrdersByTableSession({ restaurantId }: OrdersByTableSessionProps
 
         // Get active table sessions for the restaurant
         const response = await tabsyClient.restaurantTableSession.getAllSessions(
-          { restaurantId, status: ['ACTIVE', 'ORDERING_LOCKED', 'PAYMENT_PENDING'] },
+          { status: ['ACTIVE', 'ORDERING_LOCKED', 'PAYMENT_PENDING'] },
           1,
           50
         )

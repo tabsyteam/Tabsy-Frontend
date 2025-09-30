@@ -21,6 +21,7 @@ import { TabsyAPI } from '@tabsy/api-client'
 import { SessionManager } from '@/lib/session'
 import { PaymentMethod, PaymentStatus } from '@tabsy/shared-types'
 import type { Payment } from '@tabsy/shared-types'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 
 interface PaymentHistoryProps {
   tableSessionId?: string
@@ -199,7 +200,7 @@ export function PaymentHistory({ tableSessionId, orderId, api }: PaymentHistoryP
     return (
       <div className="bg-surface rounded-xl border p-6">
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <LoadingSpinner size="md" centered={false} />
           <span className="ml-3 text-content-secondary">Loading payment history...</span>
         </div>
       </div>

@@ -125,9 +125,9 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
           logoCanvas.height = 60;
 
           if (logoCtx) {
-            // Tabsy brand colors
-            const primaryColor = '#F97316'; // Orange
-            const blueColor = '#1E3A8A'; // Blue
+            // Tabsy brand colors - Updated to new theme
+            const primaryColor = '#0D9488'; // Teal
+            const blueColor = '#1E3A8A'; // Blue (logo color)
 
             // Draw simplified Tabsy logo elements
             logoCtx.fillStyle = blueColor;
@@ -154,14 +154,14 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
         qrImage.onload = () => {
           // Create branded background with gradient
           const gradient = ctx.createLinearGradient(0, 0, size, size);
-          gradient.addColorStop(0, '#FFF7ED'); // orange-50
-          gradient.addColorStop(0.5, '#FFFBEB'); // amber-50
-          gradient.addColorStop(1, '#FFF7ED'); // orange-50
+          gradient.addColorStop(0, '#F0FDFA'); // teal-50
+          gradient.addColorStop(0.5, '#FAF5FF'); // violet-50
+          gradient.addColorStop(1, '#F0FDFA'); // teal-50
           ctx.fillStyle = gradient;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
           // Add subtle pattern overlay
-          ctx.fillStyle = 'rgba(249, 115, 22, 0.03)';
+          ctx.fillStyle = 'rgba(13, 148, 136, 0.03)';
           for (let i = 0; i < size; i += 20) {
             for (let j = 0; j < size; j += 20) {
               if ((i + j) % 40 === 0) {
@@ -181,7 +181,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
           ctx.fillText(`Table ${table.number}`, size / 2, 120);
 
           // Subtitle
-          ctx.fillStyle = '#F97316';
+          ctx.fillStyle = '#0D9488';
           ctx.font = '20px Arial';
           ctx.fillText('Digital Menu Experience', size / 2, 150);
 
@@ -199,7 +199,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
           ctx.fillRect(qrX, qrY, qrSize, qrSize);
 
           // QR Code border
-          ctx.strokeStyle = '#F97316';
+          ctx.strokeStyle = '#0D9488';
           ctx.lineWidth = 3;
           ctx.strokeRect(qrX, qrY, qrSize, qrSize);
 
@@ -211,9 +211,9 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
           const bottomY = qrY + qrSize + 40;
 
           // Instructions background
-          ctx.fillStyle = 'rgba(249, 115, 22, 0.1)';
+          ctx.fillStyle = 'rgba(13, 148, 136, 0.1)';
           ctx.fillRect(50, bottomY, size - 100, 120);
-          ctx.strokeStyle = '#F97316';
+          ctx.strokeStyle = '#0D9488';
           ctx.lineWidth = 2;
           ctx.strokeRect(50, bottomY, size - 100, 120);
 
@@ -222,7 +222,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
           ctx.font = 'bold 18px Arial';
           ctx.fillText('How to Use This QR Code', size / 2, bottomY + 25);
 
-          ctx.fillStyle = '#374151';
+          ctx.fillStyle = '#334155';
           ctx.font = '14px Arial';
           ctx.textAlign = 'left';
           const instructions = [
@@ -237,14 +237,14 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
           });
 
           // Footer with URL and branding
-          ctx.fillStyle = '#6B7280';
+          ctx.fillStyle = '#64748B';
           ctx.font = '12px Arial';
           ctx.textAlign = 'center';
           const urlText = url.length > 50 ? url.substring(0, 50) + '...' : url;
           ctx.fillText(urlText, size / 2, canvas.height - 40);
 
           // Powered by Tabsy
-          ctx.fillStyle = '#F97316';
+          ctx.fillStyle = '#0D9488';
           ctx.font = 'bold 14px Arial';
           ctx.fillText('Powered by Tabsy • Seamless Dining Experience', size / 2, canvas.height - 15);
 
@@ -311,7 +311,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
                 font-family: 'Arial', sans-serif;
                 margin: 0;
                 padding: 20px;
-                background: linear-gradient(135deg, #FFF7ED 0%, #FFFBEB 50%, #FFF7ED 100%);
+                background: linear-gradient(135deg, #F0FDFA 0%, #FAF5FF 50%, #F0FDFA 100%);
                 color: #1E3A8A;
               }
 
@@ -327,7 +327,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
 
               /* Tabsy Header */
               .tabsy-header {
-                background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
+                background: linear-gradient(135deg, #0D9488 0%, #0F766E 100%);
                 color: white;
                 padding: 20px 25px;
                 text-align: center;
@@ -393,8 +393,8 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
                 padding: 15px;
                 background: white;
                 border-radius: 15px;
-                box-shadow: 0 8px 20px rgba(249, 115, 22, 0.2);
-                border: 2px solid #F97316;
+                box-shadow: 0 8px 20px rgba(13, 148, 136, 0.2);
+                border: 2px solid #0D9488;
                 position: relative;
                 overflow: hidden;
               }
@@ -406,7 +406,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: linear-gradient(45deg, transparent 40%, rgba(249, 115, 22, 0.05) 50%, transparent 60%);
+                background: linear-gradient(45deg, transparent 40%, rgba(13, 148, 136, 0.05) 50%, transparent 60%);
                 pointer-events: none;
               }
 
@@ -428,11 +428,11 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
 
               /* Instructions */
               .instructions-section {
-                background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%);
+                background: linear-gradient(135deg, rgba(13, 148, 136, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
                 border-radius: 12px;
                 padding: 18px;
                 margin: 20px 0;
-                border: 2px solid rgba(249, 115, 22, 0.2);
+                border: 2px solid rgba(13, 148, 136, 0.2);
               }
 
               .instructions-title {
@@ -461,7 +461,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
               }
 
               .step-number {
-                background: linear-gradient(135deg, #F97316, #EA580C);
+                background: linear-gradient(135deg, #0D9488, #0F766E);
                 color: white;
                 width: 20px;
                 height: 20px;
@@ -476,7 +476,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
 
               .step-text {
                 font-size: 12px;
-                color: #374151;
+                color: #334155;
                 line-height: 1.3;
               }
 
@@ -504,7 +504,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
                 background: white;
                 padding: 8px 12px;
                 border-radius: 20px;
-                border: 1px solid rgba(249, 115, 22, 0.2);
+                border: 1px solid rgba(13, 148, 136, 0.2);
                 font-size: 11px;
                 font-weight: 600;
                 color: #1E3A8A;
@@ -519,7 +519,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
                 left: -100%;
                 width: 100%;
                 height: 100%;
-                background: linear-gradient(90deg, transparent, rgba(249, 115, 22, 0.1), transparent);
+                background: linear-gradient(90deg, transparent, rgba(13, 148, 136, 0.1), transparent);
                 transition: left 0.5s;
               }
 
@@ -555,7 +555,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
               /* Decorative Elements */
               .decoration {
                 position: absolute;
-                background: rgba(249, 115, 22, 0.1);
+                background: rgba(13, 148, 136, 0.1);
                 border-radius: 50%;
               }
 
@@ -732,7 +732,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
         {/* Header with Tabsy Branding */}
         <div className="flex items-center justify-between p-6 border-b border-border bg-white rounded-t-lg relative overflow-hidden">
           {/* Background pattern */}
-          <div className="absolute inset-0 bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-teal-50 via-violet-50 to-teal-50"></div>
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -translate-y-16 translate-x-16"></div>
 
           <div className="flex items-center space-x-3 relative z-10">
@@ -767,7 +767,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
               </div>
 
               {/* QR Code */}
-              <div className="w-64 h-64 flex items-center justify-center rounded-lg bg-gradient-to-br from-orange-50 to-amber-50 border border-primary/20">
+              <div className="w-64 h-64 flex items-center justify-center rounded-lg bg-gradient-to-br from-teal-50 to-violet-50 border border-primary/20">
                 {(() => {
                   console.log('qrImageUrl state:', qrImageUrl);
                   return null;
@@ -781,7 +781,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
                     onError={(e) => console.log('QR image failed to load:', e)}
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-dashed border-primary/30 flex items-center justify-center rounded-lg">
+                  <div className="w-full h-full bg-gradient-to-br from-teal-50 to-violet-50 border-2 border-dashed border-primary/30 flex items-center justify-center rounded-lg">
                     <div className="text-center">
                       {qrImageLoading ? (
                         <Loader2 className="w-16 h-16 mx-auto mb-2 text-primary animate-spin" />
@@ -830,7 +830,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
                 className="flex-shrink-0"
               >
                 {copiedUrl ? (
-                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <CheckCircle className="w-4 h-4 text-status-success" />
                 ) : (
                   <Copy className="w-4 h-4" />
                 )}
@@ -921,7 +921,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
           </div>
 
           {/* Tabsy Instructions */}
-          <div className="bg-gradient-to-r from-orange-50 via-amber-50 to-orange-50 border-2 border-primary/20 rounded-xl p-5 relative overflow-hidden">
+          <div className="bg-gradient-to-r from-teal-50 via-violet-50 to-teal-50 border-2 border-primary/20 rounded-xl p-5 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-20 h-20 bg-primary/10 rounded-full -translate-y-10 translate-x-10"></div>
             <div className="absolute bottom-0 left-0 w-16 h-16 bg-secondary/10 rounded-full translate-y-8 -translate-x-8"></div>
 

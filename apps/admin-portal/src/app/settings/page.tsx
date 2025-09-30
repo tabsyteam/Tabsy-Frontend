@@ -90,9 +90,9 @@ function SettingSection({
 // System Status Badge
 function SystemStatusBadge({ status }: { status: 'healthy' | 'warning' | 'critical' }) {
   const config = {
-    healthy: { color: 'bg-green-100 text-green-800', icon: CheckCircle, label: 'Healthy' },
-    warning: { color: 'bg-yellow-100 text-yellow-800', icon: AlertCircle, label: 'Warning' },
-    critical: { color: 'bg-red-100 text-red-800', icon: XCircle, label: 'Critical' }
+    healthy: { color: 'bg-status-success-light text-status-success-dark', icon: CheckCircle, label: 'Healthy' },
+    warning: { color: 'bg-status-warning-light text-status-warning-dark', icon: AlertCircle, label: 'Warning' },
+    critical: { color: 'bg-status-error-light text-status-error-dark', icon: XCircle, label: 'Critical' }
   };
 
   const { color, icon: Icon, label } = config[status];
@@ -220,19 +220,19 @@ export default function SettingsPage() {
                 <SystemStatusBadge status={(systemHealth?.status as 'healthy' | 'warning' | 'critical') || 'healthy'} />
                 <div className="flex items-center space-x-4 text-sm">
                   <div className="flex items-center">
-                    <Cpu className="h-4 w-4 text-blue-500 mr-1" />
+                    <Cpu className="h-4 w-4 text-status-info mr-1" />
                     <span className="text-content-secondary">CPU: {systemHealth?.cpuUsage || '23%'}</span>
                   </div>
                   <div className="flex items-center">
-                    <HardDrive className="h-4 w-4 text-green-500 mr-1" />
+                    <HardDrive className="h-4 w-4 text-status-success mr-1" />
                     <span className="text-content-secondary">Memory: {systemHealth?.memoryUsage || '45%'}</span>
                   </div>
                   <div className="flex items-center">
-                    <Database className="h-4 w-4 text-purple-500 mr-1" />
+                    <Database className="h-4 w-4 text-accent mr-1" />
                     <span className="text-content-secondary">Storage: {systemHealth?.diskUsage || '67%'}</span>
                   </div>
                   <div className="flex items-center">
-                    <Wifi className="h-4 w-4 text-orange-500 mr-1" />
+                    <Wifi className="h-4 w-4 text-secondary mr-1" />
                     <span className="text-content-secondary">Uptime: {systemHealth?.uptime || '15d 4h'}</span>
                   </div>
                 </div>
@@ -430,7 +430,7 @@ export default function SettingsPage() {
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" defaultChecked disabled={!isEditMode} className="sr-only peer" />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                      <div className="w-11 h-6 bg-surface-tertiary peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface after:border-border-default after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                     </label>
                   </div>
                   <div className="flex gap-3">
@@ -581,7 +581,7 @@ export default function SettingsPage() {
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" disabled={!isEditMode} className="sr-only peer" />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                      <div className="w-11 h-6 bg-surface-tertiary peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface after:border-border-default after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                     </label>
                   </div>
                   <textarea
@@ -773,15 +773,15 @@ export default function SettingsPage() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="text-center p-4 bg-surface-secondary rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">23ms</div>
+                      <div className="text-2xl font-bold text-status-success">23ms</div>
                       <p className="text-xs text-content-secondary mt-1">Avg Response Time</p>
                     </div>
                     <div className="text-center p-4 bg-surface-secondary rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">99.9%</div>
+                      <div className="text-2xl font-bold text-status-info">99.9%</div>
                       <p className="text-xs text-content-secondary mt-1">Uptime</p>
                     </div>
                     <div className="text-center p-4 bg-surface-secondary rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">1.2k</div>
+                      <div className="text-2xl font-bold text-accent">1.2k</div>
                       <p className="text-xs text-content-secondary mt-1">Requests/min</p>
                     </div>
                   </div>
@@ -819,7 +819,7 @@ export default function SettingsPage() {
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input type="checkbox" disabled={!isEditMode} className="sr-only peer" />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                      <div className="w-11 h-6 bg-surface-tertiary peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-surface after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-surface after:border-border-default after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                     </label>
                   </div>
                   <textarea
@@ -856,14 +856,14 @@ export default function SettingsPage() {
                   {auditLogs?.slice(0, 10).map((log: any, index: number) => (
                     <div key={index} className="flex items-start p-3 bg-surface-secondary rounded-lg">
                       <div className={`p-2 rounded-lg mr-3 ${
-                        log.severity === 'error' ? 'bg-red-100' :
-                        log.severity === 'warning' ? 'bg-yellow-100' :
-                        'bg-green-100'
+                        log.severity === 'error' ? 'bg-status-error-light' :
+                        log.severity === 'warning' ? 'bg-status-warning-light' :
+                        'bg-status-success-light'
                       }`}>
                         <Activity className={`h-4 w-4 ${
-                          log.severity === 'error' ? 'text-red-600' :
-                          log.severity === 'warning' ? 'text-yellow-600' :
-                          'text-green-600'
+                          log.severity === 'error' ? 'text-status-error-dark' :
+                          log.severity === 'warning' ? 'text-status-warning-dark' :
+                          'text-status-success-dark'
                         }`} />
                       </div>
                       <div className="flex-1">

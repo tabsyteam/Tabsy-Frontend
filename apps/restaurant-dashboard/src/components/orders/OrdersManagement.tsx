@@ -255,17 +255,17 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     )
   }, [queryClient, restaurantId, pendingStatusChanges])
 
-  const handleOrderStatusChange = useCallback((data: { orderId: string; status: OrderStatus }) => {
+  const handleOrderStatusChange = useCallback((data: { orderId: string; previousStatus: string; newStatus: string; updatedBy: string; estimatedTime?: number; notes?: string }) => {
     console.log('🔄 Order status changed via WebSocket:', data)
 
     // Check if this is a locally initiated change
-    const changeKey = `${data.orderId}:${data.status}`
+    const changeKey = `${data.orderId}:${data.newStatus}`
     if (pendingStatusChanges.has(changeKey)) {
       console.log('🔄 Ignoring locally initiated status change:', changeKey)
       return
     }
 
-    toast.info(`Order #${data.orderId} status: ${data.status}`)
+    toast.info(`Order #${data.orderId} status: ${data.newStatus}`)
 
     // Update orders cache with status change
     let previousStatus: OrderStatus | null = null
@@ -276,7 +276,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
 
         const updatedOrders = oldData.data.orders.map((existingOrder: Order) =>
           existingOrder.id === data.orderId
-            ? { ...existingOrder, status: data.status }
+            ? { ...existingOrder, status: data.newStatus as OrderStatus }
             : existingOrder
         )
         return { ...oldData, data: { ...oldData.data, orders: updatedOrders } }
@@ -290,19 +290,19 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
         let updatedOrders = oldData.data.orders
         let totalCount = oldData.data.totalCount || 0
 
-        if (previousStatus === 'RECEIVED' && data.status !== 'RECEIVED') {
+        if (previousStatus === 'RECEIVED' && data.newStatus !== 'RECEIVED') {
           updatedOrders = updatedOrders.filter((order: Order) => order.id !== data.orderId)
           totalCount = Math.max(0, totalCount - 1)
-        } else if (previousStatus !== 'RECEIVED' && data.status === 'RECEIVED') {
+        } else if (previousStatus !== 'RECEIVED' && data.newStatus === 'RECEIVED') {
           const mainCache = queryClient.getQueryData(['orders', 'restaurant', restaurantId, undefined]) as any
           const fullOrder = mainCache?.data?.orders?.find((order: Order) => order.id === data.orderId)
           if (fullOrder) {
-            updatedOrders = [{ ...fullOrder, status: data.status }, ...updatedOrders]
+            updatedOrders = [{ ...fullOrder, status: data.newStatus as OrderStatus }, ...updatedOrders]
             totalCount = totalCount + 1
           }
-        } else if (previousStatus === 'RECEIVED' && data.status === 'RECEIVED') {
+        } else if (previousStatus === 'RECEIVED' && data.newStatus === 'RECEIVED') {
           updatedOrders = updatedOrders.map((order: Order) =>
-            order.id === data.orderId ? { ...order, status: data.status } : order
+            order.id === data.orderId ? { ...order, status: data.newStatus as OrderStatus } : order
           )
         }
 
@@ -321,7 +321,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     // Update selected order if it matches
     setSelectedOrder(current =>
       current && current.id === data.orderId
-        ? { ...current, status: data.status }
+        ? { ...current, status: data.newStatus as OrderStatus }
         : current
     )
   }, [queryClient, restaurantId, pendingStatusChanges])
@@ -345,10 +345,19 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
       })
     }
 
+    // Handle table session payments
+    if (data.tableSessionId) {
+      queryClient.invalidateQueries({ queryKey: ['payments', 'table-session', data.tableSessionId] })
+      queryClient.invalidateQueries({ queryKey: ['orders', 'restaurant', restaurantId] })
+      queryClient.invalidateQueries({ queryKey: ['table-sessions', restaurantId] })
+    }
+
     // Show notification
-    toast.info('Payment Created', {
-      description: `${data.paymentMethod === 'CASH' ? 'Cash' : 'Card'} payment requested for order #${data.orderNumber || data.orderId}`
-    })
+    const description = data.tableSessionId
+      ? 'Payment has been initiated for table session'
+      : `${data.paymentMethod === 'CASH' ? 'Cash' : 'Card'} payment requested for order #${data.orderNumber || data.orderId}`
+
+    toast.info('Payment Created', { description })
 
     console.log('💳✅ [OrdersManagement] Payment created - queries invalidated and toast shown')
   }, [queryClient, restaurantId])
@@ -395,29 +404,10 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
   useWebSocketEvent('order:updated', handleOrderUpdate, [handleOrderUpdate])
   useWebSocketEvent('order:status_updated', handleOrderStatusChange, [handleOrderStatusChange])
 
-  // Handler for table session payment updates (actual payment creation events from backend)
-  const handleTableSessionPaymentUpdated = useCallback((data: any) => {
-    console.log('💳🎯 [OrdersManagement] Table session payment updated (payment created):', data)
-    console.log('💳🎯 [OrdersManagement] Event data keys:', Object.keys(data || {}))
-    console.log('💳🎯 [OrdersManagement] Current restaurant ID:', restaurantId)
-
-    if (data.tableSessionId) {
-      queryClient.invalidateQueries({ queryKey: ['payments', 'table-session', data.tableSessionId] })
-      queryClient.invalidateQueries({ queryKey: ['orders', 'restaurant', restaurantId] })
-      queryClient.invalidateQueries({ queryKey: ['table-sessions', restaurantId] })
-    }
-
-    toast.info('Payment Created', {
-      description: `Payment has been initiated for table session`
-    })
-    console.log('💳✅ [OrdersManagement] Table session payment updated - queries invalidated and toast shown')
-  }, [queryClient, restaurantId])
-
   // Payment event listeners
   useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated])
   useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted])
   useWebSocketEvent('payment:cancelled', handlePaymentCancelled, [handlePaymentCancelled])
-  useWebSocketEvent('table_session:payment_updated', handleTableSessionPaymentUpdated, [handleTableSessionPaymentUpdated])
   
   // Update selected order when orders data changes
   // Use more efficient comparison instead of expensive JSON.stringify
@@ -523,8 +513,8 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Authenticating...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-content-secondary">Authenticating...</p>
         </div>
       </div>
     )
@@ -535,8 +525,8 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-gray-600">Authentication required to view orders</p>
+          <AlertCircle className="h-12 w-12 text-status-error mx-auto mb-4" />
+          <p className="text-content-secondary">Authentication required to view orders</p>
         </div>
       </div>
     )

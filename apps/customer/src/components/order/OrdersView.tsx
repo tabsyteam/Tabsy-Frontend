@@ -776,8 +776,8 @@ export function OrdersView() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center space-y-6 max-w-md">
-          <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-            <AlertCircle className="w-8 h-8 text-red-600" />
+          <div className="w-16 h-16 mx-auto bg-status-error-light rounded-full flex items-center justify-center">
+            <AlertCircle className="w-8 h-8 text-status-error" />
           </div>
           <div>
             <h1 className="text-xl font-semibold text-content-primary mb-2">
@@ -832,13 +832,13 @@ export function OrdersView() {
               {session && (
                 <div className="mt-1">
                   {wsConnected ? (
-                    <div className="flex items-center text-xs text-green-600">
-                      <div className="w-2 h-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></div>
+                    <div className="flex items-center text-xs text-status-success">
+                      <div className="w-2 h-2 bg-status-success rounded-full mr-1.5 animate-pulse"></div>
                       Live updates active
                     </div>
                   ) : (
-                    <div className="flex items-center text-xs text-orange-600">
-                      <div className="w-2 h-2 bg-orange-500 rounded-full mr-1.5"></div>
+                    <div className="flex items-center text-xs text-status-warning">
+                      <div className="w-2 h-2 bg-status-warning rounded-full mr-1.5"></div>
                       Using API fallback - Tap refresh to sync
                     </div>
                   )}
@@ -903,8 +903,8 @@ export function OrdersView() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
           >
-            <div className="w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <Receipt className="w-8 h-8 text-gray-400" />
+            <div className="w-16 h-16 mx-auto bg-surface-secondary rounded-full flex items-center justify-center mb-4">
+              <Receipt className="w-8 h-8 text-content-tertiary" />
             </div>
             <h3 className="text-lg font-semibold text-content-primary mb-2">
               {orders.length === 0

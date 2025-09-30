@@ -32,28 +32,28 @@ export const GrowthChart: React.FC<GrowthChartProps> = ({
   const growthPercentage = firstValue > 0 ? ((totalGrowth / firstValue) * 100).toFixed(1) : '0'
 
   const colorClasses = {
-    blue: 'bg-blue-500 hover:bg-blue-600',
-    green: 'bg-green-500 hover:bg-green-600',
-    purple: 'bg-purple-500 hover:bg-purple-600',
-    red: 'bg-red-500 hover:bg-red-600'
+    blue: 'bg-status-info hover:bg-status-info-dark',
+    green: 'bg-status-success hover:bg-status-success-dark',
+    purple: 'bg-primary hover:bg-primary-dark',
+    red: 'bg-status-error hover:bg-status-error-dark'
   }
 
   return (
-    <div className="w-full h-80 bg-white p-6 rounded-lg border shadow-sm">
+    <div className="w-full h-80 bg-surface p-6 rounded-lg border shadow-sm">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+        <h3 className="text-lg font-semibold text-content-primary mb-2">{title}</h3>
         <div className="flex items-center space-x-4 text-sm">
-          <div className="text-gray-600">
-            Total: <span className="font-semibold text-gray-900">{lastValue.toLocaleString()}</span>
+          <div className="text-content-secondary">
+            Total: <span className="font-semibold text-content-primary">{lastValue.toLocaleString()}</span>
           </div>
-          <div className={`flex items-center ${totalGrowth >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <div className={`flex items-center ${totalGrowth >= 0 ? 'text-status-success' : 'text-status-error'}`}>
             <span className="mr-1">{totalGrowth >= 0 ? '↗' : '↘'}</span>
             <span className="font-semibold">{Math.abs(Number(growthPercentage))}%</span>
           </div>
         </div>
       </div>
       
-      <div className="h-48 flex items-end justify-between space-x-3 bg-gray-50 rounded-lg p-4">
+      <div className="h-48 flex items-end justify-between space-x-3 bg-surface-secondary rounded-lg p-4">
         {chartData.map((item, index) => (
           <div key={index} className="flex flex-col items-center flex-1 group relative">
             <div
@@ -61,12 +61,12 @@ export const GrowthChart: React.FC<GrowthChartProps> = ({
               style={{ height: `${(item.value / maxValue) * 140}px` }}
             >
               {/* Tooltip */}
-              <div className="invisible group-hover:visible absolute -top-12 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs rounded px-2 py-1 whitespace-nowrap z-10">
+              <div className="invisible group-hover:visible absolute -top-12 left-1/2 transform -translate-x-1/2 bg-content-primary text-content-inverse text-xs rounded px-2 py-1 whitespace-nowrap z-10">
                 {item.name}: {item.value.toLocaleString()}
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-800"></div>
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-content-primary"></div>
               </div>
             </div>
-            <div className="text-xs mt-2 text-gray-600 font-medium">{item.name}</div>
+            <div className="text-xs mt-2 text-content-secondary font-medium">{item.name}</div>
           </div>
         ))}
       </div>

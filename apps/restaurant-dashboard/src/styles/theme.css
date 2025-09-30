@@ -1,160 +1,198 @@
-/* Restaurant Theme CSS Variables - Warm Orange Theme with Semantic Tokens */
+/* Restaurant Dashboard Theme - Modern Teal/Violet Professional Design (2025) */
 :root {
-  /* Primary Colors - Orange */
-  --primary: 249 115 22; /* orange-500 */
-  --primary-hover: 234 88 12; /* orange-600 */
-  --primary-active: 194 65 12; /* orange-700 */
-  --primary-light: 255 247 237; /* orange-50 */
-  --primary-dark: 124 45 18; /* orange-900 */
+  /* Primary Colors - Deep Teal (Hospitality & Professional) */
+  --primary: 13 148 136; /* teal-600 #0D9488 */
+  --primary-hover: 15 118 110; /* teal-700 #0F766E */
+  --primary-active: 17 94 89; /* teal-800 #115E59 */
+  --primary-light: 240 253 250; /* teal-50 #F0FDFA */
+  --primary-dark: 19 78 74; /* teal-900 #134E4A */
   --primary-foreground: 255 255 255;
 
-  /* Secondary Colors - Amber */
-  --secondary: 245 158 11; /* amber-500 */
-  --secondary-hover: 217 119 6; /* amber-600 */
-  --secondary-active: 180 83 9; /* amber-700 */
-  --secondary-light: 255 251 235; /* amber-50 */
-  --secondary-dark: 120 53 15; /* amber-900 */
+  /* Secondary Colors - Violet (Sophisticated & Premium) */
+  --secondary: 139 92 246; /* violet-500 #8B5CF6 */
+  --secondary-hover: 124 58 237; /* violet-600 #7C3AED */
+  --secondary-active: 109 40 217; /* violet-700 #6D28D9 */
+  --secondary-light: 250 245 255; /* violet-50 #FAF5FF */
+  --secondary-dark: 76 29 149; /* violet-900 #4C1D95 */
   --secondary-foreground: 255 255 255;
 
-  /* Accent Colors - Red */
-  --accent: 239 68 68; /* red-500 */
-  --accent-hover: 220 38 38; /* red-600 */
-  --accent-active: 185 28 28; /* red-700 */
-  --accent-light: 254 242 242; /* red-50 */
-  --accent-dark: 127 29 29; /* red-900 */
+  /* Accent Colors - Brand Orange (Energy & CTAs) */
+  --accent: 249 115 22; /* orange-500 #F97316 - from Tabsy logo */
+  --accent-hover: 234 88 12; /* orange-600 #EA580C */
+  --accent-active: 194 65 12; /* orange-700 #C2410C */
+  --accent-light: 255 247 237; /* orange-50 #FFF7ED */
+  --accent-dark: 124 45 18; /* orange-900 #7C2D12 */
   --accent-foreground: 255 255 255;
 
-  /* Surface Colors */
-  --surface: 255 255 255;
-  --surface-secondary: 255 247 237; /* orange-50 */
-  --surface-tertiary: 255 251 235; /* amber-50 */
-  --surface-elevated: 255 255 255;
-  --surface-overlay: 0 0 0 / 0.5;
+  /* Surface Colors - Modern Slate System */
+  --surface: 255 255 255; /* Pure white for cards */
+  --surface-secondary: 248 250 252; /* slate-50 #F8FAFC */
+  --surface-tertiary: 241 245 249; /* slate-100 #F1F5F9 */
+  --surface-elevated: 255 255 255; /* Elevated surfaces */
+  --surface-overlay: 0 0 0 / 0.5; /* Modal overlays */
 
-  /* Background Colors */
-  --background: 255 247 237; /* orange-50 */
-  --background-secondary: 255 251 235; /* amber-50 */
-  --background-tertiary: 254 242 242; /* red-50 */
-  --background-inverse: 17 24 39; /* gray-900 */
+  /* Background Colors - Cool Slate Tints */
+  --background: 248 250 252; /* slate-50 #F8FAFC */
+  --background-secondary: 241 245 249; /* slate-100 #F1F5F9 */
+  --background-tertiary: 226 232 240; /* slate-200 #E2E8F0 */
+  --background-inverse: 15 23 42; /* slate-900 #0F172A */
 
-  /* Content/Text Colors */
-  --content-primary: 17 24 39; /* gray-900 */
-  --content-secondary: 75 85 99; /* gray-600 */
-  --content-tertiary: 107 114 128; /* gray-500 */
-  --content-disabled: 156 163 175; /* gray-400 */
+  /* Content/Text Colors - High Contrast Slate */
+  --content-primary: 15 23 42; /* slate-900 #0F172A */
+  --content-secondary: 51 65 85; /* slate-700 #334155 */
+  --content-tertiary: 100 116 139; /* slate-500 #64748B */
+  --content-disabled: 148 163 184; /* slate-400 #94A3B8 */
   --content-inverse: 255 255 255;
-  --content-brand: 234 88 12; /* orange-600 */
+  --content-brand: 13 148 136; /* teal-600 for brand highlights */
 
-  /* Border Colors */
-  --border: 209 213 219; /* gray-300 - more visible */
-  --border-secondary: 156 163 175; /* gray-400 */
-  --border-tertiary: 229 231 235; /* gray-200 */
-  --border-focus: 249 115 22; /* orange-500 */
-  --border-error: 239 68 68; /* red-500 */
+  /* Border Colors - Subtle Slate System */
+  --border: 226 232 240; /* slate-200 #E2E8F0 */
+  --border-secondary: 203 213 225; /* slate-300 #CBD5E1 */
+  --border-tertiary: 241 245 249; /* slate-100 #F1F5F9 */
+  --border-focus: 13 148 136; /* teal-600 focus ring */
+  --border-error: 239 68 68; /* red-500 for errors */
 
-  /* Status Colors */
-  --status-success: 34 197 94; /* green-500 */
-  --status-success-light: 240 253 244; /* green-50 */
-  --status-success-dark: 21 128 61; /* green-700 */
+  /* Status Colors - Vibrant & High Contrast */
+  --status-success: 16 185 129; /* emerald-500 #10B981 */
+  --status-success-light: 236 253 245; /* emerald-50 #ECFDF5 */
+  --status-success-dark: 4 120 87; /* emerald-700 #047857 */
   --status-success-foreground: 255 255 255;
-  --status-success-border: 187 247 208; /* green-200 */
+  --status-success-border: 167 243 208; /* emerald-200 #A7F3D0 */
 
-  --status-warning: 245 158 11; /* amber-500 */
-  --status-warning-light: 255 251 235; /* amber-50 */
-  --status-warning-dark: 180 83 9; /* amber-700 */
+  --status-warning: 245 158 11; /* amber-500 #F59E0B */
+  --status-warning-light: 255 251 235; /* amber-50 #FFFBEB */
+  --status-warning-dark: 180 83 9; /* amber-700 #B45309 */
   --status-warning-foreground: 255 255 255;
-  --status-warning-border: 252 211 77; /* amber-200 */
+  --status-warning-border: 252 211 77; /* amber-300 #FCD34D */
 
-  --status-error: 239 68 68; /* red-500 */
-  --status-error-light: 254 242 242; /* red-50 */
-  --status-error-dark: 185 28 28; /* red-700 */
+  --status-error: 239 68 68; /* red-500 #EF4444 */
+  --status-error-light: 254 242 242; /* red-50 #FEF2F2 */
+  --status-error-dark: 185 28 28; /* red-700 #B91C1C */
   --status-error-foreground: 255 255 255;
-  --status-error-border: 254 202 202; /* red-200 */
+  --status-error-border: 252 165 165; /* red-300 #FCA5A5 */
 
-  --status-info: 59 130 246; /* blue-500 */
-  --status-info-light: 239 246 255; /* blue-50 */
-  --status-info-dark: 29 78 216; /* blue-700 */
+  --status-info: 6 182 212; /* cyan-500 #06B6D4 */
+  --status-info-light: 236 254 255; /* cyan-50 #ECFEFF */
+  --status-info-dark: 14 116 144; /* cyan-700 #0E7490 */
   --status-info-foreground: 255 255 255;
-  --status-info-border: 191 219 254; /* blue-200 */
+  --status-info-border: 165 243 252; /* cyan-200 #A5F3FC */
 
-  /* Interactive States */
-  --interactive-hover: 255 247 237; /* orange-50 */
-  --interactive-active: 255 237 213; /* orange-100 */
-  --interactive-disabled: 209 213 219; /* gray-300 */
-  --interactive-focus: 249 115 22; /* orange-500 */
+  /* Interactive States - Teal-based */
+  --interactive-hover: 240 253 250; /* teal-50 #F0FDFA */
+  --interactive-active: 204 251 241; /* teal-100 #CCFBF1 */
+  --interactive-disabled: 203 213 225; /* slate-300 #CBD5E1 */
+  --interactive-focus: 13 148 136; /* teal-600 #0D9488 */
 
   /* Override shadcn/ui component variables - using HSL format for compatibility */
-  --ring: 25 95% 53%; /* orange-500 in HSL */
-  --input: 210 14% 83%; /* gray-300 in HSL */
-  --muted: 210 40% 98%; /* gray-50 in HSL */
-  --muted-foreground: 215 16% 47%; /* gray-500 in HSL */
-  --destructive: 0 84% 60%; /* red-500 in HSL */
+  --ring: 173 80% 40%; /* teal-600 in HSL (#0D9488) */
+  --input: 214 32% 91%; /* slate-200 in HSL (#E2E8F0) */
+  --muted: 210 40% 98%; /* slate-50 in HSL (#F8FAFC) */
+  --muted-foreground: 215 20% 65%; /* slate-500 in HSL (#64748B) */
+  --destructive: 0 84% 60%; /* red-500 in HSL (#EF4444) */
   --destructive-foreground: 0 0% 100%; /* white in HSL */
   --card: 0 0% 100%; /* white in HSL */
-  --card-foreground: 222 47% 11%; /* gray-900 in HSL */
+  --card-foreground: 222 47% 11%; /* slate-900 in HSL (#0F172A) */
   --popover: 0 0% 100%; /* white in HSL */
-  --popover-foreground: 222 47% 11%; /* gray-900 in HSL */
-  --foreground: 222 47% 11%; /* gray-900 in HSL */
+  --popover-foreground: 222 47% 11%; /* slate-900 in HSL (#0F172A) */
+  --foreground: 222 47% 11%; /* slate-900 in HSL (#0F172A) */
   --radius: 0.5rem;
 }
 
-/* Dark mode variables */
+/* Dark Mode - Modern Soft Slate with Teal/Violet Accents */
 .dark {
-  --primary: 251 146 60; /* orange-400 */
-  --primary-hover: 249 115 22; /* orange-500 */
-  --primary-active: 234 88 12; /* orange-600 */
-  --primary-light: 124 45 18; /* orange-900 */
-  --primary-dark: 255 247 237; /* orange-50 */
-  --primary-foreground: 124 45 18; /* orange-900 */
+  /* Primary Colors - Brighter Teal for Dark Mode */
+  --primary: 45 212 191; /* teal-400 #2DD4BF */
+  --primary-hover: 20 184 166; /* teal-500 #14B8A6 */
+  --primary-active: 13 148 136; /* teal-600 #0D9488 */
+  --primary-light: 19 78 74; /* teal-900 #134E4A */
+  --primary-dark: 240 253 250; /* teal-50 #F0FDFA */
+  --primary-foreground: 15 23 42; /* slate-900 for dark text on teal */
 
-  --secondary: 251 191 36; /* amber-400 */
-  --secondary-hover: 245 158 11; /* amber-500 */
-  --secondary-active: 217 119 6; /* amber-600 */
-  --secondary-light: 120 53 15; /* amber-900 */
-  --secondary-dark: 255 251 235; /* amber-50 */
-  --secondary-foreground: 120 53 15; /* amber-900 */
+  /* Secondary Colors - Lighter Violet for Dark Mode */
+  --secondary: 167 139 250; /* violet-400 #A78BFA */
+  --secondary-hover: 139 92 246; /* violet-500 #8B5CF6 */
+  --secondary-active: 124 58 237; /* violet-600 #7C3AED */
+  --secondary-light: 76 29 149; /* violet-900 #4C1D95 */
+  --secondary-dark: 250 245 255; /* violet-50 #FAF5FF */
+  --secondary-foreground: 15 23 42; /* slate-900 for dark text on violet */
 
-  --accent: 248 113 113; /* red-400 */
-  --accent-hover: 239 68 68; /* red-500 */
-  --accent-active: 220 38 38; /* red-600 */
-  --accent-light: 127 29 29; /* red-900 */
-  --accent-dark: 254 242 242; /* red-50 */
-  --accent-foreground: 127 29 29; /* red-900 */
+  /* Accent Colors - Lighter Orange for Dark Mode */
+  --accent: 251 146 60; /* orange-400 #FB923C */
+  --accent-hover: 249 115 22; /* orange-500 #F97316 */
+  --accent-active: 234 88 12; /* orange-600 #EA580C */
+  --accent-light: 124 45 18; /* orange-900 #7C2D12 */
+  --accent-dark: 255 247 237; /* orange-50 #FFF7ED */
+  --accent-foreground: 15 23 42; /* slate-900 for dark text on orange */
 
-  --surface: 31 41 55; /* gray-800 */
-  --surface-secondary: 17 24 39; /* gray-900 */
-  --surface-tertiary: 55 65 81; /* gray-700 */
-  --surface-elevated: 55 65 81; /* gray-700 */
+  /* Surface Colors - Soft Slate (not pure black) */
+  --surface: 30 41 59; /* slate-800 #1E293B */
+  --surface-secondary: 15 23 42; /* slate-900 #0F172A */
+  --surface-tertiary: 51 65 85; /* slate-700 #334155 */
+  --surface-elevated: 51 65 85; /* slate-700 for elevated cards */
 
-  --background: 17 24 39; /* gray-900 */
-  --background-secondary: 124 45 18; /* orange-900 */
-  --background-tertiary: 120 53 15; /* amber-900 */
-  --background-inverse: 249 250 251; /* gray-50 */
+  /* Background Colors - Darker Soft Slate */
+  --background: 15 23 42; /* slate-900 #0F172A */
+  --background-secondary: 30 41 59; /* slate-800 #1E293B */
+  --background-tertiary: 51 65 85; /* slate-700 #334155 */
+  --background-inverse: 248 250 252; /* slate-50 #F8FAFC */
 
-  --content-primary: 243 244 246; /* gray-100 */
-  --content-secondary: 209 213 219; /* gray-300 */
-  --content-tertiary: 156 163 175; /* gray-400 */
-  --content-disabled: 107 114 128; /* gray-500 */
-  --content-inverse: 17 24 39; /* gray-900 */
-  --content-brand: 251 146 60; /* orange-400 */
+  /* Content/Text Colors - Light Slate */
+  --content-primary: 248 250 252; /* slate-50 #F8FAFC */
+  --content-secondary: 226 232 240; /* slate-200 #E2E8F0 */
+  --content-tertiary: 148 163 184; /* slate-400 #94A3B8 */
+  --content-disabled: 100 116 139; /* slate-500 #64748B */
+  --content-inverse: 15 23 42; /* slate-900 #0F172A */
+  --content-brand: 45 212 191; /* teal-400 for brand highlights */
 
-  --border: 55 65 81; /* gray-700 */
-  --border-secondary: 75 85 99; /* gray-600 */
-  --border-tertiary: 31 41 55; /* gray-800 */
-  --border-focus: 251 146 60; /* orange-400 */
-  --border-error: 248 113 113; /* red-400 */
+  /* Border Colors - Subtle Dark Slate */
+  --border: 51 65 85; /* slate-700 #334155 */
+  --border-secondary: 71 85 105; /* slate-600 #475569 */
+  --border-tertiary: 30 41 59; /* slate-800 #1E293B */
+  --border-focus: 45 212 191; /* teal-400 focus ring */
+  --border-error: 248 113 113; /* red-400 for errors */
+
+  /* Interactive States - Dark Teal-based */
+  --interactive-hover: 30 41 59; /* slate-800 hover */
+  --interactive-active: 51 65 85; /* slate-700 active */
+  --interactive-disabled: 51 65 85; /* slate-700 disabled */
+  --interactive-focus: 45 212 191; /* teal-400 focus */
+
+  /* Status Colors - Vibrant for Dark Backgrounds */
+  --status-success: 52 211 153; /* emerald-400 #34D399 */
+  --status-success-light: 6 78 59; /* emerald-900 #064E3B */
+  --status-success-dark: 209 250 229; /* emerald-100 #D1FAE5 */
+  --status-success-foreground: 255 255 255;
+  --status-success-border: 16 185 129; /* emerald-500 #10B981 */
+
+  --status-warning: 251 191 36; /* amber-400 #FBBF24 */
+  --status-warning-light: 69 26 3; /* amber-950 #451A03 */
+  --status-warning-dark: 254 243 199; /* amber-100 #FEF3C7 */
+  --status-warning-foreground: 255 255 255;
+  --status-warning-border: 245 158 11; /* amber-500 #F59E0B */
+
+  --status-error: 248 113 113; /* red-400 #F87171 */
+  --status-error-light: 127 29 29; /* red-900 #7F1D1D */
+  --status-error-dark: 254 226 226; /* red-100 #FEE2E2 */
+  --status-error-foreground: 255 255 255;
+  --status-error-border: 239 68 68; /* red-500 #EF4444 */
+
+  --status-info: 34 211 238; /* cyan-400 #22D3EE */
+  --status-info-light: 22 78 99; /* cyan-900 #164E63 */
+  --status-info-dark: 207 250 254; /* cyan-100 #CFFAFE */
+  --status-info-foreground: 255 255 255;
+  --status-info-border: 6 182 212; /* cyan-500 #06B6D4 */
 
   /* shadcn/ui dark mode variables in HSL */
-  --foreground: 210 40% 96%; /* gray-100 in HSL */
-  --muted: 215 25% 27%; /* gray-700 in HSL */
-  --muted-foreground: 215 16% 47%; /* gray-400 in HSL */
-  --card: 217 33% 17%; /* gray-800 in HSL */
-  --card-foreground: 210 40% 96%; /* gray-100 in HSL */
-  --popover: 217 33% 17%; /* gray-800 in HSL */
-  --popover-foreground: 210 40% 96%; /* gray-100 in HSL */
-  --ring: 25 95% 53%; /* orange-400 in HSL */
-  --input: 215 25% 27%; /* gray-700 in HSL */
-  --destructive: 0 63% 31%; /* red-700 in HSL */
+  --foreground: 210 40% 98%; /* slate-50 in HSL (#F8FAFC) */
+  --muted: 217 33% 17%; /* slate-800 in HSL (#1E293B) */
+  --muted-foreground: 215 20% 65%; /* slate-400 in HSL (#94A3B8) */
+  --card: 217 33% 17%; /* slate-800 in HSL (#1E293B) */
+  --card-foreground: 210 40% 98%; /* slate-50 in HSL (#F8FAFC) */
+  --popover: 217 33% 17%; /* slate-800 in HSL (#1E293B) */
+  --popover-foreground: 210 40% 98%; /* slate-50 in HSL (#F8FAFC) */
+  --ring: 173 80% 40%; /* teal-600 in HSL (#0D9488) */
+  --input: 217 33% 17%; /* slate-800 in HSL (#1E293B) */
+  --destructive: 0 63% 50%; /* red-600 in HSL (#DC2626) */
   --destructive-foreground: 0 0% 100%; /* white in HSL */
 }
 
@@ -359,12 +397,14 @@
     border-color: rgb(var(--accent) / 0.2);
   }
 
-  /* Enhanced Menu Management Utilities */
+  /* Enhanced Menu Management Utilities - Teal Theme */
   .glass-card {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
-    border: 1px solid rgba(249, 115, 22, 0.1);
-    @apply shadow-lg rounded-xl;
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(13, 148, 136, 0.15);
+    box-shadow: 0 8px 32px rgba(13, 148, 136, 0.1);
+    @apply rounded-xl;
   }
 
   .menu-card-hover {
@@ -372,7 +412,7 @@
   }
   .menu-card-hover:hover {
     transform: translateY(-4px) scale(1.02);
-    box-shadow: 0 20px 40px rgba(249, 115, 22, 0.15);
+    box-shadow: 0 20px 40px rgba(13, 148, 136, 0.18);
   }
 
   .floating-label {
@@ -388,9 +428,9 @@
 
   .stats-gradient {
     background: linear-gradient(135deg,
-      rgba(249, 115, 22, 0.1) 0%,
-      rgba(245, 158, 11, 0.1) 50%,
-      rgba(249, 115, 22, 0.1) 100%);
+      rgba(13, 148, 136, 0.08) 0%,
+      rgba(139, 92, 246, 0.08) 50%,
+      rgba(13, 148, 136, 0.08) 100%);
   }
 
   .search-gradient-border {
@@ -449,7 +489,7 @@
 
   .modal-content {
     background: rgb(var(--surface));
-    border: 1px solid rgba(249, 115, 22, 0.1);
+    border: 1px solid rgba(13, 148, 136, 0.15);
     box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
   }
 
@@ -461,7 +501,7 @@
     background: linear-gradient(135deg, rgb(var(--primary)), rgb(var(--secondary)));
     color: rgb(var(--primary-foreground));
     border-color: transparent;
-    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+    box-shadow: 0 4px 12px rgba(13, 148, 136, 0.35);
   }
   .filter-button-inactive {
     background: rgb(var(--surface));
@@ -499,7 +539,7 @@
     color: rgb(239 68 68);
   }
   .action-button-view:hover {
-    background: rgba(249, 115, 22, 0.1);
+    background: rgba(13, 148, 136, 0.1);
     color: rgb(var(--primary));
   }
 
@@ -534,7 +574,7 @@
   }
   .form-input:focus {
     transform: translateY(-1px);
-    box-shadow: 0 8px 24px rgba(249, 115, 22, 0.1);
+    box-shadow: 0 8px 24px rgba(13, 148, 136, 0.12);
     border-color: rgb(var(--primary));
   }
   .form-input:hover {
@@ -556,7 +596,7 @@
   }
   .form-select:focus {
     border-color: rgb(var(--primary));
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='rgb(249 115 22)' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='rgb(13 148 136)' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
   }
 
   /* Tab navigation */
@@ -571,17 +611,17 @@
     @apply border-primary text-primary;
   }
 
-  /* Statistics cards */
+  /* Statistics cards - Teal gradient */
   .stat-card {
     @apply p-6 rounded-xl border;
     background: linear-gradient(135deg,
       rgba(255, 255, 255, 0.9) 0%,
-      rgba(249, 115, 22, 0.05) 100%);
-    border-color: rgba(249, 115, 22, 0.1);
+      rgba(13, 148, 136, 0.05) 100%);
+    border-color: rgba(13, 148, 136, 0.15);
   }
   .stat-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 24px rgba(249, 115, 22, 0.1);
+    box-shadow: 0 12px 24px rgba(13, 148, 136, 0.12);
   }
 
   /* Grid utilities */

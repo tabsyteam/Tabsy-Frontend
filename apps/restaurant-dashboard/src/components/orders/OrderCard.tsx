@@ -71,7 +71,7 @@ function OrderCardComponent({ order, onStatusUpdate, onViewDetails }: OrderCardP
           setPayments(paymentsResponse.data)
         }
       } else {
-        throw new Error(response.error || 'Failed to confirm cash payment')
+        throw new Error((response.error as any)?.message || 'Failed to confirm cash payment')
       }
     } catch (error: any) {
       console.error('Error confirming cash payment:', error)
@@ -85,14 +85,14 @@ function OrderCardComponent({ order, onStatusUpdate, onViewDetails }: OrderCardP
 
   // Helper functions for payment status
   const getPendingCashPayment = (): Payment | null => {
-    return payments.find(p =>
-      p.method === PaymentMethod.CASH &&
+    return payments.find((p: Payment) =>
+      p.paymentMethod === PaymentMethod.CASH &&
       p.status === PaymentStatus.PENDING
     ) || null
   }
 
   const getCompletedPayments = (): Payment[] => {
-    return payments.filter(p => p.status === PaymentStatus.COMPLETED)
+    return payments.filter((p: Payment) => p.status === PaymentStatus.COMPLETED)
   }
 
   const getTotalPaidAmount = (): number => {

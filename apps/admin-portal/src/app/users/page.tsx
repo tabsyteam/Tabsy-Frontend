@@ -284,25 +284,25 @@ export default function UsersPage() {
             {/* Stats */}
             <div className="flex gap-6 mt-4 pt-4 border-t border-border-tertiary">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                <div className="w-3 h-3 rounded-full bg-status-success"></div>
                 <span className="text-sm text-content-secondary">
                   Active: {users?.filter((u: any) => u.active).length || 0}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                <div className="w-3 h-3 rounded-full bg-status-error"></div>
                 <span className="text-sm text-content-secondary">
                   Admins: {users?.filter((u: any) => u.role === UserRole.ADMIN).length || 0}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                <div className="w-3 h-3 rounded-full bg-status-warning"></div>
                 <span className="text-sm text-content-secondary">
                   Owners: {users?.filter((u: any) => u.role === UserRole.RESTAURANT_OWNER).length || 0}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+                <div className="w-3 h-3 rounded-full bg-status-info"></div>
                 <span className="text-sm text-content-secondary">
                   Staff: {users?.filter(u => u.role === UserRole.RESTAURANT_STAFF).length || 0}
                 </span>
@@ -446,7 +446,7 @@ export default function UsersPage() {
                                     </button>
                                     <button
                                       onClick={() => handleDelete(user)}
-                                      className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                                      className="flex items-center px-4 py-2 text-sm text-status-error hover:bg-status-error-light w-full text-left"
                                     >
                                       <Trash2 className="h-4 w-4 mr-2" />
                                       Delete
@@ -493,7 +493,7 @@ export default function UsersPage() {
                               onClick={() => setCurrentPage(page)}
                               className={`px-3 py-1 rounded-lg ${
                                 page === currentPage
-                                  ? 'bg-primary text-white'
+                                  ? 'bg-primary text-content-inverse'
                                   : 'hover:bg-surface-secondary'
                               }`}
                             >

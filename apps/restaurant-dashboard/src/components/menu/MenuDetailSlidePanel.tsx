@@ -180,7 +180,7 @@ export function MenuDetailSlidePanel({
               {/* Status Badge */}
               <div className="mt-1">
                 {(type === 'category' ? (category as any)?.active : (item as any)?.active) ? (
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-status-success-light text-status-success-dark border border-status-success">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     {type === 'category' ? 'Active' : 'Available'}
                   </span>
@@ -188,8 +188,8 @@ export function MenuDetailSlidePanel({
                   <span
                     className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
                       type === 'category'
-                        ? 'bg-gray-100 text-gray-600 border border-gray-200'
-                        : 'bg-red-100 text-red-700 border border-red-200'
+                        ? 'bg-surface-tertiary text-content-secondary border border-default'
+                        : 'bg-status-error-light text-status-error-dark border border-status-error'
                     }`}
                   >
                     <XCircle className="h-3 w-3 mr-1" />
@@ -330,7 +330,7 @@ export function MenuDetailSlidePanel({
                       {(item as any)?.nutritionalInfo && (
                         <div className="space-y-3 mt-6">
                           <h4 className="text-md font-semibold text-foreground flex items-center">
-                            <span className="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
+                            <span className="w-2 h-2 bg-status-success rounded-full mr-3"></span>
                             Nutritional Information
                           </h4>
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -338,7 +338,7 @@ export function MenuDetailSlidePanel({
                               <div className="stat-card">
                                 <div className="text-center">
                                   <p className="text-muted-foreground text-xs">Calories</p>
-                                  <p className="text-lg font-bold text-green-600">{(item as any).nutritionalInfo.calories}</p>
+                                  <p className="text-lg font-bold text-status-success">{(item as any).nutritionalInfo.calories}</p>
                                 </div>
                               </div>
                             )}
@@ -346,7 +346,7 @@ export function MenuDetailSlidePanel({
                               <div className="stat-card">
                                 <div className="text-center">
                                   <p className="text-muted-foreground text-xs">Protein</p>
-                                  <p className="text-lg font-bold text-blue-600">{(item as any).nutritionalInfo.protein}g</p>
+                                  <p className="text-lg font-bold text-primary">{(item as any).nutritionalInfo.protein}g</p>
                                 </div>
                               </div>
                             )}
@@ -354,7 +354,7 @@ export function MenuDetailSlidePanel({
                               <div className="stat-card">
                                 <div className="text-center">
                                   <p className="text-muted-foreground text-xs">Carbs</p>
-                                  <p className="text-lg font-bold text-orange-600">{(item as any).nutritionalInfo.carbohydrates}g</p>
+                                  <p className="text-lg font-bold text-accent">{(item as any).nutritionalInfo.carbohydrates}g</p>
                                 </div>
                               </div>
                             )}
@@ -362,7 +362,7 @@ export function MenuDetailSlidePanel({
                               <div className="stat-card">
                                 <div className="text-center">
                                   <p className="text-muted-foreground text-xs">Fat</p>
-                                  <p className="text-lg font-bold text-yellow-600">{(item as any).nutritionalInfo.fat}g</p>
+                                  <p className="text-lg font-bold text-status-warning">{(item as any).nutritionalInfo.fat}g</p>
                                 </div>
                               </div>
                             )}
@@ -370,7 +370,7 @@ export function MenuDetailSlidePanel({
                               <div className="stat-card">
                                 <div className="text-center">
                                   <p className="text-muted-foreground text-xs">Fiber</p>
-                                  <p className="text-lg font-bold text-green-500">{(item as any).nutritionalInfo.fiber}g</p>
+                                  <p className="text-lg font-bold text-status-success">{(item as any).nutritionalInfo.fiber}g</p>
                                 </div>
                               </div>
                             )}
@@ -378,7 +378,7 @@ export function MenuDetailSlidePanel({
                               <div className="stat-card">
                                 <div className="text-center">
                                   <p className="text-muted-foreground text-xs">Sodium</p>
-                                  <p className="text-lg font-bold text-red-600">{(item as any).nutritionalInfo.sodium}mg</p>
+                                  <p className="text-lg font-bold text-status-error">{(item as any).nutritionalInfo.sodium}mg</p>
                                 </div>
                               </div>
                             )}
@@ -390,12 +390,12 @@ export function MenuDetailSlidePanel({
                       {(item as any)?.dietaryIndicators && (item as any).dietaryIndicators.length > 0 && (
                         <div className="space-y-3 mt-6">
                           <h4 className="text-md font-semibold text-foreground flex items-center">
-                            <span className="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>
+                            <span className="w-2 h-2 bg-status-info-light0 rounded-full mr-3"></span>
                             Dietary Information
                           </h4>
                           <div className="flex flex-wrap gap-2">
                             {(item as any).dietaryIndicators.map((dietary: string, index: number) => (
-                              <span key={index} className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full font-medium">
+                              <span key={index} className="inline-flex items-center px-3 py-1 bg-interactive-hover text-status-info-dark text-sm rounded-full font-medium">
                                 {dietary.replace('_', ' ')}
                               </span>
                             ))}
@@ -406,11 +406,11 @@ export function MenuDetailSlidePanel({
                       {(item as any)?.allergyInfo && (
                         <div className="space-y-3 mt-6">
                           <h4 className="text-md font-semibold text-foreground flex items-center">
-                            <span className="w-2 h-2 bg-orange-500 rounded-full mr-3"></span>
+                            <span className="w-2 h-2 bg-accent rounded-full mr-3"></span>
                             Allergy Information
                           </h4>
-                          <div className="p-4 bg-orange-50 border border-orange-200 rounded-xl">
-                            <div className="text-sm text-orange-800">
+                          <div className="p-4 bg-accent-light border border-accent rounded-xl">
+                            <div className="text-sm text-accent">
                               {getAllergensList(item.allergyInfo).join(', ') || 'No specific allergens listed'}
                             </div>
                           </div>
@@ -420,7 +420,7 @@ export function MenuDetailSlidePanel({
                       {(item as any)?.spicyLevel > 0 && (
                         <div className="space-y-3 mt-6">
                           <h4 className="text-md font-semibold text-foreground flex items-center">
-                            <span className="w-2 h-2 bg-red-500 rounded-full mr-3"></span>
+                            <span className="w-2 h-2 bg-status-error rounded-full mr-3"></span>
                             Spice Level
                           </h4>
                           <div className="flex items-center gap-2">
@@ -428,7 +428,7 @@ export function MenuDetailSlidePanel({
                               <div
                                 key={i}
                                 className={`w-4 h-4 rounded-full ${
-                                  i < (item as any).spicyLevel ? 'bg-red-500' : 'bg-gray-200'
+                                  i < (item as any).spicyLevel ? 'bg-status-error' : 'bg-background-tertiary'
                                 }`}
                               />
                             ))}
@@ -469,7 +469,7 @@ export function MenuDetailSlidePanel({
                                     <h5 className="font-medium text-foreground flex items-center gap-2">
                                       {option.name}
                                       {(option.isRequired || (option as any).required) && (
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-status-error-light text-status-error-dark">
                                           Required
                                         </span>
                                       )}
@@ -503,7 +503,7 @@ export function MenuDetailSlidePanel({
                                           <div className="flex items-center gap-2">
                                             <span className="text-sm font-medium">{value.name}</span>
                                             {value.isDefault && (
-                                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-status-success-light text-status-success-dark">
                                                 Default
                                               </span>
                                             )}
@@ -534,10 +534,10 @@ export function MenuDetailSlidePanel({
                       {(item as any)?.image && (
                         <div className="space-y-3 mt-6">
                           <h4 className="text-md font-semibold text-foreground flex items-center">
-                            <span className="w-2 h-2 bg-purple-500 rounded-full mr-3"></span>
+                            <span className="w-2 h-2 bg-secondary rounded-full mr-3"></span>
                             Item Image
                           </h4>
-                          <div className="relative w-full h-48 bg-gray-100 rounded-xl overflow-hidden">
+                          <div className="relative w-full h-48 bg-surface-tertiary rounded-xl overflow-hidden">
                             <img
                               src={(item as any).image}
                               alt={item.name}
@@ -553,11 +553,11 @@ export function MenuDetailSlidePanel({
                       {(item as any)?.archived && (
                         <div className="space-y-3 mt-6">
                           <h4 className="text-md font-semibold text-foreground flex items-center">
-                            <span className="w-2 h-2 bg-yellow-500 rounded-full mr-3"></span>
+                            <span className="w-2 h-2 bg-status-warning-light0 rounded-full mr-3"></span>
                             Archive Status
                           </h4>
-                          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
-                            <div className="text-sm text-yellow-800">
+                          <div className="p-4 bg-status-warning-light border border-status-warning rounded-xl">
+                            <div className="text-sm text-status-warning-dark">
                               This item is archived
                               {(item as any).archivedAt && (
                                 <span className="block text-xs mt-1">

@@ -242,32 +242,6 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
     setRealtimeUpdates(prev => prev + 1)
   }, [queryClient, restaurantId])
 
-  // Handler for table session payment updates (actual payment creation events from backend)
-  const handleTableSessionPaymentUpdated = useCallback((data: any) => {
-    console.log('🆕🎯 [ActivePayments] Table session payment updated (payment created):', data)
-    console.log('🆕🎯 [ActivePayments] Event data keys:', Object.keys(data || {}))
-    console.log('🆕🎯 [ActivePayments] Event restaurantId:', data?.restaurantId, 'type:', typeof data?.restaurantId)
-    console.log('🆕🎯 [ActivePayments] Current restaurant ID:', restaurantId, 'type:', typeof restaurantId)
-
-    // Check for restaurantId in nested data structure or at root level
-    const eventRestaurantId = data?.restaurantId || data?.data?.restaurantId
-
-    // Only process events for this restaurant (convert both to strings for comparison)
-    if (eventRestaurantId && String(eventRestaurantId) !== String(restaurantId)) {
-      console.log('🆕❌ [ActivePayments] Ignoring table session update - different restaurant:', eventRestaurantId, 'vs', restaurantId)
-      return
-    }
-
-    console.log('🆕✅ [ActivePayments] Processing table session payment update')
-
-    queryClient.invalidateQueries({ queryKey: ['restaurant', 'active-payments', restaurantId] })
-    queryClient.invalidateQueries({ queryKey: ['restaurants', restaurantId, 'payments'] })
-    queryClient.invalidateQueries({ queryKey: ['table-sessions', restaurantId] })
-
-    setRealtimeUpdates(prev => prev + 1)
-    console.log('💳✅ [ActivePayments] Table session payment updated - queries invalidated and UI updated')
-  }, [queryClient, restaurantId])
-
   // Register WebSocket event listeners
   console.log('🎯🔥 [ActivePayments] Registering WebSocket event listeners for restaurant:', restaurantId)
   useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated], 'ActivePayments-created')
@@ -275,7 +249,6 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
   useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted], 'ActivePayments-completed')
   useWebSocketEvent('payment:failed', handlePaymentFailed, [handlePaymentFailed], 'ActivePayments-failed')
   useWebSocketEvent('payment:cancelled', handlePaymentCancelled, [handlePaymentCancelled], 'ActivePayments-cancelled')
-  useWebSocketEvent('table_session:payment_updated', handleTableSessionPaymentUpdated, [handleTableSessionPaymentUpdated], 'ActivePayments-table-session')
   console.log('🎯🔥 [ActivePayments] All WebSocket event listeners registered')
 
   const getPaymentMethodIcon = (method: PaymentMethod) => {
@@ -356,7 +329,7 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
       setIsExporting(true)
       const response = await tabsyClient.payment.getByRestaurant(restaurantId, {
         limit: 1000,
-        status: 'PENDING' // Export only pending payments
+        status: 'PENDING' as PaymentStatus // Export only pending payments
       })
 
       if (response.success && response.data) {

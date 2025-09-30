@@ -59,7 +59,7 @@ export function PaymentDetailsModal({
 
       if (response.success && response.data) {
         console.log('[PaymentDetailsModal] Payment data:', response.data)
-        console.log('[PaymentDetailsModal] Payment method:', response.data.method)
+        console.log('[PaymentDetailsModal] Payment method:', response.data.paymentMethod)
         setPayment(response.data)
       } else {
         console.error('[PaymentDetailsModal] API error:', response.error)

@@ -44,14 +44,14 @@ export function AuthErrorBoundary({ children, error }: AuthErrorBoundaryProps) {
 
   if (isAuthError) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-secondary flex items-center justify-center">
         <div className="max-w-md w-full mx-auto">
           <div className="text-center">
-            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-              <AlertTriangle className="h-6 w-6 text-red-600" />
+            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-status-error-light">
+              <AlertTriangle className="h-6 w-6 text-status-error" />
             </div>
-            <h2 className="mt-4 text-2xl font-bold text-gray-900">Authentication Required</h2>
-            <p className="mt-2 text-gray-600">
+            <h2 className="mt-4 text-2xl font-bold text-content-primary">Authentication Required</h2>
+            <p className="mt-2 text-content-secondary">
               Your session has expired or you don't have permission to access this resource.
             </p>
             <div className="mt-6 flex flex-col space-y-3">

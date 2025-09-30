@@ -24,7 +24,7 @@ interface OrderHistory {
 const DINING_SESSION_KEY = 'tabsy-dining-session'
 const ORDER_SESSION_KEY = 'tabsy-current-order'
 const ORDER_HISTORY_KEY = 'tabsy-order-history'
-const SESSION_DURATION = 3 * 60 * 60 * 1000 // 3 hours (matches backend table session expiry)
+const SESSION_DURATION = 2 * 60 * 60 * 1000 // 2 hours (matches backend guest session expiry - CRITICAL: must match backend SESSION_EXPIRY_TIME)
 
 export class SessionManager {
   // Dining Session Management
@@ -495,6 +495,95 @@ export class SessionManager {
       isExpired: expiryInfo.isExpired,
       minutesRemaining: expiryInfo.minutesRemaining,
       lastActivity: session ? new Date(session.lastActivity).toISOString() : undefined
+    }
+  }
+
+  // Session recovery helper - tries all possible sources
+  static recoverSession(): {
+    success: boolean
+    sessionId: string | null
+    source: string | null
+  } {
+    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
+      return { success: false, sessionId: null, source: null }
+    }
+
+    // Try 1: Primary guest session ID
+    const primarySessionId = sessionStorage.getItem('tabsy-guest-session-id')
+    if (primarySessionId) {
+      return { success: true, sessionId: primarySessionId, source: 'tabsy-guest-session-id' }
+    }
+
+    // Try 2: Dining session
+    const diningSession = this.getDiningSession()
+    if (diningSession?.sessionId) {
+      // Restore to primary storage for consistency
+      sessionStorage.setItem('tabsy-guest-session-id', diningSession.sessionId)
+      return { success: true, sessionId: diningSession.sessionId, source: 'tabsy-dining-session' }
+    }
+
+    // Try 3: Check all tabsy-* keys as fallback
+    try {
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i)
+        if (key && key.startsWith('guestSession-')) {
+          const fallbackSessionId = sessionStorage.getItem(key)
+          if (fallbackSessionId) {
+            // Restore to primary storage
+            sessionStorage.setItem('tabsy-guest-session-id', fallbackSessionId)
+            return { success: true, sessionId: fallbackSessionId, source: key }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error scanning sessionStorage for session recovery:', error)
+    }
+
+    return { success: false, sessionId: null, source: null }
+  }
+
+  // Session health check - validates session exists and is not expired
+  static healthCheck(): {
+    healthy: boolean
+    issues: string[]
+    warnings: string[]
+  } {
+    const issues: string[] = []
+    const warnings: string[] = []
+
+    // Check if session exists
+    const session = this.getDiningSession()
+    if (!session) {
+      issues.push('No active dining session')
+      return { healthy: false, issues, warnings }
+    }
+
+    // Check if session is expired
+    const expiryInfo = this.getSessionExpiryInfo()
+    if (expiryInfo.isExpired) {
+      issues.push('Session has expired')
+      return { healthy: false, issues, warnings }
+    }
+
+    // Check if session is expiring soon (within 30 minutes)
+    if (expiryInfo.isExpiringSoon) {
+      warnings.push(`Session expires in ${expiryInfo.minutesRemaining} minutes`)
+    }
+
+    // Check if guest session ID is in sessionStorage
+    if (typeof window !== 'undefined' && typeof sessionStorage !== 'undefined') {
+      const storedSessionId = sessionStorage.getItem('tabsy-guest-session-id')
+      if (!storedSessionId) {
+        warnings.push('Guest session ID not found in sessionStorage')
+      } else if (session.sessionId && storedSessionId !== session.sessionId) {
+        warnings.push('Guest session ID mismatch between sessionStorage and dining session')
+      }
+    }
+
+    return {
+      healthy: issues.length === 0,
+      issues,
+      warnings
     }
   }
 }

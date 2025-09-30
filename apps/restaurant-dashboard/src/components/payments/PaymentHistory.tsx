@@ -63,19 +63,23 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
       const response = await tabsyClient.payment.getByRestaurant(restaurantId, {
         limit: 500,
         dateFrom: getDateFrom(filters.dateRange),
-        status: filters.status !== 'all' ? filters.status : undefined,
-        paymentMethod: filters.method !== 'all' ? filters.method : undefined
+        status: filters.status !== 'all' ? filters.status : undefined
       })
 
       if (response.success && response.data) {
         let filteredPayments = response.data
+
+        // Apply payment method filter client-side
+        if (filters.method !== 'all') {
+          filteredPayments = filteredPayments.filter((p: Payment) => p.paymentMethod === filters.method)
+        }
 
         // Apply search filter
         if (filters.searchTerm) {
           filteredPayments = filteredPayments.filter((payment: Payment) =>
             payment.id.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
             payment.orderId?.toLowerCase().includes(filters.searchTerm.toLowerCase()) ||
-            payment.tableId?.toLowerCase().includes(filters.searchTerm.toLowerCase())
+            payment.tableSessionId?.toLowerCase().includes(filters.searchTerm.toLowerCase())
           )
         }
 
@@ -509,10 +513,10 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
                           <span>Order #{payment.orderId?.slice(-6) || 'N/A'}</span>
                         </div>
 
-                        {payment.tableId && (
+                        {payment.tableSessionId && (
                           <div className="flex items-center space-x-1">
                             <MapPin className="w-3 h-3" />
-                            <span>Table {payment.tableId}</span>
+                            <span>Session {payment.tableSessionId}</span>
                           </div>
                         )}
 
@@ -524,16 +528,7 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
 
                     <div className="text-right">
                       <p className="font-semibold text-content-primary">
-                        ${(() => {
-                          const amount = payment.amount
-                          if (!amount) return '0.00'
-                          if (typeof amount === 'number') return amount.toFixed(2)
-                          if (typeof amount === 'string') return parseFloat(amount).toFixed(2)
-                          if (typeof amount === 'object' && 'toNumber' in amount) {
-                            return amount.toNumber().toFixed(2)
-                          }
-                          return parseFloat(amount.toString()).toFixed(2)
-                        })()}
+                        ${typeof payment.amount === 'number' ? payment.amount.toFixed(2) : '0.00'}
                       </p>
                       <p className="text-sm text-content-secondary">
                         {format(new Date(payment.createdAt), 'MMM dd, h:mm a')}

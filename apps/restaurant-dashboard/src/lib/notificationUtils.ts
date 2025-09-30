@@ -20,7 +20,7 @@ export function formatNotificationContent(notification: Notification): {
           ? `Order #${metadata.orderId}: ${content}`
           : content,
         icon: ShoppingCart,
-        iconColor: 'text-blue-600'
+        iconColor: 'text-status-info'
       }
 
     case 'PAYMENT_STATUS':
@@ -30,7 +30,7 @@ export function formatNotificationContent(notification: Notification): {
           ? `Payment #${metadata.paymentId}: ${content}`
           : content,
         icon: CreditCard,
-        iconColor: 'text-green-600'
+        iconColor: 'text-status-success'
       }
 
     case 'ASSISTANCE_REQUIRED':
@@ -40,7 +40,7 @@ export function formatNotificationContent(notification: Notification): {
           ? `Table ${metadata.tableId}: ${content}`
           : content,
         icon: Bell,
-        iconColor: 'text-orange-600'
+        iconColor: 'text-accent'
       }
 
     case 'SYSTEM':
@@ -48,7 +48,7 @@ export function formatNotificationContent(notification: Notification): {
         title: 'System Notification',
         message: content,
         icon: AlertCircle,
-        iconColor: 'text-gray-600'
+        iconColor: 'text-content-secondary'
       }
 
     case 'MARKETING':
@@ -56,7 +56,7 @@ export function formatNotificationContent(notification: Notification): {
         title: 'Promotion',
         message: content,
         icon: Gift,
-        iconColor: 'text-purple-600'
+        iconColor: 'text-secondary'
       }
 
     default:
@@ -64,7 +64,7 @@ export function formatNotificationContent(notification: Notification): {
         title: 'Notification',
         message: content,
         icon: Bell,
-        iconColor: 'text-gray-600'
+        iconColor: 'text-content-secondary'
       }
   }
 }
@@ -111,17 +111,17 @@ export function formatRelativeTime(dateString: string): string {
 export function getNotificationPriorityColor(type: string): string {
   switch (type) {
     case 'ASSISTANCE_REQUIRED':
-      return 'bg-red-500'
+      return 'bg-status-error'
     case 'ORDER_STATUS':
-      return 'bg-blue-500'
+      return 'bg-status-info'
     case 'PAYMENT_STATUS':
-      return 'bg-green-500'
+      return 'bg-status-success'
     case 'SYSTEM':
-      return 'bg-gray-500'
+      return 'bg-content-secondary'
     case 'MARKETING':
-      return 'bg-purple-500'
+      return 'bg-secondary'
     default:
-      return 'bg-gray-500'
+      return 'bg-content-secondary'
   }
 }
 

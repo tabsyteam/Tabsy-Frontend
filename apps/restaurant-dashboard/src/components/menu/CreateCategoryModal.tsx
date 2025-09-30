@@ -212,8 +212,8 @@ export function CreateCategoryModal({ open, onClose, restaurantId, onSuccess, ed
                 <div></div>
               )}
               <span className={`text-xs ${
-                formData.description.length > 180 ? 'text-orange-500' :
-                formData.description.length > 160 ? 'text-amber-500' : 'text-muted-foreground'
+                formData.description.length > 180 ? 'text-accent' :
+                formData.description.length > 160 ? 'text-status-warning' : 'text-muted-foreground'
               }`}>
                 {formData.description.length}/200
               </span>

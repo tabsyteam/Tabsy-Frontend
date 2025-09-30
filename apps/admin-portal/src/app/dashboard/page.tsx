@@ -56,9 +56,9 @@ function MetricCard({
   loading?: boolean;
 }) {
   const changeColors = {
-    positive: 'text-green-600',
-    negative: 'text-red-600',
-    neutral: 'text-blue-600'
+    positive: 'text-status-success-dark',
+    negative: 'text-status-error-dark',
+    neutral: 'text-status-info-dark'
   };
 
   return (
@@ -93,11 +93,11 @@ function MetricCard({
 // Activity Item Component
 function ActivityItem({ activity }: { activity: any }) {
   const iconColors = {
-    restaurant: 'bg-green-500',
-    user: 'bg-blue-500',
-    order: 'bg-purple-500',
-    payment: 'bg-emerald-500',
-    system: 'bg-orange-500'
+    restaurant: 'bg-status-success',
+    user: 'bg-primary',
+    order: 'bg-accent',
+    payment: 'bg-status-success',
+    system: 'bg-secondary'
   };
 
   const icons = {
@@ -109,10 +109,10 @@ function ActivityItem({ activity }: { activity: any }) {
   };
 
   const statusColors = {
-    success: 'text-green-600',
-    warning: 'text-orange-600',
-    error: 'text-red-600',
-    info: 'text-blue-600'
+    success: 'text-status-success-dark',
+    warning: 'text-status-warning-dark',
+    error: 'text-status-error-dark',
+    info: 'text-status-info-dark'
   };
 
   const Icon = icons[activity.type as keyof typeof icons] || Activity;
@@ -123,8 +123,8 @@ function ActivityItem({ activity }: { activity: any }) {
         <span className="absolute top-5 left-5 -ml-px h-full w-0.5 bg-border-tertiary" />
         <div className="relative flex space-x-3">
           <div>
-            <span className={`h-10 w-10 rounded-full ${iconColors[activity.type as keyof typeof iconColors] || 'bg-gray-500'} flex items-center justify-center ring-8 ring-surface`}>
-              <Icon className="h-5 w-5 text-white" />
+            <span className={`h-10 w-10 rounded-full ${iconColors[activity.type as keyof typeof iconColors] || 'bg-surface-tertiary'} flex items-center justify-center ring-8 ring-surface`}>
+              <Icon className="h-5 w-5 text-content-inverse" />
             </span>
           </div>
           <div className="min-w-0 flex-1 pt-2 flex justify-between space-x-4">
@@ -246,7 +246,7 @@ export default function AdminDashboard(): JSX.Element {
                     <Bell className="h-4 w-4 mr-2" />
                     Alerts
                     {liveOrders && liveOrders.length > 0 && (
-                      <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse"></span>
+                      <span className="absolute -top-1 -right-1 h-3 w-3 bg-status-error rounded-full animate-pulse"></span>
                     )}
                   </Button>
                 </div>
@@ -265,7 +265,7 @@ export default function AdminDashboard(): JSX.Element {
                 <div className="flex items-center space-x-3 pl-4 border-l border-border-tertiary">
                   <div className="flex items-center space-x-2">
                     <div className="h-8 w-8 bg-gradient-primary rounded-full flex items-center justify-center shadow-md">
-                      <User className="h-4 w-4 text-white" />
+                      <User className="h-4 w-4 text-primary-foreground" />
                     </div>
                     <div className="hidden sm:block">
                       <p className="text-sm font-medium text-content-primary">
@@ -410,7 +410,7 @@ export default function AdminDashboard(): JSX.Element {
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full mr-2 bg-green-500" />
+                      <div className="w-3 h-3 rounded-full mr-2 bg-status-success" />
                       <span className="text-sm text-content-secondary">Active</span>
                     </div>
                     <span className="text-sm font-semibold text-content-primary">
@@ -419,7 +419,7 @@ export default function AdminDashboard(): JSX.Element {
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full mr-2 bg-gray-400" />
+                      <div className="w-3 h-3 rounded-full mr-2 bg-content-tertiary" />
                       <span className="text-sm text-content-secondary">Inactive</span>
                     </div>
                     <span className="text-sm font-semibold text-content-primary">
@@ -428,7 +428,7 @@ export default function AdminDashboard(): JSX.Element {
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full mr-2 bg-orange-500" />
+                      <div className="w-3 h-3 rounded-full mr-2 bg-status-warning" />
                       <span className="text-sm text-content-secondary">Pending</span>
                     </div>
                     <span className="text-sm font-semibold text-content-primary">
@@ -437,7 +437,7 @@ export default function AdminDashboard(): JSX.Element {
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full mr-2 bg-red-500" />
+                      <div className="w-3 h-3 rounded-full mr-2 bg-status-error" />
                       <span className="text-sm text-content-secondary">Suspended</span>
                     </div>
                     <span className="text-sm font-semibold text-content-primary">

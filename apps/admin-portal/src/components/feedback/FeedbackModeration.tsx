@@ -173,11 +173,11 @@ export function AdminFeedbackViewer() {
                   <p className="text-2xl font-bold text-content-primary">
                     {platformStats.avgRating > 0 ? platformStats.avgRating.toFixed(1) : '0.0'}
                   </p>
-                  <Star className="w-5 h-5 text-yellow-500 fill-current" />
+                  <Star className="w-5 h-5 text-status-warning fill-current" />
                 </div>
               )}
             </div>
-            <TrendingUp className="w-8 h-8 text-green-600" />
+            <TrendingUp className="w-8 h-8 text-status-success" />
           </div>
         </div>
 
@@ -194,7 +194,7 @@ export function AdminFeedbackViewer() {
                 <p className="text-2xl font-bold text-content-primary">{platformStats.totalRestaurants}</p>
               )}
             </div>
-            <Building2 className="w-8 h-8 text-blue-600" />
+            <Building2 className="w-8 h-8 text-status-info" />
           </div>
         </div>
       </div>
@@ -299,8 +299,8 @@ export function AdminFeedbackViewer() {
                         key={star}
                         className={`w-4 h-4 ${
                           star <= feedbackItem.overallRating
-                            ? 'text-yellow-500 fill-current'
-                            : 'text-gray-300'
+                            ? 'text-status-warning fill-current'
+                            : 'text-content-tertiary'
                         }`}
                       />
                     ))}

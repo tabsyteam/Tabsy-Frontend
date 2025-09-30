@@ -720,7 +720,7 @@ export default function PaymentsPage() {
                               onClick={() => setCurrentPage(page)}
                               className={`px-3 py-1 rounded-lg ${
                                 page === currentPage
-                                  ? 'bg-primary text-white'
+                                  ? 'bg-primary text-content-inverse'
                                   : 'hover:bg-surface-secondary'
                               }`}
                             >

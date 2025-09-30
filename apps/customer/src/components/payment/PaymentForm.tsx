@@ -6,6 +6,7 @@ import { Button } from '@tabsy/ui-components'
 import { CreditCard } from 'lucide-react'
 import { toast } from 'sonner'
 import { StripeCardForm } from './StripeCardForm'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 
 interface PaymentFormProps {
   amount: number
@@ -112,7 +113,7 @@ export function PaymentForm({
       >
         {processing ? (
           <div className="flex items-center space-x-2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            <LoadingSpinner size="sm" color="white" centered={false} />
             <span>Processing Payment...</span>
           </div>
         ) : (

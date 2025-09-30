@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { SessionManager } from '@/lib/session'
 import { STORAGE_KEYS } from '@/constants/storage'
+import { useBillStatus } from '@/hooks/useBillStatus'
 
 interface BottomNavProps {
   cartItemCount?: number
@@ -29,6 +30,10 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
   const [hasSession, setHasSession] = useState(false)
   const [hasCurrentOrder, setHasCurrentOrder] = useState(false)
   const [tableNumber, setTableNumber] = useState<string | null>(null)
+
+  // Get bill status for badge indicator
+  const { hasBill, remainingBalance, isPaid } = useBillStatus()
+  const shouldShowBillBadge = hasBill && !isPaid && remainingBalance > 0
 
   useEffect(() => {
     // Update session state
@@ -98,10 +103,11 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
       label: tableNumber ? `Table ${tableNumber}` : 'Table',
       icon: Users,
       path: `/table${hasSession ? SessionManager.getDiningQueryParams() : ''}`,
-      badge: null,
+      badge: shouldShowBillBadge ? `$${remainingBalance.toFixed(0)}` : null,
+      badgeType: 'bill' as const,
       disabled: false // Always available to show session status
     }
-  ], [hasSession, cartItemCount, hasCurrentOrder, tableNumber])
+  ], [hasSession, cartItemCount, hasCurrentOrder, tableNumber, shouldShowBillBadge, remainingBalance])
 
   const isActive = useCallback((item: typeof navItems[0]) => {
     if (item.id === 'home') {
@@ -197,14 +203,34 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
                 {item.badge && (
                   <motion.div
                     initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
+                    animate={{
+                      scale: 1,
+                      // Add subtle pulse for bill badge to draw attention
+                      ...(item.id === 'table' && 'badgeType' in item && item.badgeType === 'bill' && {
+                        boxShadow: [
+                          '0 0 0 0 rgba(249, 115, 22, 0.7)',
+                          '0 0 0 6px rgba(249, 115, 22, 0)',
+                          '0 0 0 0 rgba(249, 115, 22, 0)'
+                        ]
+                      })
+                    }}
+                    transition={{
+                      scale: { type: "spring", stiffness: 300, damping: 20 },
+                      boxShadow: {
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }
+                    }}
                     className={`absolute -top-1 -right-1 ${
                       item.id === 'cart'
-                        ? 'bg-red-500 text-white shadow-lg shadow-red-500/30'
+                        ? 'bg-status-error text-status-error-foreground shadow-lg shadow-status-error/30'
+                        : item.id === 'table' && 'badgeType' in item && item.badgeType === 'bill'
+                        ? 'bg-gradient-to-br from-accent via-accent to-accent-hover text-accent-foreground shadow-xl shadow-accent/40'
                         : 'bg-accent text-accent-foreground shadow-lg shadow-accent/30'
-                    } text-xs font-bold rounded-full min-w-6 h-6 flex items-center justify-center px-1 ring-2 ring-surface`}
+                    } text-xs font-bold rounded-full min-w-6 h-6 flex items-center justify-center px-2 ring-2 ring-surface`}
                   >
-                    {item.badge > 99 ? '99+' : item.badge}
+                    {typeof item.badge === 'number' && item.badge > 99 ? '99+' : item.badge}
                   </motion.div>
                 )}
 

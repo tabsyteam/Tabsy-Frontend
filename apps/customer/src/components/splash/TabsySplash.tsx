@@ -26,19 +26,19 @@ export function TabsySplash({ restaurant, table }: TabsySplashProps) {
       icon: Utensils,
       title: 'Welcome to Tabsy',
       subtitle: 'Your smart dining experience',
-      duration: 1000
+      duration: 400
     },
     {
       icon: Wifi,
       title: `Connected to ${restaurant.name}`,
       subtitle: `Table ${table.number}`,
-      duration: 1000
+      duration: 400
     },
     {
       icon: CheckCircle,
       title: 'Ready to Order!',
       subtitle: 'Loading your menu...',
-      duration: 500
+      duration: 200
     }
   ]
 
@@ -102,7 +102,7 @@ export function TabsySplash({ restaurant, table }: TabsySplashProps) {
                 ease: "easeInOut"
               }}
             >
-              <Utensils className="w-12 h-12 text-white relative z-10" />
+              <Utensils className="w-12 h-12 text-primary-foreground relative z-10" />
             </motion.div>
           </div>
 
@@ -253,7 +253,7 @@ export function TabsySplash({ restaurant, table }: TabsySplashProps) {
                 </p>
               </div>
 
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+              <div className="w-2 h-2 bg-status-success rounded-full animate-pulse" />
             </div>
           </motion.div>
         )}

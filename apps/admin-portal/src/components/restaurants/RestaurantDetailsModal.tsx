@@ -84,7 +84,7 @@ export default function RestaurantDetailsModal({
               <h2 className="text-2xl font-semibold text-content-primary">{restaurant.name}</h2>
               <div className="flex items-center mt-1 space-x-3">
                 <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                  restaurant.active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  restaurant.active ? 'bg-status-success-light text-status-success-dark' : 'bg-status-error-light text-status-error-dark'
                 }`}>
                   <Power className="h-3 w-3 mr-1" />
                   {restaurant.active ? 'Active' : 'Inactive'}
@@ -121,7 +121,7 @@ export default function RestaurantDetailsModal({
           <div className="bg-surface rounded-lg p-4 border border-border-tertiary">
             <div className="flex items-center justify-between mb-2">
               <DollarSign className="h-5 w-5 text-primary" />
-              <span className="text-xs text-green-600">+12%</span>
+              <span className="text-xs text-status-success">+12%</span>
             </div>
             <div className="text-2xl font-bold text-content-primary">
               ${stats.totalRevenue.toFixed(2)}
@@ -132,7 +132,7 @@ export default function RestaurantDetailsModal({
           <div className="bg-surface rounded-lg p-4 border border-border-tertiary">
             <div className="flex items-center justify-between mb-2">
               <ShoppingBag className="h-5 w-5 text-primary" />
-              <span className="text-xs text-orange-600">{stats.activeOrders} active</span>
+              <span className="text-xs text-status-warning">{stats.activeOrders} active</span>
             </div>
             <div className="text-2xl font-bold text-content-primary">
               {stats.totalOrders}
@@ -143,7 +143,7 @@ export default function RestaurantDetailsModal({
           <div className="bg-surface rounded-lg p-4 border border-border-tertiary">
             <div className="flex items-center justify-between mb-2">
               <Users className="h-5 w-5 text-primary" />
-              <span className="text-xs text-blue-600">{stats.occupiedTables}/{stats.totalTables}</span>
+              <span className="text-xs text-status-info">{stats.occupiedTables}/{stats.totalTables}</span>
             </div>
             <div className="text-2xl font-bold text-content-primary">
               {Math.round((stats.occupiedTables / (stats.totalTables || 1)) * 100)}%
@@ -154,7 +154,7 @@ export default function RestaurantDetailsModal({
           <div className="bg-surface rounded-lg p-4 border border-border-tertiary">
             <div className="flex items-center justify-between mb-2">
               <TrendingUp className="h-5 w-5 text-primary" />
-              <span className="text-xs text-purple-600">AOV</span>
+              <span className="text-xs text-primary">AOV</span>
             </div>
             <div className="text-2xl font-bold text-content-primary">
               ${stats.averageOrderValue.toFixed(2)}
@@ -253,12 +253,12 @@ export default function RestaurantDetailsModal({
                       <p className="text-sm text-content-secondary">
                         {restaurant.posEnabled ? (
                           <span className="flex items-center">
-                            <CheckCircle className="h-4 w-4 text-green-500 mr-1" />
+                            <CheckCircle className="h-4 w-4 text-status-success mr-1" />
                             Enabled
                           </span>
                         ) : (
                           <span className="flex items-center">
-                            <AlertCircle className="h-4 w-4 text-gray-400 mr-1" />
+                            <AlertCircle className="h-4 w-4 text-content-tertiary mr-1" />
                             Not configured
                           </span>
                         )}
@@ -303,9 +303,9 @@ export default function RestaurantDetailsModal({
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium text-content-primary">Table {table.id}</h4>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          table.status === TableStatus.OCCUPIED ? 'bg-red-100 text-red-800' :
-                          table.status === TableStatus.RESERVED ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-green-100 text-green-800'
+                          table.status === TableStatus.OCCUPIED ? 'bg-status-error-light text-status-error-dark' :
+                          table.status === TableStatus.RESERVED ? 'bg-status-warning-light text-status-warning-dark' :
+                          'bg-status-success-light text-status-success-dark'
                         }`}>
                           {table.status === TableStatus.OCCUPIED ? 'Occupied' : table.status === TableStatus.RESERVED ? 'Reserved' : 'Available'}
                         </span>
@@ -343,10 +343,10 @@ export default function RestaurantDetailsModal({
                       <div className="text-right">
                         <p className="font-bold text-content-primary">${Number(order.total || 0).toFixed(2)}</p>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          order.status === OrderStatus.DELIVERED ? 'bg-green-100 text-green-800' :
-                          order.status === OrderStatus.PREPARING ? 'bg-blue-100 text-blue-800' :
-                          order.status === OrderStatus.CANCELLED ? 'bg-red-100 text-red-800' :
-                          'bg-yellow-100 text-yellow-800'
+                          order.status === OrderStatus.DELIVERED ? 'bg-status-success-light text-status-success-dark' :
+                          order.status === OrderStatus.PREPARING ? 'bg-status-info-light text-status-info-dark' :
+                          order.status === OrderStatus.CANCELLED ? 'bg-status-error-light text-status-error-dark' :
+                          'bg-status-warning-light text-status-warning-dark'
                         }`}>
                           {order.status}
                         </span>
@@ -373,7 +373,7 @@ export default function RestaurantDetailsModal({
                   </div>
                   <div>
                     <p className="text-sm text-content-secondary">Active Orders</p>
-                    <p className="text-2xl font-bold text-orange-600">{stats.activeOrders}</p>
+                    <p className="text-2xl font-bold text-status-warning">{stats.activeOrders}</p>
                   </div>
                   <div>
                     <p className="text-sm text-content-secondary">Table Turnover</p>

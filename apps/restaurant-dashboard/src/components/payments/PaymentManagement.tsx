@@ -16,9 +16,10 @@ import {
   Users
 } from 'lucide-react'
 import { tabsyClient } from '@tabsy/api-client'
+import type { PaymentStatus } from '@tabsy/shared-types'
 import { PaymentOverview } from './PaymentOverview'
 import { ActivePayments, ActivePaymentsRef } from './ActivePayments'
-import { PaymentHistory, PaymentHistoryRef } from './PaymentHistory'
+import { PaymentHistory } from './PaymentHistory'
 import { PaymentAnalytics } from './PaymentAnalytics'
 import { PendingCashPayments, PendingCashPaymentsRef } from './PendingCashPayments'
 import { SplitPaymentMonitoring, SplitPaymentMonitoringRef } from './SplitPaymentMonitoring'
@@ -43,7 +44,7 @@ export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
   // Refs for components with refresh capability
   const activePaymentsRef = useRef<ActivePaymentsRef | null>(null)
   const paymentOverviewRef = useRef<RefreshableRef | null>(null)
-  const paymentHistoryRef = useRef<PaymentHistoryRef | null>(null)
+  const paymentHistoryRef = useRef<RefreshableRef | null>(null)
   const paymentAnalyticsRef = useRef<RefreshableRef | null>(null)
   const pendingCashRef = useRef<PendingCashPaymentsRef | null>(null)
   const splitPaymentRef = useRef<SplitPaymentMonitoringRef | null>(null)
@@ -140,7 +141,7 @@ export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
         // Generic export for other tabs
         const response = await tabsyClient.payment.getByRestaurant(restaurantId, {
           limit: 1000,
-          status: filterStatus !== 'all' ? filterStatus : undefined
+          status: filterStatus !== 'all' ? filterStatus as PaymentStatus : undefined
         })
 
         if (response.success && response.data) {
@@ -283,7 +284,6 @@ export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
             ref={activePaymentsRef}
             hideControls={true}
             filterStatus={filterStatus}
-            isVisible={activeTab === 'active'}
           />
         )}
 
@@ -308,9 +308,7 @@ export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
         {/* History Tab */}
         {activeTab === 'history' && (
           <PaymentHistory
-            ref={paymentHistoryRef}
             restaurantId={restaurantId}
-            isVisible={activeTab === 'history'}
           />
         )}
 
@@ -320,7 +318,6 @@ export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
             <PaymentAnalytics
               key={`analytics-${refreshKey}`}
               restaurantId={restaurantId}
-              isVisible={activeTab === 'analytics'}
             />
           </div>
         )}

@@ -168,15 +168,15 @@ export function TableManagement({ restaurantId }: TableManagementProps) {
   const getStatusIcon = (status: TableStatus) => {
     switch (status) {
       case TableStatus.AVAILABLE:
-        return <CheckCircle className="w-4 h-4 text-green-600" />;
+        return <CheckCircle className="w-4 h-4 text-status-success" />;
       case TableStatus.OCCUPIED:
-        return <Users className="w-4 h-4 text-orange-600" />;
+        return <Users className="w-4 h-4 text-accent" />;
       case TableStatus.RESERVED:
-        return <Clock className="w-4 h-4 text-blue-600" />;
+        return <Clock className="w-4 h-4 text-primary" />;
       case TableStatus.MAINTENANCE:
         return <AlertTriangle className="w-4 h-4" style={{ color: 'rgb(var(--status-warning))' }} />;
       default:
-        return <AlertCircle className="w-4 h-4 text-gray-600" />;
+        return <AlertCircle className="w-4 h-4 text-content-secondary" />;
     }
   };
 

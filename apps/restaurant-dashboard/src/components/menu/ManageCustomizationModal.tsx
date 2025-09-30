@@ -444,7 +444,7 @@ export function ManageCustomizationModal({
                           {getOptionTypeIcon(option.type)}
                           <h4 className="font-medium text-sm truncate">{option.name}</h4>
                           {(option.isRequired || (option as any).required) && (
-                            <span className="text-xs bg-red-100 text-red-800 px-1.5 py-0.5 rounded">
+                            <span className="text-xs bg-status-error-light text-status-error-dark px-1.5 py-0.5 rounded">
                               Required
                             </span>
                           )}

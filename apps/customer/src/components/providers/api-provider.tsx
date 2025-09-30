@@ -57,35 +57,40 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // Restore guest session from sessionStorage if available
-    // Try multiple possible session keys to ensure compatibility
-    const possibleKeys = ['tabsy-session', 'tabsy-dining-session']
-    let sessionFound = false
+    // Restore session helper function
+    const restoreSession = () => {
+      // Try multiple possible session keys to ensure compatibility
+      const possibleKeys = ['tabsy-session', 'tabsy-dining-session']
+      let sessionFound = false
 
-    for (const key of possibleKeys) {
-      const sessionStr = sessionStorage.getItem(key)
-      if (sessionStr && !sessionFound) {
-        try {
-          const session = JSON.parse(sessionStr)
-          const sessionId = session.sessionId || session.id
-          if (sessionId) {
-            console.log(`ApiProvider: Restoring session ID from ${key}:`, sessionId)
-            api.setGuestSession(sessionId)
-            sessionFound = true
+      for (const key of possibleKeys) {
+        const sessionStr = sessionStorage.getItem(key)
+        if (sessionStr && !sessionFound) {
+          try {
+            const session = JSON.parse(sessionStr)
+            const sessionId = session.sessionId || session.id
+            if (sessionId) {
+              console.log(`ApiProvider: Restoring session ID from ${key}:`, sessionId)
+              api.setGuestSession(sessionId)
+              sessionFound = true
+            }
+          } catch (error) {
+            console.error(`Failed to restore session from ${key}:`, error)
+            sessionStorage.removeItem(key)
           }
-        } catch (error) {
-          console.error(`Failed to restore session from ${key}:`, error)
-          sessionStorage.removeItem(key)
         }
+      }
+
+      // Also check for standalone session ID
+      const standaloneSessionId = sessionStorage.getItem('tabsy-guest-session-id')
+      if (standaloneSessionId && !sessionFound) {
+        console.log('ApiProvider: Restoring standalone session ID:', standaloneSessionId)
+        api.setGuestSession(standaloneSessionId)
       }
     }
 
-    // Also check for standalone session ID
-    const standaloneSessionId = sessionStorage.getItem('tabsy-guest-session-id')
-    if (standaloneSessionId && !sessionFound) {
-      console.log('ApiProvider: Restoring standalone session ID:', standaloneSessionId)
-      api.setGuestSession(standaloneSessionId)
-    }
+    // Initial session restoration
+    restoreSession()
 
     // Health check on mount with better error handling
     const checkHealth = async () => {
@@ -103,6 +108,33 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
 
     checkHealth()
 
+    // Listen for visibility change events (tab becomes active/visible again)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('ApiProvider: Tab became visible, restoring session')
+        restoreSession()
+
+        // Also update API client memory
+        const currentSessionId = api.getGuestSessionId()
+        if (!currentSessionId) {
+          const storedId = sessionStorage.getItem('tabsy-guest-session-id')
+          if (storedId) {
+            console.log('ApiProvider: Restoring session to API client memory:', storedId)
+            api.setGuestSession(storedId)
+          }
+        }
+      }
+    }
+
+    // Listen for focus events (user returns to tab)
+    const handleFocus = () => {
+      console.log('ApiProvider: Window focused, verifying session')
+      restoreSession()
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+
     // Periodic session refresh to prevent loss
     const refreshInterval = setInterval(() => {
       const currentSessionId = api.getGuestSessionId()
@@ -113,10 +145,21 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
           console.log('ApiProvider: Refreshing session persistence')
           sessionStorage.setItem('tabsy-guest-session-id', currentSessionId)
         }
+      } else {
+        // If API client lost session, try to restore from storage
+        const storedId = sessionStorage.getItem('tabsy-guest-session-id')
+        if (storedId) {
+          console.log('ApiProvider: Periodic check detected lost session, restoring:', storedId)
+          api.setGuestSession(storedId)
+        }
       }
     }, 30000) // Every 30 seconds
 
-    return () => clearInterval(refreshInterval)
+    return () => {
+      clearInterval(refreshInterval)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+    }
   }, [api])
 
   return (

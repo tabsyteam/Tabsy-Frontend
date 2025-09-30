@@ -57,10 +57,10 @@ export function ProtectedRoute({
   // Show loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-secondary flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-          <p className="text-gray-600">Authenticating...</p>
+          <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-primary border-t-transparent rounded-full"></div>
+          <p className="text-content-secondary">Authenticating...</p>
         </div>
       </div>
     );
@@ -76,39 +76,39 @@ export function ProtectedRoute({
   // Check role access (admin only)
   if (!userWithRole?.role || !requiredRoles.includes(userWithRole.role)) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-surface-secondary flex items-center justify-center p-4">
         <div className="max-w-md text-center">
-          <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="bg-surface rounded-lg shadow-lg p-6">
             <div className="mb-4">
-              <div className="mx-auto h-16 w-16 bg-red-100 rounded-full flex items-center justify-center">
-                <svg className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="mx-auto h-16 w-16 bg-status-error-light rounded-full flex items-center justify-center">
+                <svg className="h-8 w-8 text-status-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                 </svg>
               </div>
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">Admin Access Required</h1>
-            <p className="text-gray-600 mb-4">
+            <h1 className="text-xl font-bold text-content-primary mb-2">Admin Access Required</h1>
+            <p className="text-content-secondary mb-4">
               You need administrator privileges to access this portal.
             </p>
             <div className="space-y-2">
               <button
                 onClick={() => router.push('/login')}
-                className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                className="w-full bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary-dark transition-colors"
               >
                 Sign In as Administrator
               </button>
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-content-secondary">
                 Other access options:
               </div>
               <button
                 onClick={() => window.location.href = 'http://localhost:3000/login'}
-                className="w-full bg-orange-100 text-orange-700 px-4 py-2 rounded-lg hover:bg-orange-200 transition-colors"
+                className="w-full bg-status-warning-light text-status-warning-dark px-4 py-2 rounded-lg hover:bg-status-warning transition-colors"
               >
                 Restaurant Portal
               </button>
               <button
                 onClick={() => window.location.href = 'http://localhost:3001'}
-                className="w-full bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200 transition-colors"
+                className="w-full bg-status-success-light text-status-success-dark px-4 py-2 rounded-lg hover:bg-status-success transition-colors"
               >
                 Customer App
               </button>

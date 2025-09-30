@@ -31,20 +31,20 @@ const getDietaryIcon = (dietaryType: DietaryType) => {
   switch (dietaryType) {
     case DietaryType.VEGETARIAN:
     case DietaryType.VEGAN:
-      return <Leaf className="h-4 w-4 text-green-600" />
+      return <Leaf className="h-4 w-4 text-status-success" />
     case DietaryType.GLUTEN_FREE:
-      return <Wheat className="h-4 w-4 text-amber-600" />
+      return <Wheat className="h-4 w-4 text-status-warning" />
     case DietaryType.DAIRY_FREE:
-      return <Milk className="h-4 w-4 text-blue-600" />
+      return <Milk className="h-4 w-4 text-primary" />
     case DietaryType.NUT_FREE:
-      return <Nut className="h-4 w-4 text-orange-600" />
+      return <Nut className="h-4 w-4 text-accent" />
     case DietaryType.HALAL:
     case DietaryType.KOSHER:
-      return <Shield className="h-4 w-4 text-emerald-600" />
+      return <Shield className="h-4 w-4 text-status-success" />
     case DietaryType.KETO:
-      return <Zap className="h-4 w-4 text-purple-600" />
+      return <Zap className="h-4 w-4 text-secondary" />
     default:
-      return <Leaf className="h-4 w-4 text-green-600" />
+      return <Leaf className="h-4 w-4 text-status-success" />
   }
 }
 
@@ -906,9 +906,9 @@ export function CreateItemModal({
                       <span
                         className={`text-xs ${
                           formData.description.length > 450
-                            ? 'text-orange-500'
+                            ? 'text-accent'
                             : formData.description.length > 400
-                              ? 'text-amber-500'
+                              ? 'text-status-warning'
                               : 'text-muted-foreground'
                         }`}
                       >
@@ -973,7 +973,7 @@ export function CreateItemModal({
                             disabled={createItemMutation.isPending}
                           />
                           <div className="flex items-center space-x-2">
-                            <ShieldAlert className="h-4 w-4 text-amber-500" />
+                            <ShieldAlert className="h-4 w-4 text-status-warning" />
                             <span className="text-sm font-medium capitalize">
                               {allergen.toLowerCase()}
                             </span>
@@ -982,7 +982,7 @@ export function CreateItemModal({
                       ))}
                     </div>
                     <p className="text-xs text-muted-foreground mt-2 flex items-start">
-                      <span className="inline-block w-1 h-1 bg-amber-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                      <span className="inline-block w-1 h-1 bg-accent rounded-full mt-2 mr-2 flex-shrink-0"></span>
                       Mark allergens present in this item to ensure customer safety
                     </p>
                   </div>
@@ -1026,14 +1026,14 @@ export function CreateItemModal({
                                     key={i}
                                     className={`h-3 w-3 ${
                                       numericValue === 0
-                                        ? 'text-gray-400'
+                                        ? 'text-content-disabled'
                                         : numericValue === 1
-                                          ? 'text-yellow-500'
+                                          ? 'text-status-warning'
                                           : numericValue === 2
-                                            ? 'text-orange-500'
+                                            ? 'text-accent'
                                             : numericValue === 3
-                                              ? 'text-red-500'
-                                              : 'text-red-600'
+                                              ? 'text-status-error'
+                                              : 'text-status-error'
                                     }`}
                                   />
                                 ))}
@@ -1054,7 +1054,7 @@ export function CreateItemModal({
                         })}
                     </div>
                     <p className="text-xs text-muted-foreground mt-2 flex items-start">
-                      <span className="inline-block w-1 h-1 bg-orange-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                      <span className="inline-block w-1 h-1 bg-accent rounded-full mt-2 mr-2 flex-shrink-0"></span>
                       Let customers know the heat level of your dish
                     </p>
                   </div>
@@ -1068,8 +1068,8 @@ export function CreateItemModal({
                       Prep Time (minutes)
                     </label>
                     <div className="relative">
-                      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-blue-100 rounded-lg">
-                        <Clock className="h-4 w-4 text-blue-600" />
+                      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-interactive-hover rounded-lg">
+                        <Clock className="h-4 w-4 text-primary" />
                       </div>
                       <input
                         id="preparationTime"
@@ -1096,7 +1096,7 @@ export function CreateItemModal({
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground mt-2 flex items-start">
-                        <span className="inline-block w-1 h-1 bg-blue-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                        <span className="inline-block w-1 h-1 bg-status-info-light0 rounded-full mt-2 mr-2 flex-shrink-0"></span>
                         Kitchen planning estimate
                       </p>
                     )}
@@ -1115,8 +1115,8 @@ export function CreateItemModal({
                           Calories
                         </label>
                         <div className="relative">
-                          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 p-1 bg-green-100 rounded">
-                            <Zap className="h-3 w-3 text-green-600" />
+                          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 p-1 bg-status-success-light rounded">
+                            <Zap className="h-3 w-3 text-status-success" />
                           </div>
                           <input
                             id="nutrition-calories"
@@ -1276,7 +1276,7 @@ export function CreateItemModal({
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2 flex items-start">
-                      <span className="inline-block w-1 h-1 bg-green-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                      <span className="inline-block w-1 h-1 bg-status-success rounded-full mt-2 mr-2 flex-shrink-0"></span>
                       Provide detailed nutritional information to help customers make informed choices
                     </p>
                   </div>
@@ -1342,7 +1342,7 @@ export function CreateItemModal({
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2 flex items-start">
-                      <span className="inline-block w-1 h-1 bg-purple-500 rounded-full mt-2 mr-2 flex-shrink-0"></span>
+                      <span className="inline-block w-1 h-1 bg-secondary rounded-full mt-2 mr-2 flex-shrink-0"></span>
                       Add keywords to help with search and categorization
                     </p>
                   </div>
@@ -1352,14 +1352,14 @@ export function CreateItemModal({
 
             {/* Edit Mode Notice */}
             {editMode && (
-              <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl mb-4">
+              <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-status-success rounded-xl mb-4">
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  <div className="p-2 bg-status-success-light rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-status-success" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-green-900">Editing Menu Item</h4>
-                    <p className="text-sm text-green-700 mt-1">
+                    <h4 className="text-sm font-semibold text-status-success-dark">Editing Menu Item</h4>
+                    <p className="text-sm text-status-success-dark mt-1">
                       You can update all fields including dietary info, allergens, spice level.
                       However, you can not change prep time, calories, and tags for now.
                     </p>
@@ -1369,14 +1369,14 @@ export function CreateItemModal({
             )}
 
             {!editMode && (
-              <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl mb-4">
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-status-info rounded-xl mb-4">
                 <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <AlertCircle className="h-5 w-5 text-blue-600" />
+                  <div className="p-2 bg-interactive-hover rounded-lg">
+                    <AlertCircle className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-blue-900">Note about Pricing</h4>
-                    <p className="text-sm text-blue-700 mt-1">
+                    <h4 className="text-sm font-semibold text-status-info-dark">Note about Pricing</h4>
+                    <p className="text-sm text-status-info mt-1">
                       Enter the price in dollars (e.g., 12.99). The price will be saved and
                       displayed correctly.
                     </p>

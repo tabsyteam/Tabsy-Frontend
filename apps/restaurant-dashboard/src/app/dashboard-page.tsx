@@ -78,14 +78,14 @@ export function DashboardClient(): JSX.Element {
     error: metricsError
   } = dashboardHooks.useDashboardMetrics(restaurantId || '', {
     enabled: !!restaurantId && !!auth?.session?.token,
-    retry: (failureCount, error: any) => {
+    retry: (failureCount: number, error: any) => {
       // Don't retry rate limit errors or auth errors
       if (error?.status === 429 || error?.code === 'RATE_LIMIT_EXCEEDED' || error?.status === 401 || error?.status === 403) {
         return false
       }
       return failureCount < RETRY_CONFIG.MAX_ATTEMPTS
     },
-    retryDelay: (attemptIndex) => Math.min(RETRY_CONFIG.BASE_DELAY * 2 ** attemptIndex, RETRY_CONFIG.MAX_DELAY)
+    retryDelay: (attemptIndex: number) => Math.min(RETRY_CONFIG.BASE_DELAY * 2 ** attemptIndex, RETRY_CONFIG.MAX_DELAY)
   })
 
   // RE-ENABLE WEEKLY STATS WITH ENHANCED SAFEGUARDS
@@ -95,13 +95,13 @@ export function DashboardClient(): JSX.Element {
   } = dashboardHooks.useWeeklyOrderStats(restaurantId || '', {
     enabled: !!restaurantId && !!auth?.session?.token,
     staleTime: QUERY_STALE_TIME.LONG,
-    retry: (failureCount, error: any) => {
+    retry: (failureCount: number, error: any) => {
       if (error?.status === 429 || error?.code === 'RATE_LIMIT_EXCEEDED' || error?.status === 401 || error?.status === 403) {
         return false
       }
       return failureCount < RETRY_CONFIG.MAX_ATTEMPTS
     },
-    retryDelay: (attemptIndex) => Math.min(RETRY_CONFIG.BASE_DELAY * 2 ** attemptIndex, RETRY_CONFIG.MAX_DELAY)
+    retryDelay: (attemptIndex: number) => Math.min(RETRY_CONFIG.BASE_DELAY * 2 ** attemptIndex, RETRY_CONFIG.MAX_DELAY)
   })
 
   // Assistance alerts and notifications
@@ -175,8 +175,8 @@ export function DashboardClient(): JSX.Element {
 
       // Deduplicate notifications by ID to prevent duplicates
       setAssistanceNotifications(prev => {
-        const existingIds = new Set(prev.map(notif => notif.id))
-        const newNotifs = assistanceNotifs.filter(notif => !existingIds.has(notif.id))
+        const existingIds = new Set(prev.map((notif: Notification) => notif.id))
+        const newNotifs = assistanceNotifs.filter((notif: Notification) => !existingIds.has(notif.id))
 
         if (newNotifs.length === 0 && prev.length === assistanceNotifs.length) {
           // No changes, return previous state to prevent re-renders
@@ -184,7 +184,7 @@ export function DashboardClient(): JSX.Element {
         }
 
         // Return deduplicated list sorted by creation time (newest first)
-        return assistanceNotifs.sort((a, b) =>
+        return assistanceNotifs.sort((a: Notification, b: Notification) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )
       })
@@ -306,9 +306,9 @@ export function DashboardClient(): JSX.Element {
   // Show loading during authentication verification or restaurant data loading
   if (auth?.isLoading || auth?.isVerifying || restaurantLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-secondary flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-foreground/80">
             {auth?.isVerifying ? 'Verifying credentials...' : 'Loading restaurant...'}
           </p>
@@ -320,7 +320,7 @@ export function DashboardClient(): JSX.Element {
   // Show error if user doesn't have restaurant access (will auto-redirect)
   if (!hasRestaurantAccess || !restaurantId) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-secondary flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-foreground mb-4">Restaurant Access Required</h2>
           <p className="text-foreground/80 mb-4">
@@ -358,7 +358,7 @@ export function DashboardClient(): JSX.Element {
     
     if (isAuthError) {
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="min-h-screen bg-surface-secondary flex items-center justify-center">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-foreground mb-4">Authentication Required</h2>
             <p className="text-foreground/80 mb-4">Your session has expired. Please sign in again.</p>
@@ -369,7 +369,7 @@ export function DashboardClient(): JSX.Element {
     }
     
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface-secondary flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-foreground mb-4">Error Loading Dashboard</h2>
           <p className="text-foreground/80 mb-4">
@@ -480,7 +480,7 @@ export function DashboardClient(): JSX.Element {
                 </h3>
                 {weeklyLoading ? (
                   <div className="h-[300px] flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
                 ) : (
                   <DynamicWeeklyOverviewChart data={((weeklyData as any)?.data || []) as Array<{ day: string; orders: number; revenue: number }>} />

@@ -13,7 +13,9 @@ import {
   QrCode,
   Timer,
   Receipt,
-  ClipboardList
+  ClipboardList,
+  CreditCard,
+  CheckCircle
 } from 'lucide-react'
 import { Button } from '@tabsy/ui-components'
 import { SessionManager } from '@/lib/session'
@@ -21,6 +23,7 @@ import { toast } from 'sonner'
 import { useWebSocket } from '@tabsy/ui-components'
 import { useSessionUpdates } from '@tabsy/api-client'
 import { useSessionDetails } from '@/hooks/useSessionDetails'
+import { useBillStatus } from '@/hooks/useBillStatus'
 import { STORAGE_KEYS } from '@/constants/storage'
 interface TableInfo {
   restaurant: {
@@ -41,6 +44,9 @@ export function TableSessionView() {
   const [sessionTime, setSessionTime] = useState<string>('')
   const [hasSession, setHasSession] = useState(false)
   const [lastConnectionTime, setLastConnectionTime] = useState<Date | null>(null)
+
+  // Get bill status for payment card
+  const { hasBill, remainingBalance, isPaid, billAmount } = useBillStatus()
 
   // Get current session for WebSocket authentication
   const session = SessionManager.getDiningSession()
@@ -237,6 +243,121 @@ export function TableSessionView() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        {/* Pay Your Bill Card - Prominent CTA */}
+        {hasBill && !isPaid && remainingBalance > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{
+              type: 'spring',
+              stiffness: 500,
+              damping: 30
+            }}
+            className="bg-gradient-to-br from-accent via-accent to-accent-hover rounded-2xl border-2 border-accent-hover shadow-2xl shadow-accent/30 overflow-hidden relative"
+          >
+            {/* Animated background effect */}
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+              animate={{
+                x: ['-100%', '200%']
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: 'linear',
+                repeatDelay: 1
+              }}
+            />
+
+            <div className="relative p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <motion.div
+                    animate={{
+                      rotate: [0, -10, 10, -10, 0],
+                      scale: [1, 1.1, 1]
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: 'easeInOut',
+                      repeatDelay: 2
+                    }}
+                    className="w-12 h-12 bg-accent-foreground/10 rounded-xl flex items-center justify-center"
+                  >
+                    <Receipt className="w-6 h-6 text-accent-foreground" />
+                  </motion.div>
+                  <div>
+                    <h2 className="text-xl font-bold text-accent-foreground">
+                      Ready to Pay?
+                    </h2>
+                    <p className="text-accent-foreground/80 text-sm">
+                      Your bill is ready for payment
+                    </p>
+                  </div>
+                </div>
+                <motion.div
+                  animate={{
+                    scale: [1, 1.05, 1]
+                  }}
+                  transition={{
+                    duration: 1.5,
+                    repeat: Infinity,
+                    ease: 'easeInOut'
+                  }}
+                  className="px-4 py-2 bg-accent-foreground/10 rounded-full"
+                >
+                  <p className="text-xs font-semibold text-accent-foreground/80 uppercase tracking-wide">
+                    Due Now
+                  </p>
+                  <p className="text-2xl font-bold text-accent-foreground">
+                    ${remainingBalance.toFixed(2)}
+                  </p>
+                </motion.div>
+              </div>
+
+              {/* Payment Info */}
+              <div className="mb-4 p-3 bg-accent-foreground/5 rounded-lg border border-accent-foreground/10">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-accent-foreground/70">Total Bill:</span>
+                  <span className="font-semibold text-accent-foreground">${billAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm mt-1">
+                  <span className="text-accent-foreground/70">Remaining:</span>
+                  <span className="font-bold text-accent-foreground">${remainingBalance.toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* CTA Buttons */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={handleViewBill}
+                  className="flex-1 bg-accent-foreground text-accent hover:bg-accent-foreground/90 shadow-lg hover:shadow-xl transition-all duration-200"
+                  size="lg"
+                >
+                  <CreditCard className="w-5 h-5 mr-2" />
+                  <span className="font-bold">Pay Now</span>
+                </Button>
+                <Button
+                  onClick={handleViewBill}
+                  variant="outline"
+                  className="bg-accent-foreground/10 text-accent-foreground border-accent-foreground/20 hover:bg-accent-foreground/20"
+                  size="lg"
+                >
+                  View Bill
+                </Button>
+              </div>
+
+              {/* Quick Info */}
+              <div className="mt-4 flex items-center justify-center gap-2 text-xs text-accent-foreground/70">
+                <CheckCircle className="w-4 h-4" />
+                <span>Secure payment • Split bill option available</span>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Restaurant & Table Info */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -363,11 +484,11 @@ export function TableSessionView() {
             </div>
             <div className="flex justify-between">
               <span className="text-content-secondary">Status:</span>
-              <span className="text-green-600 font-medium">Active</span>
+              <span className="text-status-success font-medium">Active</span>
             </div>
             <div className="flex justify-between">
               <span className="text-content-secondary">Real-time Updates:</span>
-              <span className={`font-medium ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
+              <span className={`font-medium ${isConnected ? 'text-status-success' : 'text-status-error'}`}>
                 {isConnected ? 'Connected' : 'Disconnected'}
               </span>
             </div>
@@ -412,13 +533,13 @@ export function TableSessionView() {
             {wsError && (
               <div className="flex justify-between">
                 <span className="text-content-secondary">Connection Error:</span>
-                <span className="text-red-600 text-sm">{wsError.message}</span>
+                <span className="text-status-error text-sm">{wsError.message}</span>
               </div>
             )}
             {sessionError && (
               <div className="flex justify-between">
                 <span className="text-content-secondary">Session Error:</span>
-                <span className="text-red-600 text-sm">{sessionError}</span>
+                <span className="text-status-error text-sm">{sessionError}</span>
               </div>
             )}
           </div>

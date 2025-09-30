@@ -44,12 +44,12 @@ const orderStatusLabels: Record<OrderStatus, string> = {
 }
 
 const orderStatusConfig: Record<OrderStatus, { bg: string, text: string, icon: any }> = {
-  RECEIVED: { bg: 'bg-blue-50 dark:bg-blue-950/20', text: 'text-blue-700 dark:text-blue-300', icon: Receipt },
-  PREPARING: { bg: 'bg-amber-50 dark:bg-amber-950/20', text: 'text-amber-700 dark:text-amber-300', icon: ChefHat },
-  READY: { bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-700 dark:text-emerald-300', icon: CheckCircle },
-  DELIVERED: { bg: 'bg-purple-50 dark:bg-purple-950/20', text: 'text-purple-700 dark:text-purple-300', icon: Package },
+  RECEIVED: { bg: 'bg-status-info-light', text: 'text-status-info', icon: Receipt },
+  PREPARING: { bg: 'bg-accent-light', text: 'text-accent', icon: ChefHat },
+  READY: { bg: 'bg-status-success-light', text: 'text-status-success', icon: CheckCircle },
+  DELIVERED: { bg: 'bg-secondary-light', text: 'text-secondary', icon: Package },
   COMPLETED: { bg: 'bg-surface-secondary', text: 'text-content-secondary', icon: CheckCircle },
-  CANCELLED: { bg: 'bg-red-50 dark:bg-red-950/20', text: 'text-red-700 dark:text-red-300', icon: AlertCircle }
+  CANCELLED: { bg: 'bg-status-error-light', text: 'text-status-error', icon: AlertCircle }
 }
 
 export function OrderTrackingShared({
@@ -267,8 +267,8 @@ export function OrderTrackingShared({
             transition={{ delay: 0.2 }}
             className="bg-surface border border-default rounded-2xl p-4 text-center"
           >
-            <div className="w-10 h-10 bg-amber-100 dark:bg-amber-950/20 rounded-full flex items-center justify-center mx-auto mb-2">
-              <Clock className="text-amber-600 dark:text-amber-400" size={20} />
+            <div className="w-10 h-10 bg-accent-light rounded-full flex items-center justify-center mx-auto mb-2">
+              <Clock className="text-accent" size={20} />
             </div>
             <div className="text-2xl font-bold text-content-primary">{stats.activeOrders}</div>
             <div className="text-xs text-content-secondary">In Progress</div>
@@ -280,8 +280,8 @@ export function OrderTrackingShared({
             transition={{ delay: 0.3 }}
             className="bg-surface border border-default rounded-2xl p-4 text-center"
           >
-            <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-950/20 rounded-full flex items-center justify-center mx-auto mb-2">
-              <CheckCircle className="text-emerald-600 dark:text-emerald-400" size={20} />
+            <div className="w-10 h-10 bg-status-success-light rounded-full flex items-center justify-center mx-auto mb-2">
+              <CheckCircle className="text-status-success" size={20} />
             </div>
             <div className="text-2xl font-bold text-content-primary">{stats.completedOrders}</div>
             <div className="text-xs text-content-secondary">Completed</div>
@@ -422,33 +422,33 @@ export function OrderTrackingShared({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/30 rounded-2xl p-4"
+          className="bg-status-info-light border border-status-info rounded-2xl p-4"
         >
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mt-0.5">
-              <Users className="text-blue-600 dark:text-blue-400" size={20} />
+            <div className="w-10 h-10 bg-status-info-light rounded-full flex items-center justify-center mt-0.5">
+              <Users className="text-status-info" size={20} />
             </div>
             <div>
-              <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Shared Table Orders</h4>
-              <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1.5">
+              <h4 className="font-semibold text-status-info mb-2">Shared Table Orders</h4>
+              <ul className="text-sm text-status-info space-y-1.5">
                 <li className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="w-1.5 h-1.5 bg-status-info rounded-full mt-2 flex-shrink-0"></div>
                   All orders for Table {tableSession.table?.number || tableSession.tableId} are shown below
                 </li>
                 <li className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="w-1.5 h-1.5 bg-status-info rounded-full mt-2 flex-shrink-0"></div>
                   Orders are shared across everyone at your table
                 </li>
                 <li className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="w-1.5 h-1.5 bg-status-info rounded-full mt-2 flex-shrink-0"></div>
                   Status updates appear in real-time for all users
                 </li>
                 <li className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="w-1.5 h-1.5 bg-status-info rounded-full mt-2 flex-shrink-0"></div>
                   You can place multiple rounds of orders during your meal
                 </li>
                 <li className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                  <div className="w-1.5 h-1.5 bg-status-info rounded-full mt-2 flex-shrink-0"></div>
                   Staff will notify you when orders are ready
                 </li>
               </ul>

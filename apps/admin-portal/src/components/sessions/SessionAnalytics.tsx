@@ -203,7 +203,7 @@ export function SessionAnalytics({ dateRange }: SessionAnalyticsProps) {
           title="Sessions Today"
           value={metrics.sessionsToday}
           icon={TrendingUp}
-          color="bg-emerald-100 text-emerald-600"
+          color="bg-status-success-light text-status-success"
           previousValue={previousMetrics?.sessionsToday}
         />
 
@@ -211,7 +211,7 @@ export function SessionAnalytics({ dateRange }: SessionAnalyticsProps) {
           title="Sessions This Week"
           value={metrics.sessionsThisWeek}
           icon={BarChart3}
-          color="bg-blue-100 text-blue-600"
+          color="bg-status-info-light text-status-info"
           previousValue={previousMetrics?.sessionsThisWeek}
         />
 
@@ -219,7 +219,7 @@ export function SessionAnalytics({ dateRange }: SessionAnalyticsProps) {
           title="Avg Party Size"
           value={metrics.averagePartySize}
           icon={Users}
-          color="bg-purple-100 text-purple-600"
+          color="bg-primary-light text-primary"
           previousValue={previousMetrics?.averagePartySize}
           format="percentage"
         />

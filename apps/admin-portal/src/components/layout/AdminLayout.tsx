@@ -69,23 +69,23 @@ export function AdminLayout({ initialSection = 'dashboard' }: AdminLayoutProps) 
   }
 
   return (
-    <div className="h-screen flex bg-gray-100">
+    <div className="h-screen flex bg-background">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-surface shadow-lg transform ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
-        
+
         {/* Logo */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
+        <div className="flex items-center justify-between h-16 px-6 border-b border-default">
           <div className="flex items-center">
             <Shield className="w-8 h-8 text-primary" />
-            <span className="ml-2 text-xl font-bold text-gray-900">Tabsy Admin</span>
+            <span className="ml-2 text-xl font-bold text-content-primary">Tabsy Admin</span>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden"
           >
-            <X className="w-6 h-6 text-gray-400" />
+            <X className="w-6 h-6 text-content-tertiary" />
           </button>
         </div>
 
@@ -100,8 +100,8 @@ export function AdminLayout({ initialSection = 'dashboard' }: AdminLayoutProps) 
                     onClick={() => handleSectionChange(item.id as AdminSection)}
                     className={`w-full flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-colors ${
                       isActive
-                        ? 'bg-primary text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-content-primary hover:bg-interactive-hover'
                     }`}
                   >
                     <item.icon className="w-5 h-5 mr-3" />
@@ -114,16 +114,16 @@ export function AdminLayout({ initialSection = 'dashboard' }: AdminLayoutProps) 
         </nav>
 
         {/* User Profile */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-default">
           <div className="flex items-center">
-            <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-gray-600" />
+            <div className="w-8 h-8 bg-surface-tertiary rounded-full flex items-center justify-center">
+              <User className="w-5 h-5 text-content-secondary" />
             </div>
             <div className="ml-3 flex-1">
-              <p className="text-sm font-medium text-gray-900">Admin User</p>
-              <p className="text-xs text-gray-500">admin@tabsy.com</p>
+              <p className="text-sm font-medium text-content-primary">Admin User</p>
+              <p className="text-xs text-content-tertiary">admin@tabsy.com</p>
             </div>
-            <button className="text-gray-400 hover:text-gray-600">
+            <button className="text-content-tertiary hover:text-content-secondary">
               <LogOut className="w-5 h-5" />
             </button>
           </div>
@@ -133,17 +133,17 @@ export function AdminLayout({ initialSection = 'dashboard' }: AdminLayoutProps) 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
+        <header className="bg-surface shadow-sm border-b border-default">
           <div className="flex items-center justify-between h-16 px-6">
             <div className="flex items-center">
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="lg:hidden mr-4"
               >
-                <Menu className="w-6 h-6 text-gray-400" />
+                <Menu className="w-6 h-6 text-content-tertiary" />
               </button>
-              
-              <h1 className="text-xl font-semibold text-gray-900 capitalize">
+
+              <h1 className="text-xl font-semibold text-content-primary capitalize">
                 {activeSection === 'dashboard' ? 'Dashboard' : activeSection}
               </h1>
             </div>
@@ -152,21 +152,21 @@ export function AdminLayout({ initialSection = 'dashboard' }: AdminLayoutProps) 
               {/* Search */}
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
+                  <Search className="h-5 w-5 text-content-tertiary" />
                 </div>
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search..."
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
+                  className="block w-full pl-10 pr-3 py-2 border border-secondary rounded-md leading-5 bg-surface text-content-primary placeholder:text-content-disabled focus:outline-none focus:placeholder:text-content-tertiary focus:ring-1 focus:ring-primary focus:border-primary sm:text-sm"
                 />
               </div>
 
               {/* Notifications */}
-              <button className="relative p-2 text-gray-400 hover:text-gray-600">
+              <button className="relative p-2 text-content-tertiary hover:text-content-secondary">
                 <Bell className="w-6 h-6" />
-                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-400 ring-2 ring-white"></span>
+                <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-status-error ring-2 ring-surface"></span>
               </button>
             </div>
           </div>
@@ -180,8 +180,8 @@ export function AdminLayout({ initialSection = 'dashboard' }: AdminLayoutProps) 
 
       {/* Sidebar overlay for mobile */}
       {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-gray-600 bg-opacity-75 z-40 lg:hidden"
+        <div
+          className="fixed inset-0 bg-background-inverse bg-opacity-75 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -194,65 +194,65 @@ function AdminDashboard() {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Welcome to Tabsy Admin</h1>
-        <p className="text-gray-600">Monitor and manage your restaurant ecosystem</p>
+        <h1 className="text-2xl font-bold text-content-primary">Welcome to Tabsy Admin</h1>
+        <p className="text-content-secondary">Monitor and manage your restaurant ecosystem</p>
       </div>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-lg border">
+        <div className="bg-surface p-6 rounded-lg border border-tertiary">
           <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Building className="w-6 h-6 text-blue-600" />
+            <div className="p-2 bg-primary-light rounded-lg">
+              <Building className="w-6 h-6 text-primary" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Restaurants</p>
-              <p className="text-2xl font-bold text-gray-900">42</p>
+              <p className="text-sm font-medium text-content-secondary">Total Restaurants</p>
+              <p className="text-2xl font-bold text-content-primary">42</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg border">
+        <div className="bg-surface p-6 rounded-lg border border-tertiary">
           <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Users className="w-6 h-6 text-green-600" />
+            <div className="p-2 bg-status-success-light rounded-lg">
+              <Users className="w-6 h-6 text-status-success-dark" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Active Users</p>
-              <p className="text-2xl font-bold text-gray-900">12,340</p>
+              <p className="text-sm font-medium text-content-secondary">Active Users</p>
+              <p className="text-2xl font-bold text-content-primary">12,340</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg border">
+        <div className="bg-surface p-6 rounded-lg border border-tertiary">
           <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <BarChart3 className="w-6 h-6 text-purple-600" />
+            <div className="p-2 bg-accent-light rounded-lg">
+              <BarChart3 className="w-6 h-6 text-accent" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Monthly Revenue</p>
-              <p className="text-2xl font-bold text-gray-900">$125K</p>
+              <p className="text-sm font-medium text-content-secondary">Monthly Revenue</p>
+              <p className="text-2xl font-bold text-content-primary">$125K</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg border">
+        <div className="bg-surface p-6 rounded-lg border border-tertiary">
           <div className="flex items-center">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <Settings className="w-6 h-6 text-orange-600" />
+            <div className="p-2 bg-secondary-light rounded-lg">
+              <Settings className="w-6 h-6 text-secondary" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">System Health</p>
-              <p className="text-2xl font-bold text-green-600">Healthy</p>
+              <p className="text-sm font-medium text-content-secondary">System Health</p>
+              <p className="text-2xl font-bold text-status-success-dark">Healthy</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white rounded-lg border">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
+      <div className="bg-surface rounded-lg border border-tertiary">
+        <div className="p-6 border-b border-default">
+          <h3 className="text-lg font-semibold text-content-primary">Recent Activity</h3>
         </div>
         <div className="p-6">
           <div className="space-y-4">
@@ -264,10 +264,10 @@ function AdminDashboard() {
             ].map((activity, index) => (
               <div key={index} className="flex items-center justify-between py-2">
                 <div>
-                  <p className="font-medium text-gray-900">{activity.action}</p>
-                  <p className="text-sm text-gray-600">{activity.details}</p>
+                  <p className="font-medium text-content-primary">{activity.action}</p>
+                  <p className="text-sm text-content-secondary">{activity.details}</p>
                 </div>
-                <span className="text-sm text-gray-500">{activity.time}</span>
+                <span className="text-sm text-content-tertiary">{activity.time}</span>
               </div>
             ))}
           </div>

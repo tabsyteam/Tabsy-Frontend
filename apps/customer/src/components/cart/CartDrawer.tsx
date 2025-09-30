@@ -196,7 +196,7 @@ export function CartDrawer({ isOpen, onClose, onEditItem }: CartDrawerProps) {
                           {item.dietaryTypes.slice(0, 2).map(diet => (
                             <span
                               key={diet}
-                              className="inline-flex items-center space-x-1 px-1.5 py-0.5 bg-green-100 text-green-700 text-xs rounded-full"
+                              className="inline-flex items-center space-x-1 px-1.5 py-0.5 bg-status-success-light text-status-success text-xs rounded-full"
                             >
                               {getDietaryIcon(diet)}
                               <span>{diet.replace('_', ' ')}</span>
@@ -212,7 +212,7 @@ export function CartDrawer({ isOpen, onClose, onEditItem }: CartDrawerProps) {
 
                       {/* Special Instructions (compact) */}
                       {item.specialInstructions && (
-                        <div className="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded mb-2">
+                        <div className="text-xs text-status-warning bg-status-warning-light px-2 py-1 rounded mb-2">
                           <span className="font-medium">Note:</span> {item.specialInstructions.length > 50 ? `${item.specialInstructions.slice(0, 50)}...` : item.specialInstructions}
                         </div>
                       )}
@@ -261,7 +261,7 @@ export function CartDrawer({ isOpen, onClose, onEditItem }: CartDrawerProps) {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleRemoveItem(item.cartItemId)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            className="text-status-error hover:text-status-error hover:bg-status-error-light"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -293,7 +293,7 @@ export function CartDrawer({ isOpen, onClose, onEditItem }: CartDrawerProps) {
                     <Button
                       variant="outline"
                       onClick={handleClearCart}
-                      className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                      className="w-full text-status-error border-status-error hover:bg-status-error-light"
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
                       Clear Cart

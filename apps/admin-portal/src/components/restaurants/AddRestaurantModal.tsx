@@ -222,10 +222,10 @@ export default function AddRestaurantModal({
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className={`input-professional w-full ${errors.name ? 'border-red-500' : ''}`}
+                  className={`input-professional w-full ${errors.name ? 'border-status-error' : ''}`}
                   placeholder="Enter restaurant name"
                 />
-                {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
+                {errors.name && <p className="mt-1 text-sm text-status-error">{errors.name}</p>}
               </div>
 
               <div>
@@ -279,11 +279,11 @@ export default function AddRestaurantModal({
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className={`input-professional w-full pl-10 ${errors.email ? 'border-red-500' : ''}`}
+                    className={`input-professional w-full pl-10 ${errors.email ? 'border-status-error' : ''}`}
                     placeholder="restaurant@example.com"
                   />
                 </div>
-                {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+                {errors.email && <p className="mt-1 text-sm text-status-error">{errors.email}</p>}
               </div>
 
               <div>
@@ -297,11 +297,11 @@ export default function AddRestaurantModal({
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
-                    className={`input-professional w-full pl-10 ${errors.phone ? 'border-red-500' : ''}`}
+                    className={`input-professional w-full pl-10 ${errors.phone ? 'border-status-error' : ''}`}
                     placeholder="+1 (555) 123-4567"
                   />
                 </div>
-                {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
+                {errors.phone && <p className="mt-1 text-sm text-status-error">{errors.phone}</p>}
               </div>
 
               <div className="md:col-span-2">
@@ -315,11 +315,11 @@ export default function AddRestaurantModal({
                     name="website"
                     value={formData.website}
                     onChange={handleInputChange}
-                    className={`input-professional w-full pl-10 ${errors.website ? 'border-red-500' : ''}`}
+                    className={`input-professional w-full pl-10 ${errors.website ? 'border-status-error' : ''}`}
                     placeholder="https://www.restaurant.com"
                   />
                 </div>
-                {errors.website && <p className="mt-1 text-sm text-red-600">{errors.website}</p>}
+                {errors.website && <p className="mt-1 text-sm text-status-error">{errors.website}</p>}
               </div>
             </div>
           </div>
@@ -340,10 +340,10 @@ export default function AddRestaurantModal({
                   name="address"
                   value={formData.address}
                   onChange={handleInputChange}
-                  className={`input-professional w-full ${errors.address ? 'border-red-500' : ''}`}
+                  className={`input-professional w-full ${errors.address ? 'border-status-error' : ''}`}
                   placeholder="123 Main Street"
                 />
-                {errors.address && <p className="mt-1 text-sm text-red-600">{errors.address}</p>}
+                {errors.address && <p className="mt-1 text-sm text-status-error">{errors.address}</p>}
               </div>
 
               <div>
@@ -355,10 +355,10 @@ export default function AddRestaurantModal({
                   name="city"
                   value={formData.city}
                   onChange={handleInputChange}
-                  className={`input-professional w-full ${errors.city ? 'border-red-500' : ''}`}
+                  className={`input-professional w-full ${errors.city ? 'border-status-error' : ''}`}
                   placeholder="San Francisco"
                 />
-                {errors.city && <p className="mt-1 text-sm text-red-600">{errors.city}</p>}
+                {errors.city && <p className="mt-1 text-sm text-status-error">{errors.city}</p>}
               </div>
 
               <div>
@@ -370,10 +370,10 @@ export default function AddRestaurantModal({
                   name="state"
                   value={formData.state}
                   onChange={handleInputChange}
-                  className={`input-professional w-full ${errors.state ? 'border-red-500' : ''}`}
+                  className={`input-professional w-full ${errors.state ? 'border-status-error' : ''}`}
                   placeholder="CA"
                 />
-                {errors.state && <p className="mt-1 text-sm text-red-600">{errors.state}</p>}
+                {errors.state && <p className="mt-1 text-sm text-status-error">{errors.state}</p>}
               </div>
 
               <div>
@@ -385,10 +385,10 @@ export default function AddRestaurantModal({
                   name="zipCode"
                   value={formData.zipCode}
                   onChange={handleInputChange}
-                  className={`input-professional w-full ${errors.zipCode ? 'border-red-500' : ''}`}
+                  className={`input-professional w-full ${errors.zipCode ? 'border-status-error' : ''}`}
                   placeholder="94102"
                 />
-                {errors.zipCode && <p className="mt-1 text-sm text-red-600">{errors.zipCode}</p>}
+                {errors.zipCode && <p className="mt-1 text-sm text-status-error">{errors.zipCode}</p>}
               </div>
 
               <div>
@@ -474,7 +474,7 @@ export default function AddRestaurantModal({
             >
               {(createRestaurant.isPending || updateRestaurant.isPending) ? (
                 <div className="flex items-center">
-                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full"></div>
+                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-content-inverse border-t-transparent rounded-full"></div>
                   {isEditMode ? 'Updating...' : 'Creating...'}
                 </div>
               ) : (

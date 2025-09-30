@@ -206,10 +206,7 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
 
   // New split calculation synchronization events
   useWebSocketEvent('split:calculation_updated', handleSplitCalculationUpdated, [handleSplitCalculationUpdated])
-  useWebSocketEvent('split:calculation_locked', handleSplitCalculationLocked, [handleSplitCalculationLocked])
-  useWebSocketEvent('split:calculation_unlocked', handleSplitCalculationUnlocked, [handleSplitCalculationUnlocked])
-  useWebSocketEvent('split:user_joined', handleSplitUserJoined, [handleSplitUserJoined])
-  useWebSocketEvent('split:user_left', handleSplitUserLeft, [handleSplitUserLeft])
+  useWebSocketEvent('split:conflict_detected', handleSplitCalculationLocked, [handleSplitCalculationLocked])
 
 
 
@@ -423,8 +420,8 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="bg-surface p-3 rounded-lg border">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-blue-100 rounded">
-                <Users className="w-4 h-4 text-blue-600" />
+              <div className="p-1.5 bg-interactive-hover rounded">
+                <Users className="w-4 h-4 text-primary" />
               </div>
               <div>
                 <p className="text-xs text-content-secondary">Active</p>
@@ -435,8 +432,8 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
 
           <div className="bg-surface p-3 rounded-lg border">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-yellow-100 rounded">
-                <Clock className="w-4 h-4 text-yellow-600" />
+              <div className="p-1.5 bg-status-warning-light rounded">
+                <Clock className="w-4 h-4 text-status-warning" />
               </div>
               <div>
                 <p className="text-xs text-content-secondary">Pending</p>
@@ -449,8 +446,8 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
 
           <div className="bg-surface p-3 rounded-lg border">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-green-100 rounded">
-                <DollarSign className="w-4 h-4 text-green-600" />
+              <div className="p-1.5 bg-status-success-light rounded">
+                <DollarSign className="w-4 h-4 text-status-success" />
               </div>
               <div>
                 <p className="text-xs text-content-secondary">Amount</p>
@@ -463,8 +460,8 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
 
           <div className="bg-surface p-3 rounded-lg border">
             <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-purple-100 rounded">
-                <TrendingUp className="w-4 h-4 text-purple-600" />
+              <div className="p-1.5 bg-secondary/10 rounded">
+                <TrendingUp className="w-4 h-4 text-secondary" />
               </div>
               <div>
                 <p className="text-xs text-content-secondary">Rate</p>
@@ -548,7 +545,7 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
                       variant="outline"
                       size="sm"
                       onClick={() => handleForceUnlockSplit(group.groupId, group.tableName)}
-                      className="text-orange-600 hover:text-orange-700"
+                      className="text-accent hover:text-accent-hover"
                     >
                       <Unlock className="w-4 h-4 mr-1" />
                       Force Unlock
@@ -560,7 +557,7 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
                       variant="outline"
                       size="sm"
                       onClick={() => handleCancelSplitPayment(group.groupId)}
-                      className="text-red-600 hover:text-red-700"
+                      className="text-status-error hover:text-status-error-dark"
                     >
                       <XCircle className="w-4 h-4 mr-1" />
                       Cancel
@@ -575,7 +572,7 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
                   <span>Payment Progress</span>
                   <span className="font-medium">{getProgressPercentage(group)}%</span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-background-tertiary rounded-full h-2">
                   <div
                     className="bg-primary h-2 rounded-full transition-all duration-300"
                     style={{ width: `${getProgressPercentage(group)}%` }}
@@ -591,11 +588,11 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
                 </div>
                 <div>
                   <p className="text-content-secondary">Paid Amount</p>
-                  <p className="font-semibold text-green-600">{formatCurrency(group.paidAmount)}</p>
+                  <p className="font-semibold text-status-success">{formatCurrency(group.paidAmount)}</p>
                 </div>
                 <div>
                   <p className="text-content-secondary">Remaining</p>
-                  <p className="font-semibold text-orange-600">{formatCurrency(group.remainingAmount)}</p>
+                  <p className="font-semibold text-accent">{formatCurrency(group.remainingAmount)}</p>
                 </div>
                 <div>
                   <p className="text-content-secondary">Participants</p>
@@ -615,7 +612,7 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
                       >
                         <div className="flex items-center gap-3">
                           <div className={`w-3 h-3 rounded-full ${
-                            participant.hasPaid ? 'bg-green-500' : 'bg-orange-500'
+                            participant.hasPaid ? 'bg-status-success' : 'bg-accent'
                           }`} />
                           <div>
                             <p className="font-medium">{participant.participantName}</p>

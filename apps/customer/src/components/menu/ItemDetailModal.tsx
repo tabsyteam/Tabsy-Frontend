@@ -49,15 +49,15 @@ interface ItemDetailModalProps {
 const getSpiceLevelDisplay = (level: SpiceLevel): { name: string; icon: string; color: string } => {
   switch (level) {
     case SpiceLevel.NONE:
-      return { name: 'No Spice', icon: '○', color: 'text-gray-500' }
+      return { name: 'No Spice', icon: '○', color: 'text-content-tertiary' }
     case SpiceLevel.MILD:
-      return { name: 'Mild', icon: '🌶️', color: 'text-green-600' }
+      return { name: 'Mild', icon: '🌶️', color: 'text-status-success' }
     case SpiceLevel.MEDIUM:
-      return { name: 'Medium', icon: '🌶️🌶️', color: 'text-yellow-600' }
+      return { name: 'Medium', icon: '🌶️🌶️', color: 'text-status-warning' }
     case SpiceLevel.HOT:
-      return { name: 'Hot', icon: '🌶️🌶️🌶️', color: 'text-orange-600' }
+      return { name: 'Hot', icon: '🌶️🌶️🌶️', color: 'text-accent' }
     case SpiceLevel.EXTRA_HOT:
-      return { name: 'Extra Hot', icon: '🌶️🌶️🌶️🌶️', color: 'text-red-600' }
+      return { name: 'Extra Hot', icon: '🌶️🌶️🌶️🌶️', color: 'text-status-error' }
     default:
       return { name: '', icon: '', color: '' }
   }
@@ -561,7 +561,7 @@ export function ItemDetailModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-content-primary/50 backdrop-blur-sm"
           />
 
           {/* Modal */}
@@ -644,7 +644,7 @@ export function ItemDetailModal({
                     />
 
                     {/* Image Overlay Gradient */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-content-primary/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                     {/* Navigation Controls */}
                     {images.length > 1 && (
@@ -673,7 +673,7 @@ export function ItemDetailModal({
                         </motion.button>
 
                         {/* Modern Dots Indicator */}
-                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-2 bg-black/60 backdrop-blur-sm rounded-full px-4 py-2 z-20 opacity-100 transition-opacity duration-300">
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-2 bg-content-primary/60 backdrop-blur-sm rounded-full px-4 py-2 z-20 opacity-100 transition-opacity duration-300">
                           {images.map((_, index) => (
                             <motion.button
                               key={index}
@@ -684,8 +684,8 @@ export function ItemDetailModal({
                               }}
                               className={`min-w-[10px] min-h-[10px] rounded-full transition-all duration-200 ${
                                 index === currentImageIndex
-                                  ? 'bg-white w-6 scale-110'
-                                  : 'bg-white/60 hover:bg-white/80 w-2.5'
+                                  ? 'bg-surface w-6 scale-110'
+                                  : 'bg-surface/60 hover:bg-surface/80 w-2.5'
                               }`}
                               whileHover={{ scale: 1.2 }}
                               whileTap={{ scale: 0.9 }}
@@ -720,7 +720,7 @@ export function ItemDetailModal({
                           toggleFavorite()
                         }}
                         className={`bg-surface/95 backdrop-blur-sm rounded-full p-3 min-w-[44px] min-h-[44px] flex items-center justify-center shadow-lg hover:bg-surface active:scale-95 transition-all duration-200 ${
-                          isFavorite ? 'text-red-500' : 'text-gray-800'
+                          isFavorite ? 'text-status-error' : 'text-content-primary'
                         }`}
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.95 }}
@@ -732,7 +732,7 @@ export function ItemDetailModal({
 
                     {/* Image Counter */}
                     {images.length > 1 && (
-                      <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-medium z-20 opacity-100 transition-opacity duration-300">
+                      <div className="absolute top-4 left-4 bg-content-primary/70 backdrop-blur-sm text-content-inverse px-3 py-1.5 rounded-full text-sm font-medium z-20 opacity-100 transition-opacity duration-300">
                         {currentImageIndex + 1} / {images.length}
                       </div>
                     )}
@@ -742,7 +742,7 @@ export function ItemDetailModal({
                       <motion.div
                         initial={{ opacity: 0, scale: 0.8 }}
                         animate={{ opacity: 1, scale: 1 }}
-                        className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm font-medium flex items-center space-x-1"
+                        className="absolute bottom-4 left-4 bg-content-primary/70 backdrop-blur-sm text-content-inverse px-3 py-1.5 rounded-full text-sm font-medium flex items-center space-x-1"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10h-3m-3 0h3m0 0V7m0 3v3" />
@@ -758,7 +758,7 @@ export function ItemDetailModal({
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 0.7, y: 0 }}
                           exit={{ opacity: 0, y: 10 }}
-                          className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-medium opacity-90 transition-opacity duration-300 pointer-events-none z-10"
+                          className="absolute bottom-4 right-4 bg-content-primary/70 backdrop-blur-sm text-content-inverse px-4 py-2 rounded-full text-sm font-medium opacity-90 transition-opacity duration-300 pointer-events-none z-10"
                         >
                           Tap to zoom
                         </motion.div>
@@ -797,14 +797,14 @@ export function ItemDetailModal({
                     {item.dietaryTypes?.map(diet => (
                       <span
                         key={diet}
-                        className="inline-flex items-center space-x-1 px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full font-medium"
+                        className="inline-flex items-center space-x-1 px-3 py-1 bg-status-success-light text-status-success text-sm rounded-full font-medium"
                       >
                         {getDietaryIcon(diet)}
                         <span>{diet.replace('_', ' ')}</span>
                       </span>
                     ))}
                     {item.spicyLevel !== undefined && item.spicyLevel !== SpiceLevel.NONE && (
-                      <span className={`inline-flex items-center space-x-1 px-3 py-1 bg-red-100 text-sm rounded-full font-medium ${getSpiceLevelDisplay(item.spicyLevel).color}`}>
+                      <span className={`inline-flex items-center space-x-1 px-3 py-1 bg-status-error-light text-sm rounded-full font-medium ${getSpiceLevelDisplay(item.spicyLevel).color}`}>
                         <span>{getSpiceLevelDisplay(item.spicyLevel).icon}</span>
                         <span>{getSpiceLevelDisplay(item.spicyLevel).name}</span>
                       </span>
@@ -812,11 +812,11 @@ export function ItemDetailModal({
                   </div>
 
                   {getAllergensList(item.allergyInfo).length > 0 && (
-                    <div className="flex items-start space-x-2 p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                      <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start space-x-2 p-3 bg-status-warning-light border border-status-warning rounded-lg">
+                      <AlertTriangle className="w-5 h-5 text-status-warning flex-shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-medium text-orange-800 text-sm">Contains Allergens:</div>
-                        <div className="text-orange-700 text-sm">
+                        <div className="font-medium text-status-warning text-sm">Contains Allergens:</div>
+                        <div className="text-status-warning text-sm">
                           {getAllergensList(item.allergyInfo).join(', ')}
                         </div>
                       </div>
@@ -831,7 +831,7 @@ export function ItemDetailModal({
                       <h4 className="font-semibold text-content-primary">
                         {option.name}
                         {option.isRequired && (
-                          <span className="text-red-500 ml-1">*</span>
+                          <span className="text-status-error ml-1">*</span>
                         )}
                       </h4>
                       <div className="text-right">

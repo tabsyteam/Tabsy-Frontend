@@ -280,6 +280,10 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
     // Check if session already exists in API client
     const existingSessionId = api.getGuestSessionId()
     if (existingSessionId) {
+      // CRITICAL FIX: Ensure session is also stored with primary key
+      sessionStorage.setItem('tabsy-guest-session-id', existingSessionId)
+      sessionStorage.setItem(`guestSession-${tableId}`, existingSessionId)
+
       // Check for stored tableSessionId from QR code processing
       const tableSessionId = sessionStorage.getItem(STORAGE_KEYS.TABLE_SESSION_ID)
 
@@ -313,6 +317,9 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
     const storedSessionId = sessionStorage.getItem(`guestSession-${tableId}`)
     if (storedSessionId) {
       api.setGuestSession(storedSessionId)
+
+      // CRITICAL FIX: Also store with primary key for recovery logic
+      sessionStorage.setItem('tabsy-guest-session-id', storedSessionId)
 
       // Check for stored tableSessionId from QR code processing
       const tableSessionId = sessionStorage.getItem(STORAGE_KEYS.TABLE_SESSION_ID)
@@ -421,7 +428,10 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
             // Complete session creation in global manager
             globalSessionManager.completeSessionCreation(tableId, guestSession.sessionId)
 
-            // Store session for persistence
+            // CRITICAL FIX: Store session with BOTH keys for maximum compatibility
+            // Primary key - used by recovery logic across the app
+            sessionStorage.setItem('tabsy-guest-session-id', guestSession.sessionId)
+            // Table-specific key - legacy support
             sessionStorage.setItem(`guestSession-${tableId}`, guestSession.sessionId)
 
             // Store the table session ID for later use
@@ -528,12 +538,8 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
   // Handle splash completion after session initialization
   useEffect(() => {
     if (sessionInitialized && !isLoading && !error) {
-      // Wait for splash animation to complete (total duration from TabsySplash is ~2.5 seconds)
-      const timer = setTimeout(() => {
-        setSplashCompleted(true)
-      }, 3000) // Give extra time for splash animation
-
-      return () => clearTimeout(timer)
+      // Set splash completed immediately to avoid unnecessary delays
+      setSplashCompleted(true)
     }
   }, [sessionInitialized, isLoading, error])
 
@@ -550,7 +556,7 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="text-red-500 mb-4">{error}</div>
+        <div className="text-status-error mb-4">{error}</div>
         <button
           onClick={() => window.location.reload()}
           className="px-4 py-2 bg-primary text-primary-foreground rounded-lg"

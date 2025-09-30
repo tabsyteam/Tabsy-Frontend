@@ -42,8 +42,8 @@ interface HeaderProps {
   user: UserType | null
   restaurant?: Restaurant | null
   restaurantName?: string
-  currentView: 'overview' | 'orders' | 'menu' | 'tables' | 'payments'
-  onViewChange: (view: 'overview' | 'orders' | 'menu' | 'tables' | 'payments') => void
+  currentView: 'overview' | 'orders' | 'menu' | 'tables' | 'payments' | 'feedback'
+  onViewChange: (view: 'overview' | 'orders' | 'menu' | 'tables' | 'payments' | 'feedback') => void
   onLogout: () => void
   isLoggingOut?: boolean
 }
@@ -101,6 +101,9 @@ export function Header({
     }
   })
 
+  // Use unified WebSocket provider
+  const { isConnected: wsConnected } = useWebSocket()
+
   // Order hooks for real-time badge count
   const orderHooks = createOrderHooks(useQuery)
   const {
@@ -152,9 +155,6 @@ export function Header({
   // Get notifications from API only (no fallback)
   const notifications = notificationsData?.notifications || []
   const unreadNotificationsCount = notifications.filter((n: Notification) => !n.isRead).length
-
-  // Use unified WebSocket provider
-  const { isConnected: wsConnected } = useWebSocket()
 
   // Debounced query invalidation to prevent request storms
   const debouncedInvalidateOrders = useMemo(
@@ -264,7 +264,7 @@ export function Header({
 
     try {
       // Mark all unread notifications as read
-      const unreadNotifications = notifications.filter(n => !n.isRead)
+      const unreadNotifications = notifications.filter((n: Notification) => !n.isRead)
       for (const notification of unreadNotifications) {
         await markAsReadMutation.mutateAsync(notification.id)
       }
@@ -437,7 +437,7 @@ export function Header({
                     >
                       <Bell className="w-5 h-5 text-content-secondary" />
                       {unreadNotificationsCount > 0 && (
-                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1">
+                        <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-status-error text-white text-xs rounded-full flex items-center justify-center px-1">
                           {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
                         </span>
                       )}
@@ -456,7 +456,7 @@ export function Header({
                                 </p>
                               )}
                               {notificationsMuted && muteEndTime && (
-                                <p className="text-xs text-amber-600 mt-1">
+                                <p className="text-xs text-status-warning mt-1">
                                   Muted until {muteEndTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </p>
                               )}
@@ -468,7 +468,7 @@ export function Header({
                                 className={cn(
                                   "p-1.5 rounded-lg transition-colors",
                                   notificationsMuted
-                                    ? "bg-amber-100 text-amber-600 hover:bg-amber-200"
+                                    ? "bg-status-warning-light text-status-warning hover:bg-status-warning-light/80"
                                     : "hover:bg-surface-secondary text-content-secondary"
                                 )}
                                 title={notificationsMuted ? "Unmute notifications" : "Mute notifications for 30 minutes"}
@@ -486,7 +486,7 @@ export function Header({
                                 className={cn(
                                   "p-1.5 rounded-lg transition-colors",
                                   audioMuted
-                                    ? "bg-red-100 text-red-600 hover:bg-red-200"
+                                    ? "bg-status-error-light text-status-error hover:bg-status-error-light/80"
                                     : "hover:bg-surface-secondary text-content-secondary"
                                 )}
                                 title={audioMuted ? "Unmute notification sounds" : "Mute notification sounds"}
@@ -521,7 +521,7 @@ export function Header({
                             </div>
                           ) : notificationsError ? (
                             <div className="px-4 py-8 text-center">
-                              <AlertCircle className="w-8 h-8 text-red-500 mx-auto mb-2" />
+                              <AlertCircle className="w-8 h-8 text-status-error mx-auto mb-2" />
                               <p className="text-sm text-content-secondary">Failed to load notifications</p>
                             </div>
                           ) : notifications.length === 0 ? (

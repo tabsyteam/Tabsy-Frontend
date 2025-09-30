@@ -350,7 +350,7 @@ export function TableCard({
                 e.stopPropagation();
                 onSelect(table);
               }}
-              className="h-7 w-7 p-0 hover:bg-blue-100 hover:text-blue-600 hover:shadow-md transition-all"
+              className="h-7 w-7 p-0 hover:bg-interactive-hover hover:text-primary hover:shadow-md transition-all"
               title="View details"
             >
               <Eye className="h-3.5 w-3.5" />
@@ -362,7 +362,7 @@ export function TableCard({
                 e.stopPropagation();
                 onEdit(table);
               }}
-              className="h-7 w-7 p-0 hover:bg-blue-100 hover:text-blue-600 hover:shadow-md transition-all"
+              className="h-7 w-7 p-0 hover:bg-interactive-hover hover:text-primary hover:shadow-md transition-all"
               title="Edit table"
             >
               <Edit className="h-3.5 w-3.5" />
@@ -375,7 +375,7 @@ export function TableCard({
                   e.stopPropagation();
                   setShowActions(!showActions);
                 }}
-                className="h-7 w-7 p-0 hover:bg-orange-100 hover:text-orange-600 hover:shadow-md transition-all"
+                className="h-7 w-7 p-0 hover:bg-interactive-hover hover:text-accent hover:shadow-md transition-all"
                 title="More actions"
               >
                 <MoreVertical className="h-3.5 w-3.5" />

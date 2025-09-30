@@ -222,23 +222,14 @@ export function MenuView() {
 
   // Main data loading function
   const loadMenuData = useCallback(async () => {
-    // Ensure minimum loading duration for better UX
-    const startTime = Date.now()
-    const minLoadingDuration = 800 // 800ms minimum loading
-
     if (!restaurantId || !tableId) {
-      // Wait for minimum duration before showing error
-      const elapsed = Date.now() - startTime
-      const remainingTime = Math.max(0, minLoadingDuration - elapsed)
-
-      setTimeout(() => {
-        setError('Missing restaurant or table information')
-        setLoading(false)
-      }, remainingTime)
+      setError('Missing restaurant or table information')
+      setLoading(false)
       return
     }
 
     try {
+      setLoading(true)
       setError(null)
 
       // 1. Get restaurant and table info from QR code endpoint (if QR available)
@@ -261,10 +252,63 @@ export function MenuView() {
       }
 
       // 2. Use existing guest session (created by TableSessionManager)
+      // CRITICAL FIX: Try to restore session from sessionStorage before throwing error
       let currentSessionId = api.getGuestSessionId()
 
       if (!currentSessionId) {
-        throw new Error('No guest session available. Please refresh the page.')
+        console.warn('[MenuView] No guest session in API client memory, attempting recovery...')
+
+        // Enhanced debugging - check all possible storage locations
+        console.log('[MenuView] DEBUG - Checking all storage locations:')
+        console.log('  - API Client Memory:', api.getGuestSessionId())
+        console.log('  - tabsy-guest-session-id:', sessionStorage.getItem('tabsy-guest-session-id'))
+        console.log('  - tabsy-dining-session:', sessionStorage.getItem('tabsy-dining-session'))
+
+        // Scan all sessionStorage keys for debugging
+        const allKeys: string[] = []
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i)
+          if (key) allKeys.push(key)
+        }
+        console.log('  - All sessionStorage keys:', allKeys)
+
+        // Attempt 1: Restore from sessionStorage
+        const storedSessionId = sessionStorage.getItem('tabsy-guest-session-id')
+        if (storedSessionId) {
+          console.log('[MenuView] Found session in sessionStorage, restoring:', storedSessionId)
+          api.setGuestSession(storedSessionId)
+          currentSessionId = storedSessionId
+        } else {
+          // Attempt 2: Check dining session
+          const diningSession = SessionManager.getDiningSession()
+          console.log('[MenuView] Dining session check:', diningSession)
+          if (diningSession?.sessionId) {
+            console.log('[MenuView] Found session in dining session, restoring:', diningSession.sessionId)
+            api.setGuestSession(diningSession.sessionId)
+            sessionStorage.setItem('tabsy-guest-session-id', diningSession.sessionId)
+            currentSessionId = diningSession.sessionId
+          } else {
+            // Attempt 3: Try SessionManager recovery helper
+            console.log('[MenuView] Attempting SessionManager.recoverSession()...')
+            const recoveryResult = SessionManager.recoverSession()
+            console.log('[MenuView] Recovery result:', recoveryResult)
+            if (recoveryResult.success && recoveryResult.sessionId) {
+              api.setGuestSession(recoveryResult.sessionId)
+              currentSessionId = recoveryResult.sessionId
+              console.log(`[MenuView] Recovered session from ${recoveryResult.source}:`, currentSessionId)
+            }
+          }
+        }
+
+        // If still no session, throw error with enhanced debugging
+        if (!currentSessionId) {
+          console.error('[MenuView] ❌ Session recovery failed. No session found in API client, sessionStorage, or dining session.')
+          console.error('[MenuView] This indicates session was never created or was completely cleared.')
+          console.error('[MenuView] Check TableSessionManager logs to see if session creation succeeded.')
+          throw new Error('No guest session available. Please refresh the page.')
+        }
+
+        console.log('[MenuView] ✅ Session recovery successful:', currentSessionId)
       }
 
       console.log('[MenuView] Using guest session for API calls:', currentSessionId)
@@ -368,30 +412,20 @@ export function MenuView() {
       setError(errorMessage)
       toast.error(errorMessage)
     } finally {
-      // Ensure minimum loading duration
-      const elapsed = Date.now() - startTime
-      const remainingTime = Math.max(0, minLoadingDuration - elapsed)
-
-      setTimeout(() => {
-        setLoading(false)
-      }, remainingTime)
+      setLoading(false)
     }
-  }, [api, restaurantId, tableId, qrCode])
+  }, [api, restaurantId, tableId, qrCode, router])
 
   // Restore guest session from URL parameter and then load data
   useEffect(() => {
     if (urlGuestSessionId) {
       console.log('[MenuView] Restoring guest session from URL:', urlGuestSessionId)
       api.setGuestSession(urlGuestSessionId)
-      // Load data after setting the session
-      setTimeout(() => {
-        loadMenuData()
-      }, 100) // Small delay to ensure session is set
-    } else {
-      // Load data immediately if no guest session to restore
-      loadMenuData()
     }
-  }, [api, urlGuestSessionId, loadMenuData])
+    // Load data immediately
+    loadMenuData()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []) // Run only once on mount
 
   // Load favorites and recent searches
   useEffect(() => {
@@ -639,42 +673,159 @@ export function MenuView() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        {/* Loading Header */}
-        <div className="px-4 py-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-surface-secondary rounded-lg w-48 mb-4"></div>
-            <div className="h-4 bg-surface-secondary rounded w-32"></div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-background pb-24">
+        {/* Enhanced Loading Header */}
+        <header className="bg-surface border-b border sticky top-0 z-40 backdrop-blur-lg bg-opacity-95">
+          <div className="px-4 py-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex-1">
+                <motion.div
+                  className="h-8 w-48 bg-gradient-to-r from-surface-secondary to-surface-tertiary rounded-lg mb-3"
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                />
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    className="h-7 w-20 bg-gradient-to-r from-primary/20 to-primary/40 rounded-full"
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }}
+                  />
+                  <motion.div
+                    className="w-2 h-2 bg-secondary rounded-full"
+                    animate={{
+                      scale: [1, 1.2, 1],
+                      opacity: [1, 0.7, 1],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  />
+                  <motion.div
+                    className="h-4 w-20 bg-surface-secondary rounded"
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, delay: 0.4 }}
+                  />
+                </div>
+              </div>
 
-        {/* Loading Search */}
-        <div className="px-4 mb-6">
-          <div className="h-12 bg-surface-secondary rounded-2xl animate-pulse"></div>
-        </div>
-
-        {/* Loading Categories */}
-        <div className="px-4 mb-6">
-          <div className="flex gap-3 overflow-hidden">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-12 bg-surface-secondary rounded-full w-24 animate-pulse flex-shrink-0"></div>
-            ))}
-          </div>
-        </div>
-
-        {/* Loading Grid */}
-        <div className="px-4 grid grid-cols-2 gap-4">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-surface rounded-xl overflow-hidden animate-pulse">
-              <div className="aspect-[4/3] bg-surface-secondary"></div>
-              <div className="p-4 space-y-3">
-                <div className="h-4 bg-surface-secondary rounded w-3/4"></div>
-                <div className="h-3 bg-surface-secondary rounded w-1/2"></div>
-                <div className="h-6 bg-surface-secondary rounded w-16"></div>
+              {/* Action Buttons Skeleton */}
+              <div className="flex items-center gap-2">
+                <motion.div
+                  className="w-12 h-12 rounded-full bg-surface-secondary"
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                />
+                <motion.div
+                  className="w-12 h-12 rounded-full bg-surface-secondary"
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }}
+                />
               </div>
             </div>
-          ))}
-        </div>
+
+            {/* Enhanced Search Bar Skeleton */}
+            <motion.div
+              className="h-12 bg-gradient-to-r from-surface-secondary to-surface-tertiary rounded-2xl relative overflow-hidden"
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            >
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-surface/30 to-transparent"
+                animate={{ x: [-200, 400] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+              />
+            </motion.div>
+          </div>
+        </header>
+
+        {/* Enhanced Loading Categories */}
+        <section className="relative py-3">
+          <div
+            className="flex gap-2 overflow-x-auto scrollbar-hide py-2"
+            style={{
+              paddingLeft: '1rem',
+              paddingRight: '1rem',
+              marginLeft: '0.5rem',
+              marginRight: '0.5rem'
+            }}
+          >
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex-shrink-0">
+                <motion.div
+                  className="h-10 w-20 bg-gradient-to-r from-surface-secondary to-surface-tertiary rounded-full"
+                  animate={{ opacity: [0.5, 1, 0.5] }}
+                  transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.1 }}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Enhanced Loading Grid */}
+        <main className="px-4 py-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="bg-surface rounded-xl overflow-hidden shadow-sm border border relative"
+              >
+                {/* Image skeleton with shimmer */}
+                <div className="aspect-[4/3] bg-gradient-to-br from-surface-secondary to-surface-tertiary relative overflow-hidden">
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-surface/20 to-transparent"
+                    animate={{ x: [-100, 200] }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                  />
+                </div>
+
+                {/* Content skeleton */}
+                <div className="p-3 space-y-2">
+                  <motion.div
+                    className="h-4 bg-gradient-to-r from-surface-secondary to-surface-tertiary rounded w-3/4"
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.1 }}
+                  />
+                  <motion.div
+                    className="h-3 bg-gradient-to-r from-surface-secondary to-surface-tertiary rounded w-1/2"
+                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.1 + 0.2 }}
+                  />
+
+                  {/* Badges skeleton */}
+                  <div className="flex gap-1 pt-1">
+                    {[...Array(2)].map((_, j) => (
+                      <motion.div
+                        key={j}
+                        className="h-5 w-12 bg-gradient-to-r from-status-success/20 to-status-success/40 rounded-full"
+                        animate={{ opacity: [0.3, 0.8, 0.3] }}
+                        transition={{ duration: 1.5, repeat: Infinity, delay: j * 0.2 }}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Price and button skeleton */}
+                  <div className="flex items-center justify-between pt-2">
+                    <motion.div
+                      className="h-6 w-14 bg-gradient-to-r from-primary/30 to-accent/30 rounded"
+                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    />
+                    <motion.div
+                      className="h-8 w-8 bg-gradient-to-r from-primary/30 to-accent/30 rounded-lg"
+                      animate={{
+                        opacity: [0.5, 1, 0.5],
+                        scale: [0.98, 1.02, 0.98]
+                      }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     )
   }
@@ -684,7 +835,7 @@ export function MenuView() {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6">
         <div className="text-center">
-          <h1 className="text-h1 font-bold text-error mb-4">Oops!</h1>
+          <h1 className="text-h1 font-bold text-status-error mb-4">Oops!</h1>
           <p className="text-body text-content-secondary mb-6">{error}</p>
           <Button
             onClick={() => window.location.reload()}
@@ -712,7 +863,7 @@ export function MenuView() {
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-surface border-b border-default sticky top-0 z-40 backdrop-blur-lg bg-opacity-95"
+        className="bg-surface border-b border sticky top-0 z-40 backdrop-blur-lg bg-opacity-95"
       >
         <div className="px-4 py-6">
           <div className="flex items-center justify-between mb-4">
@@ -870,7 +1021,7 @@ export function MenuView() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="border-t border-default bg-surface-secondary"
+            className="border-t border bg-surface-secondary"
           >
             <div className="px-4 py-4">
               <div className="flex items-center justify-between mb-4">
@@ -894,7 +1045,7 @@ export function MenuView() {
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 ${
                       filters.showFavoritesOnly
                         ? 'bg-primary text-primary-foreground'
-                        : 'bg-surface border border-default hover:bg-interactive-hover'
+                        : 'bg-surface border border hover:bg-interactive-hover'
                     }`}
                   >
                     <Star size={16} />
@@ -920,7 +1071,7 @@ export function MenuView() {
                         className={`px-3 py-1.5 rounded-full text-caption transition-all duration-200 ${
                           filters.dietary.includes(diet as DietaryType)
                             ? 'bg-secondary text-secondary-foreground'
-                            : 'bg-surface border border-default hover:bg-interactive-hover'
+                            : 'bg-surface border border hover:bg-interactive-hover'
                         }`}
                       >
                         {diet.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
@@ -947,7 +1098,7 @@ export function MenuView() {
                         className={`px-3 py-1.5 rounded-full text-caption transition-all duration-200 ${
                           filters.spiceLevel.includes(level)
                             ? 'bg-accent text-accent-foreground'
-                            : 'bg-surface border border-default hover:bg-interactive-hover'
+                            : 'bg-surface border border hover:bg-interactive-hover'
                         }`}
                       >
                         {'🌶️'.repeat(level)}
@@ -966,7 +1117,7 @@ export function MenuView() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="px-4 py-3 border-b border-default bg-surface-secondary"
+          className="px-4 py-3 border-b border bg-surface-secondary"
         >
           <div className="flex items-center justify-between">
             <span className="text-body-sm text-content-secondary">
@@ -1134,7 +1285,7 @@ export function MenuView() {
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-5 h-5 flex items-center justify-center px-1 ring-2 ring-primary"
+              className="absolute -top-2 -right-2 bg-status-error text-status-error-foreground text-xs font-bold rounded-full min-w-5 h-5 flex items-center justify-center px-1 ring-2 ring-primary"
             >
               {cartCount > 99 ? '99+' : cartCount}
             </motion.div>

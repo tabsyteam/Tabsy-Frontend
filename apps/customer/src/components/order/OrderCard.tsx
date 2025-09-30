@@ -26,55 +26,55 @@ const ORDER_STATUS_CONFIG = {
   [OrderStatus.RECEIVED]: {
     label: 'Order Received',
     icon: Receipt,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    borderColor: 'border-blue-200',
-    stripeColor: 'bg-blue-500',
+    color: 'text-status-info',
+    bgColor: 'bg-status-info-light',
+    borderColor: 'border-status-info',
+    stripeColor: 'bg-status-info',
     description: 'Order confirmed'
   },
   [OrderStatus.PREPARING]: {
     label: 'Preparing',
     icon: ChefHat,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-100',
-    borderColor: 'border-amber-200',
-    stripeColor: 'bg-amber-500',
+    color: 'text-accent',
+    bgColor: 'bg-accent-light',
+    borderColor: 'border-accent',
+    stripeColor: 'bg-accent',
     description: 'Being prepared'
   },
   [OrderStatus.READY]: {
     label: 'Ready',
     icon: Bell,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-100',
-    borderColor: 'border-purple-200',
-    stripeColor: 'bg-purple-500',
+    color: 'text-secondary',
+    bgColor: 'bg-secondary-light',
+    borderColor: 'border-secondary',
+    stripeColor: 'bg-secondary',
     description: 'Ready for pickup'
   },
   [OrderStatus.DELIVERED]: {
     label: 'Delivered',
     icon: Utensils,
-    color: 'text-green-600',
-    bgColor: 'bg-green-100',
-    borderColor: 'border-green-200',
-    stripeColor: 'bg-green-500',
+    color: 'text-status-success',
+    bgColor: 'bg-status-success-light',
+    borderColor: 'border-status-success',
+    stripeColor: 'bg-status-success',
     description: 'Delivered to table'
   },
   [OrderStatus.COMPLETED]: {
     label: 'Completed',
     icon: CheckCircle,
-    color: 'text-green-600',
-    bgColor: 'bg-green-100',
-    borderColor: 'border-green-200',
-    stripeColor: 'bg-green-500',
+    color: 'text-status-success',
+    bgColor: 'bg-status-success-light',
+    borderColor: 'border-status-success',
+    stripeColor: 'bg-status-success',
     description: 'Order complete'
   },
   [OrderStatus.CANCELLED]: {
     label: 'Cancelled',
     icon: AlertCircle,
-    color: 'text-red-600',
-    bgColor: 'bg-red-100',
-    borderColor: 'border-red-200',
-    stripeColor: 'bg-red-500',
+    color: 'text-status-error',
+    bgColor: 'bg-status-error-light',
+    borderColor: 'border-status-error',
+    stripeColor: 'bg-status-error',
     description: 'Order cancelled'
   }
 } as const
@@ -85,7 +85,7 @@ const DEFAULT_STATUS_CONFIG = {
   color: 'text-content-secondary',
   bgColor: 'bg-surface-secondary',
   borderColor: 'border-default',
-  stripeColor: 'bg-gray-400',
+  stripeColor: 'bg-content-tertiary',
   description: 'Status unknown'
 }
 
@@ -215,7 +215,7 @@ export function OrderCard({ order, onClick, showCustomer = false, className = ''
         {/* Pulse Animation for Active Orders */}
         {isActive && order.status === OrderStatus.PREPARING && (
           <motion.div
-            className="absolute -top-1 -left-1 -right-1 -bottom-1 rounded-xl border-2 border-amber-400"
+            className="absolute -top-1 -left-1 -right-1 -bottom-1 rounded-xl border-2 border-status-warning"
             animate={{
               opacity: [0.3, 0.6, 0.3],
               scale: [1, 1.02, 1]

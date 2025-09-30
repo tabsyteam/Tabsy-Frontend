@@ -98,42 +98,42 @@ const ORDER_STATUSES = [
     label: 'Order Received',
     description: 'Your order has been received',
     icon: Receipt,
-    color: 'text-blue-600'
+    color: 'text-status-info'
   },
   {
     key: OrderStatus.PREPARING,
     label: 'Preparing',
     description: 'Your delicious food is being prepared',
     icon: ChefHat,
-    color: 'text-orange-600'
+    color: 'text-status-warning'
   },
   {
     key: OrderStatus.READY,
     label: 'Ready',
     description: 'Your order is ready to be served',
     icon: Bell,
-    color: 'text-purple-600'
+    color: 'text-secondary'
   },
   {
     key: OrderStatus.DELIVERED,
     label: 'Delivered',
     description: 'Enjoy your meal!',
     icon: Utensils,
-    color: 'text-green-600'
+    color: 'text-status-success'
   },
   {
     key: OrderStatus.COMPLETED,
     label: 'Completed',
     description: 'Thank you for dining with us!',
     icon: CheckCircle,
-    color: 'text-green-600'
+    color: 'text-status-success'
   },
   {
     key: OrderStatus.CANCELLED,
     label: 'Cancelled',
     description: 'This order has been cancelled',
     icon: XCircle,
-    color: 'text-red-600'
+    color: 'text-status-error'
   }
 ]
 
@@ -578,7 +578,7 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
 
               {/* Timeline Skeleton */}
               <div className="bg-surface rounded-xl border p-6">
-                <div className="h-5 w-32 bg-gray-200 rounded animate-pulse mb-4" />
+                <div className="h-5 w-32 bg-surface-tertiary rounded animate-pulse mb-4" />
                 <OrderTimelineSkeleton />
               </div>
             </div>
@@ -589,8 +589,8 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
 
               {/* Action buttons skeleton */}
               <div className="space-y-3">
-                <div className="h-10 w-full bg-gray-200 rounded animate-pulse" />
-                <div className="h-10 w-full bg-gray-200 rounded animate-pulse" />
+                <div className="h-10 w-full bg-surface-tertiary rounded animate-pulse" />
+                <div className="h-10 w-full bg-surface-tertiary rounded animate-pulse" />
               </div>
             </div>
           </div>
@@ -603,8 +603,8 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center space-y-6 max-w-md">
-          <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-            <HelpCircle className="w-8 h-8 text-red-600" />
+          <div className="w-16 h-16 mx-auto bg-status-error-light rounded-full flex items-center justify-center">
+            <HelpCircle className="w-8 h-8 text-status-error" />
           </div>
           <div>
             <h1 className="text-xl font-semibold text-content-primary mb-2">
@@ -667,7 +667,7 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                     {order.guestInfo.name} • {order.items.length} {order.items.length === 1 ? 'item' : 'items'}
                   </p>
                   <div className="flex items-center space-x-1">
-                    <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-500' : 'bg-orange-500'}`} />
+                    <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-status-success' : 'bg-status-warning'}`} />
                     <span className="text-xs text-content-tertiary">
                       {wsConnected ? 'Live' : 'Polling'}
                     </span>
@@ -710,19 +710,19 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                   animate={{ opacity: 1, x: 0 }}
                   className="flex items-center space-x-4 py-4"
                 >
-                  <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-red-100 text-red-600">
+                  <div className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-status-error-light text-status-error">
                     <XCircle className="w-5 h-5" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-medium text-red-600">
+                    <h3 className="font-medium text-status-error">
                       Order Cancelled
                     </h3>
                     <p className="text-sm text-content-tertiary">
                       This order has been cancelled
                     </p>
                     <div className="flex items-center space-x-2 mt-2">
-                      <Clock className="w-4 h-4 text-red-500" />
-                      <span className="text-sm text-red-600">
+                      <Clock className="w-4 h-4 text-status-error" />
+                      <span className="text-sm text-status-error">
                         Cancelled at {new Date(order.updatedAt).toLocaleTimeString()}
                       </span>
                     </div>
@@ -751,13 +751,13 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                         isActive
                           ? 'bg-primary text-primary-foreground animate-pulse'
                           : isCompleted
-                          ? 'bg-green-100 text-green-600'
-                          : 'bg-gray-100 text-gray-400'
+                          ? 'bg-status-success-light text-status-success'
+                          : 'bg-surface-tertiary text-content-tertiary'
                       }`}>
                         <IconComponent className="w-5 h-5" />
                       </div>
                       <div className="flex-1">
-                        <h3 className={`font-medium ${isActive ? 'text-primary' : isCompleted ? 'text-green-600' : 'text-content-secondary'}`}>
+                        <h3 className={`font-medium ${isActive ? 'text-primary' : isCompleted ? 'text-status-success' : 'text-content-secondary'}`}>
                           {status.label}
                         </h3>
                         <p className="text-sm text-content-tertiary">
@@ -765,8 +765,8 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                         </p>
                         {isActive && order.status !== OrderStatus.COMPLETED && order.status !== OrderStatus.CANCELLED && (
                           <div className="flex items-center space-x-2 mt-2">
-                            <Clock className="w-4 h-4 text-orange-500" />
-                            <span className="text-sm text-orange-600">
+                            <Clock className="w-4 h-4 text-status-warning" />
+                            <span className="text-sm text-status-warning">
                               {timeElapsed > 0 ? `${timeElapsed} min` : 'Just started'}
                             </span>
                           </div>
@@ -828,11 +828,11 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
               </div>
 
               {order.specialInstructions && (
-                <div className="mt-4 p-3 bg-orange-50 rounded-lg">
-                  <h4 className="text-sm font-medium text-orange-800 mb-1">
+                <div className="mt-4 p-3 bg-status-warning-light rounded-lg">
+                  <h4 className="text-sm font-medium text-status-warning mb-1">
                     Special Instructions
                   </h4>
-                  <p className="text-sm text-orange-700">
+                  <p className="text-sm text-status-warning">
                     {order.specialInstructions}
                   </p>
                 </div>
@@ -894,13 +894,13 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    className="bg-red-50 border border-red-200 rounded-lg p-4"
+                    className="bg-status-error-light border border-status-error rounded-lg p-4"
                   >
                     <div className="flex items-center space-x-2">
-                      <XCircle className="w-5 h-5 text-red-600" />
+                      <XCircle className="w-5 h-5 text-status-error" />
                       <div>
-                        <h4 className="font-medium text-red-800">Order Cancelled</h4>
-                        <p className="text-sm text-red-600">
+                        <h4 className="font-medium text-status-error">Order Cancelled</h4>
+                        <p className="text-sm text-status-error">
                           This order has been cancelled. No payment is required.
                         </p>
                       </div>
@@ -910,19 +910,19 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
 
                 {waiterCalled && callWaiterCooldown > 0 ? (
                   <div className="space-y-2">
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <div className="bg-status-success-light border border-status-success rounded-lg p-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <CheckCircle className="w-4 h-4 text-green-600" />
-                          <span className="text-sm font-medium text-green-800">
+                          <CheckCircle className="w-4 h-4 text-status-success" />
+                          <span className="text-sm font-medium text-status-success">
                             Waiter Called
                           </span>
                         </div>
-                        <span className="text-xs text-green-600">
+                        <span className="text-xs text-status-success">
                           {Math.floor(callWaiterCooldown / 60)}:{(callWaiterCooldown % 60).toString().padStart(2, '0')}
                         </span>
                       </div>
-                      <p className="text-xs text-green-600 mt-1">
+                      <p className="text-xs text-status-success mt-1">
                         Staff will be with you shortly
                       </p>
                     </div>

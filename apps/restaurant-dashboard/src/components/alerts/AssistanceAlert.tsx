@@ -46,19 +46,19 @@ interface AssistanceAlertsContainerProps {
 
 const urgencyConfig = {
   low: {
-    color: 'bg-blue-50 border-blue-200 text-blue-800',
-    iconColor: 'text-blue-600',
-    buttonColor: 'bg-blue-600 hover:bg-blue-700'
+    color: 'bg-status-info-light border-status-info text-status-info-dark',
+    iconColor: 'text-status-info',
+    buttonColor: 'bg-status-info hover:bg-status-info-dark'
   },
   normal: {
-    color: 'bg-yellow-50 border-yellow-200 text-yellow-800',
-    iconColor: 'text-yellow-600',
-    buttonColor: 'bg-yellow-600 hover:bg-yellow-700'
+    color: 'bg-status-warning-light border-status-warning text-status-warning-dark',
+    iconColor: 'text-status-warning',
+    buttonColor: 'bg-status-warning hover:bg-status-warning-dark'
   },
   high: {
-    color: 'bg-red-50 border-red-200 text-red-800',
-    iconColor: 'text-red-600',
-    buttonColor: 'bg-red-600 hover:bg-red-700'
+    color: 'bg-status-error-light border-status-error text-status-error-dark',
+    iconColor: 'text-status-error',
+    buttonColor: 'bg-status-error hover:bg-status-error-dark'
   }
 }
 
@@ -128,7 +128,7 @@ export function AssistanceAlert({ notification, onDismiss, onAcknowledge }: Assi
     >
       {/* Priority indicator */}
       {urgency === 'high' && (
-        <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+        <div className="absolute -top-1 -right-1 w-3 h-3 bg-status-error rounded-full animate-pulse" />
       )}
 
       <div className="flex items-start justify-between">
@@ -145,7 +145,7 @@ export function AssistanceAlert({ notification, onDismiss, onAcknowledge }: Assi
                 Assistance Required - Table {assistanceData.tableId}
               </h3>
               {urgency === 'high' && (
-                <AlertTriangle className="w-4 h-4 text-red-600" />
+                <AlertTriangle className="w-4 h-4 text-status-error" />
               )}
             </div>
 
@@ -161,7 +161,7 @@ export function AssistanceAlert({ notification, onDismiss, onAcknowledge }: Assi
                 </div>
                 {assistanceData.orderId && (
                   <div className="flex items-center space-x-1">
-                    <span className="text-gray-500">Order:</span>
+                    <span className="text-content-tertiary">Order:</span>
                     <span className="font-mono">#{assistanceData.orderId.slice(-6)}</span>
                   </div>
                 )}
@@ -169,7 +169,7 @@ export function AssistanceAlert({ notification, onDismiss, onAcknowledge }: Assi
 
               {assistanceData.message && (
                 <div className="mt-2">
-                  <p className="text-gray-600 font-medium">"{assistanceData.message}"</p>
+                  <p className="text-content-secondary font-medium">"{assistanceData.message}"</p>
                 </div>
               )}
             </div>
@@ -178,9 +178,9 @@ export function AssistanceAlert({ notification, onDismiss, onAcknowledge }: Assi
           {/* Dismiss button */}
           <button
             onClick={handleDismiss}
-            className="flex-shrink-0 w-6 h-6 rounded-full bg-white/80 hover:bg-white flex items-center justify-center transition-colors"
+            className="flex-shrink-0 w-6 h-6 rounded-full bg-surface/80 hover:bg-surface flex items-center justify-center transition-colors"
           >
-            <X className="w-3 h-3 text-gray-500" />
+            <X className="w-3 h-3 text-content-tertiary" />
           </button>
         </div>
       </div>

@@ -530,13 +530,13 @@ export default function PaymentDetailsModal({
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-content-secondary">3D Secure</span>
-                    <span className="text-sm font-medium text-gray-400">
+                    <span className="text-sm font-medium text-content-disabled">
                       Not Available
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-content-secondary">Fraud Score</span>
-                    <span className="text-sm font-medium text-green-600">Low Risk</span>
+                    <span className="text-sm font-medium text-status-success">Low Risk</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-content-secondary">IP Address</span>
@@ -560,15 +560,15 @@ export default function PaymentDetailsModal({
                 </h3>
                 <div className="space-y-2">
                   <div className="flex items-center space-x-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-status-success" />
                     <span className="text-sm text-content-primary">PCI DSS Compliant</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-status-success" />
                     <span className="text-sm text-content-primary">Data encrypted in transit</span>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <CheckCircle className="h-4 w-4 text-status-success" />
                     <span className="text-sm text-content-primary">Tokenized card data</span>
                   </div>
                 </div>

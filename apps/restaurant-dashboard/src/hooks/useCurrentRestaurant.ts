@@ -11,7 +11,7 @@ import { useRef, useEffect } from 'react'
 export function useCurrentRestaurant() {
   const { user, isLoading: authLoading, isVerifying } = useAuth()
   const errorLoggedRef = useRef(false)
-  const errorTimeoutRef = useRef<NodeJS.Timeout>()
+  const errorTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   // PERFORMANCE: Reduce excessive logging - only log when debugging is specifically enabled
   if (process.env.NODE_ENV === 'development' && process.env.DEBUG_RESTAURANT_HOOK) {

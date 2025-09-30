@@ -7,7 +7,7 @@ export function Skeleton({ className, ...props }: SkeletonProps) {
   return (
     <div
       className={cn(
-        'animate-pulse rounded-md bg-gray-200 dark:bg-gray-800',
+        'animate-pulse rounded-md bg-surface-tertiary',
         className
       )}
       {...props}
@@ -227,7 +227,7 @@ export function FoodLoadingAnimation() {
       <div className="relative">
         {/* Cooking pot animation */}
         <motion.div
-          className="w-20 h-16 bg-gradient-to-b from-gray-600 to-gray-800 rounded-b-2xl relative"
+          className="w-20 h-16 bg-gradient-to-b from-content-secondary to-content-primary rounded-b-2xl relative"
           animate={{ rotate: [0, -1, 1, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
@@ -236,7 +236,7 @@ export function FoodLoadingAnimation() {
             {Array.from({ length: 3 }).map((_, i) => (
               <motion.div
                 key={i}
-                className="absolute w-1 h-6 bg-gradient-to-t from-gray-300 to-transparent rounded-full"
+                className="absolute w-1 h-6 bg-gradient-to-t from-content-tertiary to-transparent rounded-full"
                 style={{ left: `${i * 4 - 4}px` }}
                 animate={{
                   y: [0, -15, 0],
@@ -254,7 +254,7 @@ export function FoodLoadingAnimation() {
 
           {/* Lid */}
           <motion.div
-            className="absolute -top-2 inset-x-0 h-3 bg-gradient-to-b from-gray-500 to-gray-600 rounded-full"
+            className="absolute -top-2 inset-x-0 h-3 bg-gradient-to-b from-content-tertiary to-content-secondary rounded-full"
             animate={{ y: [0, -2, 0] }}
             transition={{ duration: 2, repeat: Infinity }}
           />
@@ -312,10 +312,10 @@ export function EnhancedMenuItemSkeleton({ delay = 0 }: { delay?: number }) {
         <div className="flex gap-8">
           {/* Enhanced Image Skeleton */}
           <div className="flex-shrink-0">
-            <div className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-3xl overflow-hidden bg-gradient-to-br from-gray-200 to-gray-300">
+            <div className="relative w-32 h-32 sm:w-36 sm:h-36 rounded-3xl overflow-hidden bg-gradient-to-br from-surface-secondary to-surface-tertiary">
               {/* Shimmer effect */}
               <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-surface/20 to-transparent"
                 animate={{ x: [-100, 300] }}
                 transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
               />
@@ -338,12 +338,12 @@ export function EnhancedMenuItemSkeleton({ delay = 0 }: { delay?: number }) {
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <motion.div
-                  className="h-7 w-3/4 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg mb-3"
+                  className="h-7 w-3/4 bg-gradient-to-r from-surface-secondary to-surface-tertiary rounded-lg mb-3"
                   animate={{ opacity: [0.5, 1, 0.5] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                 />
                 <motion.div
-                  className="h-5 w-1/2 bg-gradient-to-r from-gray-200 to-gray-300 rounded"
+                  className="h-5 w-1/2 bg-gradient-to-r from-surface-secondary to-surface-tertiary rounded"
                   animate={{ opacity: [0.5, 1, 0.5] }}
                   transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}
                 />
@@ -359,12 +359,12 @@ export function EnhancedMenuItemSkeleton({ delay = 0 }: { delay?: number }) {
             {/* Description skeleton */}
             <div className="space-y-2 mb-6">
               <motion.div
-                className="h-4 w-full bg-gradient-to-r from-gray-200 to-gray-300 rounded"
+                className="h-4 w-full bg-gradient-to-r from-surface-secondary to-surface-tertiary rounded"
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }}
               />
               <motion.div
-                className="h-4 w-5/6 bg-gradient-to-r from-gray-200 to-gray-300 rounded"
+                className="h-4 w-5/6 bg-gradient-to-r from-surface-secondary to-surface-tertiary rounded"
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 1.5, repeat: Infinity, delay: 0.4 }}
               />
@@ -375,7 +375,7 @@ export function EnhancedMenuItemSkeleton({ delay = 0 }: { delay?: number }) {
               {Array.from({ length: 3 }).map((_, i) => (
                 <motion.div
                   key={i}
-                  className="h-6 w-16 bg-gradient-to-r from-green-100 to-green-200 rounded-full"
+                  className="h-6 w-16 bg-gradient-to-r from-status-success-light to-status-success rounded-full"
                   animate={{ opacity: [0.3, 0.8, 0.3] }}
                   transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
                 />
@@ -438,7 +438,7 @@ export function EnhancedCategorySkeleton() {
         <div className="flex items-center gap-6 mb-6">
           {/* Category image skeleton */}
           <motion.div
-            className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-2xl flex items-center justify-center overflow-hidden"
+            className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-surface-secondary to-surface-tertiary rounded-2xl flex items-center justify-center overflow-hidden"
             animate={{ scale: [0.95, 1.05, 0.95] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
@@ -452,7 +452,7 @@ export function EnhancedCategorySkeleton() {
 
             {/* Shimmer effect */}
             <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-surface/30 to-transparent"
               animate={{ x: [-50, 100] }}
               transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
             />
@@ -460,12 +460,12 @@ export function EnhancedCategorySkeleton() {
 
           <div className="flex-1">
             <motion.div
-              className="h-8 w-48 bg-gradient-to-r from-gray-200 to-gray-300 rounded-lg mb-2"
+              className="h-8 w-48 bg-gradient-to-r from-surface-secondary to-surface-tertiary rounded-lg mb-2"
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 1.5, repeat: Infinity }}
             />
             <motion.div
-              className="h-5 w-64 bg-gradient-to-r from-gray-200 to-gray-300 rounded"
+              className="h-5 w-64 bg-gradient-to-r from-surface-secondary to-surface-tertiary rounded"
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }}
             />

@@ -1985,7 +1985,7 @@ export function SplitBillPayment({
                   <span>${bill.summary.grandTotal.toFixed(2)}</span>
                 </div>
                 {bill.summary.totalPaid > 0 && (
-                  <div className="flex justify-between text-green-600">
+                  <div className="flex justify-between text-status-success">
                     <span>Already Paid</span>
                     <span>-${bill.summary.totalPaid.toFixed(2)}</span>
                   </div>
@@ -2009,7 +2009,7 @@ export function SplitBillPayment({
                   <div className="flex items-center space-x-2">
                     {Object.keys(debouncingUpdates).length > 0 ? (
                       <>
-                        <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
+                        <div className="w-2 h-2 bg-status-warning rounded-full animate-pulse"></div>
                         <span className="text-sm text-content-secondary">
                           Saving changes...
                         </span>
@@ -2023,8 +2023,8 @@ export function SplitBillPayment({
                       </>
                     ) : initialSplitLoaded ? (
                       <>
-                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                        <span className="text-sm text-green-600 dark:text-green-400">
+                        <div className="w-2 h-2 bg-status-success rounded-full"></div>
+                        <span className="text-sm text-status-success">
                           Synced with other users
                         </span>
                       </>
@@ -2236,9 +2236,9 @@ export function SplitBillPayment({
                             onChange={(e) => handlePercentageChange(user.guestSessionId, e.target.value)}
                             className={`w-full p-3 pr-8 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors ${
                               debouncingUpdates[`${user.guestSessionId}_percentage`]
-                                ? 'ring-1 ring-orange-400 bg-orange-50 animate-pulse'
+                                ? 'ring-1 ring-status-warning bg-status-warning-light animate-pulse'
                                 : optimisticState.pendingUpdate && optimisticState.percentages?.[user.guestSessionId]
-                                ? 'ring-1 ring-yellow-400 bg-yellow-50'
+                                ? 'ring-1 ring-status-warning bg-status-warning-light'
                                 : ''
                             }`}
                             placeholder="0.0"
@@ -2281,9 +2281,9 @@ export function SplitBillPayment({
                           onChange={(e) => handleAmountChange(user.guestSessionId, e.target.value)}
                           className={`flex-1 p-3 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors ${
                             debouncingUpdates[`${user.guestSessionId}_amount`]
-                              ? 'ring-1 ring-orange-400 bg-orange-50 animate-pulse'
+                              ? 'ring-1 ring-status-warning bg-status-warning-light animate-pulse'
                               : optimisticState.pendingUpdate && optimisticState.amounts?.[user.guestSessionId]
-                              ? 'ring-1 ring-yellow-400 bg-yellow-50'
+                              ? 'ring-1 ring-status-warning bg-status-warning-light'
                               : ''
                           }`}
                           placeholder="0.00"
@@ -2336,14 +2336,14 @@ export function SplitBillPayment({
                         </span>
                         {/* Show status indicators */}
                         {debouncingUpdates[`${user.guestSessionId}_percentage`] && (
-                          <span className="inline-flex items-center space-x-1 px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">
-                            <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
+                          <span className="inline-flex items-center space-x-1 px-2 py-1 bg-status-warning-light text-status-warning text-xs rounded-full">
+                            <div className="w-2 h-2 bg-status-warning rounded-full animate-pulse"></div>
                             <span>Editing %</span>
                           </span>
                         )}
                         {debouncingUpdates[`${user.guestSessionId}_amount`] && (
-                          <span className="inline-flex items-center space-x-1 px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">
-                            <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
+                          <span className="inline-flex items-center space-x-1 px-2 py-1 bg-status-warning-light text-status-warning text-xs rounded-full">
+                            <div className="w-2 h-2 bg-status-warning rounded-full animate-pulse"></div>
                             <span>Editing $</span>
                           </span>
                         )}

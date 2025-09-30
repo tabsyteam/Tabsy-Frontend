@@ -49,7 +49,7 @@ module.exports = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["var(--font-poppins)", "Poppins", "ui-sans-serif", "system-ui"],
+        sans: ["var(--font-inter)", "Inter", "ui-sans-serif", "system-ui"],
         mono: ["JetBrains Mono", "ui-monospace", "monospace"],
       },
       fontSize: {

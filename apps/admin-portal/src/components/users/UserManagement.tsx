@@ -102,19 +102,19 @@ function UserCard({ user, onView, onEdit, onDelete, onStatusChange }: UserCardPr
   }
 
   return (
-    <div className="bg-white rounded-lg border shadow-sm hover:shadow-md transition-shadow p-6">
+    <div className="bg-surface rounded-lg border border-tertiary shadow-sm hover:shadow-md transition-shadow p-6">
       {/* Header */}
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-start space-x-4">
-          <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-            <User className="w-6 h-6 text-gray-400" />
+          <div className="w-12 h-12 bg-surface-tertiary rounded-full flex items-center justify-center">
+            <User className="w-6 h-6 text-content-tertiary" />
           </div>
-          
+
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-content-primary">
               {user.firstName} {user.lastName}
             </h3>
-            <p className="text-sm text-gray-600 mb-2">{user.email}</p>
+            <p className="text-sm text-content-secondary mb-2">{user.email}</p>
             
             <div className="flex items-center space-x-2">
               <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getRoleColor(user.role)}`}>
@@ -300,10 +300,10 @@ export function UserManagement({ users, loading, onCreateNew }: UserManagementPr
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
-          <p className="text-gray-600">Manage platform users and permissions</p>
+          <h2 className="text-2xl font-bold text-content-primary">User Management</h2>
+          <p className="text-content-secondary">Manage platform users and permissions</p>
         </div>
-        
+
         <Button onClick={onCreateNew}>
           <Plus className="w-4 h-4 mr-2" />
           Add User
@@ -312,50 +312,50 @@ export function UserManagement({ users, loading, onCreateNew }: UserManagementPr
 
       {/* Stats Summary */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white rounded-lg border p-4 text-center">
-          <p className="text-2xl font-bold text-gray-900">{roleCounts.total}</p>
-          <p className="text-sm text-gray-600">Total Users</p>
+        <div className="bg-surface rounded-lg border border-tertiary p-4 text-center">
+          <p className="text-2xl font-bold text-content-primary">{roleCounts.total}</p>
+          <p className="text-sm text-content-secondary">Total Users</p>
         </div>
-        <div className="bg-white rounded-lg border p-4 text-center">
-          <p className="text-2xl font-bold text-blue-600">{roleCounts.admin}</p>
-          <p className="text-sm text-gray-600">Admins</p>
+        <div className="bg-surface rounded-lg border border-tertiary p-4 text-center">
+          <p className="text-2xl font-bold text-primary">{roleCounts.admin}</p>
+          <p className="text-sm text-content-secondary">Admins</p>
         </div>
-        <div className="bg-white rounded-lg border p-4 text-center">
-          <p className="text-2xl font-bold text-green-600">{roleCounts.restaurantOwner}</p>
-          <p className="text-sm text-gray-600">Restaurant Owners</p>
+        <div className="bg-surface rounded-lg border border-tertiary p-4 text-center">
+          <p className="text-2xl font-bold text-status-success-dark">{roleCounts.restaurantOwner}</p>
+          <p className="text-sm text-content-secondary">Restaurant Owners</p>
         </div>
-        <div className="bg-white rounded-lg border p-4 text-center">
-          <p className="text-2xl font-bold text-yellow-600">{roleCounts.restaurantStaff}</p>
-          <p className="text-sm text-gray-600">Restaurant Staff</p>
+        <div className="bg-surface rounded-lg border border-tertiary p-4 text-center">
+          <p className="text-2xl font-bold text-status-warning-dark">{roleCounts.restaurantStaff}</p>
+          <p className="text-sm text-content-secondary">Restaurant Staff</p>
         </div>
-        <div className="bg-white rounded-lg border p-4 text-center">
-          <p className="text-2xl font-bold text-gray-600">{roleCounts.customer}</p>
-          <p className="text-sm text-gray-600">Customers</p>
+        <div className="bg-surface rounded-lg border border-tertiary p-4 text-center">
+          <p className="text-2xl font-bold text-content-secondary">{roleCounts.customer}</p>
+          <p className="text-sm text-content-secondary">Customers</p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border p-4">
+      <div className="bg-surface rounded-lg border border-tertiary p-4">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-content-tertiary" />
             <input
               type="text"
               placeholder="Search users..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-secondary rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
 
           {/* Role Filter */}
           <div className="flex items-center space-x-2">
-            <Filter className="w-4 h-4 text-gray-400" />
+            <Filter className="w-4 h-4 text-content-tertiary" />
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value as UserRole | 'ALL')}
-              className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="border border-secondary rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
             >
               <option value="ALL">All Roles</option>
               <option value={UserRole.ADMIN}>Admin</option>
@@ -370,7 +370,7 @@ export function UserManagement({ users, loading, onCreateNew }: UserManagementPr
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as AdminUser['status'] | 'ALL')}
-              className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="border border-secondary rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
             >
               <option value="ALL">All Status</option>
               <option value="ACTIVE">Active</option>
@@ -384,11 +384,11 @@ export function UserManagement({ users, loading, onCreateNew }: UserManagementPr
 
       {/* Users Grid */}
       {filteredUsers.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border">
-          <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">
-            {searchQuery || roleFilter !== 'ALL' || statusFilter !== 'ALL' 
-              ? 'No users match your filters' 
+        <div className="text-center py-12 bg-surface rounded-lg border border-tertiary">
+          <Users className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
+          <p className="text-content-tertiary">
+            {searchQuery || roleFilter !== 'ALL' || statusFilter !== 'ALL'
+              ? 'No users match your filters'
               : 'No users found'}
           </p>
         </div>

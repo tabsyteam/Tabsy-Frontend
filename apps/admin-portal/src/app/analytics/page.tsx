@@ -51,7 +51,7 @@ function MetricCard({
   trend?: 'up' | 'down' | 'neutral';
   subtitle?: string;
 }) {
-  const trendColor = trend === 'up' ? 'text-green-600' : trend === 'down' ? 'text-red-600' : 'text-gray-600';
+  const trendColor = trend === 'up' ? 'text-status-success' : trend === 'down' ? 'text-status-error' : 'text-content-secondary';
   const TrendIcon = trend === 'up' ? ArrowUpRight : trend === 'down' ? ArrowDownRight : null;
 
   return (
@@ -274,37 +274,37 @@ export default function AnalyticsPage() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
+                <div className="text-2xl font-bold text-status-success">
                   {orderMetrics?.completionRate?.toFixed(1) || 0}%
                 </div>
                 <p className="text-xs text-content-secondary mt-1">Order Completion</p>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-2xl font-bold text-status-info">
                   {paymentMetrics?.successRate?.toFixed(1) || 0}%
                 </div>
                 <p className="text-xs text-content-secondary mt-1">Payment Success</p>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">
+                <div className="text-2xl font-bold text-primary">
                   {analytics?.customerRetention?.toFixed(1) || 0}%
                 </div>
                 <p className="text-xs text-content-secondary mt-1">Retention Rate</p>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600">
+                <div className="text-2xl font-bold text-status-warning">
                   {analytics?.averageRating?.toFixed(1) || 0}
                 </div>
                 <p className="text-xs text-content-secondary mt-1">Avg Rating</p>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-indigo-600">
+                <div className="text-2xl font-bold text-primary">
                   {analytics?.peakHour || 0}:00
                 </div>
                 <p className="text-xs text-content-secondary mt-1">Peak Hour</p>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-pink-600">
+                <div className="text-2xl font-bold text-primary">
                   {analytics?.avgWaitTime || 0}m
                 </div>
                 <p className="text-xs text-content-secondary mt-1">Avg Wait Time</p>
@@ -331,7 +331,7 @@ export default function AnalyticsPage() {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <div className="flex items-center">
-                      <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                      <div className="w-3 h-3 bg-status-success rounded-full mr-2"></div>
                       <span className="text-sm text-content-secondary">Completed</span>
                     </div>
                     <span className="text-sm font-medium text-content-primary">
@@ -340,7 +340,7 @@ export default function AnalyticsPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center">
-                      <div className="w-3 h-3 bg-orange-500 rounded-full mr-2"></div>
+                      <div className="w-3 h-3 bg-status-warning rounded-full mr-2"></div>
                       <span className="text-sm text-content-secondary">Pending</span>
                     </div>
                     <span className="text-sm font-medium text-content-primary">
@@ -349,7 +349,7 @@ export default function AnalyticsPage() {
                   </div>
                   <div className="flex justify-between items-center">
                     <div className="flex items-center">
-                      <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
+                      <div className="w-3 h-3 bg-status-error rounded-full mr-2"></div>
                       <span className="text-sm text-content-secondary">Cancelled</span>
                     </div>
                     <span className="text-sm font-medium text-content-primary">
@@ -380,7 +380,7 @@ export default function AnalyticsPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-bold text-primary">${restaurant.revenue}</p>
-                      <p className="text-xs text-green-600">+{restaurant.growth}%</p>
+                      <p className="text-xs text-status-success">+{restaurant.growth}%</p>
                     </div>
                   </div>
                 )) || (
@@ -402,15 +402,15 @@ export default function AnalyticsPage() {
                 {orderMetrics?.popularItems?.slice(0, 5).map((item: any, index: number) => (
                   <div key={index} className="flex items-center justify-between">
                     <div className="flex items-center flex-1">
-                      <div className="w-8 h-8 rounded bg-orange-100 flex items-center justify-center mr-3">
-                        <Package className="h-4 w-4 text-orange-600" />
+                      <div className="w-8 h-8 rounded bg-status-warning-light flex items-center justify-center mr-3">
+                        <Package className="h-4 w-4 text-status-warning" />
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-content-primary">{item.name}</p>
                         <div className="flex items-center mt-1">
                           <div className="flex-1 bg-surface-secondary rounded-full h-2 mr-2">
                             <div
-                              className="bg-orange-500 h-2 rounded-full"
+                              className="bg-status-warning h-2 rounded-full"
                               style={{ width: `${(item.count / (orderMetrics?.popularItems?.[0]?.count || 1)) * 100}%` }}
                             />
                           </div>
@@ -442,7 +442,7 @@ export default function AnalyticsPage() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center">
-                    <CreditCard className="h-4 w-4 text-blue-500 mr-2" />
+                    <CreditCard className="h-4 w-4 text-status-info mr-2" />
                     <span className="text-sm text-content-secondary">Card</span>
                   </div>
                   <div className="flex items-center">
@@ -451,7 +451,7 @@ export default function AnalyticsPage() {
                     </span>
                     <div className="w-24 bg-surface-secondary rounded-full h-2">
                       <div
-                        className="bg-blue-500 h-2 rounded-full"
+                        className="bg-status-info h-2 rounded-full"
                         style={{ width: `${paymentMetrics?.methodBreakdown?.card || 0}%` }}
                       />
                     </div>
@@ -459,7 +459,7 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center">
-                    <DollarSign className="h-4 w-4 text-green-500 mr-2" />
+                    <DollarSign className="h-4 w-4 text-status-success mr-2" />
                     <span className="text-sm text-content-secondary">Cash</span>
                   </div>
                   <div className="flex items-center">
@@ -468,7 +468,7 @@ export default function AnalyticsPage() {
                     </span>
                     <div className="w-24 bg-surface-secondary rounded-full h-2">
                       <div
-                        className="bg-green-500 h-2 rounded-full"
+                        className="bg-status-success h-2 rounded-full"
                         style={{ width: `${paymentMetrics?.methodBreakdown?.cash || 0}%` }}
                       />
                     </div>

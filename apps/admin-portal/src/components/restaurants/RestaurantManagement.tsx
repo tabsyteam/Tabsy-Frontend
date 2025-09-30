@@ -54,15 +54,15 @@ function RestaurantCard({
   const getStatusColor = (status: RestaurantStatus): string => {
     switch (status) {
       case 'ACTIVE':
-        return 'bg-green-100 text-green-800 border-green-200'
+        return 'bg-status-success-light text-status-success-dark border-status-success/20'
       case 'PENDING':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        return 'bg-status-warning-light text-status-warning-dark border-status-warning/20'
       case 'SUSPENDED':
-        return 'bg-red-100 text-red-800 border-red-200'
+        return 'bg-status-error-light text-status-error-dark border-status-error/20'
       case 'INACTIVE':
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-surface-secondary text-content-secondary border-border-default'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-200'
+        return 'bg-surface-secondary text-content-secondary border-border-default'
     }
   }
 
@@ -82,7 +82,7 @@ function RestaurantCard({
   }
 
   return (
-    <div className="bg-white rounded-lg border shadow-sm hover:shadow-md transition-shadow p-6">
+    <div className="bg-surface rounded-lg border border-border-tertiary shadow-sm hover:shadow-md transition-shadow p-6">
       {/* Header */}
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-start space-x-4">
@@ -93,14 +93,14 @@ function RestaurantCard({
               className="w-12 h-12 rounded-lg object-cover"
             />
           ) : (
-            <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
-              <Store className="w-6 h-6 text-gray-400" />
+            <div className="w-12 h-12 bg-surface-secondary rounded-lg flex items-center justify-center">
+              <Store className="w-6 h-6 text-content-tertiary" />
             </div>
           )}
           
           <div className="flex-1">
-            <h3 className="text-lg font-semibold text-gray-900">{restaurant.name}</h3>
-            <p className="text-sm text-gray-600 mb-2">{restaurant.description}</p>
+            <h3 className="text-lg font-semibold text-content-primary">{restaurant.name}</h3>
+            <p className="text-sm text-content-secondary mb-2">{restaurant.description}</p>
             
             <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(restaurant.status)}`}>
               {getStatusIcon(restaurant.status)}
@@ -120,7 +120,7 @@ function RestaurantCard({
           </Button>
           
           {menuOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border z-10">
+            <div className="absolute right-0 mt-2 w-48 bg-surface rounded-md shadow-lg border border-border-tertiary z-10">
               <div className="py-1">
                 <button
                   onClick={() => { onView(restaurant); setMenuOpen(false) }}
@@ -141,7 +141,7 @@ function RestaurantCard({
                 {restaurant.status !== 'ACTIVE' && (
                   <button
                     onClick={() => { onStatusChange(restaurant, 'ACTIVE'); setMenuOpen(false) }}
-                    className="flex items-center w-full px-4 py-2 text-sm text-green-700 hover:bg-green-50"
+                    className="flex items-center w-full px-4 py-2 text-sm text-status-success hover:bg-status-success-light"
                   >
                     <CheckCircle className="w-4 h-4 mr-2" />
                     Activate
@@ -151,17 +151,17 @@ function RestaurantCard({
                 {restaurant.status === 'ACTIVE' && (
                   <button
                     onClick={() => { onStatusChange(restaurant, 'SUSPENDED'); setMenuOpen(false) }}
-                    className="flex items-center w-full px-4 py-2 text-sm text-yellow-700 hover:bg-yellow-50"
+                    className="flex items-center w-full px-4 py-2 text-sm text-status-warning hover:bg-status-warning-light"
                   >
                     <AlertCircle className="w-4 h-4 mr-2" />
                     Suspend
                   </button>
                 )}
                 
-                <div className="border-t border-gray-100"></div>
+                <div className="border-t border-border-tertiary"></div>
                 <button
                   onClick={() => { onDelete(restaurant); setMenuOpen(false) }}
-                  className="flex items-center w-full px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                  className="flex items-center w-full px-4 py-2 text-sm text-status-error hover:bg-status-error-light"
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Delete
@@ -173,41 +173,41 @@ function RestaurantCard({
       </div>
 
       {/* Restaurant Info */}
-      <div className="space-y-2 text-sm text-gray-600">
+      <div className="space-y-2 text-sm text-content-secondary">
         <div className="flex items-center">
-          <MapPin className="w-4 h-4 mr-2 text-gray-400" />
+          <MapPin className="w-4 h-4 mr-2 text-content-tertiary" />
           <span>{restaurant.address}, {restaurant.city}</span>
         </div>
 
         <div className="flex items-center">
-          <Phone className="w-4 h-4 mr-2 text-gray-400" />
+          <Phone className="w-4 h-4 mr-2 text-content-tertiary" />
           <span>{restaurant.phoneNumber}</span>
         </div>
-        
+
         <div className="flex items-center">
-          <Mail className="w-4 h-4 mr-2 text-gray-400" />
+          <Mail className="w-4 h-4 mr-2 text-content-tertiary" />
           <span>{restaurant.email}</span>
         </div>
-        
+
         <div className="flex items-center">
-          <Users className="w-4 h-4 mr-2 text-gray-400" />
+          <Users className="w-4 h-4 mr-2 text-content-tertiary" />
           <span>{restaurant.settings.maxTables} tables • {restaurant.settings.maxCapacity} capacity</span>
         </div>
       </div>
 
       {/* Quick Stats */}
-      <div className="mt-4 pt-4 border-t grid grid-cols-3 gap-4 text-center">
+      <div className="mt-4 pt-4 border-t border-border-tertiary grid grid-cols-3 gap-4 text-center">
         <div>
-          <p className="text-lg font-semibold text-gray-900">-</p>
-          <p className="text-xs text-gray-500">Today Orders</p>
+          <p className="text-lg font-semibold text-content-primary">-</p>
+          <p className="text-xs text-content-tertiary">Today Orders</p>
         </div>
         <div>
-          <p className="text-lg font-semibold text-gray-900">-</p>
-          <p className="text-xs text-gray-500">Revenue</p>
+          <p className="text-lg font-semibold text-content-primary">-</p>
+          <p className="text-xs text-content-tertiary">Revenue</p>
         </div>
         <div>
-          <p className="text-lg font-semibold text-gray-900">-</p>
-          <p className="text-xs text-gray-500">Rating</p>
+          <p className="text-lg font-semibold text-content-primary">-</p>
+          <p className="text-xs text-content-tertiary">Rating</p>
         </div>
       </div>
     </div>
@@ -280,8 +280,8 @@ export function RestaurantManagement({
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Restaurant Management</h2>
-          <p className="text-gray-600">Manage all restaurants in the platform</p>
+          <h2 className="text-2xl font-bold text-content-primary">Restaurant Management</h2>
+          <p className="text-content-secondary">Manage all restaurants in the platform</p>
         </div>
         
         <Button onClick={onCreateNew}>
@@ -292,46 +292,46 @@ export function RestaurantManagement({
 
       {/* Stats Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border p-4 text-center">
-          <p className="text-2xl font-bold text-gray-900">{statusCounts.total}</p>
-          <p className="text-sm text-gray-600">Total Restaurants</p>
+        <div className="bg-surface rounded-lg border border-border-tertiary p-4 text-center">
+          <p className="text-2xl font-bold text-content-primary">{statusCounts.total}</p>
+          <p className="text-sm text-content-secondary">Total Restaurants</p>
         </div>
-        <div className="bg-white rounded-lg border p-4 text-center">
-          <p className="text-2xl font-bold text-green-600">{statusCounts.active}</p>
-          <p className="text-sm text-gray-600">Active</p>
+        <div className="bg-surface rounded-lg border border-border-tertiary p-4 text-center">
+          <p className="text-2xl font-bold text-status-success">{statusCounts.active}</p>
+          <p className="text-sm text-content-secondary">Active</p>
         </div>
-        <div className="bg-white rounded-lg border p-4 text-center">
-          <p className="text-2xl font-bold text-yellow-600">{statusCounts.pending}</p>
-          <p className="text-sm text-gray-600">Pending</p>
+        <div className="bg-surface rounded-lg border border-border-tertiary p-4 text-center">
+          <p className="text-2xl font-bold text-status-warning">{statusCounts.pending}</p>
+          <p className="text-sm text-content-secondary">Pending</p>
         </div>
-        <div className="bg-white rounded-lg border p-4 text-center">
-          <p className="text-2xl font-bold text-red-600">{statusCounts.suspended}</p>
-          <p className="text-sm text-gray-600">Suspended</p>
+        <div className="bg-surface rounded-lg border border-border-tertiary p-4 text-center">
+          <p className="text-2xl font-bold text-status-error">{statusCounts.suspended}</p>
+          <p className="text-sm text-content-secondary">Suspended</p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border p-4">
+      <div className="bg-surface rounded-lg border border-border-tertiary p-4">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Search */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-content-tertiary" />
             <input
               type="text"
               placeholder="Search restaurants..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-border-tertiary rounded-md input-professional focus:ring-2 focus:ring-primary focus:border-transparent"
             />
           </div>
 
           {/* Status Filter */}
           <div className="flex items-center space-x-2">
-            <Filter className="w-4 h-4 text-gray-400" />
+            <Filter className="w-4 h-4 text-content-tertiary" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as RestaurantStatus | 'ALL')}
-              className="border border-gray-300 rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="border border-border-tertiary rounded-md px-3 py-2 input-professional focus:ring-2 focus:ring-primary focus:border-transparent"
             >
               <option value="ALL">All Status</option>
               <option value="ACTIVE">Active</option>
@@ -345,9 +345,9 @@ export function RestaurantManagement({
 
       {/* Restaurants Grid */}
       {filteredRestaurants.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border">
-          <Store className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">
+        <div className="text-center py-12 bg-surface rounded-lg border border-border-tertiary">
+          <Store className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
+          <p className="text-content-tertiary">
             {searchQuery || statusFilter !== 'ALL' ? 'No restaurants match your filters' : 'No restaurants found'}
           </p>
         </div>

@@ -102,7 +102,7 @@ export function InteractiveButton({
         {ripples.map(({ id, x, y }) => (
           <motion.span
             key={id}
-            className="absolute bg-white/30 rounded-full pointer-events-none"
+            className="absolute bg-surface/30 rounded-full pointer-events-none"
             style={{
               left: x - 20,
               top: y - 20,
@@ -246,14 +246,14 @@ export function ToggleSwitch({
     <div className="flex items-center space-x-2">
       <motion.button
         className={`${sizes.track} relative rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/50 ${
-          checked ? 'bg-primary' : 'bg-gray-300'
+          checked ? 'bg-primary' : 'bg-surface-tertiary'
         } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
         onClick={handleChange}
         disabled={disabled}
         whileTap={disabled ? {} : { scale: 0.95 }}
       >
         <motion.div
-          className={`${sizes.thumb} bg-white rounded-full shadow-md`}
+          className={`${sizes.thumb} bg-surface rounded-full shadow-md`}
           animate={{
             x: checked ? (size === 'sm' ? 16 : size === 'md' ? 20 : 24) : 2,
           }}
@@ -364,7 +364,7 @@ export function ProgressRing({
           stroke="currentColor"
           strokeWidth={strokeWidth}
           fill="transparent"
-          className="text-gray-200"
+          className="text-content-tertiary"
         />
         <motion.circle
           cx={size / 2}
@@ -429,14 +429,14 @@ export function SuccessAnimation({
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="bg-white rounded-full p-4 shadow-lg"
+            className="bg-surface rounded-full p-4 shadow-lg"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
           >
             <motion.div
-              className="w-12 h-12 text-green-500"
+              className="w-12 h-12 text-status-success"
               initial={{ pathLength: 0 }}
               animate={{ pathLength: 1 }}
               transition={{ duration: 0.5, delay: 0.2 }}

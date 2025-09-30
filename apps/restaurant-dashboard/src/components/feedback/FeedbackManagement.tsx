@@ -25,7 +25,6 @@ import {
 } from '@tabsy/react-query-hooks'
 import type {
   Feedback,
-  FeedbackStatus,
   FeedbackListParams
 } from '@tabsy/shared-types'
 import { toast } from 'sonner'
@@ -38,7 +37,7 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
   const api = tabsyClient
 
   // State management
-  const [selectedFilter, setSelectedFilter] = useState<FeedbackStatus | 'all'>('all')
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'FLAGGED'>('all')
   const [selectedRating, setSelectedRating] = useState<number | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [dateRange, setDateRange] = useState<{ startDate?: string; endDate?: string }>({})
@@ -48,13 +47,12 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
     restaurantId,
     page: currentPage,
     limit: 10,
-    status: selectedFilter === 'all' ? undefined : selectedFilter,
     rating: selectedRating || undefined,
     startDate: dateRange.startDate,
     endDate: dateRange.endDate,
     sortBy: 'createdAt',
     sortOrder: 'desc'
-  }), [restaurantId, currentPage, selectedFilter, selectedRating, dateRange])
+  }), [restaurantId, currentPage, selectedRating, dateRange])
 
   // Data fetching with React Query
   const {
@@ -84,14 +82,21 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
   const isLoading = feedbackLoading || statsLoading
   const hasError = feedbackError || statsError
 
-  // Extract data safely
-  const feedback = feedbackData?.feedback || []
-  const stats = feedbackData?.stats || {
+  // Extract data safely with client-side filtering
+  const allFeedback = (feedbackData as any)?.feedback || []
+  const feedback = useMemo(() => {
+    if (selectedFilter === 'FLAGGED') {
+      return allFeedback.filter((item: Feedback) => item.flagged)
+    }
+    return allFeedback
+  }, [allFeedback, selectedFilter])
+
+  const stats = (feedbackData as any)?.stats || {
     totalCount: 0,
     averageRating: 0,
     ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
   }
-  const detailedStats = statsData || {
+  const detailedStats = (statsData as any) || {
     categoryAverages: {},
     trends: {},
     monthlyGrowth: 0
@@ -138,12 +143,12 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
 
       {/* Error State */}
       {hasError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div className="bg-status-error-light border border-status-error rounded-lg p-4">
           <div className="flex items-start space-x-3">
-            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+            <AlertCircle className="w-5 h-5 text-status-error mt-0.5" />
             <div>
-              <h3 className="font-medium text-red-800">Unable to Load Feedback Data</h3>
-              <p className="text-red-700 text-sm mt-1">
+              <h3 className="font-medium text-status-error-dark">Unable to Load Feedback Data</h3>
+              <p className="text-status-error-dark text-sm mt-1">
                 {feedbackError?.message || statsError?.message || 'The feedback service is currently unavailable.'}
               </p>
               <div className="mt-3">
@@ -154,7 +159,7 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
                     refetchFeedback()
                     refetchStats()
                   }}
-                  className="text-red-700 border-red-300 hover:bg-red-100"
+                  className="text-status-error-dark border-status-error hover:bg-status-error-light"
                 >
                   <RefreshCw className="w-4 h-4 mr-2" />
                   Try Again
@@ -167,16 +172,16 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
 
       {/* Service Status Notice */}
       {!hasError && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="bg-status-info-light border border-status-info rounded-lg p-4">
           <div className="flex items-start space-x-3">
-            <CheckCircle2 className="w-5 h-5 text-blue-600 mt-0.5" />
+            <CheckCircle2 className="w-5 h-5 text-primary mt-0.5" />
             <div>
-              <h3 className="font-medium text-blue-800">Feedback System Active</h3>
-              <p className="text-blue-700 text-sm mt-1">
+              <h3 className="font-medium text-status-info-dark">Feedback System Active</h3>
+              <p className="text-status-info text-sm mt-1">
                 Real-time feedback monitoring, analytics, and response management are now available.
                 {isLoading && ' Loading latest data...'}
               </p>
-              <p className="text-blue-700 text-sm mt-2">
+              <p className="text-status-info text-sm mt-2">
                 <strong>Features:</strong> Automatic notifications, detailed analytics,
                 response tracking, and customer engagement metrics.
               </p>
@@ -222,7 +227,7 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
                 </div>
               )}
             </div>
-            <TrendingUp className="w-8 h-8 text-green-600" />
+            <TrendingUp className="w-8 h-8 text-status-success" />
           </div>
         </div>
 
@@ -242,10 +247,10 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
                     {detailedStats.monthlyGrowth > 0 ? `+${detailedStats.monthlyGrowth}` : detailedStats.monthlyGrowth || '0'}
                   </p>
                   {detailedStats.monthlyGrowth > 0 && (
-                    <p className="text-green-600 text-sm">↗ Growth</p>
+                    <p className="text-status-success text-sm">↗ Growth</p>
                   )}
                   {detailedStats.monthlyGrowth < 0 && (
-                    <p className="text-red-600 text-sm">↘ Decline</p>
+                    <p className="text-status-error text-sm">↘ Decline</p>
                   )}
                   {detailedStats.monthlyGrowth === 0 && (
                     <p className="text-content-tertiary text-sm">→ No change</p>
@@ -253,7 +258,7 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
                 </>
               )}
             </div>
-            <Calendar className="w-8 h-8 text-purple-600" />
+            <Calendar className="w-8 h-8 text-secondary" />
           </div>
         </div>
       </div>
@@ -351,9 +356,9 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-content-primary">
-            Recent Feedback ({feedback.length} of {feedbackData?.pagination?.total || 0})
+            Recent Feedback ({feedback.length} of {(feedbackData as any)?.pagination?.total || 0})
           </h3>
-          {feedbackData?.pagination && feedbackData.pagination.totalPages > 1 && (
+          {(feedbackData as any)?.pagination && (feedbackData as any).pagination.totalPages > 1 && (
             <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
@@ -364,13 +369,13 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
                 Previous
               </Button>
               <span className="text-sm text-content-secondary">
-                Page {currentPage} of {feedbackData.pagination.totalPages}
+                Page {currentPage} of {(feedbackData as any).pagination.totalPages}
               </span>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(Math.min(feedbackData.pagination!.totalPages, currentPage + 1))}
-                disabled={currentPage === feedbackData.pagination.totalPages || isLoading}
+                onClick={() => setCurrentPage(Math.min((feedbackData as any).pagination!.totalPages, currentPage + 1))}
+                disabled={currentPage === (feedbackData as any).pagination.totalPages || isLoading}
               >
                 Next
               </Button>
@@ -384,7 +389,7 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
             <span className="text-content-secondary">Loading feedback...</span>
           </div>
         ) : (
-          feedback.map(feedbackItem => (
+          feedback.map((feedbackItem: Feedback) => (
             <div key={feedbackItem.id} className="bg-surface rounded-xl border border-default p-8 hover:shadow-lg transition-all duration-200">
               {/* Header with Rating and Status */}
               <div className="flex items-start justify-between mb-6">
@@ -398,7 +403,7 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
                           className={`w-6 h-6 ${
                             star <= feedbackItem.overallRating
                               ? 'text-yellow-400 fill-current'
-                              : 'text-gray-200'
+                              : 'text-content-disabled'
                           }`}
                         />
                       ))}
@@ -436,8 +441,8 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
                 </div>
 
                 {/* Status - Only show if flagged or needs attention */}
-                {feedbackItem.status === 'FLAGGED' && (
-                  <div className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 flex items-center space-x-1">
+                {feedbackItem.flagged && (
+                  <div className="px-3 py-1 rounded-full text-xs font-medium bg-status-error-light text-status-error-dark flex items-center space-x-1">
                     <AlertCircle className="w-3 h-3" />
                     <span>Flagged</span>
                   </div>
@@ -475,15 +480,15 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-6 bg-surface-secondary/50 rounded-lg p-4">
                     {Object.entries(categories).map(([category, rating]) => {
                       const getRatingColor = (rating: number) => {
-                        if (rating >= 4) return 'text-green-600'
-                        if (rating >= 3) return 'text-yellow-600'
-                        return 'text-red-600'
+                        if (rating >= 4) return 'text-status-success'
+                        if (rating >= 3) return 'text-status-warning'
+                        return 'text-status-error'
                       }
 
                       const getRatingBg = (rating: number) => {
-                        if (rating >= 4) return 'bg-green-50'
-                        if (rating >= 3) return 'bg-yellow-50'
-                        return 'bg-red-50'
+                        if (rating >= 4) return 'bg-status-success-light'
+                        if (rating >= 3) return 'bg-status-warning-light'
+                        return 'bg-status-error-light'
                       }
 
                       return (
@@ -502,7 +507,7 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
                                   className={`w-4 h-4 ${
                                     star <= rating
                                       ? 'text-yellow-400 fill-current'
-                                      : 'text-gray-200'
+                                      : 'text-content-disabled'
                                   }`}
                                 />
                               ))}
@@ -530,26 +535,26 @@ export function FeedbackManagement({ restaurantId }: FeedbackManagementProps) {
 
                         if (positiveTerms.some(term => tagLower.includes(term))) {
                           return {
-                            bg: 'bg-green-100',
-                            text: 'text-green-800',
-                            border: 'border-green-200',
+                            bg: 'bg-status-success-light',
+                            text: 'text-status-success-dark',
+                            border: 'border-status-success',
                             icon: '✓'
                           }
                         }
 
                         if (negativeTerms.some(term => tagLower.includes(term))) {
                           return {
-                            bg: 'bg-red-100',
-                            text: 'text-red-800',
-                            border: 'border-red-200',
+                            bg: 'bg-status-error-light',
+                            text: 'text-status-error-dark',
+                            border: 'border-status-error',
                             icon: '⚠'
                           }
                         }
 
                         return {
-                          bg: 'bg-gray-100',
-                          text: 'text-gray-700',
-                          border: 'border-gray-200',
+                          bg: 'bg-surface-tertiary',
+                          text: 'text-content-secondary',
+                          border: 'border-default',
                           icon: '◦'
                         }
                       }

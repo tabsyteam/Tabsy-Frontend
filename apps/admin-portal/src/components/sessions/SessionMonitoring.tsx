@@ -124,15 +124,15 @@ export function SessionMonitoring() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'ACTIVE':
-        return 'bg-green-100 text-green-800'
+        return 'bg-status-success-light text-status-success-dark'
       case 'ORDERING_LOCKED':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'bg-status-warning-light text-status-warning-dark'
       case 'PAYMENT_PENDING':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-status-info-light text-status-info-dark'
       case 'CLOSED':
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-surface-secondary text-content-secondary'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-surface-secondary text-content-secondary'
     }
   }
 
@@ -140,13 +140,13 @@ export function SessionMonitoring() {
   const getAlertColor = (severity: string) => {
     switch (severity) {
       case 'HIGH':
-        return 'bg-red-100 text-red-800'
+        return 'bg-status-error-light text-status-error-dark'
       case 'MEDIUM':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'bg-status-warning-light text-status-warning-dark'
       case 'LOW':
-        return 'bg-blue-100 text-blue-800'
+        return 'bg-status-info-light text-status-info-dark'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-surface-secondary text-content-secondary'
     }
   }
 
@@ -417,7 +417,7 @@ export function SessionMonitoring() {
                         {session.status.replace('_', ' ')}
                       </Badge>
                       {session.needsAttention && (
-                        <Badge className="ml-2 bg-red-100 text-red-800">
+                        <Badge className="ml-2 bg-status-error-light text-status-error-dark">
                           <AlertTriangle className="w-3 h-3 mr-1" />
                           Attention
                         </Badge>

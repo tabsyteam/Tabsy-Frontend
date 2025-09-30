@@ -339,19 +339,19 @@ export function QRScanner() {
     return (
       <div className="space-y-6">
         <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
+          <h2 className="text-2xl font-semibold text-content-primary mb-2">
             Processing QR Code...
           </h2>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-content-secondary">
             Please wait while we connect you to your table
           </p>
         </div>
 
-        <div className="relative bg-gray-100 dark:bg-gray-800 rounded-lg aspect-square max-w-sm mx-auto overflow-hidden">
+        <div className="relative bg-surface-secondary rounded-lg aspect-square max-w-sm mx-auto overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="text-center space-y-4">
               <Loader2 className="w-16 h-16 text-primary animate-spin mx-auto" />
-              <p className="text-gray-500 text-sm">
+              <p className="text-content-tertiary text-sm">
                 Connecting to restaurant...
               </p>
             </div>
@@ -383,7 +383,7 @@ export function QRScanner() {
               variant="ghost"
               size="sm"
               onClick={stopScanning}
-              className="absolute top-3 right-3 z-20 bg-black/70 text-white hover:bg-black/80 rounded-full w-10 h-10 p-0 shadow-lg"
+              className="absolute top-3 right-3 z-20 bg-content-primary/70 text-content-inverse hover:bg-content-primary/80 rounded-full w-10 h-10 p-0 shadow-lg"
             >
               <X className="w-5 h-5" />
             </Button>
@@ -505,11 +505,11 @@ export function QRScanner() {
 
           {/* Safari-specific instructions */}
           {isClient && isSafari && !hasMediaDevices && (
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm">
-              <p className="text-amber-800 dark:text-amber-200 font-medium mb-1">
+            <div className="bg-status-warning-light border border-status-warning rounded-lg p-3 text-sm">
+              <p className="text-status-warning font-medium mb-1">
                 🍎 Safari Users
               </p>
-              <p className="text-amber-700 dark:text-amber-300">
+              <p className="text-status-warning">
                 Camera access requires HTTPS. Use "Upload Image" or visit the site with HTTPS for camera scanning.
               </p>
             </div>

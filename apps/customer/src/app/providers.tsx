@@ -49,7 +49,7 @@ function WebSocketWithSessionIntegration({ children }: { children: React.ReactNo
   } | null>(null)
 
   // Define updateSessionData function - checking session storage for WebSocket auth data
-  const updateSessionData = () => {
+  const updateSessionData = useCallback(() => {
     if (typeof window === 'undefined') return
 
     try {
@@ -78,7 +78,12 @@ function WebSocketWithSessionIntegration({ children }: { children: React.ReactNo
           })
         }
       } else if (guestSessionId && (!sessionData || sessionData.sessionId !== guestSessionId)) {
-        setSessionData({ sessionId: guestSessionId })
+        // Partial session data - only have guest session ID
+        // Try to recover restaurant and table IDs from URL or existing data
+        setSessionData(prev => ({
+          ...prev,
+          sessionId: guestSessionId
+        }))
       } else if (!diningSessionStr && !guestSessionId && sessionData) {
         setSessionData(null)
       }
@@ -86,7 +91,7 @@ function WebSocketWithSessionIntegration({ children }: { children: React.ReactNo
       console.warn('[WebSocketWithSessionIntegration] Failed to parse session data:', error)
       setSessionData(null)
     }
-  }
+  }, [sessionData])
 
   // Monitor session storage for WebSocket auth data
   useEffect(() => {
@@ -97,16 +102,35 @@ function WebSocketWithSessionIntegration({ children }: { children: React.ReactNo
     // Listen for storage changes from other tabs
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'tabsy-dining-session' || e.key === 'tabsy-guest-session-id') {
+        console.log('[WebSocketWithSessionIntegration] Storage changed, updating session data')
         updateSessionData()
       }
     }
 
+    // Listen for visibility change (tab becomes active)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[WebSocketWithSessionIntegration] Tab became visible, refreshing session')
+        updateSessionData()
+      }
+    }
+
+    // Listen for window focus
+    const handleFocus = () => {
+      console.log('[WebSocketWithSessionIntegration] Window focused, refreshing session')
+      updateSessionData()
+    }
+
     window.addEventListener('storage', handleStorageChange)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
 
     return () => {
       window.removeEventListener('storage', handleStorageChange)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
     }
-  }, [sessionData])
+  }, [updateSessionData])
 
   // Additional effect to check for session data when component mounts or updates
   // This helps with initial navigation timing issues

@@ -175,7 +175,7 @@ export default function OrdersPage() {
             <div className="bg-surface rounded-lg shadow-card p-4 border border-border-tertiary">
               <div className="flex items-center justify-between mb-2">
                 <ShoppingBag className="h-5 w-5 text-primary" />
-                <span className="text-xs text-green-600 flex items-center">
+                <span className="text-xs text-status-success flex items-center">
                   <TrendingUp className="h-3 w-3 mr-1" />
                   +12%
                 </span>
@@ -188,8 +188,8 @@ export default function OrdersPage() {
 
             <div className="bg-surface rounded-lg shadow-card p-4 border border-border-tertiary">
               <div className="flex items-center justify-between mb-2">
-                <Clock className="h-5 w-5 text-orange-500" />
-                <span className="text-xs font-medium text-orange-600">
+                <Clock className="h-5 w-5 text-status-warning" />
+                <span className="text-xs font-medium text-status-warning">
                   {metrics?.pendingOrders || 0}
                 </span>
               </div>
@@ -201,8 +201,8 @@ export default function OrdersPage() {
 
             <div className="bg-surface rounded-lg shadow-card p-4 border border-border-tertiary">
               <div className="flex items-center justify-between mb-2">
-                <DollarSign className="h-5 w-5 text-green-500" />
-                <span className="text-xs text-blue-600 flex items-center">
+                <DollarSign className="h-5 w-5 text-status-success" />
+                <span className="text-xs text-status-info flex items-center">
                   <TrendingUp className="h-3 w-3 mr-1" />
                   +8%
                 </span>
@@ -215,8 +215,8 @@ export default function OrdersPage() {
 
             <div className="bg-surface rounded-lg shadow-card p-4 border border-border-tertiary">
               <div className="flex items-center justify-between mb-2">
-                <TrendingUp className="h-5 w-5 text-purple-500" />
-                <span className="text-xs text-purple-600">AOV</span>
+                <TrendingUp className="h-5 w-5 text-primary" />
+                <span className="text-xs text-primary">AOV</span>
               </div>
               <div className="text-2xl font-bold text-content-primary">
                 ${metrics?.averageOrderValue?.toFixed(2) || '0.00'}
@@ -300,13 +300,13 @@ export default function OrdersPage() {
             <div className="flex gap-4 mt-4 pt-4 border-t border-border-tertiary">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-content-secondary">Quick Filters:</span>
-                <button className="px-3 py-1 text-xs rounded-full bg-orange-100 text-orange-800 hover:bg-orange-200">
+                <button className="px-3 py-1 text-xs rounded-full bg-status-warning-light text-status-warning-dark hover:bg-status-warning">
                   Pending ({ordersData?.filter(o => o.status === OrderStatus.RECEIVED).length || 0})
                 </button>
-                <button className="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-800 hover:bg-blue-200">
+                <button className="px-3 py-1 text-xs rounded-full bg-status-info-light text-status-info-dark hover:bg-status-info">
                   Preparing ({ordersData?.filter(o => o.status === OrderStatus.PREPARING).length || 0})
                 </button>
-                <button className="px-3 py-1 text-xs rounded-full bg-green-100 text-green-800 hover:bg-green-200">
+                <button className="px-3 py-1 text-xs rounded-full bg-status-success-light text-status-success-dark hover:bg-status-success">
                   Ready ({ordersData?.filter(o => o.status === OrderStatus.READY).length || 0})
                 </button>
               </div>
@@ -398,7 +398,7 @@ export default function OrdersPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <DollarSign className="h-4 w-4 text-green-500 mr-1" />
+                              <DollarSign className="h-4 w-4 text-status-success mr-1" />
                               <span className="text-sm font-bold text-content-primary">
                                 ${Number(order.total || 0).toFixed(2)}
                               </span>

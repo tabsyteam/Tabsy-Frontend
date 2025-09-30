@@ -239,8 +239,8 @@ export function MenuManagement({ restaurantId }: MenuManagementProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Authenticating...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-content-secondary">Authenticating...</p>
         </div>
       </div>
     );
@@ -251,8 +251,8 @@ export function MenuManagement({ restaurantId }: MenuManagementProps) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <p className="text-gray-600">Authentication required to manage menu</p>
+          <AlertCircle className="h-12 w-12 text-status-error mx-auto mb-4" />
+          <p className="text-content-secondary">Authentication required to manage menu</p>
         </div>
       </div>
     );

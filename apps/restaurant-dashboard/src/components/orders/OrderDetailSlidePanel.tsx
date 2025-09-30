@@ -133,11 +133,11 @@ export function OrderDetailSlidePanel({
       case OrderStatus.RECEIVED:
         return 'text-primary bg-primary/10';
       case OrderStatus.PREPARING:
-        return 'text-amber-600 bg-amber-100';
+        return 'text-status-warning bg-status-warning-light';
       case OrderStatus.READY:
-        return 'text-green-600 bg-green-100';
+        return 'text-status-success bg-status-success-light';
       case OrderStatus.DELIVERED:
-        return 'text-purple-600 bg-purple-100';
+        return 'text-secondary bg-secondary/10';
       case OrderStatus.COMPLETED:
         return 'text-muted-foreground bg-muted';
       case OrderStatus.CANCELLED:
@@ -342,7 +342,7 @@ export function OrderDetailSlidePanel({
                 font-size: 16px;
                 font-weight: bold;
                 text-align: center;
-                background: #f0f0f0;
+                background: #F1F5F9;
                 padding: 10px;
                 margin: 15px 0;
                 border: 2px solid black;
@@ -365,7 +365,7 @@ export function OrderDetailSlidePanel({
             .order-item {
               margin-bottom: 15px;
               padding-bottom: 10px;
-              border-bottom: 1px dashed #ccc;
+              border-bottom: 1px dashed #CBD5E1;
             }
 
             .item-header {
@@ -398,7 +398,7 @@ export function OrderDetailSlidePanel({
 
             .item-description {
               font-size: 11px;
-              color: #666;
+              color: #64748B;
               margin: 3px 0 3px 45px;
               font-style: italic;
             }
@@ -407,9 +407,9 @@ export function OrderDetailSlidePanel({
               margin: 8px 0 8px 45px;
               font-size: 11px;
               line-height: 1.3;
-              background: #f8f8f8;
+              background: #F8FAFC;
               padding: 5px;
-              border-left: 3px solid #333;
+              border-left: 3px solid #334155;
             }
 
             .customization-item {
@@ -419,15 +419,15 @@ export function OrderDetailSlidePanel({
             .customization-total {
               margin-top: 5px;
               padding-top: 3px;
-              border-top: 1px dashed #666;
+              border-top: 1px dashed #64748B;
               font-size: 11px;
             }
 
             .special-instructions {
-              background: #fff3cd;
+              background: #FFFBEB;
               padding: 8px;
               margin: 8px 0 8px 45px;
-              border-left: 4px solid #ffc107;
+              border-left: 4px solid #FBBF24;
               font-size: 11px;
             }
 
@@ -467,8 +467,8 @@ export function OrderDetailSlidePanel({
               margin-top: 25px;
               text-align: center;
               font-size: 10px;
-              color: #666;
-              border-top: 1px solid #ccc;
+              color: #64748B;
+              border-top: 1px solid #CBD5E1;
               padding-top: 15px;
             }
 
@@ -476,7 +476,7 @@ export function OrderDetailSlidePanel({
               margin-top: 10px;
               font-size: 11px;
               font-weight: bold;
-              color: #F97316;
+              color: #0D9488;
             }
           </style>
         </head>
@@ -536,7 +536,7 @@ export function OrderDetailSlidePanel({
 
             <!-- Order Special Instructions -->
             ${order.specialInstructions ? `
-              <div class="special-instructions" style="margin-left: 0; border-left: 4px solid #ffc107;">
+              <div class="special-instructions" style="margin-left: 0; border-left: 4px solid #FBBF24;">
                 <strong>📝 Order Instructions:</strong><br>
                 ${order.specialInstructions}
               </div>

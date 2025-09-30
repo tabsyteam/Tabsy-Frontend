@@ -241,17 +241,17 @@ export function ProfileView() {
       <div className="min-h-screen bg-background pb-24">
         <div className="bg-surface shadow-sm border-b">
           <div className="max-w-4xl mx-auto px-4 py-6">
-            <div className="h-8 w-32 bg-gray-200 rounded animate-pulse mb-2" />
-            <div className="h-5 w-48 bg-gray-200 rounded animate-pulse" />
+            <div className="h-8 w-32 bg-surface-tertiary rounded animate-pulse mb-2" />
+            <div className="h-5 w-48 bg-surface-tertiary rounded animate-pulse" />
           </div>
         </div>
         <div className="max-w-4xl mx-auto px-4 py-6">
           <div className="bg-surface rounded-xl border p-6 mb-6">
             <div className="flex items-center space-x-4">
-              <div className="w-16 h-16 bg-gray-200 rounded-full animate-pulse" />
+              <div className="w-16 h-16 bg-surface-tertiary rounded-full animate-pulse" />
               <div className="flex-1">
-                <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-2" />
-                <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
+                <div className="h-6 w-32 bg-surface-tertiary rounded animate-pulse mb-2" />
+                <div className="h-4 w-48 bg-surface-tertiary rounded animate-pulse" />
               </div>
             </div>
           </div>
@@ -445,19 +445,19 @@ export function ProfileView() {
                     key={setting.id}
                     onClick={setting.action}
                     className={`w-full p-4 flex items-center space-x-3 hover:bg-interactive-hover transition-colors duration-200 text-left ${
-                      setting.danger ? 'hover:bg-red-50' : ''
+                      setting.danger ? 'hover:bg-status-error-light' : ''
                     }`}
                   >
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                      setting.danger ? 'bg-red-100' : 'bg-background-secondary'
+                      setting.danger ? 'bg-status-error-light' : 'bg-background-secondary'
                     }`}>
                       <IconComponent className={`w-4 h-4 ${
-                        setting.danger ? 'text-red-600' : 'text-content-tertiary'
+                        setting.danger ? 'text-status-error' : 'text-content-tertiary'
                       }`} />
                     </div>
                     <div className="flex-1">
                       <div className={`font-medium ${
-                        setting.danger ? 'text-red-600' : 'text-content-primary'
+                        setting.danger ? 'text-status-error' : 'text-content-primary'
                       }`}>
                         {setting.label}
                       </div>

@@ -20,6 +20,7 @@ import { toast } from 'sonner'
 import { useApi } from '@/components/providers/api-provider'
 import { SessionManager } from '@/lib/session'
 import type { Payment, PaymentMethod, PaymentStatus, Order, TableSessionBill } from '@tabsy/shared-types'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 
 interface EnhancedPayment extends Payment {
   order?: Order
@@ -391,7 +392,7 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary mx-auto"></div>
+          <LoadingSpinner size="lg" />
           <p className="text-content-secondary">Loading payment details...</p>
         </div>
       </div>

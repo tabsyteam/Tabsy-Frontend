@@ -85,6 +85,16 @@ export class TabsyApiClient {
         const isPublicEndpoint = config.url?.includes('/health') || config.url?.includes('/auth')
         const isAuthenticatedRequest = !!this.authToken
 
+        // AUTO-RESTORE: If in-memory session is null, try to restore from sessionStorage
+        // This fixes the issue where idle tabs lose in-memory session but sessionStorage persists
+        if (!this.guestSessionId && !isAdminEndpoint && !isPublicEndpoint && !isAuthenticatedRequest && typeof window !== 'undefined') {
+          const storedSessionId = sessionStorage.getItem('tabsy-guest-session-id')
+          if (storedSessionId) {
+            console.log('API Client: Auto-restoring session from sessionStorage:', storedSessionId)
+            this.guestSessionId = storedSessionId
+          }
+        }
+
         // Add guest session for customer app endpoints (when no auth token is present)
         // Customer app needs guest session for all restaurant-related endpoints
         if (this.guestSessionId && config.headers && !isAdminEndpoint && !isPublicEndpoint && !isAuthenticatedRequest) {

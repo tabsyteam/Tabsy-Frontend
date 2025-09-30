@@ -30,7 +30,7 @@ export function PullToRefreshIndicator({
               className={`rounded-full h-6 w-6 border-2 transition-all duration-200 ${
                 canRefresh
                   ? 'border-primary bg-primary animate-pulse'
-                  : 'border-gray-300'
+                  : 'border-default'
               }`}
               style={{
                 transform: `rotate(${progress * 180}deg)`
@@ -39,7 +39,7 @@ export function PullToRefreshIndicator({
               <div className="w-full h-full flex items-center justify-center">
                 <div
                   className={`w-2 h-2 rounded-full transition-all duration-200 ${
-                    canRefresh ? 'bg-white' : 'bg-gray-400'
+                    canRefresh ? 'bg-surface' : 'bg-content-tertiary'
                   }`}
                 />
               </div>
