@@ -29,7 +29,7 @@ const FILTER_OPTIONS: FilterOption[] = [
     id: 'all',
     label: 'All',
     color: 'text-content-primary',
-    bgColor: 'bg-surface',
+    bgColor: 'bg-surface-secondary dark:bg-surface',
     borderColor: 'border-default',
     activeColor: 'text-primary-foreground',
     activeBgColor: 'bg-primary',
@@ -39,7 +39,7 @@ const FILTER_OPTIONS: FilterOption[] = [
     id: 'active',
     label: 'Active',
     color: 'text-status-warning',
-    bgColor: 'bg-status-warning-light',
+    bgColor: 'bg-status-warning-light dark:bg-surface',
     borderColor: 'border-status-warning',
     activeColor: 'text-content-inverse',
     activeBgColor: 'bg-status-warning',
@@ -49,7 +49,7 @@ const FILTER_OPTIONS: FilterOption[] = [
     id: OrderStatus.RECEIVED,
     label: 'Received',
     color: 'text-status-info',
-    bgColor: 'bg-status-info-light',
+    bgColor: 'bg-status-info-light dark:bg-surface',
     borderColor: 'border-status-info',
     activeColor: 'text-content-inverse',
     activeBgColor: 'bg-status-info',
@@ -59,7 +59,7 @@ const FILTER_OPTIONS: FilterOption[] = [
     id: OrderStatus.PREPARING,
     label: 'Preparing',
     color: 'text-accent',
-    bgColor: 'bg-accent-light',
+    bgColor: 'bg-accent-light dark:bg-surface',
     borderColor: 'border-accent',
     activeColor: 'text-content-inverse',
     activeBgColor: 'bg-accent',
@@ -69,7 +69,7 @@ const FILTER_OPTIONS: FilterOption[] = [
     id: OrderStatus.READY,
     label: 'Ready',
     color: 'text-secondary',
-    bgColor: 'bg-secondary-light',
+    bgColor: 'bg-secondary-light dark:bg-surface',
     borderColor: 'border-secondary',
     activeColor: 'text-content-inverse',
     activeBgColor: 'bg-secondary',
@@ -79,7 +79,7 @@ const FILTER_OPTIONS: FilterOption[] = [
     id: OrderStatus.DELIVERED,
     label: 'Delivered',
     color: 'text-status-success',
-    bgColor: 'bg-status-success-light',
+    bgColor: 'bg-status-success-light dark:bg-surface',
     borderColor: 'border-status-success',
     activeColor: 'text-content-inverse',
     activeBgColor: 'bg-status-success',
@@ -89,7 +89,7 @@ const FILTER_OPTIONS: FilterOption[] = [
     id: OrderStatus.COMPLETED,
     label: 'Completed',
     color: 'text-content-secondary',
-    bgColor: 'bg-surface-tertiary',
+    bgColor: 'bg-surface-tertiary dark:bg-surface',
     borderColor: 'border-secondary',
     activeColor: 'text-content-inverse',
     activeBgColor: 'bg-content-secondary',
@@ -167,7 +167,7 @@ export function OrderFilterPills({
                 whileTap={{ scale: 0.95 }}
                 onClick={() => handleFilterToggle(option.id)}
                 className={`
-                  flex items-center gap-1.5 px-3 py-2 rounded-full border text-sm font-medium
+                  flex items-center gap-1.5 px-3 py-2 rounded-full border-2 text-sm font-medium
                   transition-all duration-200 whitespace-nowrap min-w-0 flex-shrink-0
                   ${isSelected
                     ? `${option.activeColor} ${option.activeBgColor} ${option.activeBorderColor} shadow-sm`

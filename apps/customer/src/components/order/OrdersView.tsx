@@ -852,13 +852,13 @@ export function OrdersView() {
 
           {/* View Toggle */}
           {session && (
-            <div className="flex space-x-1 mt-6 bg-background-secondary rounded-lg p-1">
+            <div className="flex space-x-1 mt-6 bg-surface-secondary dark:bg-surface-tertiary rounded-lg p-1">
               <button
                 onClick={() => handleViewChange('my')}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                   currentView === 'my'
                     ? 'bg-surface text-content-primary shadow-sm'
-                    : 'text-content-secondary hover:text-content-primary'
+                    : 'text-content-tertiary dark:text-content-secondary hover:text-content-primary'
                 }`}
               >
                 My Orders
@@ -868,7 +868,7 @@ export function OrdersView() {
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                   currentView === 'table'
                     ? 'bg-surface text-content-primary shadow-sm'
-                    : 'text-content-secondary hover:text-content-primary'
+                    : 'text-content-tertiary dark:text-content-secondary hover:text-content-primary'
                 }`}
               >
                 Table Orders
