@@ -11,11 +11,23 @@ import { globalSessionManager } from '@/utils/globalSessionManager'
 import { strictModeGuard } from '@/utils/strictModeGuard'
 import { SessionManager } from '@/lib/session'
 import { STORAGE_KEYS } from '@/constants/storage'
+import { unifiedSessionStorage, TabsySession } from '@/lib/unifiedSessionStorage'
 import type {
   MultiUserTableSession,
   TableSessionUser,
   MultiUserTableSessionStatus
 } from '@tabsy/shared-types'
+
+/**
+ * MIGRATION PHASE 2: Dual-Write Pattern
+ *
+ * Strategy: Write to BOTH unified storage AND legacy keys
+ * - Ensures backward compatibility
+ * - Allows safe rollback
+ * - Zero downtime migration
+ *
+ * CRITICAL: All session writes must go through dualWriteSession()
+ */
 
 // Global session creation tracking to prevent duplicates across all component instances
 const globalSessionCreationState = new Map<string, Promise<boolean>>()
@@ -52,6 +64,121 @@ const setSessionCreationLock = (tableId: string): void => {
 const clearSessionCreationLock = (tableId: string): void => {
   const lockKey = STORAGE_KEYS.TABLE_SESSION_LOCK(tableId)
   sessionStorage.removeItem(lockKey)
+}
+
+/**
+ * DUAL-WRITE HELPER: Writes session to BOTH unified storage AND legacy keys
+ *
+ * This ensures backward compatibility during migration phase.
+ * Once all code is migrated, we can remove legacy writes.
+ *
+ * @param sessionData Session data to persist
+ * @returns Success boolean
+ */
+const dualWriteSession = (sessionData: {
+  guestSessionId: string
+  tableSessionId: string
+  restaurantId: string
+  tableId: string
+  createdAt?: number
+  metadata?: Record<string, any>
+}): boolean => {
+  try {
+    console.log('[DualWrite] Writing session to unified + legacy storage:', {
+      guestSessionId: sessionData.guestSessionId,
+      tableId: sessionData.tableId
+    })
+
+    // 1. Write to unified storage (NEW)
+    const unifiedSession: TabsySession = {
+      guestSessionId: sessionData.guestSessionId,
+      tableSessionId: sessionData.tableSessionId,
+      restaurantId: sessionData.restaurantId,
+      tableId: sessionData.tableId,
+      createdAt: sessionData.createdAt || Date.now(),
+      lastActivity: Date.now(),
+      metadata: sessionData.metadata
+    }
+    unifiedSessionStorage.setSession(unifiedSession)
+
+    // 2. Write to legacy keys (BACKWARD COMPATIBILITY)
+    // Primary guest session ID
+    sessionStorage.setItem('tabsy-guest-session-id', sessionData.guestSessionId)
+
+    // Table-specific guest session
+    sessionStorage.setItem(`guestSession-${sessionData.tableId}`, sessionData.guestSessionId)
+
+    // Table session ID
+    sessionStorage.setItem(STORAGE_KEYS.TABLE_SESSION_ID, sessionData.tableSessionId)
+
+    // Dining session object (legacy SessionManager)
+    SessionManager.setDiningSession({
+      restaurantId: sessionData.restaurantId,
+      tableId: sessionData.tableId,
+      sessionId: sessionData.guestSessionId,
+      tableSessionId: sessionData.tableSessionId,
+      createdAt: sessionData.createdAt || Date.now()
+    })
+
+    console.log('[DualWrite] ✅ Successfully wrote to unified + legacy storage')
+    return true
+  } catch (error) {
+    console.error('[DualWrite] ❌ Failed to write session:', error)
+    return false
+  }
+}
+
+/**
+ * DUAL-READ HELPER: Reads session from unified storage first, falls back to legacy
+ *
+ * @param tableId Table ID for session lookup
+ * @returns Session data or null
+ */
+const dualReadSession = (tableId: string): TabsySession | null => {
+  try {
+    // 1. Try unified storage first (NEW)
+    let session = unifiedSessionStorage.getSession()
+    if (session && session.tableId === tableId) {
+      console.log('[DualRead] ✅ Read from unified storage')
+      return session
+    }
+
+    // 2. Fall back to legacy if needed (BACKWARD COMPATIBILITY)
+    console.log('[DualRead] Unified storage empty, attempting legacy read...')
+
+    const guestSessionId = sessionStorage.getItem('tabsy-guest-session-id') ||
+                           sessionStorage.getItem(`guestSession-${tableId}`)
+    const tableSessionId = sessionStorage.getItem(STORAGE_KEYS.TABLE_SESSION_ID)
+    const diningSession = SessionManager.getDiningSession()
+
+    if (guestSessionId || diningSession) {
+      console.log('[DualRead] ✅ Read from legacy storage, migrating...')
+
+      // Reconstruct session from legacy keys
+      const migratedSession: TabsySession = {
+        guestSessionId: guestSessionId || diningSession?.sessionId || '',
+        tableSessionId: tableSessionId || diningSession?.tableSessionId || '',
+        restaurantId: diningSession?.restaurantId || '',
+        tableId: diningSession?.tableId || tableId,
+        createdAt: diningSession?.createdAt || Date.now(),
+        lastActivity: Date.now()
+      }
+
+      // Write to unified storage for next time
+      if (migratedSession.guestSessionId) {
+        unifiedSessionStorage.setSession(migratedSession)
+        console.log('[DualRead] Migrated legacy session to unified storage')
+      }
+
+      return migratedSession
+    }
+
+    console.log('[DualRead] ❌ No session found in unified or legacy storage')
+    return null
+  } catch (error) {
+    console.error('[DualRead] Error reading session:', error)
+    return null
+  }
 }
 
 interface TableSessionManagerProps {
@@ -223,11 +350,12 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
       api.setGuestSession(existingSessionId!)
       setCurrentSessionId(existingSessionId!)
 
-      // Save dining session for MenuView
-      SessionManager.setDiningSession({
+      // DUAL-WRITE: Save session to both unified and legacy storage
+      dualWriteSession({
+        guestSessionId: existingSessionId!,
+        tableSessionId: '', // Not available from global session manager
         restaurantId,
-        tableId,
-        sessionId: existingSessionId!
+        tableId
       })
 
       setSessionState(prev => ({
@@ -253,11 +381,12 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
         api.setGuestSession(sessionId)
         setCurrentSessionId(sessionId)
 
-        // Save dining session for MenuView
-        SessionManager.setDiningSession({
+        // DUAL-WRITE: Save session to both unified and legacy storage
+        dualWriteSession({
+          guestSessionId: sessionId,
+          tableSessionId: '', // Not available from waiting path
           restaurantId,
-          tableId,
-          sessionId
+          tableId
         })
 
         setSessionState(prev => ({
@@ -280,19 +409,15 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
     // Check if session already exists in API client
     const existingSessionId = api.getGuestSessionId()
     if (existingSessionId) {
-      // CRITICAL FIX: Ensure session is also stored with primary key
-      sessionStorage.setItem('tabsy-guest-session-id', existingSessionId)
-      sessionStorage.setItem(`guestSession-${tableId}`, existingSessionId)
-
       // Check for stored tableSessionId from QR code processing
       const tableSessionId = sessionStorage.getItem(STORAGE_KEYS.TABLE_SESSION_ID)
 
-      // Save dining session for MenuView
-      SessionManager.setDiningSession({
+      // DUAL-WRITE: Persist existing session to both unified and legacy storage
+      dualWriteSession({
+        guestSessionId: existingSessionId,
+        tableSessionId: tableSessionId || '',
         restaurantId,
-        tableId,
-        sessionId: existingSessionId,
-        tableSessionId: tableSessionId || undefined
+        tableId
       })
 
       setSessionState(prev => ({
@@ -318,18 +443,15 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
     if (storedSessionId) {
       api.setGuestSession(storedSessionId)
 
-      // CRITICAL FIX: Also store with primary key for recovery logic
-      sessionStorage.setItem('tabsy-guest-session-id', storedSessionId)
-
       // Check for stored tableSessionId from QR code processing
       const tableSessionId = sessionStorage.getItem(STORAGE_KEYS.TABLE_SESSION_ID)
 
-      // Save dining session for MenuView
-      SessionManager.setDiningSession({
+      // DUAL-WRITE: Save session to both unified and legacy storage
+      dualWriteSession({
+        guestSessionId: storedSessionId,
+        tableSessionId: tableSessionId || '',
         restaurantId,
-        tableId,
-        sessionId: storedSessionId,
-        tableSessionId: tableSessionId || undefined
+        tableId
       })
       setSessionState(prev => ({
         ...prev,
@@ -428,21 +550,12 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
             // Complete session creation in global manager
             globalSessionManager.completeSessionCreation(tableId, guestSession.sessionId)
 
-            // CRITICAL FIX: Store session with BOTH keys for maximum compatibility
-            // Primary key - used by recovery logic across the app
-            sessionStorage.setItem('tabsy-guest-session-id', guestSession.sessionId)
-            // Table-specific key - legacy support
-            sessionStorage.setItem(`guestSession-${tableId}`, guestSession.sessionId)
-
-            // Store the table session ID for later use
-            sessionStorage.setItem(STORAGE_KEYS.TABLE_SESSION_ID, guestSession.tableSessionId)
-
-            // Save dining session for MenuView
-            SessionManager.setDiningSession({
+            // DUAL-WRITE: Write to both unified storage AND legacy keys
+            dualWriteSession({
+              guestSessionId: guestSession.sessionId,
+              tableSessionId: guestSession.tableSessionId,
               restaurantId,
               tableId,
-              sessionId: guestSession.sessionId,
-              tableSessionId: guestSession.tableSessionId,
               createdAt: guestSession.createdAt ? new Date(guestSession.createdAt).getTime() : Date.now()
             })
 

@@ -81,7 +81,7 @@ export default function SessionExpiryNotification({ className }: SessionExpiryNo
     : 'border-status-warning bg-status-warning/10 text-status-warning'
 
   return (
-    <div className={`fixed top-4 left-4 right-4 z-50 mx-auto max-w-md ${className || ''}`}>
+    <div className={`fixed top-20 left-4 right-4 z-[100] mx-auto max-w-md ${className || ''}`}>
       <Card className={`border-2 shadow-lg bg-surface ${cardStyle}`}>
         <div className="flex items-start gap-2 p-4">
           {getIcon(expiryInfo.minutesRemaining)}

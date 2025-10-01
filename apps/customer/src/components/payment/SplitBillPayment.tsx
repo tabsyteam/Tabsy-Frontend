@@ -265,7 +265,9 @@ export function SplitBillPayment({
 
   // Initialize default split amounts and percentages
   useEffect(() => {
-    if (uniqueUsers.length > 0 && bill.summary.remainingBalance > 0 && !loadingInitialSplit) {
+    // CRITICAL FIX: Added initialSplitLoaded guard to prevent re-initialization
+    // This prevents the bug where backendSplitAmounts updates would reset all percentages
+    if (uniqueUsers.length > 0 && bill.summary.remainingBalance > 0 && !loadingInitialSplit && !initialSplitLoaded) {
       // Initialize equal percentages for all users
       const equalPercentage = (100 / uniqueUsers.length).toFixed(2)
       const percentages: { [userId: string]: string } = {}
@@ -293,7 +295,7 @@ export function SplitBillPayment({
         createSplitCalculation()
       }
     }
-  }, [uniqueUsers, bill.summary.remainingBalance, loadingInitialSplit, backendSplitAmounts, actualSessionId])
+  }, [uniqueUsers, bill.summary.remainingBalance, loadingInitialSplit, initialSplitLoaded, actualSessionId])
 
   // Auto-switch from BY_ITEMS if only one item remains
   useEffect(() => {
@@ -307,30 +309,7 @@ export function SplitBillPayment({
   }, [totalUniqueItems, splitOption.type])
 
 
-  // Initialize custom amounts and percentages (only if no existing split calculation)
-  useEffect(() => {
-    // Only initialize with default values if we haven't loaded an existing split calculation
-    // and the initial loading is complete
-    if (loadingInitialSplit || initialSplitLoaded || uniqueUsers.length === 0) {
-      return
-    }
-
-    console.log('[SplitBillPayment] Initializing default split values (no existing calculation found)')
-
-    const equalAmount = bill.summary.remainingBalance / uniqueUsers.length
-    const equalPercentage = 100 / uniqueUsers.length
-
-    const amounts: { [userId: string]: string } = {}
-    const percentages: { [userId: string]: string } = {}
-
-    uniqueUsers.forEach(user => {
-      amounts[user.guestSessionId] = equalAmount.toFixed(2)
-      percentages[user.guestSessionId] = equalPercentage.toFixed(1)
-    })
-
-    setCustomAmounts(amounts)
-    setCustomPercentages(percentages)
-  }, [uniqueUsers, bill.summary.remainingBalance, loadingInitialSplit, initialSplitLoaded])
+  // REMOVED: Duplicate initialization effect - consolidated into the first initialization effect above
 
 
 
@@ -437,7 +416,8 @@ export function SplitBillPayment({
       for (const userId in incomingPercentages) {
         const incomingValue = incomingPercentages[userId].toString()
         const currentValue = currentPercentages[userId] || '0'
-        if (Math.abs(parseFloat(incomingValue) - parseFloat(currentValue)) > 0.1) {
+        // Increased tolerance from 0.1 to 0.5 to handle rounding differences
+        if (Math.abs(parseFloat(incomingValue) - parseFloat(currentValue)) > 0.5) {
           return true
         }
       }
@@ -602,9 +582,19 @@ export function SplitBillPayment({
       setBackendSplitAmounts(newBackendAmounts)
     }
     if (newPercentages !== null) {
+      console.log('[SplitBillPayment] 🔄 WebSocket updating percentages:', {
+        current: customPercentages,
+        incoming: newPercentages,
+        updatedBy: data.updatedBy
+      })
       setCustomPercentages(newPercentages)
     }
     if (newAmounts !== null) {
+      console.log('[SplitBillPayment] 🔄 WebSocket updating amounts:', {
+        current: customAmounts,
+        incoming: newAmounts,
+        updatedBy: data.updatedBy
+      })
       setCustomAmounts(newAmounts)
     }
     if (newItemAssignments !== null) {
@@ -633,8 +623,9 @@ export function SplitBillPayment({
     if (data.type === 'split:calculation_updated') {
       console.log('[SplitBillPayment] ✅ Received split calculation update:', data)
 
-      // Only update if this update was made by another user
-      if (data.updatedBy !== currentUser.guestSessionId) {
+      // Only update if this update was made by another user OR affects another user
+      // Skip if current user made the update OR if the update is for the current user's value
+      if (data.updatedBy !== currentUser.guestSessionId && data.updatedUser !== currentUser.guestSessionId) {
         // Check for concurrent update conflicts
         if (optimisticState.pendingUpdate) {
           handleConcurrentUpdateConflict(data, data.splitCalculation)
@@ -918,6 +909,12 @@ export function SplitBillPayment({
   }
 
   const applyOptimisticUpdate = (updateType: 'percentages' | 'amounts' | 'itemAssignments', data: any, updateId: string) => {
+    console.log(`[SplitBillPayment] ⚡ Applying optimistic ${updateType} update:`, {
+      updateId,
+      data,
+      currentState: updateType === 'percentages' ? customPercentages : updateType === 'amounts' ? customAmounts : itemAssignments
+    })
+
     createRollbackSnapshot()
 
     setOptimisticState({
@@ -938,8 +935,24 @@ export function SplitBillPayment({
 
   const confirmOptimisticUpdate = (updateId: string) => {
     if (optimisticState.updateId === updateId) {
-      setOptimisticState({})
-      setRollbackState(null)
+      console.log(`[SplitBillPayment] ✅ Confirming optimistic update (delayed clear):`, {
+        updateId,
+        optimisticState
+      })
+      // Delay clearing optimistic state to protect against WebSocket echo
+      // This prevents race condition where WebSocket event arrives after API response
+      setTimeout(() => {
+        console.log(`[SplitBillPayment] 🧹 Clearing optimistic state after delay:`, updateId)
+        setOptimisticState(prev => {
+          // Only clear if the updateId still matches (no new updates)
+          if (prev.updateId === updateId) {
+            return {}
+          }
+          console.log(`[SplitBillPayment] ⚠️ Not clearing - new update exists:`, prev.updateId)
+          return prev
+        })
+        setRollbackState(null)
+      }, 1500) // 1.5 seconds should be enough for WebSocket echo to arrive
     }
   }
 
@@ -1300,11 +1313,27 @@ export function SplitBillPayment({
         confirmOptimisticUpdate(updateId)
 
         // Update local state to reflect backend changes (in case backend auto-adjusted)
-        if (response.data.percentages) {
-          setCustomPercentages(response.data.percentages)
+        // IMPORTANT: Only update the specific user's value, not all users
+        if (response.data.percentages && response.data.percentages[userId] !== undefined) {
+          console.log(`[SplitBillPayment] 📊 API Response updating percentage for user ${userId}:`, {
+            oldValue: customPercentages[userId],
+            newValue: response.data.percentages[userId],
+            allPercentages: response.data.percentages
+          })
+          setCustomPercentages(prev => ({
+            ...prev,
+            [userId]: response.data.percentages![userId].toString()
+          }))
         }
-        if (response.data.amounts) {
-          setCustomAmounts(response.data.amounts)
+        if (response.data.amounts && response.data.amounts[userId] !== undefined) {
+          console.log(`[SplitBillPayment] 💰 API Response updating amount for user ${userId}:`, {
+            oldValue: customAmounts[userId],
+            newValue: response.data.amounts[userId]
+          })
+          setCustomAmounts(prev => ({
+            ...prev,
+            [userId]: response.data.amounts![userId].toString()
+          }))
         }
       } else {
         throw new Error(response.error?.message || 'Failed to update split calculation')
@@ -1407,6 +1436,9 @@ export function SplitBillPayment({
 
   // SECURE: Handle custom amount change with backend API and optimistic updates
   const handleAmountChange = async (userId: string, value: string) => {
+    // CRITICAL FIX: Mark input as active on EVERY change, not just on focus
+    markInputActive(userId, 'amount')
+
     if (splitOption.type === SplitBillType.BY_AMOUNT) {
       const updateId = `amount_${userId}_${Date.now()}_${Math.random().toString(36).substring(2)}`
 
@@ -1435,6 +1467,10 @@ export function SplitBillPayment({
   // SECURE: Handle custom percentage change with backend API and optimistic updates
   const handlePercentageChange = async (userId: string, value: string) => {
     console.log('[SplitBillPayment] Percentage change:', userId, value, 'Current split type:', splitOption.type)
+
+    // CRITICAL FIX: Mark input as active on EVERY change, not just on focus
+    // This maintains input protection throughout typing, preventing WebSocket overwrites
+    markInputActive(userId, 'percentage')
 
     // Always update the customPercentages state for UI consistency
     setCustomPercentages(prev => ({
@@ -2234,6 +2270,7 @@ export function SplitBillPayment({
                             step="0.1"
                             value={customPercentages[user.guestSessionId] || ''}
                             onChange={(e) => handlePercentageChange(user.guestSessionId, e.target.value)}
+                            onFocus={() => markInputActive(user.guestSessionId, 'percentage')}
                             className={`w-full p-3 pr-8 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors ${
                               debouncingUpdates[`${user.guestSessionId}_percentage`]
                                 ? 'ring-1 ring-status-warning bg-status-warning-light animate-pulse'
@@ -2279,6 +2316,7 @@ export function SplitBillPayment({
                           step="0.01"
                           value={customAmounts[user.guestSessionId] || ''}
                           onChange={(e) => handleAmountChange(user.guestSessionId, e.target.value)}
+                          onFocus={() => markInputActive(user.guestSessionId, 'amount')}
                           className={`flex-1 p-3 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors ${
                             debouncingUpdates[`${user.guestSessionId}_amount`]
                               ? 'ring-1 ring-status-warning bg-status-warning-light animate-pulse'

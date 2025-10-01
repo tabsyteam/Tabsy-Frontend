@@ -29,6 +29,7 @@ import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator'
 import { useCart } from '@/hooks/useCart'
 import { useMenuItemActions } from '@/hooks/useMenuItemActions'
 import { SessionManager } from '@/lib/session'
+import { unifiedSessionStorage } from '@/lib/unifiedSessionStorage'
 
 // Import our new modern components
 import SearchBar from '@/components/navigation/SearchBar'
@@ -252,57 +253,31 @@ export function MenuView() {
       }
 
       // 2. Use existing guest session (created by TableSessionManager)
-      // CRITICAL FIX: Try to restore session from sessionStorage before throwing error
+      // DUAL-READ: Try unified storage first, with automatic legacy fallback
       let currentSessionId = api.getGuestSessionId()
 
       if (!currentSessionId) {
         console.warn('[MenuView] No guest session in API client memory, attempting recovery...')
 
-        // Enhanced debugging - check all possible storage locations
-        console.log('[MenuView] DEBUG - Checking all storage locations:')
-        console.log('  - API Client Memory:', api.getGuestSessionId())
-        console.log('  - tabsy-guest-session-id:', sessionStorage.getItem('tabsy-guest-session-id'))
-        console.log('  - tabsy-dining-session:', sessionStorage.getItem('tabsy-dining-session'))
-
-        // Scan all sessionStorage keys for debugging
-        const allKeys: string[] = []
-        for (let i = 0; i < sessionStorage.length; i++) {
-          const key = sessionStorage.key(i)
-          if (key) allKeys.push(key)
-        }
-        console.log('  - All sessionStorage keys:', allKeys)
-
-        // Attempt 1: Restore from sessionStorage
-        const storedSessionId = sessionStorage.getItem('tabsy-guest-session-id')
-        if (storedSessionId) {
-          console.log('[MenuView] Found session in sessionStorage, restoring:', storedSessionId)
-          api.setGuestSession(storedSessionId)
-          currentSessionId = storedSessionId
+        // DUAL-READ: Use unified storage (automatically falls back to legacy keys)
+        const session = unifiedSessionStorage.getSession()
+        if (session?.guestSessionId) {
+          console.log('[MenuView] ✅ Session recovered from unified storage:', session.guestSessionId)
+          api.setGuestSession(session.guestSessionId)
+          currentSessionId = session.guestSessionId
         } else {
-          // Attempt 2: Check dining session
-          const diningSession = SessionManager.getDiningSession()
-          console.log('[MenuView] Dining session check:', diningSession)
-          if (diningSession?.sessionId) {
-            console.log('[MenuView] Found session in dining session, restoring:', diningSession.sessionId)
-            api.setGuestSession(diningSession.sessionId)
-            sessionStorage.setItem('tabsy-guest-session-id', diningSession.sessionId)
-            currentSessionId = diningSession.sessionId
-          } else {
-            // Attempt 3: Try SessionManager recovery helper
-            console.log('[MenuView] Attempting SessionManager.recoverSession()...')
-            const recoveryResult = SessionManager.recoverSession()
-            console.log('[MenuView] Recovery result:', recoveryResult)
-            if (recoveryResult.success && recoveryResult.sessionId) {
-              api.setGuestSession(recoveryResult.sessionId)
-              currentSessionId = recoveryResult.sessionId
-              console.log(`[MenuView] Recovered session from ${recoveryResult.source}:`, currentSessionId)
-            }
+          // Final fallback: Check standalone session ID (legacy)
+          const standaloneSessionId = sessionStorage.getItem('tabsy-guest-session-id')
+          if (standaloneSessionId) {
+            console.log('[MenuView] ✅ Session recovered from legacy standalone key:', standaloneSessionId)
+            api.setGuestSession(standaloneSessionId)
+            currentSessionId = standaloneSessionId
           }
         }
 
-        // If still no session, throw error with enhanced debugging
+        // If still no session, throw error
         if (!currentSessionId) {
-          console.error('[MenuView] ❌ Session recovery failed. No session found in API client, sessionStorage, or dining session.')
+          console.error('[MenuView] ❌ Session recovery failed. No session found in any storage location.')
           console.error('[MenuView] This indicates session was never created or was completely cleared.')
           console.error('[MenuView] Check TableSessionManager logs to see if session creation succeeded.')
           throw new Error('No guest session available. Please refresh the page.')

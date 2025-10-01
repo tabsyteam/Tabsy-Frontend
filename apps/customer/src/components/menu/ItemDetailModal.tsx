@@ -171,7 +171,7 @@ export function ItemDetailModal({
                 if (!customizations[option.optionId]) {
                   customizations[option.optionId] = []
                 }
-                customizations[option.optionId].push(option.valueId)
+                customizations[option.optionId]!.push(option.valueId)
               }
             }
           })
@@ -457,7 +457,7 @@ export function ItemDetailModal({
     })
 
     // Create customizations object for backward compatibility (empty for now since we use options)
-    const customizations = {}
+    const customizations: Record<string, any> = {}
 
     // Add special instructions to customizations if provided
     const finalSpecialInstructions = specialInstructions.trim() || undefined
@@ -573,7 +573,7 @@ export function ItemDetailModal({
             className="relative w-full max-w-2xl max-h-[85vh] bg-surface rounded-t-2xl md:rounded-2xl overflow-hidden shadow-xl flex flex-col"
           >
             {/* Header */}
-            <div className="flex-shrink-0 bg-surface border-b p-4 flex items-center justify-between">
+            <div className="flex-shrink-0 bg-surface border-b p-3 flex items-center justify-between">
               <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-semibold text-content-primary truncate pr-4">
                   {(mode === 'edit' || (mode === 'auto' && existingCartItem)) ? 'Edit Item' : item.name}
@@ -602,7 +602,11 @@ export function ItemDetailModal({
               {images.length > 0 && (
                 <div className="relative">
                   <motion.div
-                    className="aspect-video bg-gradient-to-br from-surface to-surface-secondary relative overflow-hidden group"
+                    className="h-44 bg-gradient-to-br from-surface to-surface-secondary relative group"
+                    style={{
+                      overflow: imageScale > 1 ? 'visible' : 'hidden',
+                      zIndex: imageScale > 1 ? 30 : 'auto'
+                    }}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.6 }}
@@ -750,61 +754,47 @@ export function ItemDetailModal({
                         <span>{Math.round(imageScale * 100)}%</span>
                       </motion.div>
                     )}
-
-                    {/* Tap to zoom hint */}
-                    <AnimatePresence>
-                      {imageScale === 1 && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 0.7, y: 0 }}
-                          exit={{ opacity: 0, y: 10 }}
-                          className="absolute bottom-4 right-4 bg-content-primary/70 backdrop-blur-sm text-content-inverse px-4 py-2 rounded-full text-sm font-medium opacity-90 transition-opacity duration-300 pointer-events-none z-10"
-                        >
-                          Tap to zoom
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </motion.div>
                 </div>
               )}
 
-              <div className="p-4 space-y-2">
+              <div className="p-3 space-y-2">
                 {/* Item Info */}
                 <div>
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-content-primary mb-2">
+                  <div className="flex items-start justify-between gap-3 mb-1.5">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-xl font-bold text-content-primary mb-1.5">
                         {item.name}
                       </h3>
                       <p className="text-content-secondary text-sm leading-relaxed">
                         {item.description}
                       </p>
                     </div>
-                    <div className="text-right ml-4">
-                      <div className="text-2xl font-bold text-primary">
+                    <div className="text-right shrink-0">
+                      <div className="text-lg font-bold text-primary whitespace-nowrap">
                         {formatCurrency(item?.basePrice || item?.price || 0)}
                       </div>
                       {getCustomizationPrice() > 0 && (
-                        <div className="text-sm text-content-secondary">
-                          +{formatCurrency(getCustomizationPrice())} extras
+                        <div className="text-xs text-primary font-medium mt-0.5 whitespace-nowrap">
+                          +{formatCurrency(getCustomizationPrice())}
                         </div>
                       )}
                     </div>
                   </div>
 
                   {/* Dietary & Spice Level Info */}
-                  <div className="flex flex-wrap gap-2 mb-3">
+                  <div className="flex flex-wrap gap-1.5 mb-2">
                     {item.dietaryTypes?.map(diet => (
                       <span
                         key={diet}
-                        className="inline-flex items-center space-x-1 px-3 py-1 bg-status-success-light text-status-success text-sm rounded-full font-medium"
+                        className="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-status-success-light text-status-success text-xs rounded-full font-medium"
                       >
                         {getDietaryIcon(diet)}
                         <span>{diet.replace('_', ' ')}</span>
                       </span>
                     ))}
                     {item.spicyLevel !== undefined && item.spicyLevel !== SpiceLevel.NONE && (
-                      <span className={`inline-flex items-center space-x-1 px-3 py-1 bg-status-error-light text-sm rounded-full font-medium ${getSpiceLevelDisplay(item.spicyLevel).color}`}>
+                      <span className={`inline-flex items-center space-x-1 px-2.5 py-0.5 bg-status-error-light text-xs rounded-full font-medium ${getSpiceLevelDisplay(item.spicyLevel).color}`}>
                         <span>{getSpiceLevelDisplay(item.spicyLevel).icon}</span>
                         <span>{getSpiceLevelDisplay(item.spicyLevel).name}</span>
                       </span>
@@ -812,11 +802,11 @@ export function ItemDetailModal({
                   </div>
 
                   {getAllergensList(item.allergyInfo).length > 0 && (
-                    <div className="flex items-start space-x-2 p-3 bg-status-warning-light border border-status-warning rounded-lg">
-                      <AlertTriangle className="w-5 h-5 text-status-warning flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start space-x-2 p-2.5 bg-status-warning-light border border-status-warning rounded-lg">
+                      <AlertTriangle className="w-4 h-4 text-status-warning flex-shrink-0 mt-0.5" />
                       <div>
-                        <div className="font-medium text-status-warning text-sm">Contains Allergens:</div>
-                        <div className="text-status-warning text-sm">
+                        <div className="font-medium text-status-warning text-xs">Contains Allergens:</div>
+                        <div className="text-status-warning text-xs">
                           {getAllergensList(item.allergyInfo).join(', ')}
                         </div>
                       </div>
@@ -963,19 +953,16 @@ export function ItemDetailModal({
 
                 {/* Special Instructions */}
                 <div className="space-y-2">
-                  <h4 className="font-semibold text-content-primary">
-                    Special Instructions for this Item (Optional)
+                  <h4 className="font-semibold text-content-primary text-sm">
+                    Special Instructions (Optional)
                   </h4>
-                  <div className="text-xs text-content-secondary mb-2">
-                    Instructions added here will apply only to this specific item in your cart
-                  </div>
                   <textarea
                     value={specialInstructions}
                     onChange={(e) => setSpecialInstructions(e.target.value)}
                     onFocus={() => haptics.inputFocus()}
-                    placeholder="Any special requests or modifications for this item..."
-                    className="w-full p-3 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
-                    rows={3}
+                    placeholder="Any special requests or modifications..."
+                    className="w-full p-2.5 text-sm border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors resize-none"
+                    rows={2}
                     maxLength={200}
                   />
                   <div className="flex justify-between items-center text-xs">
@@ -1069,63 +1056,134 @@ export function ItemDetailModal({
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="flex-shrink-0 bg-surface border-t p-4 pb-24 mt-auto" style={{ paddingBottom: 'max(6rem, calc(1rem + env(safe-area-inset-bottom)))' }}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-4">
-                  <span className="font-medium text-content-primary">Quantity:</span>
-                  <div className="flex items-center bg-surface-secondary rounded-2xl p-1">
-                    <button
-                      onClick={() => {
-                        if (quantity > 1) {
-                          haptics.updateQuantity()
-                          setQuantity(Math.max(1, quantity - 1))
-                        } else {
-                          shake()
-                        }
-                      }}
-                      disabled={quantity <= 1}
-                      className="w-10 h-10 btn-circle bg-surface border border-default hover:border-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all duration-200 hover:bg-interactive-hover disabled:hover:bg-surface"
-                    >
-                      <Minus className="w-4 h-4 text-content-primary" />
-                    </button>
-                    <div className="min-w-[3rem] px-3 py-2 text-center">
-                      <AnimatedCounter
-                        value={quantity}
-                        className="text-lg font-bold text-content-primary"
-                      />
-                    </div>
-                    <button
-                      onClick={() => {
+            {/* Footer - Compact Layout */}
+            <div className="flex-shrink-0 bg-surface border-t p-3 pb-24 mt-auto" style={{ paddingBottom: 'max(6rem, calc(0.75rem + env(safe-area-inset-bottom)))' }}>
+              <div className="flex items-center gap-2.5">
+                {/* Compact Quantity Controls */}
+                <div className="flex items-center bg-surface-secondary rounded-2xl p-1 shrink-0">
+                  <button
+                    onClick={() => {
+                      if (quantity > 1) {
                         haptics.updateQuantity()
-                        setQuantity(quantity + 1)
-                      }}
-                      className="w-10 h-10 btn-circle bg-primary text-primary-foreground border border-primary hover:bg-primary-hover flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
+                        setQuantity(Math.max(1, quantity - 1))
+                      } else {
+                        shake()
+                      }
+                    }}
+                    disabled={quantity <= 1}
+                    className="w-9 h-9 btn-circle bg-surface border border-default hover:border-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center transition-all duration-200 hover:bg-interactive-hover disabled:hover:bg-surface"
+                  >
+                    <Minus className="w-4 h-4 text-content-primary" />
+                  </button>
+                  <div className="min-w-[2.5rem] px-2 py-1 text-center">
+                    <AnimatedCounter
+                      value={quantity}
+                      className="text-base font-bold text-content-primary"
+                    />
                   </div>
+                  <button
+                    onClick={() => {
+                      haptics.updateQuantity()
+                      setQuantity(quantity + 1)
+                    }}
+                    className="w-9 h-9 btn-circle bg-primary text-primary-foreground border border-primary hover:bg-primary-hover flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
                 </div>
 
-                <div className="text-right">
-                  <div className="text-sm text-content-secondary">Total</div>
-                  <div className="text-xl font-bold text-primary">
-                    {formatCurrency(getTotalPrice())}
-                  </div>
-                </div>
+                {/* Simple CTA Button */}
+                <InteractiveButton
+                  onClick={handleAddToCart}
+                  size="lg"
+                  className="flex-1"
+                  hapticType="medium"
+                  variant="primary"
+                >
+                  {(mode === 'edit' || (mode === 'auto' && existingCartItem)) ? 'Update Cart' : 'Add to Cart'}
+                </InteractiveButton>
               </div>
-
-              <InteractiveButton
-                onClick={handleAddToCart}
-                size="lg"
-                className="w-full"
-                hapticType="medium"
-                variant="primary"
-              >
-                {(mode === 'edit' || (mode === 'auto' && existingCartItem)) ? 'Update Cart' : 'Add to Cart'}
-              </InteractiveButton>
             </div>
           </motion.div>
+
+          {/* Fullscreen Image Modal */}
+          {showFullscreen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-black flex items-center justify-center"
+              onClick={toggleFullscreen}
+            >
+              {/* Close Button */}
+              <motion.button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  toggleFullscreen()
+                }}
+                className="absolute top-4 right-4 z-[70] bg-white/10 backdrop-blur-sm text-white rounded-full p-3 min-w-[44px] min-h-[44px] flex items-center justify-center shadow-lg hover:bg-white/20 transition-colors"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <X className="w-6 h-6" />
+              </motion.button>
+
+              {/* Fullscreen Image Container */}
+              <div className="relative w-full h-full flex items-center justify-center p-4">
+                <motion.img
+                  src={images[currentImageIndex]}
+                  alt={item?.name || 'Menu item'}
+                  className="max-w-full max-h-full object-contain"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ duration: 0.3 }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+
+                {/* Navigation Controls for Multiple Images */}
+                {images.length > 1 && (
+                  <>
+                    <motion.button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        prevImage()
+                      }}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 backdrop-blur-sm text-white rounded-full p-4 min-w-[52px] min-h-[52px] flex items-center justify-center shadow-lg hover:bg-white/20 transition-colors z-[70]"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <ChevronLeft className="w-6 h-6" />
+                    </motion.button>
+                    <motion.button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        nextImage()
+                      }}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 backdrop-blur-sm text-white rounded-full p-4 min-w-[52px] min-h-[52px] flex items-center justify-center shadow-lg hover:bg-white/20 transition-colors z-[70]"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </motion.button>
+
+                    {/* Image Counter */}
+                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-medium">
+                      {currentImageIndex + 1} / {images.length}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Tap to close hint */}
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 0.7, y: 0 }}
+                className="absolute bottom-8 right-8 bg-white/10 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm font-medium pointer-events-none"
+              >
+                Tap anywhere to close
+              </motion.div>
+            </motion.div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>

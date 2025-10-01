@@ -12,6 +12,7 @@ import { useCart } from '@/hooks/useCart'
 import { SessionManager } from '@/lib/session'
 import { calculateTax } from '@/constants/tax'
 import { STORAGE_KEYS } from '@/constants/storage'
+import { unifiedSessionStorage } from '@/lib/unifiedSessionStorage'
 
 interface CartItem {
   id: string
@@ -157,45 +158,32 @@ export function CheckoutView() {
 
     try {
       // Get existing session ID from API client (created by TableSessionManager)
+      // DUAL-READ: Try unified storage first, with automatic legacy fallback
       let existingSessionId = api.getGuestSessionId()
       console.log('Existing session ID from API client:', existingSessionId)
 
-      // CRITICAL FIX: If not in API client memory, try multiple recovery methods
       if (!existingSessionId) {
         console.warn('[CheckoutView] No guest session in API client memory, attempting recovery...')
 
-        // Attempt 1: Restore from primary sessionStorage key
-        const primaryStoredId = sessionStorage.getItem('tabsy-guest-session-id')
-        if (primaryStoredId) {
-          console.log('[CheckoutView] Found session in primary storage, restoring:', primaryStoredId)
-          api.setGuestSession(primaryStoredId)
-          existingSessionId = primaryStoredId
+        // DUAL-READ: Use unified storage (automatically falls back to legacy keys)
+        const session = unifiedSessionStorage.getSession()
+        if (session?.guestSessionId) {
+          console.log('[CheckoutView] ✅ Session recovered from unified storage:', session.guestSessionId)
+          api.setGuestSession(session.guestSessionId)
+          existingSessionId = session.guestSessionId
         } else {
-          // Attempt 2: Try table-specific storage key
-          const storedSessionId = sessionStorage.getItem(`guestSession-${tableId}`)
-          console.log('[CheckoutView] Stored session ID from table-specific storage:', storedSessionId)
-
-          if (storedSessionId) {
-            console.log('[CheckoutView] Restoring session from table-specific storage:', storedSessionId)
-            api.setGuestSession(storedSessionId)
-            // Also save to primary key for consistency
-            sessionStorage.setItem('tabsy-guest-session-id', storedSessionId)
-            existingSessionId = storedSessionId
-          } else {
-            // Attempt 3: Check dining session
-            const diningSession = SessionManager.getDiningSession()
-            if (diningSession?.sessionId) {
-              console.log('[CheckoutView] Found session in dining session, restoring:', diningSession.sessionId)
-              api.setGuestSession(diningSession.sessionId)
-              sessionStorage.setItem('tabsy-guest-session-id', diningSession.sessionId)
-              existingSessionId = diningSession.sessionId
-            }
+          // Final fallback: Check standalone session ID (legacy)
+          const standaloneSessionId = sessionStorage.getItem('tabsy-guest-session-id')
+          if (standaloneSessionId) {
+            console.log('[CheckoutView] ✅ Session recovered from legacy standalone key:', standaloneSessionId)
+            api.setGuestSession(standaloneSessionId)
+            existingSessionId = standaloneSessionId
           }
         }
 
-        // If still no session after all recovery attempts, throw error
+        // If still no session, throw error
         if (!existingSessionId) {
-          console.error('[CheckoutView] Session recovery failed after all attempts')
+          console.error('[CheckoutView] ❌ Session recovery failed. No session found in any storage location.')
           throw new Error('No guest session available. Please refresh the page and try again.')
         }
 

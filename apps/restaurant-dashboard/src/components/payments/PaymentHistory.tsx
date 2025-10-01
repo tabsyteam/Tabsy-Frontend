@@ -222,6 +222,14 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
     setIsModalOpen(true)
   }
 
+  const formatAmount = (amount: any): string => {
+    if (!amount) return '0.00'
+    if (typeof amount === 'number') return amount.toFixed(2)
+    if (typeof amount === 'string') return parseFloat(amount).toFixed(2) || '0.00'
+    if (typeof amount === 'object' && 'toNumber' in amount) return amount.toNumber().toFixed(2)
+    return parseFloat(amount.toString()).toFixed(2) || '0.00'
+  }
+
   if (error) {
     return (
       <div className="p-6 text-center">
@@ -528,16 +536,10 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
 
                     <div className="text-right">
                       <p className="font-semibold text-content-primary">
-                        ${typeof payment.amount === 'number' ? payment.amount.toFixed(2) : '0.00'}
+                        ${formatAmount(payment.amount)}
                       </p>
                       <p className="text-sm text-content-secondary">
                         {format(new Date(payment.createdAt), 'MMM dd, h:mm a')}
-                      </p>
-                    </div>
-
-                    <div className="text-center">
-                      <p className="font-medium text-content-primary">
-                        {payment.paymentMethod?.replace('_', ' ')}
                       </p>
                     </div>
 

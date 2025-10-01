@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { TabsyAPI, createTabsyClient } from '@tabsy/api-client'
+import { unifiedSessionStorage } from '@/lib/unifiedSessionStorage'
 
 interface ApiContextType {
   api: TabsyAPI
@@ -20,16 +21,36 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
   )
   const [isConnected, setIsConnected] = useState(true)
 
-  // Enhanced guest session management
+  // Enhanced guest session management with unified storage integration
   const setGuestSessionWithPersistence = (sessionId: string) => {
     console.log('ApiProvider: Setting and persisting guest session:', sessionId)
     api.setGuestSession(sessionId)
 
-    // Save to multiple storage locations for redundancy
+    // DUAL-WRITE: Persist to unified storage with backward compatibility
     try {
-      sessionStorage.setItem('tabsy-guest-session-id', sessionId)
+      // Get existing session or create minimal one
+      const existingSession = unifiedSessionStorage.getSession()
+      if (existingSession) {
+        // Update existing session
+        unifiedSessionStorage.updateSession({ guestSessionId: sessionId })
+      } else {
+        // Try to reconstruct session from dining session
+        const diningSessionStr = sessionStorage.getItem('tabsy-dining-session')
+        if (diningSessionStr) {
+          const diningSession = JSON.parse(diningSessionStr)
+          unifiedSessionStorage.setSession({
+            guestSessionId: sessionId,
+            tableSessionId: diningSession.tableSessionId || '',
+            restaurantId: diningSession.restaurantId || '',
+            tableId: diningSession.tableId || '',
+            createdAt: Date.now(),
+            lastActivity: Date.now()
+          })
+        }
+      }
 
-      // Also update the dining session if it exists
+      // LEGACY: Keep writing to old keys for backward compatibility
+      sessionStorage.setItem('tabsy-guest-session-id', sessionId)
       const diningSessionStr = sessionStorage.getItem('tabsy-dining-session')
       if (diningSessionStr) {
         const diningSession = JSON.parse(diningSessionStr)
@@ -57,10 +78,18 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // Restore session helper function
+    // DUAL-READ: Restore session from unified storage with legacy fallback
     const restoreSession = () => {
-      // Try multiple possible session keys to ensure compatibility
-      const possibleKeys = ['tabsy-session', 'tabsy-dining-session']
+      // 1. Try unified storage first (NEW)
+      const unifiedSession = unifiedSessionStorage.getSession()
+      if (unifiedSession?.guestSessionId) {
+        console.log('ApiProvider: Restoring session from unified storage:', unifiedSession.guestSessionId)
+        api.setGuestSession(unifiedSession.guestSessionId)
+        return
+      }
+
+      // 2. Fall back to legacy keys for backward compatibility
+      const possibleKeys = ['tabsy-dining-session', 'tabsy-session']
       let sessionFound = false
 
       for (const key of possibleKeys) {
@@ -68,24 +97,25 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
         if (sessionStr && !sessionFound) {
           try {
             const session = JSON.parse(sessionStr)
-            const sessionId = session.sessionId || session.id
+            const sessionId = session.sessionId || session.guestSessionId || session.id
             if (sessionId) {
-              console.log(`ApiProvider: Restoring session ID from ${key}:`, sessionId)
+              console.log(`ApiProvider: Restoring session ID from legacy ${key}:`, sessionId)
               api.setGuestSession(sessionId)
               sessionFound = true
             }
           } catch (error) {
             console.error(`Failed to restore session from ${key}:`, error)
-            sessionStorage.removeItem(key)
           }
         }
       }
 
-      // Also check for standalone session ID
-      const standaloneSessionId = sessionStorage.getItem('tabsy-guest-session-id')
-      if (standaloneSessionId && !sessionFound) {
-        console.log('ApiProvider: Restoring standalone session ID:', standaloneSessionId)
-        api.setGuestSession(standaloneSessionId)
+      // 3. Final fallback: standalone session ID
+      if (!sessionFound) {
+        const standaloneSessionId = sessionStorage.getItem('tabsy-guest-session-id')
+        if (standaloneSessionId) {
+          console.log('ApiProvider: Restoring standalone session ID:', standaloneSessionId)
+          api.setGuestSession(standaloneSessionId)
+        }
       }
     }
 

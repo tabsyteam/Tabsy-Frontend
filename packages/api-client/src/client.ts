@@ -87,11 +87,29 @@ export class TabsyApiClient {
 
         // AUTO-RESTORE: If in-memory session is null, try to restore from sessionStorage
         // This fixes the issue where idle tabs lose in-memory session but sessionStorage persists
+        // DUAL-READ: Check both unified and legacy storage keys
         if (!this.guestSessionId && !isAdminEndpoint && !isPublicEndpoint && !isAuthenticatedRequest && typeof window !== 'undefined') {
-          const storedSessionId = sessionStorage.getItem('tabsy-guest-session-id')
-          if (storedSessionId) {
-            console.log('API Client: Auto-restoring session from sessionStorage:', storedSessionId)
-            this.guestSessionId = storedSessionId
+          // Try unified storage key first (new architecture)
+          const unifiedSessionStr = sessionStorage.getItem('tabsy-session')
+          if (unifiedSessionStr) {
+            try {
+              const unifiedSession = JSON.parse(unifiedSessionStr)
+              if (unifiedSession?.guestSessionId) {
+                console.log('API Client: Auto-restoring session from unified storage:', unifiedSession.guestSessionId)
+                this.guestSessionId = unifiedSession.guestSessionId
+              }
+            } catch (error) {
+              console.error('API Client: Failed to parse unified session:', error)
+            }
+          }
+
+          // Fallback to legacy key if unified not found
+          if (!this.guestSessionId) {
+            const storedSessionId = sessionStorage.getItem('tabsy-guest-session-id')
+            if (storedSessionId) {
+              console.log('API Client: Auto-restoring session from legacy storage:', storedSessionId)
+              this.guestSessionId = storedSessionId
+            }
           }
         }
 
