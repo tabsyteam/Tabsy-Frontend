@@ -2,6 +2,7 @@
 
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Button, useAuth } from "@tabsy/ui-components";
+import { DashboardLayout } from '@/components/layouts/DashboardLayout';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
@@ -31,7 +32,7 @@ import {
   DynamicUserGrowthChart,
   DynamicUserStatusChart
 } from "../../components/charts";
-import { useAdminDashboard, useRestaurants, useUsers, useLiveOrders, useLivePayments } from '@/hooks/api';
+import { useAdminDashboard, useUserGrowthData, useRestaurants, useUsers, useLiveOrders, useLivePayments } from '@/hooks/api';
 import { useAnalyticsUpdates } from '@tabsy/api-client';
 import { formatDistanceToNow } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
@@ -65,8 +66,8 @@ function MetricCard({
     <div className="bg-surface rounded-lg shadow-card p-6 hover:shadow-lg transition-all duration-normal animate-fadeIn">
       <div className="flex items-center">
         <div className="flex-shrink-0">
-          <div className="p-3 rounded-lg bg-gradient-to-br from-primary-light to-secondary-light">
-            <Icon className="h-6 w-6 text-primary" />
+          <div className="p-3 rounded-lg bg-surface-tertiary">
+            <Icon className="h-6 w-6 text-content-brand" />
           </div>
         </div>
         <div className="ml-4 flex-1">
@@ -159,6 +160,7 @@ export default function AdminDashboard(): JSX.Element {
 
   // API Hooks for real data
   const { data: dashboardData, isLoading: dashboardLoading, refetch: refetchDashboard } = useAdminDashboard();
+  const { data: userGrowthData } = useUserGrowthData();
   const { data: liveOrders } = useLiveOrders();
   const { data: livePayments } = useLivePayments();
 
@@ -195,35 +197,33 @@ export default function AdminDashboard(): JSX.Element {
 
   // Calculate system health based on metrics
   const getSystemHealth = () => {
-    if (!dashboardData) return { status: 'Unknown', color: 'gray' };
+    if (!dashboardData) return { status: 'Unknown', color: 'info' };
 
     const load = dashboardData.metrics.systemLoad;
-    if (load < 70) return { status: 'Healthy', color: 'green' };
-    if (load < 85) return { status: 'Elevated', color: 'orange' };
-    return { status: 'Critical', color: 'red' };
+    if (load < 70) return { status: 'Healthy', color: 'primary' }; // Indigo for healthy
+    if (load < 85) return { status: 'Elevated', color: 'warning' };
+    return { status: 'Critical', color: 'error' };
   };
 
   const systemHealth = getSystemHealth();
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gradient-professional">
-        {/* Header */}
-        <header className="bg-surface border-b border-border-tertiary shadow-sm sticky top-0 z-sticky backdrop-blur-professional">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
+      <DashboardLayout breadcrumbs={[{ label: 'Dashboard' }]}>
+        <div>
+          {/* Quick Actions Bar */}
+          <div className="bg-surface border-b border-border-default px-6 py-3">
+            <div className="max-w-7xl mx-auto flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <h1 className="text-2xl font-bold text-gradient-professional">Admin Portal</h1>
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                  systemHealth.color === 'green' ? 'badge-success' :
-                  systemHealth.color === 'orange' ? 'badge-warning' :
-                  systemHealth.color === 'red' ? 'badge-error' :
+                  systemHealth.color === 'primary' ? 'bg-primary/10 text-primary border border-primary/20' :
+                  systemHealth.color === 'warning' ? 'badge-warning' :
+                  systemHealth.color === 'error' ? 'badge-error' :
                   'badge-info'
                 } animate-fadeIn`}>
                   <Zap className="h-3 w-3 mr-1" />
                   System {systemHealth.status}
                 </span>
-                {/* WebSocket connection status removed - Admin portal uses periodic refresh */}
               </div>
               <div className="flex items-center space-x-3">
                 <Button
@@ -250,47 +250,11 @@ export default function AdminDashboard(): JSX.Element {
                     )}
                   </Button>
                 </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => router.push('/settings')}
-                  className="hover-lift"
-                >
-                  <Settings className="h-4 w-4 mr-2" />
-                  Settings
-                </Button>
-
-                {/* User Info and Logout */}
-                <div className="flex items-center space-x-3 pl-4 border-l border-border-tertiary">
-                  <div className="flex items-center space-x-2">
-                    <div className="h-8 w-8 bg-gradient-primary rounded-full flex items-center justify-center shadow-md">
-                      <User className="h-4 w-4 text-primary-foreground" />
-                    </div>
-                    <div className="hidden sm:block">
-                      <p className="text-sm font-medium text-content-primary">
-                        {user?.firstName} {user?.lastName}
-                      </p>
-                      <p className="text-xs text-content-secondary">{user?.role}</p>
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleLogout}
-                    disabled={isLoggingOut}
-                    className="hover-lift"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    {isLoggingOut ? 'Signing out...' : 'Logout'}
-                  </Button>
-                </div>
               </div>
             </div>
           </div>
-        </header>
 
+          {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -399,18 +363,24 @@ export default function AdminDashboard(): JSX.Element {
             {/* Platform Growth Chart */}
             <div className="lg:col-span-2 bg-surface rounded-lg shadow-card p-6 animate-fadeInUp">
               <h3 className="text-lg font-medium text-content-primary mb-4">Platform Growth</h3>
-              <DynamicUserGrowthChart />
+              <DynamicUserGrowthChart data={userGrowthData || dashboardData?.chartData?.users} />
             </div>
 
             {/* Restaurant Status */}
             <div className="bg-surface rounded-lg shadow-card p-6 animate-fadeInUp">
               <h3 className="text-lg font-medium text-content-primary mb-4">Restaurant Status</h3>
-              <DynamicUserStatusChart />
+              <DynamicUserStatusChart
+                data={dashboardData?.restaurantStatus ? [
+                  { name: 'Active', value: dashboardData.restaurantStatus.active, color: '#4F46E5' }, // Indigo-600
+                  { name: 'Pending', value: dashboardData.restaurantStatus.pending, color: '#F97316' }, // Orange-500
+                  { name: 'Suspended', value: dashboardData.restaurantStatus.suspended, color: '#EF4444' } // Red-500
+                ].filter(item => item.value > 0) : []}
+              />
               {dashboardData?.restaurantStatus && (
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <div className="w-3 h-3 rounded-full mr-2 bg-status-success" />
+                      <div className="w-3 h-3 rounded-full mr-2 bg-primary" />
                       <span className="text-sm text-content-secondary">Active</span>
                     </div>
                     <span className="text-sm font-semibold text-content-primary">
@@ -573,7 +543,8 @@ export default function AdminDashboard(): JSX.Element {
             </div>
           </div>
         </main>
-      </div>
+        </div>
+      </DashboardLayout>
     </ProtectedRoute>
   );
 }

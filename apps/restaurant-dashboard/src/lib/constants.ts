@@ -74,6 +74,20 @@ export const NOTIFICATION_LIMITS = {
   PAGE: 100,
 } as const
 
+/**
+ * Notification toast durations (in milliseconds)
+ */
+export const NOTIFICATION_DURATIONS = {
+  /** Success notifications */
+  SUCCESS: 5000,
+  /** Error notifications */
+  ERROR: 8000,
+  /** Warning notifications */
+  WARNING: 6000,
+  /** Info notifications */
+  INFO: 3000,
+} as const
+
 // ============================================================================
 // TIMEOUT CONFIGURATION
 // ============================================================================
@@ -122,6 +136,36 @@ export const RETRY_CONFIG = {
  * Payment invalidation delay (in milliseconds)
  */
 export const PAYMENT_INVALIDATION_DELAY = 2000
+
+/**
+ * Maximum notifications to display
+ */
+export const MAX_NOTIFICATIONS = 5
+
+/**
+ * Payment query limit for pending cash payments
+ */
+export const PAYMENT_QUERY_LIMIT = 1000
+
+// ============================================================================
+// QUERY LIMITS
+// ============================================================================
+
+/**
+ * Default query limits for different data types
+ */
+export const QUERY_LIMITS = {
+  /** Orders per page */
+  ORDERS: 50,
+  /** Payments per page */
+  PAYMENTS: 100,
+  /** Tables per page */
+  TABLES: 100,
+  /** Menu items per page */
+  MENU_ITEMS: 100,
+  /** Notifications per page */
+  NOTIFICATIONS: 50,
+} as const
 
 // ============================================================================
 // ENVIRONMENT URLS

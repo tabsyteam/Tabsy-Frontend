@@ -38,12 +38,12 @@ const semanticColors = {
     elevated: "rgb(var(--surface-elevated) / <alpha-value>)",
   },
 
-  // Background Colors
+  // Background Colors - with fallback to prevent purple flash
   background: {
-    DEFAULT: "rgb(var(--background) / <alpha-value>)",
-    secondary: "rgb(var(--background-secondary) / <alpha-value>)",
-    tertiary: "rgb(var(--background-tertiary) / <alpha-value>)",
-    inverse: "rgb(var(--background-inverse) / <alpha-value>)",
+    DEFAULT: "rgb(var(--background, 249 250 251) / <alpha-value>)",
+    secondary: "rgb(var(--background-secondary, 243 244 246) / <alpha-value>)",
+    tertiary: "rgb(var(--background-tertiary, 229 231 235) / <alpha-value>)",
+    inverse: "rgb(var(--background-inverse, 17 24 39) / <alpha-value>)",
   },
 
   // Content/Text Colors

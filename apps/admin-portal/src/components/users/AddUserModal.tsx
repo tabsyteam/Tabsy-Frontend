@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Button } from '@tabsy/ui-components';
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@tabsy/ui-components';
 import {
   X,
   User,
@@ -11,7 +11,8 @@ import {
   Shield,
   Building,
   Hash,
-  AlertCircle
+  AlertCircle,
+  Store
 } from 'lucide-react';
 import { useCreateUser, useUpdateUser, useRestaurants } from '@/hooks/api';
 import { User as UserType, UserRole, CreateUserRequest, UpdateUserRequest } from '@tabsy/shared-types';
@@ -36,7 +37,8 @@ export default function AddUserModal({
     email: '',
     password: '',
     confirmPassword: '',
-    role: UserRole.RESTAURANT_STAFF as UserRole
+    role: UserRole.RESTAURANT_STAFF as UserRole,
+    restaurantId: '' // For RESTAURANT_OWNER and RESTAURANT_STAFF
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -54,7 +56,8 @@ export default function AddUserModal({
         email: user.email || '',
         password: '',
         confirmPassword: '',
-        role: user.role
+        role: user.role,
+        restaurantId: '' // Can't edit restaurant association yet
       });
     }
   }, [user]);
@@ -104,8 +107,12 @@ export default function AddUserModal({
       }
     }
 
-    // Role-specific validation
-    // Restaurant association handled through separate API calls
+    // Role-specific validation - Restaurant is required for RESTAURANT_OWNER and RESTAURANT_STAFF
+    if (formData.role === UserRole.RESTAURANT_OWNER || formData.role === UserRole.RESTAURANT_STAFF) {
+      if (!formData.restaurantId) {
+        newErrors.restaurantId = 'Restaurant is required for this role';
+      }
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -127,7 +134,10 @@ export default function AddUserModal({
         role: formData.role
       };
 
-      // Restaurant association handled through RestaurantOwner/RestaurantStaff models
+      // Add restaurantId for RESTAURANT_OWNER and RESTAURANT_STAFF roles
+      if (formData.role === UserRole.RESTAURANT_OWNER || formData.role === UserRole.RESTAURANT_STAFF) {
+        userData.restaurantId = formData.restaurantId;
+      }
 
       if (isEditMode) {
         // Update existing user
@@ -292,18 +302,73 @@ export default function AddUserModal({
                 <label className="block text-sm font-medium text-content-primary mb-2">
                   User Role *
                 </label>
-                <select
-                  name="role"
+                <Select
                   value={formData.role}
-                  onChange={handleInputChange}
-                  className="input-professional w-full"
+                  onValueChange={(value) => {
+                    setFormData(prev => ({ ...prev, role: value as UserRole }));
+                  }}
                 >
-                  <option value={UserRole.CUSTOMER}>Customer</option>
-                  <option value={UserRole.RESTAURANT_STAFF}>Restaurant Staff</option>
-                  <option value={UserRole.RESTAURANT_OWNER}>Restaurant Owner</option>
-                  <option value={UserRole.ADMIN}>Administrator</option>
-                </select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select user role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={UserRole.CUSTOMER}>Customer</SelectItem>
+                    <SelectItem value={UserRole.RESTAURANT_STAFF}>Restaurant Staff</SelectItem>
+                    <SelectItem value={UserRole.RESTAURANT_OWNER}>Restaurant Owner</SelectItem>
+                    <SelectItem value={UserRole.ADMIN}>Administrator</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              {/* Restaurant Selection (only for restaurant roles) */}
+              {(formData.role === UserRole.RESTAURANT_OWNER || formData.role === UserRole.RESTAURANT_STAFF) && (
+                <div>
+                  <label className="block text-sm font-medium text-content-primary mb-2">
+                    Restaurant *
+                  </label>
+                  <Select
+                    value={formData.restaurantId}
+                    onValueChange={(value) => {
+                      setFormData(prev => ({ ...prev, restaurantId: value }));
+                      if (errors.restaurantId) {
+                        setErrors(prev => {
+                          const newErrors = { ...prev };
+                          delete newErrors.restaurantId;
+                          return newErrors;
+                        });
+                      }
+                    }}
+                    disabled={isEditMode}
+                  >
+                    <SelectTrigger className={`w-full ${errors.restaurantId ? 'border-status-error' : ''}`}>
+                      <SelectValue placeholder="Select a restaurant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {restaurants && restaurants.length > 0 ? (
+                        restaurants.map((restaurant) => (
+                          <SelectItem key={restaurant.id} value={restaurant.id}>
+                            {restaurant.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-2 text-sm text-content-tertiary">
+                          No restaurants available
+                        </div>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {errors.restaurantId && <p className="mt-1 text-sm text-status-error">{errors.restaurantId}</p>}
+                  {isEditMode && (
+                    <p className="mt-1 text-xs text-content-tertiary">Restaurant cannot be changed after creation</p>
+                  )}
+                  {!isEditMode && (
+                    <p className="mt-1 text-xs text-content-tertiary flex items-center">
+                      <Store className="h-3 w-3 mr-1" />
+                      This user will be linked to the selected restaurant
+                    </p>
+                  )}
+                </div>
+              )}
 
             </div>
 

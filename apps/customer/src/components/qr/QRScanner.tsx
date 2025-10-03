@@ -94,9 +94,21 @@ export function QRScanner() {
 
         if (sessionResponse.success && sessionResponse.data) {
           sessionStorage.setItem('tabsy-session', JSON.stringify(sessionResponse.data))
-          
+
+          // Store complete session info in SessionManager with restaurant name and table number
+          const { SessionManager } = await import('@/lib/session')
+          SessionManager.setDiningSession({
+            restaurantId: restaurant.id,
+            tableId: table.id,
+            restaurantName: restaurant.name,
+            tableName: table.number,
+            sessionId: sessionResponse.data.sessionId,
+            tableSessionId: sessionResponse.data.tableSessionId,
+            createdAt: Date.now()
+          })
+
           toast.success(`Welcome to ${restaurant.name}!`)
-          
+
           // Navigate to menu
           router.push(`/menu?restaurant=${restaurant.id}&table=${table.id}`)
         } else {

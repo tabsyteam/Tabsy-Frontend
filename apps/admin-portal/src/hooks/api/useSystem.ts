@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@tabsy/ui-components';
+import { tabsyClient } from '@tabsy/api-client';
 import { toast } from 'sonner';
 
 // System Settings Hook
@@ -9,8 +10,8 @@ export function useSystemSettings() {
   return useQuery({
     queryKey: ['admin', 'system', 'settings'],
     queryFn: async () => {
-      // TODO: Implement system settings API call
-      // Placeholder data structure
+      // TODO: Backend needs to implement /admin/system/settings endpoint
+      // For now, returning minimal structure
       return {
         id: 'system',
         maintenanceMode: false,
@@ -28,34 +29,46 @@ export function useSystemSettings() {
   });
 }
 
-// System Health Hook
+// System Health Hook - Uses real /health endpoint
 export function useSystemHealth() {
   const { isAuthenticated } = useAuth();
 
   return useQuery({
     queryKey: ['admin', 'system', 'health'],
     queryFn: async () => {
-      // TODO: Implement system health API call
-      // Placeholder data structure
+      // Call real health endpoint using environment variable
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${baseUrl}/health`);
+      const healthData = await response.json();
+
+      // Transform backend health data to expected format
+      const memoryUsed = parseFloat(healthData.memory?.used || '0');
+      const memoryTotal = parseFloat(healthData.memory?.total || '0');
+      const memoryPercent = memoryTotal > 0 ? (memoryUsed / memoryTotal) * 100 : 0;
+
       return {
-        status: 'healthy',
-        uptime: '99.9%',
-        cpuUsage: '45%',
-        memoryUsage: '67%',
-        diskUsage: '32%',
-        dbConnections: 12,
-        activeUsers: 245,
-        lastCheck: new Date().toISOString(),
+        status: healthData.status || 'unknown',
+        uptime: healthData.uptime ? `${Math.floor(healthData.uptime / 3600)}h ${Math.floor((healthData.uptime % 3600) / 60)}m` : 'N/A',
+        cpuUsage: 'N/A', // Backend doesn't provide CPU usage yet
+        memoryUsage: `${memoryPercent.toFixed(1)}%`,
+        memory: healthData.memory,
+        diskUsage: 'N/A', // Backend doesn't provide disk usage yet
+        dbConnections: 'N/A', // Backend doesn't provide this yet
+        activeUsers: 'N/A', // Backend doesn't provide this yet
+        lastCheck: healthData.timestamp || new Date().toISOString(),
+        responseTime: healthData.responseTime || 'N/A',
+        version: healthData.version || 'Unknown',
         services: {
-          database: 'healthy',
-          redis: 'healthy',
-          api: 'healthy',
-          storage: 'healthy'
-        }
+          database: healthData.services?.database || 'unknown',
+          redis: healthData.services?.redis || 'unknown',
+          api: healthData.status === 'healthy' ? 'healthy' : 'unhealthy',
+          storage: 'unknown' // Backend doesn't provide this yet
+        },
+        redis: healthData.redis // Include Redis details if available
       };
     },
-    enabled: isAuthenticated,
-    refetchInterval: 30000 // 30 seconds
+    enabled: isAuthenticated
+    // Removed refetchInterval - relying on WebSocket events for real-time updates
   });
 }
 

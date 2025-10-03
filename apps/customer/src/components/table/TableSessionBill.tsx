@@ -9,6 +9,7 @@ import { SessionManager } from '@/lib/session'
 import { Button } from '@tabsy/ui-components'
 import { CreditCard, Split, Users, AlertTriangle, RefreshCw } from 'lucide-react'
 import { PaymentType } from '@/constants/payment'
+import { useBillStatus } from '@/hooks/useBillData' // ✅ Updated to use React Query version
 import type {
   TableSessionBill as TableSessionBillType,
   TableSessionUser,
@@ -31,49 +32,20 @@ const TableSessionBillComponent = ({
   onPaymentInitiated
 }: TableSessionBillProps) => {
   const router = useRouter()
-  const [bill, setBill] = useState<TableSessionBillType | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [retryCount, setRetryCount] = useState(0)
 
-  // Memoized bill loading function with enhanced error handling
-  const loadBill = useCallback(async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
+  // ARCHITECTURE FIX: Use shared useBillStatus hook instead of duplicate state
+  // This ensures bill amount is consistent across BottomNav badge and this component
+  const {
+    bill,
+    isLoading,
+    error,
+    refreshBillStatus
+  } = useBillStatus()
 
-      const response = await api.tableSession.getBill(tableSession.id)
-
-      if (response.success && response.data) {
-        setBill(response.data)
-        setRetryCount(0) // Reset retry count on success
-      } else {
-        throw new Error(response.error?.message || 'Failed to load bill')
-      }
-    } catch (error: any) {
-      const errorMessage = error?.message || 'Failed to load bill'
-      console.error('[TableSessionBill] Error loading bill:', error)
-      setError(errorMessage)
-
-      // Only show toast on first error, not retries
-      if (retryCount === 0) {
-        toast.error(errorMessage)
-      }
-    } finally {
-      setIsLoading(false)
-    }
-  }, [api, tableSession.id, retryCount])
-
-  // Load bill data on mount and when dependencies change
-  useEffect(() => {
-    loadBill()
-  }, [loadBill])
-
-  // Retry function
+  // Retry function - now delegates to hook's refresh
   const handleRetry = useCallback(() => {
-    setRetryCount(prev => prev + 1)
-    loadBill()
-  }, [loadBill])
+    refreshBillStatus()
+  }, [refreshBillStatus])
 
 
   // Memoized payment initiation functions
@@ -81,7 +53,7 @@ const TableSessionBillComponent = ({
     try {
       const session = SessionManager.getDiningSession()
       if (!session) {
-        toast.error('Session not found')
+        toast.error('Session not found. Please scan the QR code at your table.')
         return
       }
 
@@ -106,7 +78,7 @@ const TableSessionBillComponent = ({
     try {
       const session = SessionManager.getDiningSession()
       if (!session) {
-        toast.error('Session not found')
+        toast.error('Session not found. Please scan the QR code at your table.')
         return
       }
 
@@ -127,13 +99,53 @@ const TableSessionBillComponent = ({
     }
   }, [tableSession.id, router, onPaymentInitiated])
 
+  // Recalculate bill summary excluding CANCELLED orders
+  const adjustedBillSummary = useMemo(() => {
+    if (!bill) return null
+
+    let adjustedSubtotal = 0
+    let adjustedTax = 0
+    let adjustedTip = 0
+    let adjustedTotalPaid = 0
+
+    // Calculate totals from only active (non-cancelled) orders
+    Object.values(bill.billByRound).forEach((round: any) => {
+      round.orders
+        .filter((order: any) => order.status !== 'CANCELLED')
+        .forEach((order: any) => {
+          adjustedSubtotal += Number(order.subtotal || 0)
+          adjustedTax += Number(order.tax || 0)
+          adjustedTip += Number(order.tip || 0)
+
+          // Calculate paid amount for this order
+          const orderPaid = order.payments
+            ?.filter((p: any) => p.status === 'COMPLETED')
+            ?.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0) || 0
+          adjustedTotalPaid += orderPaid
+        })
+    })
+
+    const adjustedGrandTotal = adjustedSubtotal + adjustedTax + adjustedTip
+    const adjustedRemainingBalance = adjustedGrandTotal - adjustedTotalPaid
+
+    return {
+      subtotal: adjustedSubtotal,
+      tax: adjustedTax,
+      tip: adjustedTip,
+      grandTotal: adjustedGrandTotal,
+      totalPaid: adjustedTotalPaid,
+      remainingBalance: adjustedRemainingBalance,
+      isFullyPaid: adjustedRemainingBalance <= 0.01
+    }
+  }, [bill])
+
   // Helper function for better floating-point comparison
   const hasRemainingBalance = useMemo(() => {
-    if (!bill) return false
+    if (!adjustedBillSummary) return false
     // Use both isFullyPaid flag and remaining balance with small epsilon for floating-point precision
     const epsilon = 0.01 // 1 cent tolerance
-    return !bill.summary.isFullyPaid && bill.summary.remainingBalance > epsilon
-  }, [bill])
+    return !adjustedBillSummary.isFullyPaid && adjustedBillSummary.remainingBalance > epsilon
+  }, [adjustedBillSummary])
 
   // Enhanced loading state
   if (isLoading) {
@@ -192,32 +204,32 @@ const TableSessionBillComponent = ({
           </div>
         </div>
 
-        {/* Enhanced Summary */}
+        {/* Enhanced Summary - Using adjusted totals (excluding CANCELLED orders) */}
         <div className="space-y-3">
           <div className="flex justify-between items-center py-2">
             <span className="text-content-secondary">Subtotal</span>
-            <span className="font-medium">${bill.summary.subtotal.toFixed(2)}</span>
+            <span className="font-medium">${(adjustedBillSummary?.subtotal || 0).toFixed(2)}</span>
           </div>
           <div className="flex justify-between items-center py-2">
             <span className="text-content-secondary">Tax</span>
-            <span className="font-medium">${bill.summary.tax.toFixed(2)}</span>
+            <span className="font-medium">${(adjustedBillSummary?.tax || 0).toFixed(2)}</span>
           </div>
           <div className="flex justify-between items-center py-2">
             <span className="text-content-secondary">Tip</span>
-            <span className="font-medium">${bill.summary.tip.toFixed(2)}</span>
+            <span className="font-medium">${(adjustedBillSummary?.tip || 0).toFixed(2)}</span>
           </div>
 
           <div className="border-t border-default/50 pt-3">
             <div className="flex justify-between items-center py-2">
               <span className="font-semibold text-content-primary">Total</span>
-              <span className="font-bold text-lg">${bill.summary.grandTotal.toFixed(2)}</span>
+              <span className="font-bold text-lg">${(adjustedBillSummary?.grandTotal || 0).toFixed(2)}</span>
             </div>
           </div>
 
-          {bill.summary.totalPaid > 0 && (
+          {(adjustedBillSummary?.totalPaid || 0) > 0 && (
             <div className="flex justify-between items-center py-2 bg-status-success/10 rounded-lg px-3 -mx-1">
               <span className="font-medium text-status-success">Amount Paid</span>
-              <span className="font-bold text-status-success">-${bill.summary.totalPaid.toFixed(2)}</span>
+              <span className="font-bold text-status-success">-${(adjustedBillSummary?.totalPaid || 0).toFixed(2)}</span>
             </div>
           )}
 
@@ -235,7 +247,7 @@ const TableSessionBillComponent = ({
               <span className={`font-bold text-xl ${
                 hasRemainingBalance ? 'text-status-warning' : 'text-status-success'
               }`}>
-                ${bill.summary.remainingBalance.toFixed(2)}
+                ${(adjustedBillSummary?.remainingBalance || 0).toFixed(2)}
               </span>
             </div>
           </div>
@@ -245,71 +257,112 @@ const TableSessionBillComponent = ({
       {/* Order Rounds */}
       <div className="space-y-4">
         <h3 className="font-semibold">Order History</h3>
-        {Object.entries(bill.billByRound).map(([roundNum, round]) => (
-          <div key={roundNum} className="bg-surface rounded-lg border border-default p-4">
-            <h4 className="font-medium mb-3">Round {roundNum}</h4>
-            <div className="space-y-3">
-              {round.orders.map(order => (
-                <div key={order.orderId} className={`rounded p-3 transition-all ${
-                  (order as any).isPaid
-                    ? 'bg-status-success/10 border-2 border-status-success/20 opacity-75'
-                    : 'bg-surface-secondary'
-                }`}>
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center space-x-2">
-                      <span className={`font-medium ${(order as any).isPaid ? 'line-through text-status-success' : ''}`}>
-                        {order.orderNumber}
-                      </span>
-                      {(order as any).isPaid && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-status-success/20 text-status-success">
-                          ✓ Paid
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-sm text-content-secondary">
-                      by {order.placedBy}
-                    </span>
-                  </div>
-                  <div className="space-y-1">
-                    {order.items.map((item: any, idx: number) => (
-                      <div key={idx} className={`flex justify-between text-sm ${
-                        (order as any).isPaid ? 'text-status-success' : ''
-                      }`}>
-                        <span className={(order as any).isPaid ? 'line-through' : ''}>
-                          {item.quantity}x {item.name}
-                        </span>
-                        <span className={(order as any).isPaid ? 'line-through' : ''}>
-                          ${Number(item.subtotal || 0).toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className={`flex justify-between font-medium mt-2 pt-2 border-t border-default ${
-                    (order as any).isPaid ? 'text-status-success' : ''
-                  }`}>
-                    <span className={(order as any).isPaid ? 'line-through' : ''}>Order Total</span>
-                    <span className={(order as any).isPaid ? 'line-through' : ''}>
-                      ${Number(order.total || 0).toFixed(2)}
-                    </span>
-                  </div>
-                  {(order as any).isPaid && (order as any).payments && (order as any).payments.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-status-success/30">
-                      <div className="text-xs text-status-success">
-                        Payment: {(order as any).payments.map((p: any) =>
-                          `${p.method} $${Number(p.amount).toFixed(2)}`
-                        ).join(', ')}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            <div className="flex justify-between font-medium mt-3 pt-3 border-t border-default">
-              <span>Round {roundNum} Total</span>
-              <span>${round.roundTotal.toFixed(2)}</span>
-            </div>
+        {Object.entries(bill.billByRound).filter(([, round]) =>
+          round.orders.some((order: any) => order.status !== 'CANCELLED')
+        ).length === 0 ? (
+          <div className="bg-surface rounded-lg border border-default p-8 text-center">
+            <p className="text-content-secondary">All orders have been cancelled</p>
           </div>
-        ))}
+        ) : (
+          Object.entries(bill.billByRound).map(([roundNum, round]) => {
+          // Filter out CANCELLED orders - customers should not see or pay for cancelled orders
+          const activeOrders = round.orders.filter((order: any) => order.status !== 'CANCELLED')
+
+          // Skip this round entirely if all orders were cancelled
+          if (activeOrders.length === 0) {
+            return null
+          }
+
+          // Determine payment status from payments array
+          const ordersWithPaymentStatus = activeOrders.map((order: any) => {
+            // Calculate total paid amount from payments array
+            const totalPaidForOrder = order.payments
+              ?.filter((p: any) => p.status === 'COMPLETED')
+              ?.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0) || 0;
+
+            // Order is paid if total paid equals or exceeds order total (with small epsilon for floating point)
+            const isPaid = order.isPaid ?? (totalPaidForOrder >= Number(order.total) - 0.01);
+
+            return {
+              ...order,
+              isPaid,
+              paidAmount: totalPaidForOrder
+            };
+          });
+
+          const paidOrdersCount = ordersWithPaymentStatus.filter((o) => o.isPaid).length
+          const totalOrdersCount = ordersWithPaymentStatus.length
+          const hasUnpaidOrders = ordersWithPaymentStatus.some((o) => !o.isPaid)
+
+          return (
+            <div key={roundNum} className="bg-surface rounded-lg border border-default p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium">Round {roundNum}</h4>
+                {paidOrdersCount > 0 && (
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    hasUnpaidOrders
+                      ? 'bg-status-warning/10 text-status-warning'
+                      : 'bg-status-success/10 text-status-success'
+                  }`}>
+                    {paidOrdersCount} of {totalOrdersCount} paid
+                  </span>
+                )}
+              </div>
+              <div className="space-y-3">
+                {ordersWithPaymentStatus.map(order => (
+                  <div key={order.orderId} className={`rounded p-3 transition-all ${
+                    order.isPaid
+                      ? 'bg-status-success/10 border-2 border-status-success/20 opacity-75'
+                      : 'bg-surface-secondary'
+                  }`}>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className={`font-medium ${order.isPaid ? 'line-through text-status-success' : ''}`}>
+                          {order.orderNumber}
+                        </span>
+                        {order.isPaid && (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-status-success/20 text-status-success">
+                            ✓ Paid
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-sm text-content-secondary">
+                        by {order.placedBy}
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {order.items.map((item, idx: number) => (
+                        <div key={idx} className={`flex justify-between text-sm ${
+                          order.isPaid ? 'text-status-success' : ''
+                        }`}>
+                          <span className={order.isPaid ? 'line-through' : ''}>
+                            {item.quantity}x {item.name}
+                          </span>
+                          <span className={order.isPaid ? 'line-through' : ''}>
+                            ${Number(item.subtotal || 0).toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className={`flex justify-between font-medium mt-2 pt-2 border-t border-default ${
+                      order.isPaid ? 'text-status-success' : ''
+                    }`}>
+                      <span className={order.isPaid ? 'line-through' : ''}>Order Total</span>
+                      <span className={order.isPaid ? 'line-through' : ''}>
+                        ${Number(order.total || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between font-medium mt-3 pt-3 border-t border-default">
+                <span>Round {roundNum} Total</span>
+                <span>${activeOrders.reduce((sum, order: any) => sum + Number(order.total || 0), 0).toFixed(2)}</span>
+              </div>
+            </div>
+          )
+        })
+        )}
       </div>
 
       {/* Payment Options - Only show when there's an outstanding balance */}
@@ -336,7 +389,7 @@ const TableSessionBillComponent = ({
               <CreditCard className="w-5 h-5" />
               <div className="flex flex-col items-center">
                 <span className="font-semibold">Pay Full Amount</span>
-                <span className="text-sm opacity-90">${bill.summary.remainingBalance.toFixed(2)}</span>
+                <span className="text-sm opacity-90">${(adjustedBillSummary?.remainingBalance || 0).toFixed(2)}</span>
               </div>
             </Button>
 
@@ -378,7 +431,7 @@ const TableSessionBillComponent = ({
       )}
 
       {/* Enhanced Payment Complete Section */}
-      {bill.summary.isFullyPaid && (
+      {adjustedBillSummary?.isFullyPaid && (
         <div className="relative overflow-hidden bg-gradient-to-br from-surface via-surface-secondary to-surface-tertiary border-2 border-status-success/30 rounded-2xl p-8 text-center shadow-lg">
           {/* Decorative background pattern */}
           <div className="absolute inset-0 opacity-5">
@@ -402,7 +455,7 @@ const TableSessionBillComponent = ({
               {/* Payment summary */}
               <div className="inline-flex items-center justify-center bg-surface/60 backdrop-blur-sm border border-status-success/30 rounded-full px-4 py-2 mt-4">
                 <span className="text-sm font-semibold text-status-success">
-                  Total Paid: ${bill.summary.totalPaid.toFixed(2)}
+                  Total Paid: ${(adjustedBillSummary?.totalPaid || 0).toFixed(2)}
                 </span>
               </div>
             </div>

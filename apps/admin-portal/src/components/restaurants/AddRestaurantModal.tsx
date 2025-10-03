@@ -5,13 +5,10 @@ import { Button } from '@tabsy/ui-components';
 import {
   X,
   Store,
-  User,
   MapPin,
-  Clock,
   Phone,
   Mail,
-  Globe,
-  DollarSign
+  Globe
 } from 'lucide-react';
 import { useCreateRestaurant, useUpdateRestaurant } from '@/hooks/api';
 import { Restaurant, CreateRestaurantRequest, UpdateRestaurantRequest } from '@tabsy/shared-types';
@@ -23,12 +20,6 @@ interface AddRestaurantModalProps {
   onSuccess?: () => void;
 }
 
-const cuisineTypes = [
-  'Italian', 'Chinese', 'Japanese', 'Mexican', 'Indian', 'Thai', 'American',
-  'French', 'Mediterranean', 'Korean', 'Vietnamese', 'Greek', 'Turkish',
-  'Lebanese', 'Ethiopian', 'Brazilian', 'Peruvian', 'Spanish', 'German', 'Other'
-];
-
 export default function AddRestaurantModal({
   restaurant,
   onClose,
@@ -39,7 +30,6 @@ export default function AddRestaurantModal({
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    cuisine: '',
     email: '',
     phone: '',
     website: '',
@@ -47,10 +37,7 @@ export default function AddRestaurantModal({
     city: '',
     state: '',
     zipCode: '',
-    country: 'USA',
-    openingHours: '9:00 AM - 9:00 PM',
-    posEnabled: false,
-    posProvider: ''
+    country: 'USA'
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -64,7 +51,6 @@ export default function AddRestaurantModal({
       setFormData({
         name: restaurant.name || '',
         description: restaurant.description || '',
-        cuisine: Array.isArray(restaurant.cuisine) ? restaurant.cuisine.join(', ') : (restaurant.cuisine || ''),
         email: restaurant.email || '',
         phone: restaurant.phoneNumber || '',
         website: restaurant.website || '',
@@ -72,10 +58,7 @@ export default function AddRestaurantModal({
         city: restaurant.city || '',
         state: restaurant.state || '',
         zipCode: restaurant.zipCode || '',
-        country: restaurant.country || 'USA',
-        openingHours: typeof restaurant.openingHours === 'string' ? restaurant.openingHours : '9:00 AM - 9:00 PM',
-        posEnabled: false,
-        posProvider: ''
+        country: restaurant.country || 'USA'
       });
     }
   }, [restaurant]);
@@ -167,10 +150,8 @@ export default function AddRestaurantModal({
           phoneNumber: formData.phone,
           email: formData.email,
           website: formData.website || undefined,
-          cuisine: formData.cuisine ? formData.cuisine.split(',').map(c => c.trim()) : [],
-          priceRange: 2 as const, // Default to moderate pricing
-          active: true,
-          openingHours: formData.openingHours
+          active: true
+          // Note: cuisine, priceRange, and openingHours are not accepted by backend validator
         };
 
         await createRestaurant.mutateAsync(createData);
@@ -226,23 +207,6 @@ export default function AddRestaurantModal({
                   placeholder="Enter restaurant name"
                 />
                 {errors.name && <p className="mt-1 text-sm text-status-error">{errors.name}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-content-primary mb-2">
-                  Cuisine Type
-                </label>
-                <select
-                  name="cuisine"
-                  value={formData.cuisine}
-                  onChange={handleInputChange}
-                  className="input-professional w-full"
-                >
-                  <option value="">Select cuisine type</option>
-                  {cuisineTypes.map(cuisine => (
-                    <option key={cuisine} value={cuisine}>{cuisine}</option>
-                  ))}
-                </select>
               </div>
 
               <div className="md:col-span-2">
@@ -407,54 +371,6 @@ export default function AddRestaurantModal({
             </div>
           </div>
 
-          {/* Business Hours & Settings */}
-          <div>
-            <h3 className="text-lg font-medium text-content-primary mb-4 flex items-center">
-              <Clock className="h-5 w-5 mr-2 text-primary" />
-              Business Settings
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-content-primary mb-2">
-                  Opening Hours
-                </label>
-                <input
-                  type="text"
-                  name="openingHours"
-                  value={formData.openingHours}
-                  onChange={handleInputChange}
-                  className="input-professional w-full"
-                  placeholder="9:00 AM - 9:00 PM"
-                />
-              </div>
-
-              <div className="flex items-center space-x-4">
-                <label className="flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="posEnabled"
-                    checked={formData.posEnabled}
-                    onChange={handleInputChange}
-                    className="rounded border-border-tertiary text-primary focus:ring-primary"
-                  />
-                  <span className="ml-2 text-sm font-medium text-content-primary">
-                    POS Enabled
-                  </span>
-                </label>
-
-                {formData.posEnabled && (
-                  <input
-                    type="text"
-                    name="posProvider"
-                    value={formData.posProvider}
-                    onChange={handleInputChange}
-                    className="input-professional flex-1"
-                    placeholder="POS Provider"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
 
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-6 border-t border-border-tertiary">

@@ -147,12 +147,17 @@ export interface TableSessionBill {
   sessionCode: string;
   billByRound: {
     [roundNumber: number]: {
+      roundNumber: number;
       roundTotal: number;
+      paidAmount: number;
+      remainingAmount: number;
       orders: {
         orderId: string;
         orderNumber: string;
         placedBy: string;
         total: number;
+        isPaid: boolean;
+        paidAmount: number;
         items: {
           id: string;
           name: string;

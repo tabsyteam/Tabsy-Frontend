@@ -4,28 +4,55 @@ import { useState, useEffect } from 'react'
 import { SessionManager } from '@/lib/session'
 import { Button, Card } from '@tabsy/ui-components'
 import { Clock, AlertTriangle, X } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface SessionExpiryNotificationProps {
   className?: string
 }
 
 export default function SessionExpiryNotification({ className }: SessionExpiryNotificationProps) {
-  const [expiryInfo, setExpiryInfo] = useState(SessionManager.getSessionExpiryInfo())
+  // FIXED: Initialize to null to prevent hydration mismatch
+  // Session info will be set client-side only in useEffect
+  const [expiryInfo, setExpiryInfo] = useState<ReturnType<typeof SessionManager.getSessionExpiryInfo> | null>(null)
   const [isDismissed, setIsDismissed] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+  const [isExtending, setIsExtending] = useState(false)
 
+  // FIXED: Set initial value and interval only on client after hydration
   useEffect(() => {
+    // Set mounted flag to prevent hydration mismatch
+    setIsMounted(true)
+
+    // Get initial expiry info on client side only
+    const info = SessionManager.getSessionExpiryInfo()
+    console.log('[SessionExpiryNotification] Initial expiry info:', info)
+    setExpiryInfo(info)
+
+    // Set up interval for updates - check more frequently to show live countdown
     const interval = setInterval(() => {
+      // Don't update if user just dismissed
+      if (isDismissed) return
+
       const info = SessionManager.getSessionExpiryInfo()
+      console.log('[SessionExpiryNotification] Interval update - expiry info:', {
+        minutesRemaining: info.minutesRemaining,
+        source: 'interval'
+      })
       setExpiryInfo(info)
 
       // If session is expired, handle it
       if (info.isExpired) {
         SessionManager.handleSessionExpiry()
       }
-    }, 30000) // Check every 30 seconds
+    }, 5000) // Check every 5 seconds for more responsive UI
 
     return () => clearInterval(interval)
-  }, [])
+  }, [isDismissed]) // Re-run if isDismissed changes
+
+  // FIXED: Don't render anything until client-side hydration complete
+  if (!isMounted || !expiryInfo) {
+    return null
+  }
 
   // Don't show notification if:
   // - Session is expired (it will be handled)
@@ -65,11 +92,41 @@ export default function SessionExpiryNotification({ className }: SessionExpiryNo
     return <Clock className="h-4 w-4" />
   }
 
-  const handleExtendSession = () => {
-    // Update last activity to effectively extend session
-    SessionManager.updateLastActivity()
-    setExpiryInfo(SessionManager.getSessionExpiryInfo())
-    setIsDismissed(true)
+  const handleExtendSession = async () => {
+    console.log('[SessionExpiryNotification] Starting session extension...')
+    console.log('[SessionExpiryNotification] Current expiry info BEFORE:', expiryInfo)
+
+    setIsExtending(true)
+
+    try {
+      // Call backend API to extend table session (extends by 30 minutes)
+      const success = await SessionManager.extendSession()
+
+      if (success) {
+        console.log('[SessionExpiryNotification] Extension successful!')
+
+        // Refresh expiry info to show updated time
+        const newExpiryInfo = SessionManager.getSessionExpiryInfo()
+        console.log('[SessionExpiryNotification] New expiry info AFTER:', newExpiryInfo)
+
+        setExpiryInfo(newExpiryInfo)
+
+        // Show success message
+        toast.success('Session extended by 30 minutes')
+
+        // Dismiss notification after showing updated info
+        setTimeout(() => {
+          setIsDismissed(true)
+        }, 2000) // Give user 2 seconds to see the updated time
+      } else {
+        toast.error('Failed to extend session. Please try again.')
+      }
+    } catch (error) {
+      console.error('[SessionExpiryNotification] Error extending session:', error)
+      toast.error('Failed to extend session. Please try again.')
+    } finally {
+      setIsExtending(false)
+    }
   }
 
   const handleDismiss = () => {
@@ -105,14 +162,16 @@ export default function SessionExpiryNotification({ className }: SessionExpiryNo
                   size="sm"
                   variant="secondary"
                   onClick={handleExtendSession}
+                  disabled={isExtending}
                   className="h-7 px-2 text-xs"
                 >
-                  Continue Session
+                  {isExtending ? 'Extending...' : 'Continue Session'}
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={handleDismiss}
+                  disabled={isExtending}
                   className="h-7 px-2 text-xs"
                 >
                   Dismiss
@@ -134,9 +193,15 @@ export default function SessionExpiryNotification({ className }: SessionExpiryNo
 
 // Hook for checking session expiry status
 export function useSessionExpiry() {
-  const [expiryInfo, setExpiryInfo] = useState(SessionManager.getSessionExpiryInfo())
+  // FIXED: Initialize to null to prevent hydration mismatch
+  const [expiryInfo, setExpiryInfo] = useState<ReturnType<typeof SessionManager.getSessionExpiryInfo> | null>(null)
 
   useEffect(() => {
+    // Get initial expiry info on client side only
+    const info = SessionManager.getSessionExpiryInfo()
+    setExpiryInfo(info)
+
+    // Set up interval for updates
     const interval = setInterval(() => {
       const info = SessionManager.getSessionExpiryInfo()
       setExpiryInfo(info)
@@ -151,7 +216,11 @@ export function useSessionExpiry() {
   }, [])
 
   return {
-    ...expiryInfo,
+    // FIXED: Provide safe defaults when expiryInfo is null (during SSR/hydration)
+    isExpired: expiryInfo?.isExpired ?? false,
+    isExpiringSoon: expiryInfo?.isExpiringSoon ?? false,
+    minutesRemaining: expiryInfo?.minutesRemaining ?? null,
+    sessionEndTime: expiryInfo?.sessionEndTime ?? null,
     extendSession: () => {
       SessionManager.updateLastActivity()
       setExpiryInfo(SessionManager.getSessionExpiryInfo())

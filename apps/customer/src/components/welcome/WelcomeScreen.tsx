@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@tabsy/ui-components'
 import { Smartphone, QrCode, Utensils, CreditCard, ClipboardList, ArrowRight } from 'lucide-react'
+import { dualReadSession } from '@/lib/unifiedSessionStorage'
 import { SessionManager } from '@/lib/session'
 
 export function WelcomeScreen() {

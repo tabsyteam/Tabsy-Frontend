@@ -238,9 +238,23 @@ export function PaymentOverview({ restaurantId, isVisible = true }: PaymentOverv
     const failedPayments = todayPayments.filter(p => p.status === 'FAILED')
     const refundedPayments = todayPayments.filter(p => p.status === 'REFUNDED')
 
-    const cardPayments = completedPayments.filter(p => p.method === 'CARD')
-    const walletPayments = completedPayments.filter(p => p.method === 'DIGITAL_WALLET')
-    const cashPayments = completedPayments.filter(p => p.method === 'CASH')
+    const cardPayments = completedPayments.filter(p =>
+      p.paymentMethod === 'CREDIT_CARD' || p.paymentMethod === 'DEBIT_CARD'
+    )
+    const walletPayments = completedPayments.filter(p => p.paymentMethod === 'MOBILE_PAYMENT')
+    const cashPayments = completedPayments.filter(p => p.paymentMethod === 'CASH')
+
+    // Debug logging for payment methods
+    if (completedPayments.length > 0 && process.env.NODE_ENV === 'development') {
+      console.log('[PaymentOverview] Payment method breakdown:', {
+        total: completedPayments.length,
+        paymentMethods: completedPayments.map(p => p.paymentMethod),
+        cardPayments: cardPayments.length,
+        walletPayments: walletPayments.length,
+        cashPayments: cashPayments.length,
+        samplePayment: completedPayments[0]
+      })
+    }
 
     return {
       todayRevenue: completedPayments.reduce((sum, p) => sum + toNumber(p.amount), 0),

@@ -15,6 +15,7 @@ import { useContext } from 'react'
 import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
 import { logger } from '@/lib/logger'
 import { QUERY_STALE_TIME } from '@/lib/constants'
+import { processOrderEvent, hasOrderId, hasNewStatus } from '@/lib/websocketUtils'
 
 interface OrdersManagementProps {
   restaurantId: string
@@ -58,10 +59,10 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     isFetching: ordersFetching
   } = orderHooks.useOrdersByRestaurant(restaurantId, undefined, {
     enabled: !!restaurantId && !!session?.token && !authLoading,
-    staleTime: QUERY_STALE_TIME.MEDIUM,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-    refetchInterval: false,
+    staleTime: QUERY_STALE_TIME.SHORT, // Shorter stale time for real-time data
+    refetchOnMount: 'always', // Always refetch when tab becomes visible
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchInterval: false, // Don't poll - rely on WebSocket
     refetchIntervalInBackground: false
   })
 
@@ -112,30 +113,13 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
   const handleNewOrder = useCallback((data: any) => {
     logger.order('New order received via WebSocket', data)
 
-    // Try to extract order data from different possible formats
-    let order: Order | null = null
-    if (data?.data?.id) {
-      order = data.data
-    } else if (data?.id) {
-      order = data
-    } else if (data?.order?.id) {
-      order = data.order
-    }
+    // Use standardized order extraction and normalization
+    const order = processOrderEvent(data)
 
     if (!order?.id) {
       logger.error('Invalid order data received', data)
       refetchOrders()
       return
-    }
-
-    // Fix customization field mapping: WebSocket sends 'customizations' but UI expects 'options'
-    if (order.items && Array.isArray(order.items)) {
-      order.items = order.items.map((item: any) => {
-        if (item.customizations && !item.options) {
-          return { ...item, options: item.customizations }
-        }
-        return item
-      })
     }
 
     toast.success(`New order #${order.id} received`)
@@ -194,13 +178,19 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
       })
     }
 
-    // Invalidate related caches
+    // Invalidate related caches to force refetch
     queryClient.invalidateQueries({ queryKey: ['dashboard-metrics', restaurantId] })
     queryClient.invalidateQueries({ queryKey: ['orders', 'today', restaurantId] })
+
+    // IMPORTANT: Invalidate the main orders query to ensure UI updates when switching tabs
+    queryClient.invalidateQueries({
+      queryKey: ['orders', 'restaurant', restaurantId],
+      exact: false
+    })
   }, [queryClient, restaurantId, refetchOrders])
 
   const handleOrderUpdate = useCallback((data: any) => {
-    console.log('📝 Order updated via WebSocket:', data)
+    logger.order('Order updated via WebSocket', data)
 
     // Extract order data
     let order = null
@@ -231,7 +221,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     if (order.status) {
       const changeKey = `${order.id}:${order.status}`
       if (pendingStatusChanges.has(changeKey)) {
-        console.log('🔄 Ignoring locally initiated order update:', changeKey)
+        logger.debug('Ignoring locally initiated order update', { changeKey })
         return
       }
     }
@@ -253,15 +243,21 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     setSelectedOrder(current =>
       current && current.id === order.id ? order : current
     )
+
+    // Invalidate queries to ensure UI updates when switching tabs
+    queryClient.invalidateQueries({
+      queryKey: ['orders', 'restaurant', restaurantId],
+      exact: false
+    })
   }, [queryClient, restaurantId, pendingStatusChanges])
 
   const handleOrderStatusChange = useCallback((data: { orderId: string; previousStatus: string; newStatus: string; updatedBy: string; estimatedTime?: number; notes?: string }) => {
-    console.log('🔄 Order status changed via WebSocket:', data)
+    logger.order('Order status changed via WebSocket', data)
 
     // Check if this is a locally initiated change
     const changeKey = `${data.orderId}:${data.newStatus}`
     if (pendingStatusChanges.has(changeKey)) {
-      console.log('🔄 Ignoring locally initiated status change:', changeKey)
+      logger.debug('Ignoring locally initiated status change', { changeKey })
       return
     }
 
@@ -324,13 +320,22 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
         ? { ...current, status: data.newStatus as OrderStatus }
         : current
     )
+
+    // Invalidate queries to ensure UI updates when switching tabs
+    queryClient.invalidateQueries({
+      queryKey: ['orders', 'restaurant', restaurantId],
+      exact: false
+    })
+    queryClient.invalidateQueries({ queryKey: ['dashboard-metrics', restaurantId] })
   }, [queryClient, restaurantId, pendingStatusChanges])
 
   // Payment event handlers
   const handlePaymentCreated = useCallback((data: any) => {
-    console.log('💳🎯 [OrdersManagement] Payment created via WebSocket:', data)
-    console.log('💳🎯 [OrdersManagement] Payment data keys:', Object.keys(data || {}))
-    console.log('💳🎯 [OrdersManagement] Current restaurant ID:', restaurantId)
+    logger.payment('Payment created via WebSocket', {
+      data,
+      keys: Object.keys(data || {}),
+      restaurantId
+    })
 
     // Invalidate payment-related queries to refresh order cards
     if (data.orderId) {
@@ -359,11 +364,11 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
 
     toast.info('Payment Created', { description })
 
-    console.log('💳✅ [OrdersManagement] Payment created - queries invalidated and toast shown')
+    logger.payment('Payment created - queries invalidated and toast shown')
   }, [queryClient, restaurantId])
 
   const handlePaymentCompleted = useCallback((data: any) => {
-    console.log('✅ Payment completed via WebSocket:', data)
+    logger.payment('Payment completed via WebSocket', data)
 
     // Invalidate payment-related queries to refresh order cards
     if (data.orderId) {
@@ -384,7 +389,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
   }, [queryClient, restaurantId])
 
   const handlePaymentCancelled = useCallback((data: any) => {
-    console.log('❌ Payment cancelled via WebSocket:', data)
+    logger.payment('Payment cancelled via WebSocket', data)
 
     // Invalidate payment-related queries to refresh order cards
     if (data.orderId) {
@@ -439,7 +444,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     const changeKey = `${orderId}:${newStatus}`
     setPendingStatusChanges(prev => new Set([...prev, changeKey]))
 
-    console.log('🔄 Locally initiating status change:', { orderId, newStatus, changeKey })
+    logger.debug('Locally initiating status change', { orderId, newStatus, changeKey })
 
     // Optimistic update using functional update to avoid stale closures
     setSelectedOrder(currentOrder => {
@@ -466,7 +471,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
         setPendingStatusChanges(prev => {
           const newSet = new Set(prev)
           newSet.delete(changeKey)
-          console.log('🔄 Cleared pending change:', changeKey)
+          logger.debug('Cleared pending change', { changeKey })
           return newSet
         })
       }, 3000) // 3 second timeout
@@ -550,9 +555,9 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-success' : 'bg-destructive'}`} />
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-success' : 'bg-destructive'} ${ordersFetching && !ordersLoading ? 'animate-pulse' : ''}`} />
             <span className="text-sm text-foreground/80">
-              {isConnected ? 'Real-time connected' : 'Disconnected'}
+              {ordersFetching && !ordersLoading ? 'Syncing...' : isConnected ? 'Real-time connected' : 'Disconnected'}
             </span>
           </div>
           <Button
@@ -562,7 +567,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
             size="sm"
             className="flex items-center gap-2 border-text-foreground"
           >
-            <RefreshCw className={`h-4 w-4 ${ordersLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${ordersLoading || ordersFetching ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>

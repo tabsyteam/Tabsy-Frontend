@@ -53,10 +53,62 @@ export function useAdminDashboard() {
       // Simple API call to the backend admin endpoint
       const response = await tabsyClient.admin.getDashboardMetrics();
 
-      // The backend now returns the exact structure we need
-      return response.data as DashboardData;
+      // The backend returns the dashboard data
+      // If chartData is missing, we'll generate it from aggregated data
+      const dashboardData = response.data as any;
+
+      // If backend doesn't provide chartData, create empty arrays
+      if (!dashboardData.chartData) {
+        dashboardData.chartData = {
+          revenue: [],
+          orders: [],
+          users: []
+        };
+      }
+
+      return dashboardData as DashboardData;
     },
-    refetchInterval: 30000, // Refresh every 30 seconds
+    enabled: isAuthenticated
+    // Removed refetchInterval - relying on WebSocket events for real-time updates
+  });
+}
+
+// Hook to generate user growth data from user list
+export function useUserGrowthData() {
+  const { isAuthenticated } = useAuth();
+
+  return useQuery({
+    queryKey: ['admin', 'user-growth'],
+    queryFn: async () => {
+      // Fetch all users
+      const usersResponse = await tabsyClient.user.list({ limit: 10000 });
+      const users = usersResponse.data || [];
+
+      // Group users by month based on createdAt
+      const monthlyGrowth = new Map<string, number>();
+
+      users.forEach(user => {
+        const date = new Date(user.createdAt);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        monthlyGrowth.set(monthKey, (monthlyGrowth.get(monthKey) || 0) + 1);
+      });
+
+      // Convert to cumulative growth array
+      const sorted = Array.from(monthlyGrowth.entries()).sort();
+      const growthData: Array<{ date: string; count: number }> = [];
+      let cumulative = 0;
+
+      sorted.forEach(([monthKey, count]) => {
+        cumulative += count;
+        growthData.push({
+          date: `${monthKey}-01`, // First day of month
+          count: cumulative
+        });
+      });
+
+      // Return last 6 months
+      return growthData.slice(-6);
+    },
     enabled: isAuthenticated
   });
 }

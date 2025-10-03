@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { TableSessionBill } from '@/components/table/TableSessionBill'
@@ -21,6 +21,19 @@ export function TableBillWrapper() {
   const [retryCount, setRetryCount] = useState(0)
   const { api } = useApi()
   const router = useRouter()
+
+  // FIXED: Use ref to track retry attempts without causing re-renders
+  const retryAttempts = useRef(0)
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // FIXED: Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const loadTableSessionData = async () => {
@@ -138,20 +151,45 @@ export function TableBillWrapper() {
         setCurrentUser(currentSessionUser)
         setUsers(sessionUsers)
 
-      } catch (error) {
+        // FIXED: Reset retry counter on success
+        retryAttempts.current = 0
+        setRetryCount(0)
+
+      } catch (error: any) {
         console.error('[TableBillWrapper] Error loading session data:', error)
 
-        // Add retry logic for potential network issues
-        if (retryCount < 2) {
-          console.log(`[TableBillWrapper] Retrying... (attempt ${retryCount + 1}/3)`)
-          setRetryCount(prev => prev + 1)
-          setTimeout(() => {
+        // FIXED: Check for rate limiting specifically and stop retrying
+        const isRateLimited = error?.message?.includes('Rate limit') ||
+                             error?.message?.includes('Too Many Requests') ||
+                             error?.status === 429
+
+        if (isRateLimited) {
+          console.error('[TableBillWrapper] Rate limited - stopping retries')
+          const errorMessage = 'Too many requests. Please wait a moment and try again.'
+          setError(errorMessage)
+          toast.error(errorMessage)
+          setIsLoading(false)
+          return
+        }
+
+        // FIXED: Use ref for retry count to avoid infinite loop
+        if (retryAttempts.current < 2) {
+          const nextAttempt = retryAttempts.current + 1
+          console.log(`[TableBillWrapper] Retrying... (attempt ${nextAttempt}/3)`)
+
+          retryAttempts.current = nextAttempt
+          setRetryCount(nextAttempt)
+
+          // FIXED: Store timeout ref and use exponential backoff
+          const backoffDelay = Math.min(1000 * Math.pow(2, retryAttempts.current), 5000) // Max 5s
+          retryTimeoutRef.current = setTimeout(() => {
             loadTableSessionData()
-          }, 1000 * (retryCount + 1)) // Exponential backoff
+          }, backoffDelay)
           return
         }
 
         // After retries failed, show error
+        console.error('[TableBillWrapper] Max retries exceeded')
         const errorMessage = error instanceof Error ? error.message : 'Failed to load table session data'
         setError(errorMessage)
         toast.error(errorMessage)
@@ -161,7 +199,7 @@ export function TableBillWrapper() {
     }
 
     loadTableSessionData()
-  }, [api, router, retryCount])
+  }, [api, router]) // FIXED: Removed retryCount from dependencies
 
   if (isLoading) {
     return (
@@ -174,6 +212,7 @@ export function TableBillWrapper() {
   const handleRetry = () => {
     setError(null)
     setRetryCount(0)
+    retryAttempts.current = 0 // FIXED: Also reset the ref
     setIsLoading(true)
   }
 

@@ -19,9 +19,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>): React.ReactElement {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body
         className={`${inter.variable} antialiased`}
+        suppressHydrationWarning
       >
         <ClientProviders>
           {children}

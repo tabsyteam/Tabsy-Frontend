@@ -23,6 +23,9 @@ import { PaymentHistory } from './PaymentHistory'
 import { PaymentAnalytics } from './PaymentAnalytics'
 import { PendingCashPayments, PendingCashPaymentsRef } from './PendingCashPayments'
 import { SplitPaymentMonitoring, SplitPaymentMonitoringRef } from './SplitPaymentMonitoring'
+import { usePaymentWebSocketSync } from '../../hooks/useWebSocketSync'
+import { PaymentErrorBoundary } from '../ErrorBoundary'
+import { logger } from '../../lib/logger'
 
 interface PaymentManagementProps {
   restaurantId: string
@@ -48,6 +51,14 @@ export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
   const paymentAnalyticsRef = useRef<RefreshableRef | null>(null)
   const pendingCashRef = useRef<PendingCashPaymentsRef | null>(null)
   const splitPaymentRef = useRef<SplitPaymentMonitoringRef | null>(null)
+
+  /**
+   * SENIOR ARCHITECTURE: Centralized WebSocket Sync
+   * Single point of truth for payment WebSocket events
+   * All child components rely on React Query cache updates
+   * This eliminates 25 duplicate event listeners
+   */
+  usePaymentWebSocketSync(restaurantId)
 
   const tabs = [
     {
@@ -173,7 +184,7 @@ export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
         }
       }
     } catch (error) {
-      console.error('Error exporting payments:', error)
+      logger.error('Error exporting payments', error)
     } finally {
       setIsExporting(false)
     }
@@ -186,7 +197,8 @@ export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
   }
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <PaymentErrorBoundary>
+      <div className="h-full flex flex-col bg-background">
       {/* Sticky Header */}
       <div className="sticky top-0 z-20 bg-background border-b border-border-default">
         {/* Header */}
@@ -323,5 +335,6 @@ export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
         )}
       </div>
     </div>
+    </PaymentErrorBoundary>
   )
 }

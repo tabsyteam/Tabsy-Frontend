@@ -1,89 +1,91 @@
-/* Admin Theme CSS Variables - Professional Blue Theme with Semantic Tokens */
+/* Admin Portal Theme CSS Variables - Executive Indigo + Cyan Professional 2025 */
+/* Sophisticated, Authoritative, Data-Focused Design System for System Administration */
+
 :root {
-  /* Primary Colors - Blue */
-  --primary: 59 130 246; /* blue-500 */
-  --primary-hover: 37 99 235; /* blue-600 */
-  --primary-active: 29 78 216; /* blue-700 */
-  --primary-light: 239 246 255; /* blue-50 */
-  --primary-dark: 30 58 138; /* blue-900 */
+  /* Primary Colors - Deep Indigo (Authority, Innovation, Executive) */
+  --primary: 79 70 229; /* indigo-600 #4F46E5 */
+  --primary-hover: 67 56 202; /* indigo-700 #4338CA */
+  --primary-active: 55 48 163; /* indigo-800 #3730A3 */
+  --primary-light: 238 242 255; /* indigo-50 #EEF2FF */
+  --primary-dark: 49 46 129; /* indigo-900 #312E81 */
   --primary-foreground: 255 255 255;
 
-  /* Secondary Colors - Indigo */
-  --secondary: 99 102 241; /* indigo-500 */
-  --secondary-hover: 79 70 229; /* indigo-600 */
-  --secondary-active: 67 56 202; /* indigo-700 */
-  --secondary-light: 238 242 255; /* indigo-50 */
-  --secondary-dark: 49 46 129; /* indigo-900 */
+  /* Secondary Colors - Cool Slate (Professional, Balanced) */
+  --secondary: 100 116 139; /* slate-500 #64748B */
+  --secondary-hover: 71 85 105; /* slate-600 #475569 */
+  --secondary-active: 51 65 85; /* slate-700 #334155 */
+  --secondary-light: 248 250 252; /* slate-50 #F8FAFC */
+  --secondary-dark: 15 23 42; /* slate-900 #0F172A */
   --secondary-foreground: 255 255 255;
 
-  /* Accent Colors - Purple */
-  --accent: 168 85 247; /* purple-500 */
-  --accent-hover: 147 51 234; /* purple-600 */
-  --accent-active: 126 34 206; /* purple-700 */
-  --accent-light: 250 245 255; /* purple-50 */
-  --accent-dark: 88 28 135; /* purple-900 */
+  /* Accent Colors - Electric Cyan (Data, Tech-Forward, Modern) */
+  --accent: 6 182 212; /* cyan-500 #06B6D4 */
+  --accent-hover: 8 145 178; /* cyan-600 #0891B2 */
+  --accent-active: 14 116 144; /* cyan-700 #0E7490 */
+  --accent-light: 236 254 255; /* cyan-50 #ECFEFF */
+  --accent-dark: 22 78 99; /* cyan-900 #164E63 */
   --accent-foreground: 255 255 255;
 
-  /* Surface Colors */
-  --surface: 255 255 255;
-  --surface-secondary: 248 250 252; /* slate-50 */
-  --surface-tertiary: 241 245 249; /* slate-100 */
-  --surface-elevated: 255 255 255;
-  --surface-overlay: 0 0 0 / 0.5;
+  /* Surface Colors - Cool Professional White */
+  --surface: 255 255 255; /* Pure white for cards */
+  --surface-secondary: 248 250 252; /* slate-50 #F8FAFC */
+  --surface-tertiary: 241 245 249; /* slate-100 #F1F5F9 */
+  --surface-elevated: 255 255 255; /* Elevated surfaces (modals) */
+  --surface-overlay: 0 0 0 / 0.5; /* Modal overlays */
 
-  /* Background Colors */
-  --background: 248 250 252; /* slate-50 */
-  --background-secondary: 239 246 255; /* blue-50 */
-  --background-tertiary: 238 242 255; /* indigo-50 */
-  --background-inverse: 15 23 42; /* slate-900 */
+  /* Background Colors - Cool Slate Foundation */
+  --background: 248 250 252; /* slate-50 #F8FAFC */
+  --background-secondary: 241 245 249; /* slate-100 #F1F5F9 */
+  --background-tertiary: 226 232 240; /* slate-200 #E2E8F0 */
+  --background-inverse: 15 23 42; /* slate-900 #0F172A */
 
-  /* Content/Text Colors */
-  --content-primary: 15 23 42; /* slate-800 */
-  --content-secondary: 71 85 105; /* slate-600 */
-  --content-tertiary: 148 163 184; /* slate-400 */
-  --content-disabled: 203 213 225; /* slate-300 */
+  /* Content/Text Colors - High Contrast Cool Slate */
+  --content-primary: 15 23 42; /* slate-900 #0F172A - Maximum readability */
+  --content-secondary: 51 65 85; /* slate-700 #334155 - Supporting text */
+  --content-tertiary: 100 116 139; /* slate-500 #64748B - Metadata */
+  --content-disabled: 148 163 184; /* slate-400 #94A3B8 - Disabled states */
   --content-inverse: 255 255 255;
-  --content-brand: 37 99 235; /* blue-600 */
+  --content-brand: 79 70 229; /* indigo-600 - Brand highlights */
 
-  /* Border Colors */
-  --border: 191 219 254; /* blue-200 */
-  --border-secondary: 165 180 252; /* indigo-200 */
-  --border-tertiary: 226 232 240; /* slate-200 */
-  --border-focus: 59 130 246; /* blue-500 */
-  --border-error: 239 68 68; /* red-500 */
+  /* Border Colors - Subtle Cool Separation */
+  --border: 226 232 240; /* slate-200 #E2E8F0 - Default borders */
+  --border-secondary: 203 213 225; /* slate-300 #CBD5E1 - Stronger borders */
+  --border-tertiary: 241 245 249; /* slate-100 #F1F5F9 - Subtle dividers */
+  --border-focus: 79 70 229; /* indigo-600 - Focus states */
+  --border-error: 239 68 68; /* red-500 - Error states */
 
-  /* Status Colors */
-  --status-success: 34 197 94; /* green-500 */
-  --status-success-light: 240 253 244; /* green-50 */
-  --status-success-dark: 21 128 61; /* green-700 */
+  /* Status Colors - Professional & High Contrast */
+  --status-success: 34 197 94; /* green-500 #22C55E */
+  --status-success-light: 240 253 244; /* green-50 #F0FDF4 */
+  --status-success-dark: 21 128 61; /* green-700 #15803D */
   --status-success-foreground: 255 255 255;
-  --status-success-border: 187 247 208; /* green-200 */
+  --status-success-border: 134 239 172; /* green-300 #86EFAC */
 
-  --status-warning: 245 158 11; /* amber-500 */
-  --status-warning-light: 255 251 235; /* amber-50 */
-  --status-warning-dark: 180 83 9; /* amber-700 */
+  --status-warning: 249 115 22; /* orange-500 #F97316 */
+  --status-warning-light: 255 247 237; /* orange-50 #FFF7ED */
+  --status-warning-dark: 194 65 12; /* orange-700 #C2410C */
   --status-warning-foreground: 255 255 255;
-  --status-warning-border: 252 211 77; /* amber-200 */
+  --status-warning-border: 253 186 116; /* orange-300 #FDBA74 */
 
-  --status-error: 239 68 68; /* red-500 */
-  --status-error-light: 254 242 242; /* red-50 */
-  --status-error-dark: 185 28 28; /* red-700 */
+  --status-error: 239 68 68; /* red-500 #EF4444 */
+  --status-error-light: 254 242 242; /* red-50 #FEF2F2 */
+  --status-error-dark: 185 28 28; /* red-700 #B91C1C */
   --status-error-foreground: 255 255 255;
-  --status-error-border: 254 202 202; /* red-200 */
+  --status-error-border: 252 165 165; /* red-300 #FCA5A5 */
 
-  --status-info: 59 130 246; /* blue-500 */
-  --status-info-light: 239 246 255; /* blue-50 */
-  --status-info-dark: 29 78 216; /* blue-700 */
+  --status-info: 6 182 212; /* cyan-500 #06B6D4 */
+  --status-info-light: 236 254 255; /* cyan-50 #ECFEFF */
+  --status-info-dark: 14 116 144; /* cyan-700 #0E7490 */
   --status-info-foreground: 255 255 255;
-  --status-info-border: 191 219 254; /* blue-200 */
+  --status-info-border: 165 243 252; /* cyan-200 #A5F3FC */
 
-  /* Interactive States */
-  --interactive-hover: 248 250 252; /* slate-50 */
-  --interactive-active: 241 245 249; /* slate-100 */
-  --interactive-disabled: 203 213 225; /* slate-300 */
-  --interactive-focus: 59 130 246; /* blue-500 */
+  /* Interactive States - Indigo-based */
+  --interactive-hover: 238 242 255; /* indigo-50 #EEF2FF */
+  --interactive-active: 224 231 255; /* indigo-100 #E0E7FF */
+  --interactive-disabled: 226 232 240; /* slate-200 #E2E8F0 */
+  --interactive-focus: 79 70 229; /* indigo-600 #4F46E5 */
 
-  /* Shadow System */
+  /* Shadow System - Soft & Realistic */
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -149,76 +151,109 @@
 
   /* Z-Index Scale */
   --z-base: 0;
-  --z-dropdown: 1000;
-  --z-sticky: 1100;
-  --z-overlay: 1200;
-  --z-modal: 1300;
-  --z-popover: 1400;
-  --z-tooltip: 1500;
-  --z-notification: 1600;
+  --z-dropdown: 9999;
+  --z-sticky: 9998;
+  --z-overlay: 10000;
+  --z-modal: 10200;
+  --z-popover: 10100;
+  --z-tooltip: 10300;
+  --z-notification: 10400;
 
   /* Override shadcn/ui component variables for consistency - using HSL format */
-  --ring: 217 91% 60%; /* blue-500 in HSL */
-  --input: 214 59% 87%; /* blue-200 in HSL */
-  --muted: 210 40% 98%; /* slate-50 in HSL */
-  --muted-foreground: 215 16% 47%; /* slate-400 in HSL */
-  --destructive: 0 84% 60%; /* red-500 in HSL */
+  --ring: 243 75% 59%; /* indigo-600 in HSL (#4F46E5) */
+  --input: 214 32% 91%; /* slate-200 in HSL (#E2E8F0) */
+  --muted: 210 40% 98%; /* slate-50 in HSL (#F8FAFC) */
+  --muted-foreground: 215 16% 47%; /* slate-500 in HSL (#64748B) */
+  --destructive: 0 84% 60%; /* red-500 in HSL (#EF4444) */
   --destructive-foreground: 0 0% 100%; /* white in HSL */
   --card: 0 0% 100%; /* white in HSL */
-  --card-foreground: 222 47% 11%; /* slate-800 in HSL */
+  --card-foreground: 222 47% 11%; /* slate-900 in HSL (#0F172A) */
   --popover: 0 0% 100%; /* white in HSL */
-  --popover-foreground: 222 47% 11%; /* slate-800 in HSL */
-  --foreground: 222 47% 11%; /* slate-800 in HSL */
-  --background: 210 40% 98%; /* slate-50 in HSL */
-  --border: 214 59% 87%; /* blue-200 in HSL */
+  --popover-foreground: 222 47% 11%; /* slate-900 in HSL (#0F172A) */
+  --foreground: 222 47% 11%; /* slate-900 in HSL (#0F172A) */
+  /* DO NOT override --background here - it's already set in RGB format above! */
+  --border-hsl: 214 32% 91%; /* slate-200 in HSL - renamed to avoid conflict */
   --radius: 0.5rem;
+
+  /* Force cache refresh - Updated: 2025-10-03 Executive Indigo Theme */
 }
 
-/* Dark mode variables */
+/* Dark mode variables - Sophisticated dark theme with indigo/cyan accents */
 .dark {
-  --primary: 96 165 250; /* blue-400 */
-  --primary-hover: 59 130 246; /* blue-500 */
-  --primary-active: 37 99 235; /* blue-600 */
-  --primary-light: 30 58 138; /* blue-900 */
-  --primary-dark: 239 246 255; /* blue-50 */
-  --primary-foreground: 30 58 138; /* blue-900 */
+  --primary: 129 140 248; /* indigo-400 #818CF8 - Brighter for dark backgrounds */
+  --primary-hover: 165 180 252; /* indigo-300 #A5B4FC */
+  --primary-active: 199 210 254; /* indigo-200 #C7D2FE */
+  --primary-light: 49 46 129; /* indigo-900 #312E81 */
+  --primary-dark: 238 242 255; /* indigo-50 #EEF2FF */
+  --primary-foreground: 15 23 42; /* slate-900 for dark text on indigo */
 
-  --secondary: 129 140 248; /* indigo-400 */
-  --secondary-hover: 99 102 241; /* indigo-500 */
-  --secondary-active: 79 70 229; /* indigo-600 */
-  --secondary-light: 49 46 129; /* indigo-900 */
-  --secondary-dark: 238 242 255; /* indigo-50 */
-  --secondary-foreground: 49 46 129; /* indigo-900 */
+  --secondary: 148 163 184; /* slate-400 #94A3B8 */
+  --secondary-hover: 203 213 225; /* slate-300 #CBD5E1 */
+  --secondary-active: 226 232 240; /* slate-200 #E2E8F0 */
+  --secondary-light: 30 41 59; /* slate-800 #1E293B */
+  --secondary-dark: 248 250 252; /* slate-50 #F8FAFC */
+  --secondary-foreground: 15 23 42; /* slate-900 for dark text */
 
-  --accent: 196 181 253; /* purple-300 */
-  --accent-hover: 168 85 247; /* purple-500 */
-  --accent-active: 147 51 234; /* purple-600 */
-  --accent-light: 88 28 135; /* purple-900 */
-  --accent-dark: 250 245 255; /* purple-50 */
-  --accent-foreground: 88 28 135; /* purple-900 */
+  --accent: 34 211 238; /* cyan-400 #22D3EE - Bright for dark mode */
+  --accent-hover: 103 232 249; /* cyan-300 #67E8F9 */
+  --accent-active: 165 243 252; /* cyan-200 #A5F3FC */
+  --accent-light: 22 78 99; /* cyan-900 #164E63 */
+  --accent-dark: 236 254 255; /* cyan-50 #ECFEFF */
+  --accent-foreground: 15 23 42; /* slate-900 for dark text on cyan */
 
-  --surface: 30 41 59; /* slate-800 */
-  --surface-secondary: 15 23 42; /* slate-900 */
-  --surface-tertiary: 51 65 85; /* slate-700 */
-  --surface-elevated: 51 65 85; /* slate-700 */
+  --surface: 30 41 59; /* slate-800 #1E293B - Cool dark surface */
+  --surface-secondary: 15 23 42; /* slate-900 #0F172A - Darker surface */
+  --surface-tertiary: 51 65 85; /* slate-700 #334155 - Lighter surface */
+  --surface-elevated: 51 65 85; /* slate-700 #334155 - Elevated cards */
 
-  --background: 15 23 42; /* slate-900 */
-  --background-secondary: 30 58 138; /* blue-900 */
-  --background-tertiary: 49 46 129; /* indigo-900 */
-  --background-inverse: 248 250 252; /* slate-50 */
+  --background: 15 23 42; /* slate-900 #0F172A - Deep dark background */
+  --background-secondary: 30 41 59; /* slate-800 #1E293B - Sections */
+  --background-tertiary: 51 65 85; /* slate-700 #334155 - Contrast areas */
+  --background-inverse: 248 250 252; /* slate-50 #F8FAFC */
 
-  --content-primary: 241 245 249; /* slate-100 */
-  --content-secondary: 203 213 225; /* slate-300 */
-  --content-tertiary: 148 163 184; /* slate-400 */
-  --content-disabled: 100 116 139; /* slate-500 */
-  --content-inverse: 15 23 42; /* slate-900 */
-  --content-brand: 96 165 250; /* blue-400 */
+  --content-primary: 248 250 252; /* slate-50 #F8FAFC - High contrast text */
+  --content-secondary: 226 232 240; /* slate-200 #E2E8F0 - Supporting text */
+  --content-tertiary: 148 163 184; /* slate-400 #94A3B8 - Metadata */
+  --content-disabled: 100 116 139; /* slate-500 #64748B - Disabled */
+  --content-inverse: 15 23 42; /* slate-900 #0F172A */
+  --content-brand: 129 140 248; /* indigo-400 #818CF8 - Brand elements */
 
-  --border: 51 65 85; /* slate-700 */
-  --border-secondary: 71 85 105; /* slate-600 */
-  --border-tertiary: 30 41 59; /* slate-800 */
-  --border-focus: 96 165 250; /* blue-400 */
-  --border-error: 248 113 113; /* red-400 */
+  --border: 51 65 85; /* slate-700 #334155 - Default borders */
+  --border-secondary: 71 85 105; /* slate-600 #475569 - Secondary borders */
+  --border-tertiary: 30 41 59; /* slate-800 #1E293B - Subtle dividers */
+  --border-focus: 129 140 248; /* indigo-400 #818CF8 - Focus states */
+  --border-error: 248 113 113; /* red-400 #F87171 - Error states */
+
+  /* Interactive States - Dark Indigo/Cyan-based */
+  --interactive-hover: 30 41 59; /* slate-800 hover */
+  --interactive-active: 51 65 85; /* slate-700 active */
+  --interactive-disabled: 51 65 85; /* slate-700 disabled */
+  --interactive-focus: 129 140 248; /* indigo-400 focus */
+
+  /* Status Colors - Vibrant for Dark Backgrounds */
+  --status-success: 74 222 128; /* green-400 #4ADE80 */
+  --status-success-light: 20 83 45; /* green-900 #14532D */
+  --status-success-dark: 187 247 208; /* green-200 #BBF7D0 */
+  --status-success-foreground: 255 255 255;
+  --status-success-border: 34 197 94; /* green-500 #22C55E */
+
+  --status-warning: 251 146 60; /* orange-400 #FB923C */
+  --status-warning-light: 67 20 7; /* orange-950 #431407 */
+  --status-warning-dark: 254 215 170; /* orange-200 #FED7AA */
+  --status-warning-foreground: 255 255 255;
+  --status-warning-border: 249 115 22; /* orange-500 #F97316 */
+
+  --status-error: 248 113 113; /* red-400 #F87171 */
+  --status-error-light: 127 29 29; /* red-900 #7F1D1D */
+  --status-error-dark: 254 226 226; /* red-200 #FEE2E2 */
+  --status-error-foreground: 255 255 255;
+  --status-error-border: 239 68 68; /* red-500 #EF4444 */
+
+  --status-info: 34 211 238; /* cyan-400 #22D3EE */
+  --status-info-light: 22 78 99; /* cyan-900 #164E63 */
+  --status-info-dark: 207 250 254; /* cyan-100 #CFFAFE */
+  --status-info-foreground: 255 255 255;
+  --status-info-border: 6 182 212; /* cyan-500 #06B6D4 */
 
   /* Dark mode shadow adjustments */
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.1);
@@ -231,17 +266,18 @@
   --shadow-dropdown: 0 10px 40px rgb(0 0 0 / 0.25);
   --shadow-modal: 0 20px 60px rgb(0 0 0 / 0.4);
 
-  --foreground: 210 40% 96%; /* slate-100 in HSL */
-  --background: 222 47% 11%; /* slate-900 in HSL */
-  --muted: 215 25% 27%; /* slate-700 in HSL */
-  --muted-foreground: 215 16% 47%; /* slate-400 in HSL */
-  --card: 217 33% 17%; /* slate-800 in HSL */
-  --card-foreground: 210 40% 96%; /* slate-100 in HSL */
-  --popover: 217 33% 17%; /* slate-800 in HSL */
-  --popover-foreground: 210 40% 96%; /* slate-100 in HSL */
-  --ring: 217 91% 60%; /* blue-400 in HSL */
-  --input: 215 25% 27%; /* slate-700 in HSL */
-  --destructive: 0 63% 31%; /* red-700 in HSL */
+  /* shadcn/ui dark mode variables in HSL */
+  --foreground: 210 40% 98%; /* slate-50 in HSL (#F8FAFC) */
+  /* DO NOT override --background here - it's already set in RGB format above! */
+  --muted: 217 33% 17%; /* slate-800 in HSL (#1E293B) */
+  --muted-foreground: 215 20% 65%; /* slate-400 in HSL (#94A3B8) */
+  --card: 217 33% 17%; /* slate-800 in HSL (#1E293B) */
+  --card-foreground: 210 40% 98%; /* slate-50 in HSL (#F8FAFC) */
+  --popover: 217 33% 17%; /* slate-800 in HSL (#1E293B) */
+  --popover-foreground: 210 40% 98%; /* slate-50 in HSL (#F8FAFC) */
+  --ring: 243 75% 78%; /* indigo-400 in HSL (#818CF8) */
+  --input: 215 25% 27%; /* slate-700 in HSL (#334155) */
+  --destructive: 0 73% 71%; /* red-400 in HSL (#F87171) */
   --destructive-foreground: 0 0% 100%; /* white in HSL */
 }
 
@@ -384,27 +420,20 @@
     border-color: rgb(var(--primary) / 0.5);
   }
 
-  /* Special gradient utilities */
+  /* Executive gradient utilities - Indigo/Cyan */
   .gradient-primary {
-    background: linear-gradient(135deg,
-      rgb(var(--primary)),
-      rgb(var(--secondary))
-    );
+    background: linear-gradient(135deg, rgb(var(--primary)), rgb(var(--accent)));
   }
 
-  .gradient-professional {
-    background: linear-gradient(to bottom right,
-      rgb(var(--background)),
-      rgb(var(--background-secondary)),
-      rgb(var(--background-tertiary))
+  .gradient-executive {
+    background: linear-gradient(135deg,
+      rgb(var(--primary) / 0.1),
+      rgb(var(--accent) / 0.1)
     );
   }
 
   .text-gradient-primary {
-    background: linear-gradient(135deg,
-      rgb(var(--primary)),
-      rgb(var(--accent))
-    );
+    background: linear-gradient(135deg, rgb(var(--primary)), rgb(var(--accent)));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -426,7 +455,7 @@
     color: rgb(var(--content-disabled));
   }
 
-  /* Chart colors */
+  /* Chart colors - Executive indigo/cyan palette */
   .chart-primary { background-color: rgb(var(--primary)); }
   .chart-secondary { background-color: rgb(var(--secondary)); }
   .chart-accent { background-color: rgb(var(--accent)); }
@@ -434,18 +463,26 @@
   .chart-warning { background-color: rgb(var(--status-warning)); }
   .chart-error { background-color: rgb(var(--status-error)); }
 
-  /* Activity items */
+  /* Additional chart color variants for data visualization */
+  .chart-indigo { background-color: rgb(var(--primary)); }
+  .chart-slate { background-color: rgb(var(--secondary)); }
+  .chart-cyan { background-color: rgb(var(--accent)); }
+  .chart-green { background-color: rgb(var(--status-success)); }
+  .chart-orange { background-color: rgb(var(--status-warning)); }
+  .chart-red { background-color: rgb(var(--status-error)); }
+
+  /* Activity items - Executive cool theme */
   .activity-primary {
-    background-color: rgb(var(--primary-light));
+    background-color: rgb(var(--surface-secondary));
     border-color: rgb(var(--border));
   }
   .activity-secondary {
-    background-color: rgb(var(--background-secondary));
+    background-color: rgb(var(--surface-tertiary));
     border-color: rgb(var(--border-secondary));
   }
   .activity-accent {
-    background-color: rgb(var(--background-tertiary));
-    border-color: rgb(var(--accent) / 0.2);
+    background-color: rgb(var(--primary-light));
+    border-color: rgb(var(--primary) / 0.3);
   }
 
   /* Typography Utilities */

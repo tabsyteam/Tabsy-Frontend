@@ -1717,46 +1717,87 @@ export function PaymentView() {
                       <span>{sessionUsers.length} people dining</span>
                     </div>
 
-                    {Object.values(tableBill.billByRound)
-                      .filter((round) => round.orders.some((order) => !order.isPaid)) // Only show rounds with unpaid orders
-                      .map((round) => (
+                    {Object.values(tableBill.billByRound).map((round) => {
+                      // Determine payment status from payments array
+                      const ordersWithPaymentStatus = round.orders.map((order: any) => {
+                        // Calculate total paid amount from payments array
+                        const totalPaidForOrder = order.payments
+                          ?.filter((p: any) => p.status === 'COMPLETED')
+                          ?.reduce((sum: number, p: any) => sum + Number(p.amount || 0), 0) || 0;
+
+                        // Order is paid if total paid equals or exceeds order total (with small epsilon for floating point)
+                        const isPaid = order.isPaid ?? (totalPaidForOrder >= Number(order.total) - 0.01);
+
+                        return {
+                          ...order,
+                          isPaid,
+                          paidAmount: totalPaidForOrder
+                        };
+                      });
+
+                      const paidOrdersCount = ordersWithPaymentStatus.filter((o) => o.isPaid).length;
+                      const totalOrdersCount = ordersWithPaymentStatus.length;
+                      const hasUnpaidOrders = ordersWithPaymentStatus.some((o) => !o.isPaid);
+
+                      return (
                         <div key={round.roundNumber} className="border rounded-lg p-3">
-                          <h4 className="font-medium text-content-primary mb-2">
-                            Round {round.roundNumber}
-                            <span className="text-xs text-content-secondary ml-2">
-                              (Unpaid items only)
-                            </span>
-                          </h4>
-                          {round.orders
-                            .filter((order) => !order.isPaid) // Only show unpaid orders
-                            .map((roundOrder) => (
-                              <div key={roundOrder.orderId} className="space-y-1">
-                                <div className="text-xs text-content-tertiary mb-1">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-content-primary">
+                              Round {round.roundNumber || round.roundTotal}
+                            </h4>
+                            {paidOrdersCount > 0 && (
+                              <span className={`text-xs px-2 py-1 rounded-full ${
+                                hasUnpaidOrders
+                                  ? 'bg-status-warning/10 text-status-warning'
+                                  : 'bg-status-success/10 text-status-success'
+                              }`}>
+                                {paidOrdersCount} of {totalOrdersCount} paid
+                              </span>
+                            )}
+                          </div>
+                          {ordersWithPaymentStatus.map((roundOrder) => (
+                            <div
+                              key={roundOrder.orderId}
+                              className={`space-y-1 mb-3 last:mb-0 pb-3 last:pb-0 border-b last:border-b-0 ${
+                                roundOrder.isPaid
+                                  ? 'opacity-60'
+                                  : ''
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="text-xs text-content-tertiary">
                                   Order by {roundOrder.placedBy || `Order ${roundOrder.orderId?.slice(-4) || ''}`}
                                 </div>
-                                {roundOrder.items.map((item: any, idx: number) => (
-                                  <div key={idx} className="flex justify-between items-center text-sm">
-                                    <span className="text-content-secondary">
-                                      {item.quantity}x {item.name}
-                                    </span>
-                                    <span className="text-content-primary">
-                                      ${Number(item.subtotal || 0).toFixed(2)}
-                                    </span>
-                                  </div>
-                                ))}
+                                {roundOrder.isPaid && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-status-success/10 text-status-success">
+                                    ✓ Paid
+                                  </span>
+                                )}
                               </div>
-                            ))}
+                              {roundOrder.items.map((item: any, idx: number) => (
+                                <div key={idx} className="flex justify-between items-center text-sm">
+                                  <span className={`${roundOrder.isPaid ? 'line-through text-content-tertiary' : 'text-content-secondary'}`}>
+                                    {item.quantity}x {item.name}
+                                  </span>
+                                  <span className={`${roundOrder.isPaid ? 'line-through text-content-tertiary' : 'text-content-primary'}`}>
+                                    ${Number(item.subtotal || 0).toFixed(2)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      );
+                    })}
 
                     {/* Show message if all orders are paid */}
                     {Object.values(tableBill.billByRound).every((round) =>
                       round.orders.every((order) => order.isPaid)
                     ) && (
-                      <div className="text-center py-4 text-content-secondary bg-status-success-light rounded-lg border border-status-success">
+                      <div className="text-center py-4 text-content-secondary bg-status-success/10 rounded-lg border border-status-success/20">
                         <div className="text-2xl mb-2">✅</div>
-                        <p className="font-medium">All orders have been paid!</p>
-                        <p className="text-sm">Thank you for dining with us.</p>
+                        <p className="font-medium text-status-success">All orders have been paid!</p>
+                        <p className="text-sm text-status-success">Thank you for dining with us.</p>
                       </div>
                     )}
                   </div>

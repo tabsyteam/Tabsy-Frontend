@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { useApi } from '@/components/providers/api-provider'
 import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
@@ -12,6 +12,7 @@ import { strictModeGuard } from '@/utils/strictModeGuard'
 import { SessionManager } from '@/lib/session'
 import { STORAGE_KEYS } from '@/constants/storage'
 import { unifiedSessionStorage, TabsySession } from '@/lib/unifiedSessionStorage'
+import { useGuestSession } from '@/hooks/useGuestSession'
 import type {
   MultiUserTableSession,
   TableSessionUser,
@@ -29,48 +30,16 @@ import type {
  * CRITICAL: All session writes must go through dualWriteSession()
  */
 
-// Global session creation tracking to prevent duplicates across all component instances
-const globalSessionCreationState = new Map<string, Promise<boolean>>()
-
-// Global tracking to prevent React Strict Mode duplicates with persistence
-let globalSessionCreationLock = false
-
-// Check if session creation is already in progress globally
-const isSessionCreationInProgress = (tableId: string): boolean => {
-  const lockKey = STORAGE_KEYS.TABLE_SESSION_LOCK(tableId)
-  const currentTime = Date.now()
-  const lockData = sessionStorage.getItem(lockKey)
-
-  if (lockData) {
-    const { timestamp } = JSON.parse(lockData)
-    // Lock expires after 15 seconds to prevent permanent lockout (increased for React Strict Mode)
-    if (currentTime - timestamp < 15000) {
-      return true
-    } else {
-      // Clear expired lock
-      sessionStorage.removeItem(lockKey)
-    }
-  }
-  return false
-}
-
-// Set session creation lock globally
-const setSessionCreationLock = (tableId: string): void => {
-  const lockKey = STORAGE_KEYS.TABLE_SESSION_LOCK(tableId)
-  sessionStorage.setItem(lockKey, JSON.stringify({ timestamp: Date.now() }))
-}
-
-// Clear session creation lock globally
-const clearSessionCreationLock = (tableId: string): void => {
-  const lockKey = STORAGE_KEYS.TABLE_SESSION_LOCK(tableId)
-  sessionStorage.removeItem(lockKey)
-}
+// Global session creation tracking using promises (simpler approach)
+const globalSessionCreationState = new Map<string, Promise<TabsySession>>()
 
 /**
  * DUAL-WRITE HELPER: Writes session to BOTH unified storage AND legacy keys
  *
  * This ensures backward compatibility during migration phase.
  * Once all code is migrated, we can remove legacy writes.
+ *
+ * Uses transaction pattern with rollback on failure to prevent inconsistent state.
  *
  * @param sessionData Session data to persist
  * @returns Success boolean
@@ -83,13 +52,16 @@ const dualWriteSession = (sessionData: {
   createdAt?: number
   metadata?: Record<string, any>
 }): boolean => {
+  // Track what we've written for rollback if needed
+  const writtenKeys: Array<{ storage: 'session' | 'unified' | 'manager', key: string }> = []
+
   try {
     console.log('[DualWrite] Writing session to unified + legacy storage:', {
       guestSessionId: sessionData.guestSessionId,
       tableId: sessionData.tableId
     })
 
-    // 1. Write to unified storage (NEW)
+    // STEP 1: Prepare all data before any writes
     const unifiedSession: TabsySession = {
       guestSessionId: sessionData.guestSessionId,
       tableSessionId: sessionData.tableSessionId,
@@ -99,31 +71,62 @@ const dualWriteSession = (sessionData: {
       lastActivity: Date.now(),
       metadata: sessionData.metadata
     }
-    unifiedSessionStorage.setSession(unifiedSession)
 
-    // 2. Write to legacy keys (BACKWARD COMPATIBILITY)
-    // Primary guest session ID
-    sessionStorage.setItem('tabsy-guest-session-id', sessionData.guestSessionId)
+    const legacyWrites: Array<[string, string]> = [
+      ['tabsy-guest-session-id', sessionData.guestSessionId],
+      [`guestSession-${sessionData.tableId}`, sessionData.guestSessionId],
+      [STORAGE_KEYS.TABLE_SESSION_ID, sessionData.tableSessionId]
+    ]
 
-    // Table-specific guest session
-    sessionStorage.setItem(`guestSession-${sessionData.tableId}`, sessionData.guestSessionId)
-
-    // Table session ID
-    sessionStorage.setItem(STORAGE_KEYS.TABLE_SESSION_ID, sessionData.tableSessionId)
-
-    // Dining session object (legacy SessionManager)
-    SessionManager.setDiningSession({
+    const legacyDiningSession = {
       restaurantId: sessionData.restaurantId,
       tableId: sessionData.tableId,
       sessionId: sessionData.guestSessionId,
       tableSessionId: sessionData.tableSessionId,
       createdAt: sessionData.createdAt || Date.now()
-    })
+    }
+
+    // STEP 2: Execute writes sequentially with tracking
+
+    // Write to unified storage (primary source)
+    unifiedSessionStorage.setSession(unifiedSession)
+    writtenKeys.push({ storage: 'unified', key: 'tabsy-session' })
+
+    // Write to legacy sessionStorage keys
+    for (const [key, value] of legacyWrites) {
+      sessionStorage.setItem(key, value)
+      writtenKeys.push({ storage: 'session', key })
+    }
+
+    // Write to SessionManager
+    SessionManager.setDiningSession(legacyDiningSession)
+    writtenKeys.push({ storage: 'manager', key: 'dining-session' })
 
     console.log('[DualWrite] ✅ Successfully wrote to unified + legacy storage')
     return true
+
   } catch (error) {
     console.error('[DualWrite] ❌ Failed to write session:', error)
+
+    // STEP 3: ROLLBACK - Remove all partial writes
+    console.warn('[DualWrite] ⚠️ Rolling back partial writes...')
+
+    try {
+      for (const { storage, key } of writtenKeys) {
+        if (storage === 'unified') {
+          unifiedSessionStorage.clearSession()
+        } else if (storage === 'session') {
+          sessionStorage.removeItem(key)
+        } else if (storage === 'manager') {
+          SessionManager.clearDiningSession()
+        }
+      }
+      console.log('[DualWrite] ✅ Rollback completed successfully')
+    } catch (rollbackError) {
+      console.error('[DualWrite] ❌ Rollback failed - storage may be inconsistent:', rollbackError)
+      // At this point, manual intervention or page refresh may be needed
+    }
+
     return false
   }
 }
@@ -196,6 +199,29 @@ interface SessionState {
 }
 
 export function TableSessionManager({ restaurantId, tableId, children }: TableSessionManagerProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { api } = useApi()
+  const qrCode = searchParams.get('qr')
+
+  // ✅ NEW: Use React Query hook for session creation (prevents duplicate API calls)
+  const {
+    data: sessionData,
+    isLoading: isCreatingSession,
+    error: sessionError
+  } = useGuestSession({
+    qrCode: qrCode || '',
+    tableId,
+    restaurantId,
+    enabled: !!qrCode && !!tableId && !!restaurantId
+  })
+
+  // Check if session already exists (for UI state)
+  const existingSession = unifiedSessionStorage.getSession()
+  const hasValidSession = existingSession &&
+    existingSession.tableId === tableId &&
+    existingSession.restaurantId === restaurantId
+
   const [sessionState, setSessionState] = useState<SessionState>({
     tableSession: null,
     users: [],
@@ -203,16 +229,9 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
     isHost: false,
     isConnected: false
   })
-  const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [sessionInitialized, setSessionInitialized] = useState(false)
   const [splashCompleted, setSplashCompleted] = useState(false)
-
-  // Use ref to track initialization to prevent duplicates across re-renders
-  const initializationRef = useRef(false)
-
-  const router = useRouter()
-  const { api } = useApi()
 
   // State to track the current session ID
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
@@ -335,34 +354,21 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
     }
   }, [tableId]), [tableId])
 
-  // Auto-create or join table session (anonymous, no name required)
-  const autoCreateOrJoinSession = useCallback(async () => {
-    const sessionKey = `${restaurantId}-${tableId}`
+  // ✅ Session creation now handled by useGuestSession hook (lines 214-223)
+  // OLD autoCreateOrJoinSession function REMOVED to prevent race conditions
 
-    // Prevent duplicate session creation
-    if (sessionInitialized) {
-      return true
-    }
-
-    // Check global session manager first
-    if (globalSessionManager.hasSession(tableId)) {
-      const existingSessionId = globalSessionManager.getSessionId(tableId)
-      api.setGuestSession(existingSessionId!)
-      setCurrentSessionId(existingSessionId!)
-
-      // DUAL-WRITE: Save session to both unified and legacy storage
-      dualWriteSession({
-        guestSessionId: existingSessionId!,
-        tableSessionId: '', // Not available from global session manager
-        restaurantId,
-        tableId
-      })
-
+  // ✅ NEW: Initialize session from React Query data
+  useEffect(() => {
+    // Use existing session if available
+    if (hasValidSession && existingSession) {
+      console.log('[TableSessionManager] Using existing session:', existingSession.guestSessionId)
+      api.setGuestSession(existingSession.guestSessionId)
+      setCurrentSessionId(existingSession.guestSessionId)
       setSessionState(prev => ({
         ...prev,
         currentUser: {
-          id: existingSessionId!,
-          guestSessionId: existingSessionId!,
+          id: existingSession.guestSessionId,
+          guestSessionId: existingSession.guestSessionId,
           userName: '',
           isHost: false,
           createdAt: new Date().toISOString(),
@@ -371,61 +377,21 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
         isConnected: true
       }))
       setSessionInitialized(true)
-      return true
+      return
     }
 
-    // Check if creation is already in progress
-    if (globalSessionManager.isCreationInProgress(tableId)) {
-      const sessionId = await globalSessionManager.waitForSessionCreation(tableId)
-      if (sessionId) {
-        api.setGuestSession(sessionId)
-        setCurrentSessionId(sessionId)
-
-        // DUAL-WRITE: Save session to both unified and legacy storage
-        dualWriteSession({
-          guestSessionId: sessionId,
-          tableSessionId: '', // Not available from waiting path
-          restaurantId,
-          tableId
-        })
-
-        setSessionState(prev => ({
-          ...prev,
-          currentUser: {
-            id: sessionId,
-            guestSessionId: sessionId,
-            userName: '',
-            isHost: false,
-            createdAt: new Date().toISOString(),
-            lastActivity: new Date().toISOString()
-          },
-          isConnected: true
-        }))
-        setSessionInitialized(true)
-        return true
-      }
-    }
-
-    // Check if session already exists in API client
-    const existingSessionId = api.getGuestSessionId()
-    if (existingSessionId) {
-      // Check for stored tableSessionId from QR code processing
-      const tableSessionId = sessionStorage.getItem(STORAGE_KEYS.TABLE_SESSION_ID)
-
-      // DUAL-WRITE: Persist existing session to both unified and legacy storage
-      dualWriteSession({
-        guestSessionId: existingSessionId,
-        tableSessionId: tableSessionId || '',
-        restaurantId,
-        tableId
-      })
+    // Use newly created session from React Query
+    if (sessionData && !sessionInitialized) {
+      console.log('[TableSessionManager] Session created via React Query:', sessionData.sessionId)
+      api.setGuestSession(sessionData.sessionId)
+      setCurrentSessionId(sessionData.sessionId)
 
       setSessionState(prev => ({
         ...prev,
         currentUser: {
-          id: existingSessionId,
-          guestSessionId: existingSessionId,
-          userName: '', // Will be set during order
+          id: sessionData.sessionId,
+          guestSessionId: sessionData.sessionId,
+          userName: '',
           isHost: false,
           createdAt: new Date().toISOString(),
           lastActivity: new Date().toISOString()
@@ -433,232 +399,26 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
         isConnected: true
       }))
       setSessionInitialized(true)
-
-      // Global WebSocket provider handles connection automatically
-      return true
     }
 
-    // Check if session exists in sessionStorage (persistent across reloads)
-    const storedSessionId = sessionStorage.getItem(`guestSession-${tableId}`)
-    if (storedSessionId) {
-      api.setGuestSession(storedSessionId)
-
-      // Check for stored tableSessionId from QR code processing
-      const tableSessionId = sessionStorage.getItem(STORAGE_KEYS.TABLE_SESSION_ID)
-
-      // DUAL-WRITE: Save session to both unified and legacy storage
-      dualWriteSession({
-        guestSessionId: storedSessionId,
-        tableSessionId: tableSessionId || '',
-        restaurantId,
-        tableId
-      })
-      setSessionState(prev => ({
-        ...prev,
-        currentUser: {
-          id: storedSessionId,
-          guestSessionId: storedSessionId,
-          userName: '', // Will be set during order
-          isHost: false,
-          createdAt: new Date().toISOString(),
-          lastActivity: new Date().toISOString()
-        },
-        isConnected: true
-      }))
-      setSessionInitialized(true)
-
-      // Global WebSocket provider handles connection automatically
-      return true
+    // Handle errors
+    if (sessionError) {
+      console.error('[TableSessionManager] Session creation failed:', sessionError)
+      setError('Failed to initialize table session')
     }
-
-    // Check if there's an ongoing session creation for this table
-    const existingCreation = globalSessionCreationState.get(sessionKey)
-    if (existingCreation) {
-      console.log('[TableSessionManager] Session creation already in progress, waiting for completion...')
-      try {
-        const result = await existingCreation
-        if (result) {
-          // Check if session was created by the other process
-          const newSessionId = api.getGuestSessionId() || sessionStorage.getItem(`guestSession-${tableId}`)
-          if (newSessionId) {
-            console.log('[TableSessionManager] Session created by parallel process:', newSessionId)
-            api.setGuestSession(newSessionId)
-            setSessionState(prev => ({
-              ...prev,
-              currentUser: {
-                id: newSessionId,
-                guestSessionId: newSessionId,
-                userName: '',
-                isHost: false,
-                createdAt: new Date().toISOString(),
-                lastActivity: new Date().toISOString()
-              },
-              isConnected: true
-            }))
-            setSessionInitialized(true)
-            return true
-          }
-        }
-      } catch (error) {
-        console.error('[TableSessionManager] Error waiting for parallel session creation:', error)
-      }
-    }
-
-    // Try to start session creation atomically
-    if (!globalSessionManager.startSessionCreation(tableId, restaurantId)) {
-      console.log('[TableSessionManager] Could not start session creation, another process is handling it')
-      return false
-    }
-
-    // Create a promise for this session creation
-    const createSessionPromise = (async () => {
-      try {
-
-        // Get QR code from URL if available
-        const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
-        const qrCode = searchParams.get('qr')
-
-        // Try to create/join session via QR code endpoint (no name required)
-        if (qrCode) {
-          // Use strict mode guard to prevent duplicate API calls
-          const operationKey = `createSession-${tableId}-${restaurantId}-${qrCode}`
-
-          const sessionResponse = await strictModeGuard.executeOnce(operationKey, async () => {
-            // Use existing guest session ID as device identifier for backend comparison
-            const existingGuestSessionId = api.getGuestSessionId() ||
-                                         sessionStorage.getItem(`guestSession-${tableId}`) ||
-                                         localStorage.getItem('tabsy-guest-session-id')
-
-            console.log('[TableSessionManager] Creating QR session with device context:', {
-              hasExistingSession: !!existingGuestSessionId,
-              deviceSessionId: existingGuestSessionId || 'new device'
-            })
-
-            return await api.qr.createGuestSession({
-              qrCode,
-              tableId,
-              restaurantId,
-              deviceSessionId: existingGuestSessionId || undefined // Send existing session as device ID
-              // Note: No userName - will be asked during order placement
-            })
-          })
-
-          if (sessionResponse && sessionResponse.success && sessionResponse.data) {
-            const guestSession = sessionResponse.data
-            api.setGuestSession(guestSession.sessionId)
-
-            // Complete session creation in global manager
-            globalSessionManager.completeSessionCreation(tableId, guestSession.sessionId)
-
-            // DUAL-WRITE: Write to both unified storage AND legacy keys
-            dualWriteSession({
-              guestSessionId: guestSession.sessionId,
-              tableSessionId: guestSession.tableSessionId,
-              restaurantId,
-              tableId,
-              createdAt: guestSession.createdAt ? new Date(guestSession.createdAt).getTime() : Date.now()
-            })
-
-            // Set up anonymous session state
-            setSessionState(prev => ({
-              ...prev,
-              currentUser: {
-                id: guestSession.sessionId,
-                guestSessionId: guestSession.sessionId,
-                userName: '', // Empty - will be set during order
-                isHost: false,
-                createdAt: new Date().toISOString(),
-                lastActivity: new Date().toISOString()
-              },
-              isConnected: true
-            }))
-
-            setSessionInitialized(true)
-
-            // Set the session ID for global WebSocket provider
-            setCurrentSessionId(guestSession.sessionId)
-
-            return true
-          }
-        }
-
-        return false
-      } catch (error) {
-        console.error('[TableSessionManager] Error auto-creating/joining session:', error)
-        // Cancel session creation in global manager on error
-        globalSessionManager.cancelSessionCreation(tableId)
-        return false
-      } finally {
-        // Clear enhanced global lock
-        globalSessionCreationLock = false
-        clearSessionCreationLock(tableId)
-        // Remove from global state after completion
-        globalSessionCreationState.delete(sessionKey)
-      }
-    })()
-
-    // Store the promise to prevent duplicate creations
-    globalSessionCreationState.set(sessionKey, createSessionPromise)
-
-    // Return the result
-    return await createSessionPromise
-  }, [tableId, restaurantId, api, sessionInitialized])
-
-
-  // Initialize session management
-  useEffect(() => {
-    // Skip if already initialized (using ref to persist across re-renders)
-    if (initializationRef.current || sessionInitialized) {
-      setIsLoading(false)
-      return
-    }
-
-    // Additional check for existing session to prevent Strict Mode duplicates
-    const existingSession = api.getGuestSessionId() || sessionStorage.getItem(`guestSession-${tableId}`)
-    if (existingSession && sessionInitialized) {
-      setIsLoading(false)
-      return
-    }
-
-    const initialize = async () => {
-      // Mark as started to prevent race conditions
-      initializationRef.current = true
-
-      try {
-        setIsLoading(true)
-        setError(null)
-
-
-        // Auto-create or join session
-        const hasSession = await autoCreateOrJoinSession()
-
-        if (!hasSession) {
-          setError('Failed to connect to table session')
-          initializationRef.current = false // Reset on failure
-        }
-
-      } catch (error) {
-        setError('Failed to initialize table session')
-        initializationRef.current = false // Reset on error
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    initialize()
-  }, [tableId, restaurantId]) // Remove sessionInitialized from dependencies
+  }, [sessionData, sessionError, hasValidSession, existingSession, sessionInitialized, api])
 
   // Handle splash completion after session initialization
   useEffect(() => {
-    if (sessionInitialized && !isLoading && !error) {
+    if (sessionInitialized && !isCreatingSession && !error) {
       // Set splash completed immediately to avoid unnecessary delays
       setSplashCompleted(true)
     }
-  }, [sessionInitialized, isLoading, error])
+  }, [sessionInitialized, isCreatingSession, error])
 
   // WebSocket events are now handled by useWebSocketEvent hooks above
 
-  if (isLoading) {
+  if (isCreatingSession || (!sessionInitialized && !error)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <LoadingSpinner size="lg" />

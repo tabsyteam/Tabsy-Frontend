@@ -55,14 +55,14 @@ export function MenuCard(props: MenuCardProps) {
                 </div>
                 {/* Status indicator dot */}
                 <div className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-card ${
-                  (category as any).active ? 'bg-status-success' : 'bg-content-disabled'
+                  category.active ? 'bg-status-success' : 'bg-content-disabled'
                 }`} />
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-foreground text-base mb-2 truncate group-hover:text-primary transition-colors leading-tight">
                   {category.name}
                 </h3>
-                {(category as any).active ? (
+                {category.active ? (
                   <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-status-success-light text-status-success-dark border border-status-success">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Active
@@ -159,7 +159,7 @@ export function MenuCard(props: MenuCardProps) {
       style: 'currency',
       currency: 'USD',
       minimumFractionDigits: 2
-    }).format(numPrice / 100) // Assuming price is in cents
+    }).format(numPrice) // Backend sends price in dollars, not cents
   }
 
   return (
@@ -170,14 +170,14 @@ export function MenuCard(props: MenuCardProps) {
           <div className="relative flex-shrink-0">
             <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted/20 group-hover:shadow-md transition-all duration-300">
               <MenuItemImage
-                src={(item as any).image || (item as any).imageUrl}
+                src={item.image || item.imageUrl}
                 alt={item.name}
                 className="w-full h-full group-hover:scale-105 transition-transform duration-300"
               />
             </div>
             {/* Status indicator */}
             <div className={`absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border border-card ${
-              (item as any).active ? 'bg-status-success' : 'bg-status-error'
+              item.active ? 'bg-status-success' : 'bg-status-error'
             }`} />
           </div>
 
@@ -187,7 +187,7 @@ export function MenuCard(props: MenuCardProps) {
                 {item.name}
               </h3>
             </div>
-            {(item as any).active ? (
+            {item.active ? (
               <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-status-success-light text-status-success-dark border border-status-success">
                 <CheckCircle className="h-3 w-3 mr-1" />
                 Available
@@ -258,7 +258,6 @@ export function MenuCard(props: MenuCardProps) {
         <div className="flex items-center justify-between pt-3 border-t border-border/50 mt-auto">
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-1">
-              <DollarSign className="h-3.5 w-3.5 text-primary flex-shrink-0" />
               <span className="font-semibold text-sm text-primary">
                 {formatPrice(item.basePrice || item.price || 0)}
               </span>

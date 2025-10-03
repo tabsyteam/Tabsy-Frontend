@@ -28,8 +28,11 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator'
 import { useCart } from '@/hooks/useCart'
 import { useMenuItemActions } from '@/hooks/useMenuItemActions'
-import { SessionManager } from '@/lib/session'
 import { unifiedSessionStorage } from '@/lib/unifiedSessionStorage'
+import { SessionManager } from '@/lib/session'
+import { useMenuData } from '@/hooks/useMenuData'
+import { useTableInfo } from '@/hooks/useTableInfo'
+import { useGuestSession } from '@/hooks/useGuestSession'
 
 // Import our new modern components
 import SearchBar from '@/components/navigation/SearchBar'
@@ -125,12 +128,42 @@ export function MenuView() {
   const restaurantId = hasValidUrlParams ? urlRestaurantId : session?.restaurantId
   const tableId = hasValidUrlParams ? urlTableId : session?.tableId
 
-  // Core state
-  const [restaurant, setRestaurant] = useState<Restaurant | null>(null)
-  const [table, setTable] = useState<Table | null>(null)
-  const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // ✅ NEW: Use React Query hooks for data fetching (prevents duplicate API calls)
+  const {
+    data: tableInfoData,
+    isLoading: isLoadingTable,
+    error: tableError
+  } = useTableInfo({
+    qrCode,
+    enabled: !!qrCode
+  })
+
+  const {
+    data: sessionData,
+    isLoading: isLoadingSession,
+    error: sessionError
+  } = useGuestSession({
+    qrCode: qrCode || '',
+    tableId: tableId || '',
+    restaurantId: restaurantId || '',
+    enabled: !!qrCode && !!tableId && !!restaurantId
+  })
+
+  const {
+    data: menuCategories = [],
+    isLoading: isLoadingMenu,
+    error: menuError,
+    refetch: refetchMenu
+  } = useMenuData({
+    restaurantId,
+    enabled: !!restaurantId
+  })
+
+  // Derive state from React Query data
+  const restaurant = tableInfoData?.restaurant || null
+  const table = tableInfoData?.table || null
+  const loading = isLoadingTable || isLoadingSession || isLoadingMenu
+  const error = tableError?.message || sessionError?.message || menuError?.message || null
 
   // UI state
   const [searchQuery, setSearchQuery] = useState('')
@@ -164,10 +197,10 @@ export function MenuView() {
   const [showRightShadow, setShowRightShadow] = useState(false)
   const categoriesScrollRef = useRef<HTMLDivElement>(null)
 
-  // Pull to refresh
+  // Pull to refresh - now uses React Query refetch
   const pullToRefresh = usePullToRefresh({
     onRefresh: async () => {
-      await loadMenuData()
+      await refetchMenu()
       toast.success('Menu refreshed!', { icon: '🔄' })
     }
   })
@@ -221,186 +254,32 @@ export function MenuView() {
     }
   }, [restaurantId, loadRecentSearches])
 
-  // Main data loading function
-  const loadMenuData = useCallback(async () => {
-    if (!restaurantId || !tableId) {
-      setError('Missing restaurant or table information')
-      setLoading(false)
-      return
-    }
-
-    try {
-      setLoading(true)
-      setError(null)
-
-      // 1. Get restaurant and table info from QR code endpoint (if QR available)
-      // or use direct session creation if accessed via URL parameters
-      let restaurantData: Restaurant | null = null
-      let tableData: Table | null = null
-
-      if (qrCode) {
-        console.log('Getting table info from QR code:', qrCode)
-        const qrResponse = await api.qr.getTableInfo(qrCode)
-
-        if (qrResponse.success && qrResponse.data) {
-          // Backend returns Table object with nested restaurant property
-          tableData = qrResponse.data
-          restaurantData = qrResponse.data.restaurant
-          console.log('QR data loaded:', { restaurant: restaurantData?.name, table: tableData?.number })
-        } else {
-          throw new Error('Invalid QR code or table not found')
-        }
-      }
-
-      // 2. Use existing guest session (created by TableSessionManager)
-      // DUAL-READ: Try unified storage first, with automatic legacy fallback
-      let currentSessionId = api.getGuestSessionId()
-
-      if (!currentSessionId) {
-        console.warn('[MenuView] No guest session in API client memory, attempting recovery...')
-
-        // DUAL-READ: Use unified storage (automatically falls back to legacy keys)
-        const session = unifiedSessionStorage.getSession()
-        if (session?.guestSessionId) {
-          console.log('[MenuView] ✅ Session recovered from unified storage:', session.guestSessionId)
-          api.setGuestSession(session.guestSessionId)
-          currentSessionId = session.guestSessionId
-        } else {
-          // Final fallback: Check standalone session ID (legacy)
-          const standaloneSessionId = sessionStorage.getItem('tabsy-guest-session-id')
-          if (standaloneSessionId) {
-            console.log('[MenuView] ✅ Session recovered from legacy standalone key:', standaloneSessionId)
-            api.setGuestSession(standaloneSessionId)
-            currentSessionId = standaloneSessionId
-          }
-        }
-
-        // If still no session, throw error
-        if (!currentSessionId) {
-          console.error('[MenuView] ❌ Session recovery failed. No session found in any storage location.')
-          console.error('[MenuView] This indicates session was never created or was completely cleared.')
-          console.error('[MenuView] Check TableSessionManager logs to see if session creation succeeded.')
-          throw new Error('No guest session available. Please refresh the page.')
-        }
-
-        console.log('[MenuView] ✅ Session recovery successful:', currentSessionId)
-      }
-
-      console.log('[MenuView] Using guest session for API calls:', currentSessionId)
-      console.log('[MenuView] API client session state:', {
-        hasGuestSession: !!api.getGuestSessionId(),
-        guestSessionId: api.getGuestSessionId()
-      })
-      setSessionReady(true)
-
-      // 2. Load menu data (this uses customer-facing endpoint with guest session)
-      // Retry logic in case session isn't ready yet
-      let menuResponse
-      let retryCount = 0
-      const maxRetries = 3
-
-      while (retryCount < maxRetries) {
-        try {
-          menuResponse = await api.menu.getActiveMenu(restaurantId)
-          break // Success, exit retry loop
-        } catch (error: any) {
-          retryCount++
-          console.warn(`Menu API attempt ${retryCount} failed:`, error.message)
-
-          // Handle authentication errors specially - don't retry, redirect to new session
-          if (error?.status === 401 || error?.response?.status === 401 || error?.message?.includes('Unauthorized')) {
-            console.error('Authentication failed - guest session is invalid. Redirecting to create new session.')
-
-            // Clear invalid session
-            api.setGuestSession('')
-            sessionStorage.removeItem('tabsy-guest-session-id')
-
-            // Redirect to QR scan page with helpful message
-            const redirectUrl = `/?restaurant=${restaurantId}&table=${tableId}&message=session_expired`
-            toast.error('Your session has expired. Please scan the QR code to start a new session.')
-            router.push(redirectUrl)
-            return
-          }
-
-          if (retryCount >= maxRetries) {
-            throw new Error(`Failed to load menu after ${maxRetries} attempts`)
-          }
-
-          // Wait before retry, with exponential backoff
-          await new Promise(resolve => setTimeout(resolve, 500 * retryCount))
-        }
-      }
-
-      if (menuResponse && menuResponse.success && menuResponse.data) {
-        console.log('Menu response structure:', menuResponse.data)
-
-        // Handle different possible menu response structures
-        let categories = []
-
-        // If response is an array of menus, get categories from the first menu
-        if (Array.isArray(menuResponse.data)) {
-          const firstMenu = menuResponse.data[0]
-          categories = firstMenu?.categories || []
-          console.log('Found array of menus, using first menu:', firstMenu?.name)
-        }
-        // If response is a single menu object with categories
-        else if (menuResponse.data.categories) {
-          categories = menuResponse.data.categories
-        }
-        // If response has a different structure, log for debugging
-        else {
-          console.warn('Unexpected menu response structure:', menuResponse.data)
-          categories = []
-        }
-
-        setMenuCategories(categories)
-        console.log('Menu loaded:', categories.length, 'categories')
-
-        // Cache menu data for edit functionality in cart
-        try {
-          const menuDataToCache = {
-            categories,
-            cachedAt: new Date().toISOString()
-          }
-          sessionStorage.setItem(STORAGE_KEYS.MENU_DATA, JSON.stringify(menuDataToCache))
-          console.log('[MenuView] Menu data cached for cart editing')
-        } catch (error) {
-          console.error('[MenuView] Failed to cache menu data:', error)
-        }
-      } else {
-        console.error('Menu API failed:', menuResponse)
-        throw new Error('Failed to load menu data')
-      }
-
-      // 3. Set restaurant and table data from API responses
-      if (restaurantData) {
-        setRestaurant(restaurantData)
-      }
-
-      if (tableData) {
-        setTable(tableData)
-      }
-
-    } catch (error) {
-      console.error('Error loading menu data:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load menu. Please try again.'
-      setError(errorMessage)
-      toast.error(errorMessage)
-    } finally {
-      setLoading(false)
-    }
-  }, [api, restaurantId, tableId, qrCode, router])
-
-  // Restore guest session from URL parameter and then load data
+  // ✅ REMOVED: Old loadMenuData function - now handled by React Query hooks
+  // Session management effects
   useEffect(() => {
-    if (urlGuestSessionId) {
-      console.log('[MenuView] Restoring guest session from URL:', urlGuestSessionId)
-      api.setGuestSession(urlGuestSessionId)
+    // Set guest session in API client when session data is available
+    if (sessionData?.sessionId) {
+      console.log('[MenuView] Setting guest session from React Query:', sessionData.sessionId)
+      api.setGuestSession(sessionData.sessionId)
+      setSessionReady(true)
     }
-    // Load data immediately
-    loadMenuData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []) // Run only once on mount
+  }, [sessionData, api])
+
+  // Cache menu data for cart editing
+  useEffect(() => {
+    if (menuCategories && menuCategories.length > 0) {
+      try {
+        const menuDataToCache = {
+          categories: menuCategories,
+          cachedAt: new Date().toISOString()
+        }
+        sessionStorage.setItem(STORAGE_KEYS.MENU_DATA, JSON.stringify(menuDataToCache))
+        console.log('[MenuView] Menu data cached for cart editing')
+      } catch (error) {
+        console.error('[MenuView] Failed to cache menu data:', error)
+      }
+    }
+  }, [menuCategories])
 
   // Load favorites and recent searches
   useEffect(() => {

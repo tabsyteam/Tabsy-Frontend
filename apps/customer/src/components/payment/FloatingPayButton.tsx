@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CreditCard, Wallet } from 'lucide-react'
 import { SessionManager } from '@/lib/session'
-import { useBillStatus } from '@/hooks/useBillStatus'
+import { useBillStatus } from '@/hooks/useBillData' // ✅ Updated to use React Query version
 
 interface FloatingPayButtonProps {
   className?: string
@@ -61,7 +61,11 @@ export function FloatingPayButton({ className = '' }: FloatingPayButtonProps) {
   })
 
   const handlePayBill = () => {
-    const queryParams = SessionManager.getDiningQueryParams()
+    // Get query params from current session
+    const currentSession = SessionManager.getDiningSession()
+    const queryParams = currentSession
+      ? `?restaurant=${currentSession.restaurantId}&table=${currentSession.tableId}`
+      : ''
     router.push(`/payment${queryParams}`)
   }
 

@@ -149,15 +149,15 @@ Each app has its own distinct theme while following the same semantic structure:
 - **Secondary**: Cyan/Teal (#06B6D4) - Fresh and energetic
 - **Accent**: Logo Orange (#F97316) - Enthusiasm and CTAs
 
-#### Restaurant Dashboard - Warm Orange Theme
-- **Primary**: Orange (#F97316) - Energetic, hospitality-focused
-- **Secondary**: Amber (#F59E0B) - Warm, culinary passion
-- **Accent**: Red (#EF4444) - Important alerts and actions
+#### Restaurant Dashboard - Teal/Violet Hospitality Theme
+- **Primary**: Deep Teal (#0D9488) - Professional, hospitality-focused
+- **Secondary**: Violet (#8B5CF6) - Sophisticated, premium
+- **Accent**: Logo Orange (#F97316) - Brand energy and CTAs
 
-#### Admin Portal - Professional Blue Theme
-- **Primary**: Blue (#3B82F6) - Professional, trustworthy
-- **Secondary**: Indigo (#6366F1) - Administrative clarity
-- **Accent**: Purple (#A855F7) - System-level actions
+#### Admin Portal - Executive Indigo Theme (2025)
+- **Primary**: Deep Indigo (#4F46E5) - Authority, innovation, executive
+- **Secondary**: Cool Slate (#64748B) - Professional, balanced
+- **Accent**: Electric Cyan (#06B6D4) - Data-focused, tech-forward, modern
 
 ### Implementation
 

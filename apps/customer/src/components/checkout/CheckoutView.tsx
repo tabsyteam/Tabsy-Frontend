@@ -9,6 +9,7 @@ import { ArrowLeft, Clock, CheckCircle, User, Phone, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApi } from '@/components/providers/api-provider'
 import { useCart } from '@/hooks/useCart'
+import { dualReadSession } from '@/lib/unifiedSessionStorage'
 import { SessionManager } from '@/lib/session'
 import { calculateTax } from '@/constants/tax'
 import { STORAGE_KEYS } from '@/constants/storage'
@@ -49,17 +50,17 @@ export function CheckoutView() {
   const [specialInstructions, setSpecialInstructions] = useState('')
   const [loading, setLoading] = useState(true)
   const [placing, setPlacing] = useState(false)
+  const [placingStatus, setPlacingStatus] = useState<'placing' | 'success' | 'idle'>('idle')
   const [estimatedTime, setEstimatedTime] = useState<number>(20)
 
   const urlRestaurantId = searchParams.get('restaurant')
   const urlTableId = searchParams.get('table')
 
-  // Validate URL parameters and fall back to session if invalid
+  // Get session from unified storage
   const session = SessionManager.getDiningSession()
-  const hasValidUrlParams = SessionManager.validateUrlParams({
-    restaurant: urlRestaurantId,
-    table: urlTableId
-  })
+
+  // Validate URL parameters and fall back to session if invalid
+  const hasValidUrlParams = !!(urlRestaurantId && urlTableId)
 
   const restaurantId = hasValidUrlParams ? urlRestaurantId : session?.restaurantId
   const tableId = hasValidUrlParams ? urlTableId : session?.tableId
@@ -155,6 +156,7 @@ export function CheckoutView() {
 
     console.log('Starting order placement...')
     setPlacing(true)
+    setPlacingStatus('placing')
 
     try {
       // Get existing session ID from API client (created by TableSessionManager)
@@ -253,16 +255,19 @@ export function CheckoutView() {
         // Add order to history for tracking multiple orders
         SessionManager.addOrderToHistory(response.data.id)
 
+        // Update status to show success animation
+        setPlacingStatus('success')
+
         toast.success('Order placed successfully!', {
           description: `Order #${response.data.orderNumber} has been sent to the kitchen`,
           duration: 3000
         })
 
-        // Add a small delay to ensure the toast is visible before navigation
+        // Keep loading state and navigate after showing success animation
         setTimeout(() => {
           // Navigate to order tracking (use replace to prevent back navigation to checkout)
           router.replace(`/order/${response.data!.id}?restaurant=${restaurantId}&table=${tableId}`)
-        }, 500)
+        }, 1500) // Increased to 1.5s to show the success animation properly
       } else {
         throw new Error(
           typeof response.error === 'string'
@@ -285,9 +290,13 @@ export function CheckoutView() {
       toast.error('Order Failed', {
         description: errorMessage
       })
-    } finally {
+
+      // Only reset on error
       setPlacing(false)
+      setPlacingStatus('idle')
     }
+    // Note: Don't use finally block to reset state on success
+    // We want to keep the loading state until navigation completes
   }
 
   const handleBack = () => {
@@ -478,11 +487,19 @@ export function CheckoutView() {
                 size="lg"
                 className={`w-full relative overflow-hidden transition-all duration-300 ${
                   placing
-                    ? 'bg-primary/80 cursor-not-allowed transform'
+                    ? placingStatus === 'success'
+                      ? 'bg-status-success cursor-not-allowed transform'
+                      : 'bg-primary/80 cursor-not-allowed transform'
                     : 'hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]'
                 }`}
                 disabled={placing || !guestInfo.name.trim()}
-                aria-label={placing ? 'Placing your order, please wait' : 'Place order'}
+                aria-label={
+                  placingStatus === 'success'
+                    ? 'Order placed successfully, redirecting...'
+                    : placing
+                    ? 'Placing your order, please wait'
+                    : 'Place order'
+                }
                 aria-busy={placing}
               >
                 <motion.div
@@ -491,8 +508,32 @@ export function CheckoutView() {
                   animate={placing ? { opacity: 1 } : { opacity: 1 }}
                   transition={{ duration: 0.2 }}
                 >
-                  {placing ? (
+                  {placingStatus === 'success' ? (
                     <>
+                      {/* Success state - checkmark animation */}
+                      <motion.div
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 200,
+                          damping: 15
+                        }}
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                      </motion.div>
+                      <motion.span
+                        initial={{ opacity: 0, x: 10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1, duration: 0.3 }}
+                        className="font-medium"
+                      >
+                        Order Placed! Redirecting...
+                      </motion.span>
+                    </>
+                  ) : placing ? (
+                    <>
+                      {/* Loading state - spinner animation */}
                       <motion.div
                         initial={{ scale: 0, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
@@ -517,6 +558,7 @@ export function CheckoutView() {
                     </>
                   ) : (
                     <>
+                      {/* Idle state - normal button */}
                       <motion.div
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
@@ -530,7 +572,7 @@ export function CheckoutView() {
                 </motion.div>
 
                 {/* Subtle loading pulse effect */}
-                {placing && (
+                {placing && placingStatus === 'placing' && (
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-transparent via-surface/10 to-transparent"
                     initial={{ x: "-100%" }}
@@ -538,6 +580,19 @@ export function CheckoutView() {
                     transition={{
                       duration: 1.5,
                       repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                  />
+                )}
+
+                {/* Success shimmer effect */}
+                {placingStatus === 'success' && (
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                    initial={{ x: "-100%" }}
+                    animate={{ x: "200%" }}
+                    transition={{
+                      duration: 0.8,
                       ease: "easeInOut"
                     }}
                   />

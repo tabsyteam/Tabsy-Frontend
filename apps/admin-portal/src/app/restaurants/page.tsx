@@ -2,7 +2,15 @@
 
 import { useState, useMemo } from 'react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { Button } from '@tabsy/ui-components';
+import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import {
+  Button,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@tabsy/ui-components';
 import {
   Store,
   Plus,
@@ -156,55 +164,58 @@ export default function RestaurantsPage(): JSX.Element {
     a.click();
   };
 
+  const breadcrumbs = [
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Restaurants' }
+  ];
+
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-gradient-professional">
-        {/* Header */}
-        <div className="bg-surface border-b border-border-tertiary shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-content-primary">Restaurant Management</h1>
-                <p className="text-sm text-content-secondary mt-1">
-                  Manage all restaurants on the platform
-                </p>
-              </div>
-              <div className="flex space-x-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => refetch()}
-                  className="hover-lift"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExport}
-                  className="hover-lift"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
-                <Button
-                  onClick={() => {
-                    setSelectedRestaurant(null);
-                    setShowAddModal(true);
-                  }}
-                  className="btn-professional hover-lift"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Restaurant
-                </Button>
-              </div>
+      <DashboardLayout breadcrumbs={breadcrumbs}>
+        {/* Header Actions */}
+        <div className="px-6 py-4 bg-surface border-b border-border-default">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-content-primary">Restaurant Management</h1>
+              <p className="text-sm text-content-secondary mt-1">
+                Manage all restaurants on the platform
+              </p>
+            </div>
+            <div className="flex space-x-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                className="hover-lift"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExport}
+                className="hover-lift"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
+              <Button
+                onClick={() => {
+                  setSelectedRestaurant(null);
+                  setShowAddModal(true);
+                }}
+                className="btn-professional hover-lift"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Restaurant
+              </Button>
             </div>
           </div>
         </div>
 
         {/* Filters Bar */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="px-6 py-4">
           <div className="bg-surface rounded-lg shadow-card p-4">
             <div className="flex flex-col sm:flex-row gap-4">
               {/* Search */}
@@ -223,26 +234,28 @@ export default function RestaurantsPage(): JSX.Element {
 
               {/* Status Filter */}
               <div className="flex gap-2">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="px-4 py-2 border border-border-tertiary rounded-lg input-professional"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
+                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 {/* Sort */}
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-4 py-2 border border-border-tertiary rounded-lg input-professional"
-                >
-                  <option value="name">Name</option>
-                  <option value="createdAt">Date Added</option>
-                  <option value="revenue">Revenue</option>
-                </select>
+                <Select value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name">Name</SelectItem>
+                    <SelectItem value="createdAt">Date Added</SelectItem>
+                    <SelectItem value="revenue">Revenue</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 <button
                   onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
@@ -272,8 +285,8 @@ export default function RestaurantsPage(): JSX.Element {
         </div>
 
         {/* Restaurants Table */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-          <div className="bg-surface rounded-lg shadow-card overflow-hidden">
+        <div className="px-6 pb-8">
+          <div className="bg-surface rounded-lg shadow-card overflow-visible">
             {isLoading ? (
               <div className="p-8 text-center">
                 <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-primary border-t-transparent rounded-full"></div>
@@ -286,7 +299,7 @@ export default function RestaurantsPage(): JSX.Element {
               </div>
             ) : (
               <>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-visible">
                   <table className="w-full table-professional">
                     <thead>
                       <tr>
@@ -494,7 +507,7 @@ export default function RestaurantsPage(): JSX.Element {
             }}
           />
         )}
-      </div>
+      </DashboardLayout>
     </ProtectedRoute>
   );
 }

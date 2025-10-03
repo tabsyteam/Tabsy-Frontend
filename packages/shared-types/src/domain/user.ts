@@ -21,25 +21,19 @@ export interface User {
   lastName: string
   phone?: string
   role: UserRole
-  status: UserStatus
-  profileImageUrl?: string
+  // Backend currently only has 'active: boolean'
+  // TODO: Backend should be updated to use status enum instead
+  active?: boolean
   createdAt: string
   updatedAt: string
-  lastLoginAt?: string
-  // Restaurant relationships - included when user is restaurant owner/staff
-  restaurantOwner?: {
-    id: string
-    restaurantId: string
-    createdAt: string
-    updatedAt: string
-  }
-  restaurantStaff?: {
-    id: string
-    restaurantId: string
-    position: string
-    createdAt: string
-    updatedAt: string
-  }
+  // Restaurant relationship ID (for RESTAURANT_OWNER/STAFF)
+  restaurantId?: string
+}
+
+// Helper function to compute status from active field
+export function getUserStatus(user: User): UserStatus {
+  // Since backend only has active boolean, map it to status
+  return user.active !== false ? UserStatus.ACTIVE : UserStatus.INACTIVE
 }
 
 export interface CreateUserRequest {
@@ -49,6 +43,7 @@ export interface CreateUserRequest {
   lastName: string
   phone?: string
   role: UserRole
+  restaurantId?: string  // Required for RESTAURANT_OWNER, RESTAURANT_STAFF
 }
 
 export interface UpdateUserRequest {
@@ -57,7 +52,7 @@ export interface UpdateUserRequest {
   lastName?: string
   phone?: string
   role?: UserRole
-  profileImageUrl?: string
+  active?: boolean  // Backend field for enabling/disabling users
 }
 
 export interface UserProfile extends User {

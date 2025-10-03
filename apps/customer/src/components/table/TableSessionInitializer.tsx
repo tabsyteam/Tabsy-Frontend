@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { TabsySplash } from '@/components/splash/TabsySplash'
 import { TableSessionManager } from '@/components/table/TableSessionManager'
 import { useApi } from '@/components/providers/api-provider'
 import { toast } from 'sonner'
+import { useTableInfo } from '@/hooks/useTableInfo'
 
 interface TableSessionInitializerProps {
   restaurantId: string
@@ -30,159 +31,64 @@ interface TableInfo {
 
 
 export function TableSessionInitializer({ restaurantId, tableId }: TableSessionInitializerProps) {
-  const [isLoading, setIsLoading] = useState(true)
-  const [tableInfo, setTableInfo] = useState<TableInfo | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-  const { api } = useApi()
-
-  // Track if validation has been completed to prevent React Strict Mode duplicate execution
-  const hasValidated = useRef(false)
-
-  // Get QR code from URL parameters
-  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+  const searchParams = useSearchParams()
   const qrCode = searchParams.get('qr')
 
+  // ✅ NEW: Use React Query hook for QR validation (prevents duplicate API calls)
+  const {
+    data: tableInfoData,
+    isLoading,
+    error: fetchError
+  } = useTableInfo({
+    qrCode,
+    enabled: !!qrCode
+  })
+
+  // Convert to legacy format for compatibility
+  const [tableInfo, setTableInfo] = useState<TableInfo | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  // Update state when React Query data changes
   useEffect(() => {
-    const validateTableAccess = async () => {
-      // Prevent duplicate execution in React Strict Mode
-      if (hasValidated.current) {
+    if (fetchError) {
+      const errorMessage = fetchError.message || 'Failed to connect to your table. Please try scanning the QR code again.'
+      setError(errorMessage)
+
+      toast.error('Connection Failed', {
+        description: errorMessage,
+        action: {
+          label: 'Scan QR Code',
+          onClick: () => router.push('/')
+        }
+      })
+    } else if (tableInfoData) {
+      // Validate that QR data matches the URL parameters
+      if (tableInfoData.restaurant.id !== restaurantId) {
+        setError('QR code does not match this restaurant')
+        return
+      }
+      if (tableInfoData.table.id !== tableId) {
+        setError('QR code does not match this table')
         return
       }
 
-      try {
-        setIsLoading(true)
-        setError(null)
-
-        // QR code is required for table access
-        if (!qrCode) {
-          throw new Error('QR code is required to access this table')
-        }
-
-        // First, check if we have cached QR access data from the QR processing page
-        const cachedQRData = sessionStorage.getItem('tabsy-qr-access')
-        if (cachedQRData) {
-          try {
-            const qrAccessData = JSON.parse(cachedQRData)
-
-            // Validate that cached data matches current URL parameters
-            if (qrAccessData.qrCode === qrCode &&
-                qrAccessData.restaurant?.id === restaurantId &&
-                qrAccessData.table?.id === tableId) {
-
-              setTableInfo({
-                restaurant: {
-                  id: qrAccessData.restaurant.id,
-                  name: qrAccessData.restaurant.name,
-                  logo: qrAccessData.restaurant.logo || undefined,
-                  theme: undefined
-                },
-                table: {
-                  id: qrAccessData.table.id,
-                  number: qrAccessData.table.number,
-                  qrCode: qrAccessData.table.qrCode || qrCode
-                },
-                isActive: true // Assume active if we got here from QR processing
-              })
-
-              // Mark as validated to prevent React Strict Mode duplicate execution
-              hasValidated.current = true
-
-              // Clean up cached data after successful use to prevent stale data issues
-              sessionStorage.removeItem('tabsy-qr-access')
-
-              setIsLoading(false)
-              return // Skip API call since we have valid cached data
-            }
-          } catch (parseError) {
-            // Failed to parse cached data, fall back to API validation
-          }
-        }
-
-        // Fallback to API validation if no cached data or it doesn't match
-        const tableInfoResponse = await api.qr.getTableInfo(qrCode)
-
-        if (!tableInfoResponse.success || !tableInfoResponse.data) {
-          throw new Error('Invalid QR code or table not found')
-        }
-
-        const tableData = tableInfoResponse.data
-
-        // Backend returns: Table object with nested restaurant property
-        if (!tableData.id || !tableData.restaurant) {
-          throw new Error('Invalid table data structure from API')
-        }
-
-        const table = tableData
-        const restaurant = tableData.restaurant
-
-        // Validate that QR data matches the URL parameters
-        if (restaurant.id !== restaurantId) {
-          throw new Error('QR code does not match this restaurant')
-        }
-        if (table.id !== tableId) {
-          throw new Error('QR code does not match this table')
-        }
-
-        setTableInfo({
-          restaurant: {
-            id: restaurant.id,
-            name: restaurant.name,
-            logo: restaurant.logo || undefined,
-            theme: undefined
-          },
-          table: {
-            id: table.id,
-            number: table.number || table.tableNumber,
-            qrCode: table.qrCode || qrCode
-          },
-          isActive: tableData.isActive
-        })
-
-        // Mark as validated to prevent React Strict Mode duplicate execution
-        hasValidated.current = true
-
-        // Clean up cached data after successful validation
-        sessionStorage.removeItem('tabsy-qr-access')
-
-      } catch (error: any) {
-        // Mark as validated to prevent React Strict Mode duplicate execution even on error
-        hasValidated.current = true
-
-        // Clean up cached data on error to prevent stale data issues
-        sessionStorage.removeItem('tabsy-qr-access')
-
-        let errorMessage = 'Failed to connect to your table. Please try scanning the QR code again.'
-
-        if (error?.response?.status === 404) {
-          errorMessage = 'This table was not found. Please check with restaurant staff.'
-        } else if (error?.response?.status === 403) {
-          errorMessage = 'This table is not available for ordering at the moment.'
-        } else if (error?.message?.includes('QR code')) {
-          errorMessage = error.message
-        }
-
-        setError(errorMessage)
-
-        // Show error toast with option to go back to scanner
-        toast.error('Connection Failed', {
-          description: errorMessage,
-          action: {
-            label: 'Scan QR Code',
-            onClick: () => router.push('/')
-          }
-        })
-      } finally {
-        setIsLoading(false)
-      }
+      setTableInfo({
+        restaurant: {
+          id: tableInfoData.restaurant.id,
+          name: tableInfoData.restaurant.name,
+          logo: tableInfoData.restaurant.logo || undefined,
+          theme: undefined
+        },
+        table: {
+          id: tableInfoData.table.id,
+          number: tableInfoData.table.number || (tableInfoData.table as any).tableNumber,
+          qrCode: (tableInfoData.table as any).qrCode || qrCode || ''
+        },
+        isActive: tableInfoData.isActive
+      })
     }
-
-    validateTableAccess()
-    // Remove 'api' from dependencies to prevent re-execution when api object changes
-    // The api object is stable from ApiProvider and doesn't need to trigger re-runs
-    // We already have hasValidated.current guard for additional safety
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [restaurantId, tableId, qrCode, router])
+  }, [fetchError, tableInfoData, restaurantId, tableId, qrCode, router])
 
   if (error) {
     return (

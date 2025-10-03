@@ -266,6 +266,14 @@ export class TableSessionAPI {
   }
 
   /**
+   * POST /table-sessions/:sessionId/extend - Extend table session expiry time
+   * Extends the session by 30 minutes from current time
+   */
+  async extend(sessionId: string): Promise<ApiResponse<{ tableSessionId: string; expiresAt: string; message: string }>> {
+    return this.client.post(`/table-sessions/${sessionId}/extend`, {})
+  }
+
+  /**
    * POST /table-sessions/:sessionId/payment - Create table-wide payment intent
    */
   async createPayment(

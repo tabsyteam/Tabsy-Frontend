@@ -37,7 +37,10 @@ export function createDashboardHooks(useQuery: any) {
           try {
             // SIMPLIFIED: Only fetch orders data - dashboard doesn't need live tables/menu data
             const allOrdersResponse = await client.order.getByRestaurant(restaurantId)
-            const allOrders = Array.isArray(allOrdersResponse.data) ? allOrdersResponse.data : []
+            // Backend returns { orders: [], totalCount: number }, extract the orders array
+            const allOrders = Array.isArray(allOrdersResponse.data)
+              ? allOrdersResponse.data
+              : (allOrdersResponse.data?.orders || [])
 
             // Filter today's orders manually
             const todayOrders = allOrders.filter((order: any) => {
@@ -244,15 +247,18 @@ export function createDashboardHooks(useQuery: any) {
           const result = await tabsyClient.order.getByRestaurant(restaurantId)
 
           // Filter manually for today's orders
-          if (result.data && Array.isArray(result.data)) {
-            const allOrders = result.data
-            const todayOrders = allOrders.filter((order: any) => {
-              const orderDate = new Date(order.createdAt)
-              return orderDate >= todayStart && orderDate <= todayEnd
-            })
-            // Update the result structure to return only the filtered orders array
-            result.data = todayOrders
-          }
+          // Backend returns { orders: [], totalCount: number }, extract and filter orders
+          const allOrders = Array.isArray(result.data)
+            ? result.data
+            : (result.data?.orders || [])
+
+          const todayOrders = allOrders.filter((order: any) => {
+            const orderDate = new Date(order.createdAt)
+            return orderDate >= todayStart && orderDate <= todayEnd
+          })
+
+          // Update the result structure to return only the filtered orders array
+          result.data = todayOrders
 
           console.log('useTodayOrders - API result:', result)
           return result
@@ -286,8 +292,10 @@ export function createDashboardHooks(useQuery: any) {
           console.log('useWeeklyOrderStats - API response:', response)
 
           // Filter orders manually for the last week since backend ignores date filters
-          // Extract orders from correct API structure: response.data (already array)
-          const allOrders = Array.isArray(response.data) ? response.data : []
+          // Backend returns { orders: [], totalCount: number }, extract the orders array
+          const allOrders = Array.isArray(response.data)
+            ? response.data
+            : (response.data?.orders || [])
           const orders = allOrders.filter((order: any) => {
             const orderDate = new Date(order.createdAt)
             return orderDate >= startOfWeek && orderDate <= new Date()

@@ -25,7 +25,8 @@ import {
   MessageSquare,
   TrendingUp,
   Activity,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 import { Order, OrderStatus, OrderItem, Payment, PaymentStatus } from '@tabsy/shared-types';
 import { useUpdateOrderStatus, useOrderPayment } from '@/hooks/api';
@@ -53,6 +54,8 @@ export default function OrderDetailsModal({
 }: OrderDetailsModalProps): JSX.Element {
   const [activeTab, setActiveTab] = useState<'details' | 'items' | 'timeline' | 'payment'>('details');
   const [notes, setNotes] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingAction, setProcessingAction] = useState<string | null>(null);
 
   const updateOrderStatus = useUpdateOrderStatus();
   const { data: payment } = useOrderPayment(order.id);
@@ -88,29 +91,50 @@ export default function OrderDetailsModal({
     return icons[status] || AlertCircle;
   };
 
-  const handleStatusUpdate = async (newStatus: OrderStatus) => {
+  const handleStatusUpdate = async (newStatus: OrderStatus, actionName: string) => {
+    if (isProcessing) return; // Prevent multiple clicks
+
     try {
+      setIsProcessing(true);
+      setProcessingAction(actionName);
+
       await updateOrderStatus.mutateAsync({
         orderId: order.id,
         status: newStatus
       });
+
       toast.success(`Order status updated to ${newStatus}`);
       onUpdate?.();
     } catch (error) {
       toast.error('Failed to update order status');
+    } finally {
+      setIsProcessing(false);
+      setProcessingAction(null);
     }
   };
 
   const handleCancelOrder = async () => {
+    if (isProcessing) return; // Prevent multiple clicks
+
     if (confirm('Are you sure you want to cancel this order?')) {
-      await handleStatusUpdate(OrderStatus.CANCELLED);
+      await handleStatusUpdate(OrderStatus.CANCELLED, 'cancel');
     }
   };
 
   const handleRefund = async () => {
+    if (isProcessing) return; // Prevent multiple clicks
+
     if (confirm('Are you sure you want to refund this order?')) {
-      // TODO: Process refund
-      toast.success('Refund initiated successfully');
+      setIsProcessing(true);
+      setProcessingAction('refund');
+
+      try {
+        // TODO: Process refund
+        toast.success('Refund initiated successfully');
+      } finally {
+        setIsProcessing(false);
+        setProcessingAction(null);
+      }
     }
   };
 
@@ -200,41 +224,61 @@ export default function OrderDetailsModal({
             {order.status === OrderStatus.RECEIVED && (
               <Button
                 size="sm"
-                onClick={() => handleStatusUpdate(OrderStatus.PREPARING)}
+                onClick={() => handleStatusUpdate(OrderStatus.PREPARING, 'confirm')}
+                disabled={isProcessing}
                 className="btn-professional hover-lift"
               >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Confirm Order
+                {isProcessing && processingAction === 'confirm' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
+                {isProcessing && processingAction === 'confirm' ? 'Confirming...' : 'Confirm Order'}
               </Button>
             )}
             {order.status === OrderStatus.PREPARING && (
               <Button
                 size="sm"
-                onClick={() => handleStatusUpdate(OrderStatus.READY)}
+                onClick={() => handleStatusUpdate(OrderStatus.READY, 'ready')}
+                disabled={isProcessing}
                 className="btn-professional hover-lift"
               >
-                <ChefHat className="h-4 w-4 mr-2" />
-                Start Preparing
+                {isProcessing && processingAction === 'ready' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <ChefHat className="h-4 w-4 mr-2" />
+                )}
+                {isProcessing && processingAction === 'ready' ? 'Processing...' : 'Mark as Ready'}
               </Button>
             )}
             {order.status === OrderStatus.READY && (
               <Button
                 size="sm"
-                onClick={() => handleStatusUpdate(OrderStatus.DELIVERED)}
+                onClick={() => handleStatusUpdate(OrderStatus.DELIVERED, 'delivered')}
+                disabled={isProcessing}
                 className="btn-professional hover-lift"
               >
-                <Package className="h-4 w-4 mr-2" />
-                Mark as Ready
+                {isProcessing && processingAction === 'delivered' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Package className="h-4 w-4 mr-2" />
+                )}
+                {isProcessing && processingAction === 'delivered' ? 'Processing...' : 'Mark as Delivered'}
               </Button>
             )}
             {order.status === OrderStatus.DELIVERED && (
               <Button
                 size="sm"
-                onClick={() => handleStatusUpdate(OrderStatus.COMPLETED)}
+                onClick={() => handleStatusUpdate(OrderStatus.COMPLETED, 'completed')}
+                disabled={isProcessing}
                 className="btn-professional hover-lift"
               >
-                <Truck className="h-4 w-4 mr-2" />
-                Mark as Delivered
+                {isProcessing && processingAction === 'completed' ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Truck className="h-4 w-4 mr-2" />
+                )}
+                {isProcessing && processingAction === 'completed' ? 'Processing...' : 'Mark as Completed'}
               </Button>
             )}
 
@@ -242,10 +286,15 @@ export default function OrderDetailsModal({
               size="sm"
               variant="outline"
               onClick={handleCancelOrder}
-              className="hover-lift text-status-error border-status-error-border hover:bg-status-error-light"
+              disabled={isProcessing}
+              className="hover-lift text-status-error border-status-error-border hover:bg-status-error-light disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <XCircle className="h-4 w-4 mr-2" />
-              Cancel Order
+              {isProcessing && processingAction === 'cancel' ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <XCircle className="h-4 w-4 mr-2" />
+              )}
+              {isProcessing && processingAction === 'cancel' ? 'Cancelling...' : 'Cancel Order'}
             </Button>
           </div>
         )}
@@ -573,10 +622,15 @@ export default function OrderDetailsModal({
                       size="sm"
                       variant="outline"
                       onClick={handleRefund}
-                      className="w-full hover-lift"
+                      disabled={isProcessing}
+                      className="w-full hover-lift disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Receipt className="h-4 w-4 mr-2" />
-                      Process Refund
+                      {isProcessing && processingAction === 'refund' ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Receipt className="h-4 w-4 mr-2" />
+                      )}
+                      {isProcessing && processingAction === 'refund' ? 'Processing...' : 'Process Refund'}
                     </Button>
                   </div>
                 )}

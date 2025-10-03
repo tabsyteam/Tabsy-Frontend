@@ -8,20 +8,33 @@ interface GrowthChartProps {
   color?: string
 }
 
-export const GrowthChart: React.FC<GrowthChartProps> = ({ 
-  data = [], 
+export const GrowthChart: React.FC<GrowthChartProps> = ({
+  data = [],
   title = "Growth Chart",
   color = "blue"
 }) => {
-  // Sample data if none provided
-  const chartData = data.length > 0 ? data : [
-    { name: 'Jan', value: 1200 },
-    { name: 'Feb', value: 1500 },
-    { name: 'Mar', value: 1800 },
-    { name: 'Apr', value: 1650 },
-    { name: 'May', value: 2100 },
-    { name: 'Jun', value: 2400 }
-  ]
+  const chartData = data || []
+
+  // Show empty state if no data
+  if (chartData.length === 0) {
+    return (
+      <div className="w-full h-80 bg-surface p-6 rounded-lg border shadow-sm">
+        <div className="mb-4">
+          <h3 className="text-lg font-semibold text-content-primary mb-2">{title}</h3>
+        </div>
+        <div className="flex items-center justify-center h-48">
+          <div className="text-center">
+            <div className="text-content-tertiary mb-2">
+              <svg className="w-16 h-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+              </svg>
+            </div>
+            <p className="text-sm text-content-secondary">No growth data available</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const maxValue = Math.max(...chartData.map(item => item.value))
   

@@ -2,7 +2,16 @@
 
 import { useState, useMemo, useEffect } from 'react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { Button, useWebSocketEventRegistry } from '@tabsy/ui-components';
+import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import {
+  Button,
+  useWebSocketEventRegistry,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@tabsy/ui-components';
 import {
   CreditCard,
   Search,
@@ -168,86 +177,90 @@ export default function PaymentsPage() {
     }
   };
 
+  const breadcrumbs = [
+    { label: 'Dashboard', href: '/dashboard' },
+    { label: 'Payments' }
+  ];
+
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-background">
-        {/* Header */}
-        <div className="bg-surface border-b border-border-tertiary">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-6">
-              <div>
-                <div className="flex items-center space-x-4">
-                  <h1 className="text-2xl font-bold text-content-primary flex items-center">
-                    <CreditCard className="h-7 w-7 mr-3 text-primary" />
-                    Payment Management
-                  </h1>
+      <DashboardLayout breadcrumbs={breadcrumbs}>
+        {/* Header Actions */}
+        <div className="px-6 py-4 bg-surface border-b border-border-default">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center space-x-4">
+                <h1 className="text-2xl font-bold text-content-primary flex items-center">
+                  <CreditCard className="h-7 w-7 mr-3 text-primary" />
+                  Payment Management
+                </h1>
 
-                  {/* Real-time Status Indicator */}
-                  <div className="flex items-center space-x-2">
-                    {isConnected ? (
-                      <>
-                        <Wifi className="w-4 h-4 text-status-success" />
-                        <span className="text-sm text-status-success font-medium">Live</span>
-                      </>
-                    ) : (
-                      <>
-                        <WifiOff className="w-4 h-4 text-status-error" />
-                        <span className="text-sm text-status-error font-medium">Offline</span>
-                      </>
-                    )}
-                    {realtimeUpdates > 0 && (
-                      <div className="flex items-center space-x-1">
-                        <Activity className="w-3 h-3 text-primary animate-pulse" />
-                        <span className="text-xs text-content-tertiary">
-                          {realtimeUpdates} updates
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                {/* Real-time Status Indicator */}
+                <div className="flex items-center space-x-2">
+                  {isConnected ? (
+                    <>
+                      <Wifi className="w-4 h-4 text-status-success" />
+                      <span className="text-sm text-status-success font-medium">Live</span>
+                    </>
+                  ) : (
+                    <>
+                      <WifiOff className="w-4 h-4 text-status-error" />
+                      <span className="text-sm text-status-error font-medium">Offline</span>
+                    </>
+                  )}
+                  {realtimeUpdates > 0 && (
+                    <div className="flex items-center space-x-1">
+                      <Activity className="w-3 h-3 text-primary animate-pulse" />
+                      <span className="text-xs text-content-tertiary">
+                        {realtimeUpdates} updates
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <p className="mt-1 text-sm text-content-secondary">
-                  Track and manage all payment transactions across all restaurants
-                </p>
               </div>
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => refetch()}
-                  className="hover-lift"
-                >
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Refresh
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportPayments}
-                  className="hover-lift"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
-              </div>
+              <p className="mt-1 text-sm text-content-secondary">
+                Track and manage all payment transactions across all restaurants
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                className="hover-lift"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPayments}
+                className="hover-lift"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export
+              </Button>
             </div>
           </div>
         </div>
 
         {/* Period Selector and Health Status */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+        <div className="px-6 pt-6">
           <div className="flex justify-between items-center mb-4">
             <div className="flex items-center space-x-4">
-              <select
-                value={metricsPeriod}
-                onChange={(e) => setMetricsPeriod(e.target.value as any)}
-                className="px-4 py-2 border border-border-tertiary rounded-lg input-professional"
-              >
-                <option value="today">Today</option>
-                <option value="week">This Week</option>
-                <option value="month">This Month</option>
-                <option value="quarter">This Quarter</option>
-                <option value="year">This Year</option>
-              </select>
+              <Select value={metricsPeriod} onValueChange={(value) => setMetricsPeriod(value as any)}>
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Period" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                  <SelectItem value="quarter">This Quarter</SelectItem>
+                  <SelectItem value="year">This Year</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Payment Health Status */}
@@ -293,7 +306,7 @@ export default function PaymentsPage() {
         </div>
 
         {/* Metrics Cards */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6">
+        <div className="px-6 pb-6">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="bg-surface rounded-lg shadow-card p-4 border border-border-tertiary">
               <div className="flex items-center justify-between mb-2">
@@ -482,7 +495,7 @@ export default function PaymentsPage() {
         </div>
 
         {/* Filters Bar */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="px-6">
           <div className="bg-surface rounded-lg shadow-card p-4">
             <div className="flex flex-col sm:flex-row gap-4">
               {/* Search */}
@@ -501,41 +514,44 @@ export default function PaymentsPage() {
 
               {/* Filters */}
               <div className="flex gap-2">
-                <select
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value as any)}
-                  className="px-4 py-2 border border-border-tertiary rounded-lg input-professional"
-                >
-                  <option value="all">All Time</option>
-                  <option value="today">Today</option>
-                  <option value="week">This Week</option>
-                  <option value="month">This Month</option>
-                </select>
+                <Select value={dateFilter} onValueChange={(value) => setDateFilter(value as any)}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Date range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Time</SelectItem>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="week">This Week</SelectItem>
+                    <SelectItem value="month">This Month</SelectItem>
+                  </SelectContent>
+                </Select>
 
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="px-4 py-2 border border-border-tertiary rounded-lg input-professional"
-                >
-                  <option value="all">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="processing">Processing</option>
-                  <option value="completed">Completed</option>
-                  <option value="failed">Failed</option>
-                  <option value="refunded">Refunded</option>
-                </select>
+                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="processing">Processing</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="refunded">Refunded</SelectItem>
+                  </SelectContent>
+                </Select>
 
-                <select
-                  value={methodFilter}
-                  onChange={(e) => setMethodFilter(e.target.value as any)}
-                  className="px-4 py-2 border border-border-tertiary rounded-lg input-professional"
-                >
-                  <option value="all">All Methods</option>
-                  <option value={PaymentMethod.CREDIT_CARD}>Credit Card</option>
-                  <option value={PaymentMethod.DEBIT_CARD}>Debit Card</option>
-                  <option value={PaymentMethod.MOBILE_PAYMENT}>Mobile Payment</option>
-                  <option value={PaymentMethod.CASH}>Cash</option>
-                </select>
+                <Select value={methodFilter} onValueChange={(value) => setMethodFilter(value as any)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Payment method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Methods</SelectItem>
+                    <SelectItem value={PaymentMethod.CREDIT_CARD}>Credit Card</SelectItem>
+                    <SelectItem value={PaymentMethod.DEBIT_CARD}>Debit Card</SelectItem>
+                    <SelectItem value={PaymentMethod.MOBILE_PAYMENT}>Mobile Payment</SelectItem>
+                    <SelectItem value={PaymentMethod.CASH}>Cash</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 <button
                   onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
@@ -549,8 +565,8 @@ export default function PaymentsPage() {
         </div>
 
         {/* Payments Table */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-8">
-          <div className="bg-surface rounded-lg shadow-card overflow-hidden">
+        <div className="px-6 py-6 pb-8">
+          <div className="bg-surface rounded-lg shadow-card overflow-visible">
             {isLoading ? (
               <div className="p-8 text-center">
                 <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-primary border-t-transparent rounded-full"></div>
@@ -563,7 +579,7 @@ export default function PaymentsPage() {
               </div>
             ) : (
               <>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-visible">
                   <table className="w-full table-professional">
                     <thead>
                       <tr>
@@ -654,7 +670,7 @@ export default function PaymentsPage() {
                                 <MoreVertical className="h-4 w-4 text-content-tertiary" />
                               </button>
                               {activeDropdown === payment.id && (
-                                <div className="absolute right-0 mt-2 w-48 bg-surface rounded-lg shadow-lg border border-border-tertiary z-10">
+                                <div className="absolute right-0 mt-2 w-48 bg-surface rounded-lg shadow-lg border border-border-tertiary z-50">
                                   <div className="py-1">
                                     <button
                                       onClick={() => handleViewDetails(payment)}
@@ -754,7 +770,7 @@ export default function PaymentsPage() {
             onUpdate={() => refetch()}
           />
         )}
-      </div>
+      </DashboardLayout>
     </ProtectedRoute>
   );
 }

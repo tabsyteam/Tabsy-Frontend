@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { AuthProvider, ToastProvider, ConnectionProvider } from '@tabsy/ui-components';
-import { TabsyAPI, tabsyClient } from '@tabsy/api-client';
-import { ThemeProvider } from './ThemeProvider';
+import { tabsyClient } from '@tabsy/api-client';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -30,11 +29,9 @@ export function ClientProviders({ children }: ClientProvidersProps): JSX.Element
     <QueryClientProvider client={queryClient}>
       <AuthProvider apiClient={apiClient}>
         <ConnectionProvider apiClient={apiClient}>
-          <ThemeProvider variant="admin">
-            <ToastProvider>
-              {children}
-            </ToastProvider>
-          </ThemeProvider>
+          <ToastProvider>
+            {children}
+          </ToastProvider>
         </ConnectionProvider>
         <ReactQueryDevtools initialIsOpen={false} />
       </AuthProvider>

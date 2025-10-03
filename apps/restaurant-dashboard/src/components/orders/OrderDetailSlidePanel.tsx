@@ -589,7 +589,7 @@ export function OrderDetailSlidePanel({
         {/* Header */}
         <div className="bg-primary text-primary-foreground p-4 border-b flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <h2 className="text-lg font-semibold">Order #{order.orderNumber}</h2>
               <p className="text-primary-foreground/80 text-sm">
                 {format(new Date(order.createdAt), 'PPpp')}
@@ -630,6 +630,15 @@ export function OrderDetailSlidePanel({
               </Button>
             </div>
           </div>
+
+          {/* Cancelled Badge - Prominent Display */}
+          {order.status === OrderStatus.CANCELLED && (
+            <div className="mt-3 mb-2">
+              <div className="bg-destructive text-destructive-foreground px-4 py-2 rounded-md font-bold text-sm text-center">
+                CANCELLED
+              </div>
+            </div>
+          )}
 
           {/* Status Progress Bar */}
           <div className="mt-4">
@@ -847,28 +856,6 @@ export function OrderDetailSlidePanel({
 
         {/* Footer Actions */}
         <div className="border-t bg-background p-4 flex-shrink-0">
-          {/* Print Actions Row */}
-          <div className="flex gap-2 mb-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePrint('kitchen')}
-              className="flex-1"
-            >
-              <Printer className="w-4 h-4 mr-2" />
-              Print Kitchen Ticket
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePrint('customer')}
-              className="flex-1"
-            >
-              <Receipt className="w-4 h-4 mr-2" />
-              Print Customer Receipt
-            </Button>
-          </div>
-
           {/* Status Actions Row */}
           <div className="flex gap-2">
             {canCancelOrder(order.status) && (

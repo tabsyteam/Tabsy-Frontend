@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useApi } from '@/components/providers/api-provider'
-import { SessionManager } from '@/lib/session'
+import { dualReadSession } from '@/lib/unifiedSessionStorage'
 import { toast } from 'sonner'
 import { STORAGE_KEYS } from '@/constants/storage'
 import type {
   MultiUserTableSession,
   TableSessionUser
 } from '@tabsy/shared-types'
+import { TableSessionStatus } from '@tabsy/shared-types'
 
 export function useTableSessionData() {
   const [tableSession, setTableSession] = useState<MultiUserTableSession | null>(null)
@@ -21,18 +22,30 @@ export function useTableSessionData() {
   const router = useRouter()
 
   useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+
     const loadTableSessionData = async () => {
       try {
-        // Check if user has an active session
-        const session = SessionManager.getDiningSession()
+        // Check if user has an active session - using unified storage
+        const session = dualReadSession()
         if (!session) {
+          if (cancelled) return
+          console.warn('[useTableSessionData] No session found in unified storage')
           router.push('/table')
           return
         }
 
+        console.log('[useTableSessionData] Session loaded from unified storage:', {
+          tableSessionId: session.tableSessionId,
+          restaurantId: session.restaurantId,
+          tableId: session.tableId
+        })
+
         // Get the guest session ID from API client
         const guestSessionId = api.getGuestSessionId()
         if (!guestSessionId) {
+          if (cancelled) return
           setError('No guest session found')
           router.push('/table')
           return
@@ -59,13 +72,16 @@ export function useTableSessionData() {
 
         // Get the table session data directly using the ID
         const usersResponse = await api.tableSession.getUsers(tableSessionId)
+
+        if (cancelled) return
+
         console.log('[useTableSessionData] Table session users response:', usersResponse)
 
         if (!usersResponse.success) {
           throw new Error('Failed to load table session users')
         }
 
-        const users = usersResponse.data.users || []
+        const users = usersResponse.data?.users || []
         console.log('[useTableSessionData] Available users:', users)
         console.log('[useTableSessionData] Looking for guestSessionId:', guestSessionId)
 
@@ -89,6 +105,7 @@ export function useTableSessionData() {
           console.log('[useTableSessionData] Created fallback user for guest session:', currentUser)
         }
 
+        if (cancelled) return
         setCurrentUser(currentUser)
 
         // Create table session object from available data
@@ -96,12 +113,12 @@ export function useTableSessionData() {
           id: tableSessionId,
           tableId: session.tableId,
           restaurantId: session.restaurantId,
-          sessionCode: usersResponse.data.tableSessionId || 'UNKNOWN',
-          status: 'ACTIVE',
+          sessionCode: usersResponse.data?.tableSessionId || 'UNKNOWN',
+          status: TableSessionStatus.ACTIVE,
           totalAmount: 0,
           paidAmount: 0,
-          createdAt: session.createdAt,
-          expiresAt: session.expiresAt,
+          createdAt: new Date(session.createdAt).toISOString(),
+          expiresAt: session.expiresAt ? new Date(session.expiresAt).toISOString() : new Date(session.createdAt + 2 * 60 * 60 * 1000).toISOString(),
           lastActivity: new Date().toISOString()
         }
 
@@ -111,21 +128,32 @@ export function useTableSessionData() {
           totalUsers: users.length
         })
 
+        if (cancelled) return
         setTableSession(tableSession)
         setUsers(users)
 
-      } catch (error: any) {
-        console.error('[useTableSessionData] Error loading session data:', error)
-        setError(error.message || 'Failed to load table session data')
+      } catch (error) {
+        if (cancelled) return
+
+        const err = error instanceof Error ? error : new Error(String(error))
+        console.error('[useTableSessionData] Error loading session data:', err)
+        setError(err.message || 'Failed to load table session data')
         toast.error('Failed to load table session data', {
-          description: error.message || 'Please try refreshing the page'
+          description: err.message || 'Please try refreshing the page'
         })
       } finally {
-        setIsLoading(false)
+        if (!cancelled) {
+          setIsLoading(false)
+        }
       }
     }
 
     loadTableSessionData()
+
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
   }, [api, router])
 
   return {

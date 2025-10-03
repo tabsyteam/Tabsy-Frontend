@@ -144,6 +144,15 @@ export function SplitBillPayment({
     total: number
   } | null>(null)
 
+  // FIXED: Add in-flight request tracking to prevent duplicate API calls
+  const inFlightRequestsRef = useRef<Set<string>>(new Set())
+
+  // FIXED: Track if we're currently creating split calculation to prevent loops
+  const isCreatingSplitRef = useRef(false)
+
+  // FIXED: Track if split type change came from WebSocket (don't trigger API call)
+  const splitTypeChangedByWebSocketRef = useRef(false)
+
   // Split calculation lock state
   const [showPaymentConfirmDialog, setShowPaymentConfirmDialog] = useState(false)
   const [splitLockStatus, setSplitLockStatus] = useState<{
@@ -493,8 +502,10 @@ export function SplitBillPayment({
       return
     }
 
-    // Determine if this is a split method change or input value change
-    const isSplitMethodChange = splitCalculation.splitType && splitCalculation.splitType !== splitOption.type
+    // FIXED: Determine if this is a split method change
+    // Always check against current state at call time, not closure time
+    const isSplitMethodChange = splitCalculation.splitType &&
+                                splitCalculation.splitType !== splitOption.type
 
     // Check if this matches a recent local change to prevent double-updates (using timestamp within 1s window)
     if (recentLocalSplitChange &&
@@ -506,24 +517,25 @@ export function SplitBillPayment({
 
     console.log('[SplitBillPayment] ✅ Applying WebSocket update:', {
       isSplitMethodChange,
+      currentType: splitOption.type,
+      incomingType: splitCalculation.splitType,
       timestamp: new Date(incomingTimestamp).toISOString(),
       updatedBy: data.updatedBy,
-      splitType: splitCalculation.splitType
+      hasSplitAmounts: !!splitCalculation.splitAmounts
     })
 
     // BATCH ALL STATE UPDATES TOGETHER to prevent flickering
-    // This ensures React processes all updates in a single render cycle
+    // Use functional updates to ensure we work with latest state
 
-    // Prepare all state updates
-    const newSplitOption: Partial<SplitPaymentOption> = {}
-    let newBackendAmounts: { [userId: string]: number } | null = null
-    let newPercentages: { [userId: string]: string } | null = null
-    let newAmounts: { [userId: string]: string } | null = null
-    let newItemAssignments: { [itemId: string]: string } | null = null
+    // CRITICAL FIX: Always update backend split amounts when provided
+    if (splitCalculation.splitAmounts) {
+      console.log('[SplitBillPayment] 🔄 Updating backend split amounts:', splitCalculation.splitAmounts)
+      setBackendSplitAmounts(splitCalculation.splitAmounts)
+    }
 
-    // 1. Handle split type change
+    // Handle split type change
     if (isSplitMethodChange) {
-      newSplitOption.type = splitCalculation.splitType
+      console.log('[SplitBillPayment] 🔄 Split method changed from', splitOption.type, 'to', splitCalculation.splitType)
 
       // Show notification about split method change
       const updatedByUser = users.find(u => u.guestSessionId === data.updatedBy)
@@ -531,74 +543,90 @@ export function SplitBillPayment({
       toast.info(`${updatedByName} changed split method to ${splitCalculation.splitType.replace('BY_', '').toLowerCase()}`, {
         duration: 3000
       })
-    }
 
-    // 2. Handle backend split amounts
-    if (splitCalculation.splitAmounts) {
-      newBackendAmounts = splitCalculation.splitAmounts
-    }
+      // FIXED: Mark that this split type change came from WebSocket
+      // This prevents the useEffect from triggering another API call
+      splitTypeChangedByWebSocketRef.current = true
 
-    // 3. Handle percentages (respect input protection)
-    if (splitCalculation.percentages) {
-      newPercentages = {}
-      Object.entries(splitCalculation.percentages).forEach(([userId, percentage]: [string, any]) => {
-        // Only update if user isn't actively editing this field
-        if (!isInputRecentlyActive(userId, 'percentage')) {
-          newPercentages![userId] = percentage.toString()
-        } else {
-          // Preserve current value for actively editing user
-          newPercentages![userId] = customPercentages[userId] || percentage.toString()
+      // Update split option with new type
+      setSplitOption(prev => ({
+        ...prev,
+        type: splitCalculation.splitType
+      }))
+
+      // FIXED: Reset flag after state update completes and debounce period passes
+      // Must be longer than the useEffect debounce (1000ms) to prevent echo loop
+      setTimeout(() => {
+        splitTypeChangedByWebSocketRef.current = false
+      }, 1500) // 1.5 seconds to ensure useEffect debounce completes
+
+      // CRITICAL: Clear input values when switching methods to prevent flickering
+      // This ensures UI shows backend-calculated values immediately
+      if (splitCalculation.splitType === SplitBillType.EQUAL) {
+        // Clear percentages and amounts for equal split
+        setCustomPercentages({})
+        setCustomAmounts({})
+      } else if (splitCalculation.splitType === SplitBillType.BY_PERCENTAGE) {
+        // Initialize percentages from backend, clear amounts
+        if (splitCalculation.percentages) {
+          const newPercentages: { [userId: string]: string } = {}
+          Object.entries(splitCalculation.percentages).forEach(([userId, pct]: [string, any]) => {
+            newPercentages[userId] = pct.toString()
+          })
+          setCustomPercentages(newPercentages)
         }
-      })
+        setCustomAmounts({})
+      } else if (splitCalculation.splitType === SplitBillType.BY_AMOUNT) {
+        // Initialize amounts from backend, clear percentages
+        if (splitCalculation.amounts) {
+          const newAmounts: { [userId: string]: string } = {}
+          Object.entries(splitCalculation.amounts).forEach(([userId, amt]: [string, any]) => {
+            newAmounts[userId] = amt.toString()
+          })
+          setCustomAmounts(newAmounts)
+        }
+        setCustomPercentages({})
+      }
+    } else {
+      // NOT a split method change - only update values for other users
+      // Preserve current user's input to prevent interference
 
-      // Preserve current user's optimistic update if it exists
-      if (optimisticState.percentages && optimisticState.percentages[currentUser.guestSessionId]) {
-        newPercentages[currentUser.guestSessionId] = optimisticState.percentages[currentUser.guestSessionId]
+      if (splitCalculation.percentages) {
+        const newPercentages: { [userId: string]: string } = {}
+        Object.entries(splitCalculation.percentages).forEach(([userId, percentage]: [string, any]) => {
+          // Only update if user isn't actively editing this field
+          if (!isInputRecentlyActive(userId, 'percentage')) {
+            newPercentages[userId] = percentage.toString()
+          } else {
+            // Preserve current value for actively editing user
+            newPercentages[userId] = customPercentages[userId] || percentage.toString()
+          }
+        })
+
+        // Preserve current user's optimistic update if it exists
+        if (optimisticState.percentages && optimisticState.percentages[currentUser.guestSessionId]) {
+          newPercentages[currentUser.guestSessionId] = optimisticState.percentages[currentUser.guestSessionId]
+        }
+
+        setCustomPercentages(prev => ({ ...prev, ...newPercentages }))
+      }
+
+      if (splitCalculation.amounts) {
+        const newAmounts: { [userId: string]: string } = {}
+        Object.entries(splitCalculation.amounts).forEach(([userId, amount]: [string, any]) => {
+          // Only update if user isn't actively editing this field
+          if (!isInputRecentlyActive(userId, 'amount')) {
+            newAmounts[userId] = amount.toString()
+          }
+        })
+
+        setCustomAmounts(prev => ({ ...prev, ...newAmounts }))
       }
     }
 
-    // 4. Handle amounts (respect input protection)
-    if (splitCalculation.amounts) {
-      newAmounts = { ...customAmounts }
-      Object.entries(splitCalculation.amounts).forEach(([userId, amount]: [string, any]) => {
-        // Only update if user isn't actively editing this field
-        if (!isInputRecentlyActive(userId, 'amount')) {
-          newAmounts![userId] = amount.toString()
-        }
-      })
-    }
-
-    // 5. Handle item assignments
+    // Handle item assignments (only for BY_ITEMS mode)
     if (splitCalculation.itemAssignments) {
-      newItemAssignments = splitCalculation.itemAssignments
-    }
-
-    // NOW APPLY ALL UPDATES IN A BATCHED MANNER (React 18 automatic batching)
-    // All these setState calls will be batched into a single render
-    if (Object.keys(newSplitOption).length > 0) {
-      setSplitOption(prev => ({ ...prev, ...newSplitOption }))
-    }
-    if (newBackendAmounts !== null) {
-      setBackendSplitAmounts(newBackendAmounts)
-    }
-    if (newPercentages !== null) {
-      console.log('[SplitBillPayment] 🔄 WebSocket updating percentages:', {
-        current: customPercentages,
-        incoming: newPercentages,
-        updatedBy: data.updatedBy
-      })
-      setCustomPercentages(newPercentages)
-    }
-    if (newAmounts !== null) {
-      console.log('[SplitBillPayment] 🔄 WebSocket updating amounts:', {
-        current: customAmounts,
-        incoming: newAmounts,
-        updatedBy: data.updatedBy
-      })
-      setCustomAmounts(newAmounts)
-    }
-    if (newItemAssignments !== null) {
-      setItemAssignments(newItemAssignments)
+      setItemAssignments(splitCalculation.itemAssignments)
     }
 
     // Update metadata after successful application (using timestamp for deduplication)
@@ -623,25 +651,37 @@ export function SplitBillPayment({
     if (data.type === 'split:calculation_updated') {
       console.log('[SplitBillPayment] ✅ Received split calculation update:', data)
 
-      // Only update if this update was made by another user OR affects another user
-      // Skip if current user made the update OR if the update is for the current user's value
-      if (data.updatedBy !== currentUser.guestSessionId && data.updatedUser !== currentUser.guestSessionId) {
-        // Check for concurrent update conflicts
-        if (optimisticState.pendingUpdate) {
-          handleConcurrentUpdateConflict(data, data.splitCalculation)
-          return
-        }
+      // FIXED: Determine if this is a split method change
+      const isSplitMethodChange = data.splitCalculation?.splitType &&
+                                  data.splitCalculation.splitType !== splitOption.type
 
-        // Use smart update - immediate for split method changes, debounced for inputs
-        applySmartWebSocketUpdate(data)
+      // FIXED: Improved filtering logic
+      // For split method changes: ALL users should see the update
+      // For value changes: Skip only if current user made the update AND it's their own value
+      const shouldSkipUpdate = !isSplitMethodChange &&
+                              data.updatedBy === currentUser.guestSessionId &&
+                              data.updatedUser === currentUser.guestSessionId
 
-        // Show brief sync indicator only for meaningful changes
-        if (!syncingWithOtherUsers) {
-          setSyncingWithOtherUsers(true)
-          setTimeout(() => {
-            setSyncingWithOtherUsers(false)
-          }, 600) // Optimized to 600ms for faster visual feedback
-        }
+      if (shouldSkipUpdate) {
+        console.log('[SplitBillPayment] ⏭️ Skipping own value update echo')
+        return
+      }
+
+      // Check for concurrent update conflicts
+      if (optimisticState.pendingUpdate && !isSplitMethodChange) {
+        handleConcurrentUpdateConflict(data, data.splitCalculation)
+        return
+      }
+
+      // Use smart update - immediate for split method changes, debounced for inputs
+      applySmartWebSocketUpdate(data)
+
+      // Show brief sync indicator only for meaningful changes
+      if (!syncingWithOtherUsers) {
+        setSyncingWithOtherUsers(true)
+        setTimeout(() => {
+          setSyncingWithOtherUsers(false)
+        }, 600) // Optimized to 600ms for faster visual feedback
       }
     }
 
@@ -1190,12 +1230,35 @@ export function SplitBillPayment({
   }
 
   // SECURE: Create split calculation using backend API
-  const createSplitCalculation = async (): Promise<void> => {
+  const createSplitCalculation = useCallback(async (): Promise<void> => {
     if (!actualSessionId) return
 
+    // FIXED: Prevent duplicate simultaneous requests
+    const requestKey = `create_${actualSessionId}_${splitOption.type}`
+    if (inFlightRequestsRef.current.has(requestKey)) {
+      console.log('[SplitBillPayment] ⏭️ Skipping duplicate createSplitCalculation request')
+      return
+    }
+
+    // FIXED: Prevent infinite loops from useEffect
+    if (isCreatingSplitRef.current) {
+      console.log('[SplitBillPayment] ⏭️ Already creating split calculation, skipping')
+      return
+    }
+
+    // FIXED: Track if rate limited to manage cleanup properly
+    let isRateLimited = false
+
     try {
+      isCreatingSplitRef.current = true
+      inFlightRequestsRef.current.add(requestKey)
       setSplitCalculationLoading(true)
       setSplitCalculationError(null)
+
+      console.log('[SplitBillPayment] 📤 Creating split calculation:', {
+        splitType: splitOption.type,
+        participants: splitOption.participants.length
+      })
 
       const response = await api.tableSession.createSplitCalculation(
         actualSessionId,
@@ -1225,12 +1288,34 @@ export function SplitBillPayment({
       }
     } catch (error: any) {
       console.error('[SplitBillPayment] ❌ Error creating split calculation:', error)
-      setSplitCalculationError(error.message)
-      toast.error('Failed to calculate split amounts. Please try again.')
+
+      // FIXED: Detect rate limiting
+      isRateLimited = error?.message?.includes('Rate limit') ||
+                      error?.message?.includes('Too Many Requests') ||
+                      error?.message?.includes('429') ||
+                      error?.status === 429
+
+      if (isRateLimited) {
+        console.error('[SplitBillPayment] 🚫 Rate limited - stopping requests')
+        setSplitCalculationError('Too many requests. Please wait a moment.')
+        toast.error('Too many requests. Please wait a moment and try again.')
+        // Clear in-flight tracking after rate limit to allow retry later
+        setTimeout(() => {
+          inFlightRequestsRef.current.delete(requestKey)
+        }, 5000) // Wait 5 seconds before allowing retry
+      } else {
+        setSplitCalculationError(error.message)
+        toast.error('Failed to calculate split amounts. Please try again.')
+      }
     } finally {
       setSplitCalculationLoading(false)
+      isCreatingSplitRef.current = false
+      // FIXED: Only clear in-flight if not rate limited (rate limit handles its own cleanup)
+      if (!isRateLimited) {
+        inFlightRequestsRef.current.delete(requestKey)
+      }
     }
-  }
+  }, [actualSessionId, splitOption.type, splitOption.participants, customPercentages, customAmounts, itemAssignments, currentUser.guestSessionId, api])
 
   // Debounced update function to batch API calls for better performance
   const debouncedUpdateSplitCalculation = useCallback((
@@ -1292,9 +1377,20 @@ export function SplitBillPayment({
   const updateSplitCalculation = async (userId: string, percentage?: number, amount?: number, itemAssignments?: { [itemId: string]: string }): Promise<void> => {
     if (!actualSessionId) return
 
+    // FIXED: Prevent duplicate simultaneous update requests
+    const requestKey = `update_${actualSessionId}_${userId}_${percentage !== undefined ? 'pct' : amount !== undefined ? 'amt' : 'items'}`
+    if (inFlightRequestsRef.current.has(requestKey)) {
+      console.log('[SplitBillPayment] ⏭️ Skipping duplicate updateSplitCalculation request')
+      return
+    }
+
     const updateId = `update_${Date.now()}_${Math.random().toString(36).substring(2)}`
 
+    // FIXED: Track if rate limited to manage cleanup properly
+    let isRateLimited = false
+
     try {
+      inFlightRequestsRef.current.add(requestKey)
       setSplitCalculationLoading(true)
       setSplitCalculationError(null)
 
@@ -1340,14 +1436,34 @@ export function SplitBillPayment({
       }
     } catch (error: any) {
       console.error('[SplitBillPayment] Error updating split calculation:', error)
-      setSplitCalculationError(error.message)
+
+      // FIXED: Detect rate limiting
+      isRateLimited = error?.message?.includes('Rate limit') ||
+                      error?.message?.includes('Too Many Requests') ||
+                      error?.message?.includes('429') ||
+                      error?.status === 429
+
+      if (isRateLimited) {
+        console.error('[SplitBillPayment] 🚫 Rate limited on update')
+        setSplitCalculationError('Too many requests. Please wait a moment.')
+        toast.error('Too many requests. Please slow down.')
+        // Clear in-flight tracking after rate limit to allow retry later
+        setTimeout(() => {
+          inFlightRequestsRef.current.delete(requestKey)
+        }, 5000) // Wait 5 seconds before allowing retry
+      } else {
+        setSplitCalculationError(error.message)
+        toast.error('Failed to update split amounts. Please try again.')
+      }
 
       // Reject the optimistic update and rollback
       rejectOptimisticUpdate(updateId, error.message)
-
-      toast.error('Failed to update split amounts. Please try again.')
     } finally {
       setSplitCalculationLoading(false)
+      // FIXED: Only clear in-flight if not rate limited (rate limit handles its own cleanup)
+      if (!isRateLimited) {
+        inFlightRequestsRef.current.delete(requestKey)
+      }
     }
   }
 
@@ -1392,6 +1508,9 @@ export function SplitBillPayment({
 
   // SECURE: Handle split option change with backend calculation
   const handleSplitOptionChange = async (type: SplitPaymentOption['type']) => {
+    // FIXED: Ensure flag is cleared for user-initiated changes
+    splitTypeChangedByWebSocketRef.current = false
+
     setSplitOption({
       type,
       participants: type === SplitBillType.EQUAL ? uniqueUsers.map(u => u.guestSessionId) : splitOption.participants,
@@ -1417,11 +1536,27 @@ export function SplitBillPayment({
     }, 1000) // 1 second should be enough for the WebSocket round-trip
   }
 
-  // Initialize backend split calculation on mount and when split option changes
+  // FIXED: Initialize backend split calculation on mount and when split option changes
+  // Use splitOption.type as dependency (not whole splitOption object to prevent loops)
+  // DON'T add createSplitCalculation to deps - causes recreation and bypasses deduplication
   useEffect(() => {
-    if (actualSessionId && splitOption.participants.length > 0) {
-      createSplitCalculation()
+    if (!actualSessionId || splitOption.participants.length === 0) {
+      return
     }
+
+    // FIXED: Don't trigger API call if split type was changed by WebSocket
+    if (splitTypeChangedByWebSocketRef.current) {
+      console.log('[SplitBillPayment] ⏭️ Skipping createSplitCalculation - split type changed by WebSocket')
+      return
+    }
+
+    // FIXED: Longer debounce to batch WebSocket echoes and rapid changes
+    const timeoutId = setTimeout(() => {
+      createSplitCalculation()
+    }, 1000) // 1 second debounce to batch WebSocket loops
+
+    return () => clearTimeout(timeoutId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actualSessionId, splitOption.type])
 
   // Handle participant selection
@@ -2253,9 +2388,14 @@ export function SplitBillPayment({
                 </h3>
                 <div className="space-y-4">
                   {uniqueUsers.map((user, userIdx) => (
-                    <div key={user.guestSessionId || `user-perc-${userIdx}`} className="p-4 border rounded-lg">
+                    <div key={user.guestSessionId || `user-perc-${userIdx}`} className={`p-4 border rounded-lg ${user.guestSessionId === currentUser.guestSessionId ? 'border-primary bg-primary/5' : ''}`}>
                       <div className="flex justify-between items-center mb-3">
-                        <span className="font-medium text-content-primary">{user.userName}</span>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-content-primary">{user.userName}</span>
+                          {user.guestSessionId === currentUser.guestSessionId && (
+                            <span className="px-2 py-0.5 text-xs font-medium bg-primary text-white rounded-full">You</span>
+                          )}
+                        </div>
                         <span className="text-lg font-bold text-content-primary">
                           ${((parseFloat(customPercentages[user.guestSessionId]) || 0) * bill.summary.remainingBalance / 100).toFixed(2)}
                         </span>
@@ -2279,8 +2419,14 @@ export function SplitBillPayment({
                                 : ''
                             }`}
                             placeholder="0.0"
-                            disabled={splitCalculationLoading || splitLockStatus.isLocked}
-                            title={splitLockStatus.isLocked ? 'Input disabled - split calculation is locked' : ''}
+                            disabled={user.guestSessionId !== currentUser.guestSessionId || splitCalculationLoading || splitLockStatus.isLocked}
+                            title={
+                              user.guestSessionId !== currentUser.guestSessionId
+                                ? 'You can only edit your own percentage'
+                                : splitLockStatus.isLocked
+                                ? 'Input disabled - split calculation is locked'
+                                : ''
+                            }
                           />
                           <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-content-secondary font-medium">%</span>
                         </div>
@@ -2288,6 +2434,48 @@ export function SplitBillPayment({
                     </div>
                   ))}
                 </div>
+
+                {/* Percentage Validation Feedback */}
+                {(() => {
+                  const totalPercentage = Object.values(customPercentages).reduce((sum, pct) => sum + (parseFloat(pct) || 0), 0)
+                  const remainingPercentage = 100 - totalPercentage
+
+                  if (totalPercentage > 100.01) {
+                    return (
+                      <div className="mt-4 p-3 bg-status-error/10 border border-status-error/20 rounded-lg">
+                        <div className="flex items-center space-x-2 text-status-error">
+                          <AlertCircle className="w-4 h-4" />
+                          <span className="text-sm font-medium">Total percentage exceeds 100%</span>
+                        </div>
+                        <div className="text-sm text-status-error/80 mt-1">
+                          Current total: {totalPercentage.toFixed(1)}% • Please reduce by {(totalPercentage - 100).toFixed(1)}%
+                        </div>
+                      </div>
+                    )
+                  } else if (totalPercentage < 99.99) {
+                    const unpaidAmount = (remainingPercentage / 100) * bill.summary.remainingBalance
+                    return (
+                      <div className="mt-4 p-3 bg-status-info/10 border border-status-info/20 rounded-lg">
+                        <div className="flex items-center space-x-2 text-status-info">
+                          <Info className="w-4 h-4" />
+                          <span className="text-sm font-medium">Incomplete split - {remainingPercentage.toFixed(1)}% remaining</span>
+                        </div>
+                        <div className="text-sm text-status-info/80 mt-1">
+                          ${unpaidAmount.toFixed(2)} will remain unpaid
+                        </div>
+                      </div>
+                    )
+                  } else {
+                    return (
+                      <div className="mt-4 p-3 bg-status-success/10 border border-status-success/20 rounded-lg">
+                        <div className="flex items-center space-x-2 text-status-success">
+                          <CheckCircle className="w-4 h-4" />
+                          <span className="text-sm font-medium">Perfect split - 100% covered</span>
+                        </div>
+                      </div>
+                    )
+                  }
+                })()}
               </motion.div>
             )}
 
@@ -2304,9 +2492,14 @@ export function SplitBillPayment({
                 </h3>
                 <div className="space-y-4">
                   {uniqueUsers.map((user, userIdx) => (
-                    <div key={user.guestSessionId || `user-amt-${userIdx}`} className="p-4 border rounded-lg">
+                    <div key={user.guestSessionId || `user-amt-${userIdx}`} className={`p-4 border rounded-lg ${user.guestSessionId === currentUser.guestSessionId ? 'border-primary bg-primary/5' : ''}`}>
                       <div className="flex items-center justify-between mb-3">
-                        <span className="font-medium text-content-primary">{user.userName}</span>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium text-content-primary">{user.userName}</span>
+                          {user.guestSessionId === currentUser.guestSessionId && (
+                            <span className="px-2 py-0.5 text-xs font-medium bg-primary text-white rounded-full">You</span>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center space-x-3">
                         <DollarSign className="w-4 h-4 text-content-tertiary" />
@@ -2325,13 +2518,61 @@ export function SplitBillPayment({
                               : ''
                           }`}
                           placeholder="0.00"
-                          disabled={splitCalculationLoading || splitLockStatus.isLocked}
-                          title={splitLockStatus.isLocked ? 'Input disabled - split calculation is locked' : ''}
+                          disabled={user.guestSessionId !== currentUser.guestSessionId || splitCalculationLoading || splitLockStatus.isLocked}
+                          title={
+                            user.guestSessionId !== currentUser.guestSessionId
+                              ? 'You can only edit your own amount'
+                              : splitLockStatus.isLocked
+                              ? 'Input disabled - split calculation is locked'
+                              : ''
+                          }
                         />
                       </div>
                     </div>
                   ))}
                 </div>
+
+                {/* Amount Validation Feedback */}
+                {(() => {
+                  const totalAmount = Object.values(customAmounts).reduce((sum, amt) => sum + (parseFloat(amt) || 0), 0)
+                  const remainingAmount = bill.summary.remainingBalance - totalAmount
+
+                  if (totalAmount > bill.summary.remainingBalance + 0.01) {
+                    const excessAmount = totalAmount - bill.summary.remainingBalance
+                    return (
+                      <div className="mt-4 p-3 bg-status-error/10 border border-status-error/20 rounded-lg">
+                        <div className="flex items-center space-x-2 text-status-error">
+                          <AlertCircle className="w-4 h-4" />
+                          <span className="text-sm font-medium">Total amount exceeds bill</span>
+                        </div>
+                        <div className="text-sm text-status-error/80 mt-1">
+                          Current total: ${totalAmount.toFixed(2)} • Exceeds by ${excessAmount.toFixed(2)}
+                        </div>
+                      </div>
+                    )
+                  } else if (totalAmount < bill.summary.remainingBalance - 0.01) {
+                    return (
+                      <div className="mt-4 p-3 bg-status-info/10 border border-status-info/20 rounded-lg">
+                        <div className="flex items-center space-x-2 text-status-info">
+                          <Info className="w-4 h-4" />
+                          <span className="text-sm font-medium">Incomplete split - ${remainingAmount.toFixed(2)} remaining</span>
+                        </div>
+                        <div className="text-sm text-status-info/80 mt-1">
+                          This amount will remain unpaid
+                        </div>
+                      </div>
+                    )
+                  } else {
+                    return (
+                      <div className="mt-4 p-3 bg-status-success/10 border border-status-success/20 rounded-lg">
+                        <div className="flex items-center space-x-2 text-status-success">
+                          <CheckCircle className="w-4 h-4" />
+                          <span className="text-sm font-medium">Perfect split - Full bill covered</span>
+                        </div>
+                      </div>
+                    )
+                  }
+                })()}
               </motion.div>
             )}
 

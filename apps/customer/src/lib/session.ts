@@ -1,3 +1,6 @@
+import { unifiedSessionStorage, dualReadSession, type TabsySession } from './unifiedSessionStorage'
+import type { TabsyAPI } from '@tabsy/api-client'
+
 interface DiningSession {
   restaurantId: string
   tableId: string
@@ -26,77 +29,143 @@ const ORDER_SESSION_KEY = 'tabsy-current-order'
 const ORDER_HISTORY_KEY = 'tabsy-order-history'
 const SESSION_DURATION = 2 * 60 * 60 * 1000 // 2 hours (matches backend guest session expiry - CRITICAL: must match backend SESSION_EXPIRY_TIME)
 
+/**
+ * SessionManager - Facade Pattern (Phase 1)
+ *
+ * This class now acts as a facade over unifiedSessionStorage.
+ * All dining session operations delegate to the unified storage layer internally.
+ *
+ * Architecture:
+ * - Public API: SessionManager (this file) - stable interface for components
+ * - Internal: unifiedSessionStorage - actual storage implementation
+ *
+ * This allows us to evolve storage without breaking components.
+ */
 export class SessionManager {
   // Dining Session Management
   static setDiningSession(session: Omit<DiningSession, 'lastActivity'> & { createdAt?: number }): void {
-    // Check if we're in a browser environment
-    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
-      return
-    }
-
+    // Facade: Delegate to unified storage
     const now = Date.now()
-    const diningSession: DiningSession = {
-      ...session,
+    const tabsySession: TabsySession = {
+      guestSessionId: session.sessionId || '',
+      tableSessionId: session.tableSessionId || '',
+      restaurantId: session.restaurantId,
+      tableId: session.tableId,
       createdAt: session.createdAt || now,
-      lastActivity: now
+      lastActivity: now,
+      metadata: {
+        restaurantName: session.restaurantName,
+        tableName: session.tableName
+      }
     }
 
-    try {
-      sessionStorage.setItem(DINING_SESSION_KEY, JSON.stringify(diningSession))
-    } catch (error) {
-      console.warn('Failed to save dining session:', error)
-    }
+    unifiedSessionStorage.setSession(tabsySession)
   }
 
   static getDiningSession(): DiningSession | null {
-    // Check if we're in a browser environment
-    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
-      return null
-    }
+    // Facade: Delegate to unified storage (with backward-compatible properties)
+    const session = dualReadSession()
+    if (!session) return null
 
-    try {
-      const stored = sessionStorage.getItem(DINING_SESSION_KEY)
-      if (!stored) return null
-
-      const session: DiningSession = JSON.parse(stored)
-      const now = Date.now()
-
-      // Check if session is expired
-      if (now - session.createdAt > SESSION_DURATION) {
-        this.clearDiningSession()
-        return null
-      }
-
-      // Update last activity
-      session.lastActivity = now
-      sessionStorage.setItem(DINING_SESSION_KEY, JSON.stringify(session))
-
-      return session
-    } catch (error) {
-      console.warn('Failed to get dining session:', error)
-      return null
+    // Convert TabsySession to DiningSession format for backward compatibility
+    return {
+      restaurantId: session.restaurantId,
+      tableId: session.tableId,
+      restaurantName: session.restaurantName,
+      tableName: session.tableName,
+      sessionId: session.sessionId,
+      tableSessionId: session.tableSessionId,
+      createdAt: session.createdAt,
+      lastActivity: session.lastActivity
     }
   }
 
   static updateLastActivity(): void {
-    const session = this.getDiningSession()
+    // Facade: Delegate to unified storage
+    const session = unifiedSessionStorage.getSession()
     if (session) {
       session.lastActivity = Date.now()
-      sessionStorage.setItem(DINING_SESSION_KEY, JSON.stringify(session))
+      unifiedSessionStorage.setSession(session)
+    }
+  }
+
+  /**
+   * Extend table session on backend (extends by 30 minutes)
+   * Also updates local lastActivity timestamp
+   *
+   * @param apiClient Optional API client instance (injected for testability and to avoid circular deps)
+   * @returns Promise<boolean> - true if successfully extended, false otherwise
+   */
+  static async extendSession(apiClient?: TabsyAPI): Promise<boolean> {
+    const session = this.getDiningSession()
+    if (!session?.tableSessionId) {
+      console.error('[SessionManager] Cannot extend session: no tableSessionId')
+      return false
+    }
+
+    try {
+      // Use injected API client if provided, otherwise import default client
+      // Note: Dependency injection preferred for better testability and to avoid circular dependencies
+      let client = apiClient
+      if (!client) {
+        const { tabsyClient } = await import('@tabsy/api-client')
+        client = tabsyClient
+      }
+
+      console.log('[SessionManager] Extending table session:', session.tableSessionId)
+
+      const response = await client.tableSession.extend(session.tableSessionId)
+
+      if (response.success && response.data) {
+        console.log('[SessionManager] ✅ Session extended successfully')
+        console.log('[SessionManager] Backend response:', response.data)
+
+        // ✅ FIX: Store backend's expiresAt timestamp in session storage
+        // This ensures the countdown timer uses the actual backend expiry time
+        const currentSession = unifiedSessionStorage.getSession()
+        if (currentSession && response.data.expiresAt) {
+          const expiresAtTimestamp = new Date(response.data.expiresAt).getTime()
+
+          console.log('[SessionManager] Before update:', {
+            oldExpiresAt: currentSession.expiresAt,
+            newExpiresAt: expiresAtTimestamp,
+            newExpiresAtDate: new Date(expiresAtTimestamp).toISOString()
+          })
+
+          currentSession.expiresAt = expiresAtTimestamp
+          currentSession.lastActivity = Date.now()
+          unifiedSessionStorage.setSession(currentSession)
+
+          // Verify it was stored
+          const verifySession = unifiedSessionStorage.getSession()
+          console.log('[SessionManager] After update verification:', {
+            storedExpiresAt: verifySession?.expiresAt,
+            storedExpiresAtDate: verifySession?.expiresAt ? new Date(verifySession.expiresAt).toISOString() : 'none'
+          })
+
+          // Check expiry info calculation
+          const expiryInfo = unifiedSessionStorage.getSessionExpiryInfo()
+          console.log('[SessionManager] New expiry info:', {
+            minutesRemaining: expiryInfo.minutesRemaining,
+            expiryTime: expiryInfo.expiryTime?.toISOString(),
+            isExpiringSoon: expiryInfo.isExpiringSoon
+          })
+        }
+
+        return true
+      } else {
+        console.error('[SessionManager] Failed to extend session:', response.error)
+        return false
+      }
+    } catch (error) {
+      console.error('[SessionManager] Error extending session:', error)
+      return false
     }
   }
 
   static clearDiningSession(): void {
-    // Check if we're in a browser environment
-    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
-      return
-    }
-
-    try {
-      sessionStorage.removeItem(DINING_SESSION_KEY)
-    } catch (error) {
-      console.warn('Failed to clear dining session:', error)
-    }
+    // Facade: Delegate to unified storage
+    unifiedSessionStorage.clearSession()
   }
 
   static hasDiningSession(): boolean {
@@ -150,37 +219,17 @@ export class SessionManager {
   }
 
   // URL Parameter Helpers
+  // URL & Navigation Helpers - Delegate to unified storage
   static getDiningQueryParams(): string {
-    const session = this.getDiningSession()
-    if (!session) return ''
-
-    const params = new URLSearchParams({
-      restaurant: session.restaurantId,
-      table: session.tableId
-    })
-    return `?${params.toString()}`
+    return unifiedSessionStorage.getDiningQueryParams()
   }
 
   static getSessionFromUrl(searchParams: URLSearchParams): { restaurantId: string; tableId: string } | null {
-    const restaurantId = searchParams.get('restaurant')
-    const tableId = searchParams.get('table')
-
-    // Validate that parameters exist and are not null/empty
-    if (restaurantId && tableId &&
-        restaurantId !== 'null' && tableId !== 'null' &&
-        restaurantId.trim() !== '' && tableId.trim() !== '') {
-      return { restaurantId, tableId }
-    }
-
-    return null
+    return unifiedSessionStorage.getSessionFromUrl(searchParams)
   }
 
-  // Helper method to validate URL parameters
   static validateUrlParams(params: { restaurant?: string | null; table?: string | null }): boolean {
-    const { restaurant, table } = params
-    return !!(restaurant && table &&
-             restaurant !== 'null' && table !== 'null' &&
-             restaurant.trim() !== '' && table.trim() !== '')
+    return unifiedSessionStorage.validateUrlParams(params)
   }
 
   // Order History Management
@@ -294,65 +343,30 @@ export class SessionManager {
     }
   }
 
-  // Session expiry helpers
+  // Session expiry helpers - Delegate to unified storage
   static getTimeUntilExpiry(): number | null {
-    const session = this.getDiningSession()
-    if (!session) return null
-
-    const now = Date.now()
-    const expiryTime = session.createdAt + SESSION_DURATION
-    return Math.max(0, expiryTime - now)
+    return unifiedSessionStorage.getTimeUntilExpiry()
   }
 
   static getMinutesUntilExpiry(): number | null {
-    const timeUntilExpiry = this.getTimeUntilExpiry()
-    if (timeUntilExpiry === null) return null
-
-    return Math.ceil(timeUntilExpiry / (60 * 1000))
+    return unifiedSessionStorage.getMinutesUntilExpiry()
   }
 
   static isSessionExpiringSoon(warningThresholdMinutes = 30): boolean {
-    const minutesUntilExpiry = this.getMinutesUntilExpiry()
-    if (minutesUntilExpiry === null) return false
-
-    return minutesUntilExpiry <= warningThresholdMinutes && minutesUntilExpiry > 0
+    return unifiedSessionStorage.isSessionExpiringSoon(warningThresholdMinutes)
   }
 
   static isSessionExpired(): boolean {
-    const timeUntilExpiry = this.getTimeUntilExpiry()
-    if (timeUntilExpiry === null) return false
-
-    return timeUntilExpiry <= 0
+    return unifiedSessionStorage.isSessionExpired()
   }
 
-  // Get session expiry info for UI display
   static getSessionExpiryInfo(): {
     isExpired: boolean
     isExpiringSoon: boolean
     minutesRemaining: number | null
     expiryTime: Date | null
   } {
-    const session = this.getDiningSession()
-    if (!session) {
-      return {
-        isExpired: true,
-        isExpiringSoon: false,
-        minutesRemaining: null,
-        expiryTime: null
-      }
-    }
-
-    const minutesRemaining = this.getMinutesUntilExpiry()
-    const expiryTime = new Date(session.createdAt + SESSION_DURATION)
-    const isExpired = this.isSessionExpired()
-    const isExpiringSoon = this.isSessionExpiringSoon()
-
-    return {
-      isExpired,
-      isExpiringSoon,
-      minutesRemaining,
-      expiryTime
-    }
+    return unifiedSessionStorage.getSessionExpiryInfo()
   }
 
   // Handle session expiry gracefully
@@ -370,45 +384,14 @@ export class SessionManager {
     }
   }
 
-  // Clear all session data (for session replacement scenarios)
+  // Clear all session data - Delegate to unified storage + clear orders
   static clearAllSessionData(): void {
-    if (typeof window === 'undefined' || typeof sessionStorage === 'undefined') {
-      return
-    }
+    // Clear session data via unified storage
+    unifiedSessionStorage.clearAllSessionData()
 
-    try {
-      // Clear dining session
-      this.clearDiningSession()
-
-      // Clear current order
-      this.clearCurrentOrder()
-
-      // Clear order history
-      this.clearOrderHistory()
-
-      // Clear guest session ID
-      sessionStorage.removeItem('tabsy-guest-session-id')
-
-      // Clear any cached authentication data
-      sessionStorage.removeItem('tabsy-auth-token')
-
-      // Clear any other app-specific session data
-      const keysToRemove: string[] = []
-      for (let i = 0; i < sessionStorage.length; i++) {
-        const key = sessionStorage.key(i)
-        if (key && key.startsWith('tabsy-')) {
-          keysToRemove.push(key)
-        }
-      }
-
-      keysToRemove.forEach(key => {
-        sessionStorage.removeItem(key)
-      })
-
-      console.log('✅ All session data cleared successfully')
-    } catch (error) {
-      console.error('Failed to clear all session data:', error)
-    }
+    // Clear order-specific data
+    this.clearCurrentOrder()
+    this.clearOrderHistory()
   }
 
   // Check if session is being replaced

@@ -78,79 +78,153 @@ class NotificationSoundService {
   }
 
   /**
-   * Generate and play synthesized notification sounds
+   * Generate and play modern, professional notification sounds
+   * Inspired by iOS, Slack, and Discord notification tones
    */
   private async playGeneratedSound(options: NotificationSoundOptions): Promise<void> {
     if (!this.audioContext) return
 
     const ctx = this.audioContext
-    const gainNode = ctx.createGain()
-    const oscillator = ctx.createOscillator()
-
-    // Connect nodes
-    oscillator.connect(gainNode)
-    gainNode.connect(ctx.destination)
-
-    // Configure sound based on type and urgency
     const soundConfig = this.getSoundConfig(options)
-
-    oscillator.frequency.setValueAtTime(soundConfig.frequency, ctx.currentTime)
-    oscillator.type = soundConfig.waveType
-
-    // Volume and envelope
     const baseVolume = options.volume ?? soundConfig.volume
-    gainNode.gain.setValueAtTime(0, ctx.currentTime)
-    gainNode.gain.linearRampToValueAtTime(baseVolume, ctx.currentTime + 0.01)
-    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + soundConfig.duration)
 
-    // Play sound
-    oscillator.start(ctx.currentTime)
-    oscillator.stop(ctx.currentTime + soundConfig.duration)
-
-    // Play multiple notes for certain types
-    if ('melody' in soundConfig && soundConfig.melody) {
-      for (let i = 1; i < soundConfig.melody.length; i++) {
-        const noteOsc = ctx.createOscillator()
-        const noteGain = ctx.createGain()
-
-        noteOsc.connect(noteGain)
-        noteGain.connect(ctx.destination)
-
-        const startTime = ctx.currentTime + (i * 0.15)
-        noteOsc.frequency.setValueAtTime(soundConfig.melody[i] || soundConfig.frequency, startTime)
-        noteOsc.type = soundConfig.waveType
-
-        noteGain.gain.setValueAtTime(0, startTime)
-        noteGain.gain.linearRampToValueAtTime(baseVolume * 0.7, startTime + 0.01)
-        noteGain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.1)
-
-        noteOsc.start(startTime)
-        noteOsc.stop(startTime + 0.1)
-      }
+    // Modern sound design based on type
+    if (options.type === 'assistance') {
+      // Modern alert sound - pleasant ascending chime
+      this.playModernChime(ctx, soundConfig, baseVolume)
+    } else if (options.type === 'order') {
+      // Gentle notification pop
+      this.playModernPop(ctx, soundConfig, baseVolume)
+    } else {
+      // Subtle ding
+      this.playModernDing(ctx, soundConfig, baseVolume)
     }
   }
 
   /**
+   * Modern ascending chime (like iOS notification)
+   * Warm, pleasant, attention-grabbing but not annoying
+   */
+  private playModernChime(ctx: AudioContext, config: any, volume: number): void {
+    // Three-note ascending chime: C5 -> E5 -> G5
+    const notes = config.urgency === 'high'
+      ? [523.25, 659.25, 783.99] // C5, E5, G5 (urgent)
+      : [523.25, 659.25] // C5, E5 (normal)
+
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      const filter = ctx.createBiquadFilter()
+
+      // Chain: Oscillator -> Filter -> Gain -> Destination
+      osc.connect(filter)
+      filter.connect(gain)
+      gain.connect(ctx.destination)
+
+      // Use sine wave for smooth, pleasant tone
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, ctx.currentTime)
+
+      // Low-pass filter for warmth
+      filter.type = 'lowpass'
+      filter.frequency.setValueAtTime(2000, ctx.currentTime)
+      filter.Q.setValueAtTime(1, ctx.currentTime)
+
+      // Timing
+      const startTime = ctx.currentTime + (i * 0.12)
+      const duration = 0.25
+
+      // ADSR envelope for natural sound
+      gain.gain.setValueAtTime(0, startTime)
+      gain.gain.linearRampToValueAtTime(volume * 0.4, startTime + 0.02) // Attack
+      gain.gain.linearRampToValueAtTime(volume * 0.35, startTime + 0.05) // Decay
+      gain.gain.setValueAtTime(volume * 0.35, startTime + 0.15) // Sustain
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration) // Release
+
+      osc.start(startTime)
+      osc.stop(startTime + duration)
+    })
+  }
+
+  /**
+   * Modern pop sound (like Slack/Discord)
+   * Short, pleasant, UI-friendly
+   */
+  private playModernPop(ctx: AudioContext, config: any, volume: number): void {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    const filter = ctx.createBiquadFilter()
+
+    osc.connect(filter)
+    filter.connect(gain)
+    gain.connect(ctx.destination)
+
+    // Triangle wave for softer tone
+    osc.type = 'triangle'
+
+    // Frequency sweep for "pop" effect
+    osc.frequency.setValueAtTime(800, ctx.currentTime)
+    osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.08)
+
+    // Band-pass filter
+    filter.type = 'bandpass'
+    filter.frequency.setValueAtTime(1000, ctx.currentTime)
+    filter.Q.setValueAtTime(5, ctx.currentTime)
+
+    // Quick envelope
+    gain.gain.setValueAtTime(0, ctx.currentTime)
+    gain.gain.linearRampToValueAtTime(volume * 0.5, ctx.currentTime + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12)
+
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.12)
+  }
+
+  /**
+   * Subtle ding sound
+   * Very gentle, for low-priority notifications
+   */
+  private playModernDing(ctx: AudioContext, config: any, volume: number): void {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(880, ctx.currentTime) // A5 note
+
+    // Very short, gentle envelope
+    gain.gain.setValueAtTime(0, ctx.currentTime)
+    gain.gain.linearRampToValueAtTime(volume * 0.3, ctx.currentTime + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15)
+
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.15)
+  }
+
+  /**
    * Get sound configuration based on notification type and urgency
+   * Modern, pleasant sound profiles
    */
   private getSoundConfig(options: NotificationSoundOptions) {
     const { type, urgency = 'normal' } = options
 
     const baseConfigs = {
       assistance: {
-        low: { frequency: 600, volume: 0.3, duration: 0.2, waveType: 'sine' as OscillatorType },
-        normal: { frequency: 800, volume: 0.5, duration: 0.3, waveType: 'sine' as OscillatorType, melody: [800, 1000] },
-        high: { frequency: 1000, volume: 0.7, duration: 0.5, waveType: 'sine' as OscillatorType, melody: [1000, 1200, 1000] }
+        low: { volume: 0.4, urgency: 'low' },
+        normal: { volume: 0.5, urgency: 'normal' },
+        high: { volume: 0.7, urgency: 'high' }
       },
       order: {
-        low: { frequency: 400, volume: 0.3, duration: 0.15, waveType: 'triangle' as OscillatorType },
-        normal: { frequency: 500, volume: 0.4, duration: 0.2, waveType: 'triangle' as OscillatorType },
-        high: { frequency: 700, volume: 0.6, duration: 0.3, waveType: 'triangle' as OscillatorType }
+        low: { volume: 0.3, urgency: 'low' },
+        normal: { volume: 0.4, urgency: 'normal' },
+        high: { volume: 0.6, urgency: 'high' }
       },
       general: {
-        low: { frequency: 300, volume: 0.2, duration: 0.1, waveType: 'sine' as OscillatorType },
-        normal: { frequency: 400, volume: 0.3, duration: 0.15, waveType: 'sine' as OscillatorType },
-        high: { frequency: 600, volume: 0.5, duration: 0.2, waveType: 'sine' as OscillatorType }
+        low: { volume: 0.25, urgency: 'low' },
+        normal: { volume: 0.35, urgency: 'normal' },
+        high: { volume: 0.5, urgency: 'high' }
       }
     }
 

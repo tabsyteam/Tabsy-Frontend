@@ -29,7 +29,7 @@ export class TabsyWebSocketClient {
 
   constructor(config: TabsyWebSocketConfig = {}) {
     this.config = {
-      url: config.url || 'http://192.168.68.51:5001',
+      url: config.url || 'http://192.168.68.50:5001',
       autoConnect: config.autoConnect ?? true,
       reconnectAttempts: config.reconnectAttempts ?? 5,
       reconnectDelay: config.reconnectDelay ?? 1000,

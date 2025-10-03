@@ -44,8 +44,8 @@ export function RestaurantSettingsModal({
           email: restaurant.email || '',
           website: restaurant.website || ''
         },
-        cuisine: restaurant.cuisine || [],
-        priceRange: restaurant.priceRange || 1,
+        logo: restaurant.logo || '',
+        posEnabled: restaurant.posEnabled || false,
         isActive: restaurant.active ?? true // API uses 'active', not 'isActive'
       }
       setFormData(initialFormData)
@@ -88,8 +88,9 @@ export function RestaurantSettingsModal({
         phoneNumber: formData.contact?.phone || '',
         email: formData.contact?.email || '',
         website: formData.contact?.website || '',
+        logo: formData.logo || '',
+        posEnabled: formData.posEnabled || false,
         active: formData.isActive // Backend expects 'active', not 'isActive'
-        // Note: cuisine field is not allowed in backend updates
       }
 
       await onSave(updateData)
@@ -104,13 +105,6 @@ export function RestaurantSettingsModal({
     { id: 'contact', label: 'Contact', icon: <Phone className="w-4 h-4" /> },
     { id: 'operational', label: 'Operational', icon: <SettingsIcon className="w-4 h-4" /> }
   ]
-
-  const priceRangeLabels = {
-    1: '$ - Budget-friendly',
-    2: '$$ - Moderate',
-    3: '$$$ - Upscale',
-    4: '$$$$ - Fine dining'
-  }
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     // Close modal when clicking on backdrop (not on the modal content)
@@ -191,32 +185,16 @@ export function RestaurantSettingsModal({
 
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-content-secondary">
-                    Cuisine Types
+                    Logo URL
                   </label>
                   <input
-                    type="text"
-                    value={formData.cuisine?.join(', ') || ''}
-                    onChange={(e) => handleInputChange('cuisine', e.target.value.split(',').map(c => c.trim()).filter(Boolean))}
-                    placeholder="Italian, American, Vegetarian"
+                    type="url"
+                    value={formData.logo || ''}
+                    onChange={(e) => handleInputChange('logo', e.target.value)}
+                    placeholder="https://yourrestaurant.com/logo.png"
                     className="w-full p-3 bg-surface-secondary rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   />
-                  <p className="text-xs text-content-tertiary">Separate multiple cuisines with commas</p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-sm font-medium text-content-secondary">
-                    <DollarSign className="w-4 h-4" />
-                    Price Range
-                  </label>
-                  <select
-                    value={formData.priceRange || 1}
-                    onChange={(e) => handleInputChange('priceRange', parseInt(e.target.value))}
-                    className="w-full p-3 bg-surface-secondary rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                  >
-                    {Object.entries(priceRangeLabels).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
+                  <p className="text-xs text-content-tertiary">URL to your restaurant's logo image</p>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -335,20 +313,47 @@ export function RestaurantSettingsModal({
 
             {activeTab === 'operational' && (
               <div className="space-y-6">
-                <div className="bg-surface-tertiary border border-border rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Clock className="w-4 h-4 text-content-secondary" />
-                    <h3 className="text-sm font-medium text-content-primary">Operational Settings</h3>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-content-secondary">
+                    POS Integration
+                  </label>
+                  <div className="flex items-center gap-3 p-3 bg-surface-secondary rounded-lg border border-border">
+                    <input
+                      type="checkbox"
+                      id="posEnabled"
+                      checked={formData.posEnabled ?? false}
+                      onChange={(e) => handleInputChange('posEnabled', e.target.checked)}
+                      className="w-4 h-4 text-primary rounded border-border focus:ring-primary"
+                    />
+                    <label htmlFor="posEnabled" className="text-sm font-medium text-content-primary cursor-pointer">
+                      Enable POS System Integration
+                    </label>
                   </div>
-                  <p className="text-sm text-content-secondary">
-                    Advanced operational settings like auto-accept orders, prep times, and service charges
-                    will be available in a future update. These settings are currently managed at the system level.
+                  <p className="text-xs text-content-tertiary">
+                    When enabled, orders will be synchronized with your Point of Sale system
                   </p>
                 </div>
 
-                <div className="text-center py-8">
-                  <SettingsIcon className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
-                  <p className="text-content-secondary">More operational settings coming soon!</p>
+                <div className="bg-surface-tertiary border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-4 h-4 text-content-secondary" />
+                    <h3 className="text-sm font-medium text-content-primary">Opening Hours</h3>
+                  </div>
+                  <p className="text-sm text-content-secondary">
+                    Opening hours configuration (JSON format) is available through the API.
+                    A user-friendly interface for managing hours will be available in a future update.
+                  </p>
+                </div>
+
+                <div className="bg-surface-tertiary border border-border rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <SettingsIcon className="w-4 h-4 text-content-secondary" />
+                    <h3 className="text-sm font-medium text-content-primary">Additional Settings</h3>
+                  </div>
+                  <p className="text-sm text-content-secondary">
+                    Advanced operational settings like auto-accept orders, prep times, and service charges
+                    will be available in a future update.
+                  </p>
                 </div>
               </div>
             )}

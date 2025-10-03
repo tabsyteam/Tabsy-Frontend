@@ -13,6 +13,7 @@ export const STORAGE_KEYS = {
 
   // Menu related
   MENU_DATA: 'tabsy-menu-data',
+  MENU_CACHE: (restaurantId: string) => `tabsy-menu-cache-${restaurantId}`,
   FAVORITES: (restaurantId: string) => `tabsy-favorites-${restaurantId}`,
   RECENT_SEARCHES: (restaurantId: string) => `tabsy-recent-searches-${restaurantId}`,
 

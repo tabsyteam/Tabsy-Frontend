@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import { ClientProviders } from "@/lib/client-providers";
 
@@ -13,6 +14,18 @@ export const metadata: Metadata = {
   description: "Manage your restaurant operations, orders, and analytics",
 };
 
+// Loading fallback component for Suspense
+function LoadingFallback() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,9 +37,11 @@ export default function RootLayout({
         className={`${inter.variable} antialiased`}
         suppressHydrationWarning
       >
-        <ClientProviders>
-          {children}
-        </ClientProviders>
+        <Suspense fallback={<LoadingFallback />}>
+          <ClientProviders>
+            {children}
+          </ClientProviders>
+        </Suspense>
       </body>
     </html>
   );

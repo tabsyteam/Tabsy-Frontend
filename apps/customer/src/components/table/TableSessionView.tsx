@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import {
   MapPin,
@@ -23,8 +24,11 @@ import { toast } from 'sonner'
 import { useWebSocket } from '@tabsy/ui-components'
 import { useSessionUpdates } from '@tabsy/api-client'
 import { useSessionDetails } from '@/hooks/useSessionDetails'
-import { useBillStatus } from '@/hooks/useBillStatus'
+import { useBillStatus } from '@/hooks/useBillData' // ✅ Updated to use React Query version
 import { STORAGE_KEYS } from '@/constants/storage'
+import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { PaymentType } from '@/constants/payment'
+
 interface TableInfo {
   restaurant: {
     id: string
@@ -43,9 +47,11 @@ export function TableSessionView() {
   const [tableInfo, setTableInfo] = useState<TableInfo | null>(null)
   const [sessionTime, setSessionTime] = useState<string>('')
   const [hasSession, setHasSession] = useState(false)
+  const [isCheckingSession, setIsCheckingSession] = useState(true) // Add loading state
   const [lastConnectionTime, setLastConnectionTime] = useState<Date | null>(null)
 
   // Get bill status for payment card
+  // ✅ Data automatically updated via WebSocketEventCoordinator → React Query cache
   const { hasBill, remainingBalance, isPaid, billAmount } = useBillStatus()
 
   // Get current session for WebSocket authentication
@@ -83,39 +89,111 @@ export function TableSessionView() {
     }
   }, [wsError])
 
-  // Listen for session updates (order status, session expiry, etc.)
+  // Listen for session updates (session expiry, etc.)
   useSessionUpdates(
     client,
     session?.sessionId || '',
     (data) => {
       console.log('[TableSession] Session update received:', data)
 
-      // Handle different types of session updates
-      if (data.type === 'order:status-update') {
-        toast.info(`Order update: ${data.status}`)
-      } else if (data.type === 'session:expired') {
+      // Handle session-specific events (not order/payment events)
+      if (data.type === 'session:expired') {
         toast.error('Your session has expired. Please scan the QR code again.')
         SessionManager.clearDiningSession()
         router.push('/')
-      } else if (data.type === 'order:created') {
-        toast.success(`Order #${data.orderId} has been placed!`)
       }
+      // ✅ REMOVED: order:status-update and order:created handlers
+      // These are now handled by WebSocketEventCoordinator to prevent duplicate API calls
     }
   )
 
-  useEffect(() => {
-    // Check for active session
-    const session = SessionManager.getDiningSession()
-    setHasSession(!!session)
+  // ✅ REMOVED: Direct WebSocket event listeners for order:status_updated and order:updated
+  // These are now handled centrally by WebSocketEventCoordinator
+  // Bill data automatically updates via coordinator → React Query cache
+  // This prevents 6x duplicate API calls when an order is completed
 
-    if (session) {
-      // Get table info from sessionStorage
-      const storedTableInfo = sessionStorage.getItem(STORAGE_KEYS.TABLE_INFO)
-      if (storedTableInfo) {
-        try {
-          setTableInfo(JSON.parse(storedTableInfo))
-        } catch (error) {
-          console.error('Failed to parse table info:', error)
+  useEffect(() => {
+    // Small delay to ensure sessionStorage is accessible
+    const checkSession = () => {
+      const session = SessionManager.getDiningSession()
+      setHasSession(!!session)
+      setIsCheckingSession(false) // Done checking
+
+      if (session) {
+      // Priority 1: Get from SessionManager
+      if (session.restaurantName && session.tableName) {
+        setTableInfo({
+          restaurant: {
+            id: session.restaurantId,
+            name: session.restaurantName
+          },
+          table: {
+            id: session.tableId,
+            number: session.tableName
+          }
+        })
+      }
+      // Priority 2: Try STORAGE_KEYS.TABLE_INFO
+      else {
+        const storedTableInfo = sessionStorage.getItem(STORAGE_KEYS.TABLE_INFO)
+        if (storedTableInfo) {
+          try {
+            const parsedInfo = JSON.parse(storedTableInfo)
+            setTableInfo(parsedInfo)
+
+            // Update SessionManager with the names for next time
+            SessionManager.setDiningSession({
+              ...session,
+              restaurantName: parsedInfo.restaurant.name,
+              tableName: parsedInfo.table.number
+            })
+          } catch (error) {
+            console.error('Failed to parse table info:', error)
+          }
+        }
+        // Priority 3: Try tabsy-qr-access (QR scan cache)
+        else {
+          const qrAccessData = sessionStorage.getItem('tabsy-qr-access')
+          if (qrAccessData) {
+            try {
+              const parsedQrData = JSON.parse(qrAccessData)
+              const info = {
+                restaurant: {
+                  id: parsedQrData.restaurant.id,
+                  name: parsedQrData.restaurant.name,
+                  logo: parsedQrData.restaurant.logo
+                },
+                table: {
+                  id: parsedQrData.table.id,
+                  number: parsedQrData.table.number
+                }
+              }
+              setTableInfo(info)
+
+              // Update SessionManager with the names
+              SessionManager.setDiningSession({
+                ...session,
+                restaurantName: info.restaurant.name,
+                tableName: info.table.number
+              })
+            } catch (error) {
+              console.error('Failed to parse QR access data:', error)
+            }
+          }
+          // Priority 4: Generic placeholders (last resort)
+          else {
+            console.warn('[TableSessionView] Restaurant/table names not found in any storage.')
+            setTableInfo({
+              restaurant: {
+                id: session.restaurantId,
+                name: 'Your Restaurant'
+              },
+              table: {
+                id: session.tableId,
+                number: session.tableId.split('-').pop() || 'Your Table'
+              }
+            })
+          }
         }
       }
 
@@ -147,17 +225,20 @@ export function TableSessionView() {
       const interval = setInterval(updateSessionTime, 60000) // Update every minute
 
       return () => clearInterval(interval)
+      }
     }
 
-    // Return undefined explicitly if no session
-    return undefined
-  }, [tableSessionDetails])
+    // Call checkSession with tiny delay to ensure storage is ready
+    const timer = setTimeout(checkSession, 10)
+    return () => clearTimeout(timer)
+  }, [tableSessionDetails, searchParams])
 
   const handleEndSession = () => {
     SessionManager.clearDiningSession()
     sessionStorage.removeItem('tabsy-session')
     sessionStorage.removeItem(STORAGE_KEYS.TABLE_INFO)
     sessionStorage.removeItem(STORAGE_KEYS.CART)
+    sessionStorage.removeItem('tabsy-qr-access') // Clear QR cache on session end
     toast.success('Session ended successfully')
     router.push('/')
   }
@@ -173,6 +254,19 @@ export function TableSessionView() {
     const session = SessionManager.getDiningSession()
     if (session) {
       router.push(`/table/bill${SessionManager.getDiningQueryParams()}`)
+    }
+  }
+
+  const handlePayNow = () => {
+    const session = SessionManager.getDiningSession()
+    if (session) {
+      const queryParams = new URLSearchParams({
+        tableSessionId: session.tableSessionId,
+        type: PaymentType.TABLE_SESSION,
+        restaurant: session.restaurantId,
+        table: session.tableId
+      })
+      router.push(`/payment?${queryParams.toString()}`)
     }
   }
 
@@ -206,7 +300,16 @@ export function TableSessionView() {
     }
   }
 
-  // Show message if no session
+  // Show loading during initial session check
+  if (isCheckingSession) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  // Show message if no session (after check is complete)
   if (!hasSession) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -332,7 +435,7 @@ export function TableSessionView() {
               {/* CTA Buttons */}
               <div className="flex gap-3">
                 <Button
-                  onClick={handleViewBill}
+                  onClick={handlePayNow}
                   className="flex-1 bg-accent-foreground text-accent hover:bg-accent-foreground/90 shadow-lg hover:shadow-xl transition-all duration-200"
                   size="lg"
                 >

@@ -24,9 +24,22 @@ import {
   BarChart3
 } from 'lucide-react'
 import { tabsyClient } from '@tabsy/api-client'
-import { format, subDays, startOfDay, endOfDay } from 'date-fns'
+import { format, subDays, startOfDay, endOfDay, parseISO } from 'date-fns'
 import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
 import type { PaymentMetrics, RealTimePaymentMetrics, PaymentHealthStatus, PaymentAlert } from '@tabsy/shared-types'
+// Chart library - Required dependency: recharts ^3.2.1 (installed in package.json)
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend
+} from 'recharts'
 
 interface PaymentAnalyticsProps {
   restaurantId: string
@@ -136,6 +149,57 @@ export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
     if (value < 0) return <ArrowDown className="w-4 h-4 text-status-error" />
     return null
   }
+
+  // Custom tooltip for the chart
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || !payload.length) return null
+
+    const data = payload[0].payload
+    const formattedDate = data.date ? format(parseISO(data.date), 'MMM dd, yyyy') : label
+
+    return (
+      <div className="bg-surface border border-border-default rounded-lg shadow-lg p-3">
+        <p className="text-sm font-medium text-content-primary mb-2">{formattedDate}</p>
+        {selectedMetric === 'revenue' && (
+          <div className="space-y-1">
+            <p className="text-sm text-content-secondary">
+              Revenue: <span className="font-semibold text-primary">{formatCurrency(data.revenue || 0)}</span>
+            </p>
+          </div>
+        )}
+        {selectedMetric === 'transactions' && (
+          <div className="space-y-1">
+            <p className="text-sm text-content-secondary">
+              Transactions: <span className="font-semibold text-secondary">{data.transactions || 0}</span>
+            </p>
+          </div>
+        )}
+        {selectedMetric === 'success_rate' && (
+          <div className="space-y-1">
+            <p className="text-sm text-content-secondary">
+              Success Rate: <span className="font-semibold text-status-success">{formatPercent(data.successRate || 0)}</span>
+            </p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Prepare chart data from analytics
+  const getChartData = () => {
+    if (!analytics?.dailyTrend || analytics.dailyTrend.length === 0) {
+      return []
+    }
+    return analytics.dailyTrend.map(item => ({
+      date: item.date,
+      revenue: item.revenue,
+      transactions: item.transactions,
+      successRate: item.successRate,
+      displayDate: format(parseISO(item.date), 'MMM dd')
+    }))
+  }
+
+  const chartData = getChartData()
 
   // Debug logging for development
   if (process.env.NODE_ENV === 'development') {
@@ -591,7 +655,7 @@ export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
             </div>
           </div>
 
-          {/* Trend Chart Placeholder */}
+          {/* Revenue Trend Chart */}
           <div className="bg-surface rounded-lg border p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-content-primary">Revenue Trend</h3>
@@ -612,17 +676,92 @@ export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
               </div>
             </div>
 
-            <div className="h-64 flex items-center justify-center bg-surface-secondary/50 rounded-lg">
-              <div className="text-center">
-                <BarChart3 className="w-12 h-12 text-content-tertiary mx-auto mb-2" />
-                <p className="text-content-secondary">
-                  Chart visualization would be implemented here with a charting library
-                </p>
-                <p className="text-sm text-content-tertiary mt-1">
-                  Showing {selectedMetric.replace('_', ' ')} trend for {getPeriodLabel(selectedPeriod).toLowerCase()}
-                </p>
+            {chartData.length > 0 ? (
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={chartData}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="rgb(249, 115, 22)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="rgb(249, 115, 22)" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorTransactions" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="rgb(251, 146, 60)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="rgb(251, 146, 60)" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="colorSuccessRate" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="rgb(34, 197, 94)" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="rgb(34, 197, 94)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.2)" />
+                    <XAxis
+                      dataKey="displayDate"
+                      stroke="rgb(100, 116, 139)"
+                      fontSize={12}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      stroke="rgb(100, 116, 139)"
+                      fontSize={12}
+                      tickLine={false}
+                      tickFormatter={(value) => {
+                        if (selectedMetric === 'revenue') return `$${value}`
+                        if (selectedMetric === 'success_rate') return `${value}%`
+                        return value.toString()
+                      }}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+
+                    {selectedMetric === 'revenue' && (
+                      <Area
+                        type="monotone"
+                        dataKey="revenue"
+                        stroke="rgb(249, 115, 22)"
+                        strokeWidth={2}
+                        fill="url(#colorRevenue)"
+                        animationDuration={1000}
+                      />
+                    )}
+                    {selectedMetric === 'transactions' && (
+                      <Area
+                        type="monotone"
+                        dataKey="transactions"
+                        stroke="rgb(251, 146, 60)"
+                        strokeWidth={2}
+                        fill="url(#colorTransactions)"
+                        animationDuration={1000}
+                      />
+                    )}
+                    {selectedMetric === 'success_rate' && (
+                      <Area
+                        type="monotone"
+                        dataKey="successRate"
+                        stroke="rgb(34, 197, 94)"
+                        strokeWidth={2}
+                        fill="url(#colorSuccessRate)"
+                        animationDuration={1000}
+                      />
+                    )}
+                  </AreaChart>
+                </ResponsiveContainer>
               </div>
-            </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center bg-surface-secondary/50 rounded-lg">
+                <div className="text-center">
+                  <BarChart3 className="w-12 h-12 text-content-tertiary mx-auto mb-2" />
+                  <p className="text-content-secondary">
+                    No trend data available for the selected period
+                  </p>
+                  <p className="text-sm text-content-tertiary mt-1">
+                    Data will appear once you have payment activity for {getPeriodLabel(selectedPeriod).toLowerCase()}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

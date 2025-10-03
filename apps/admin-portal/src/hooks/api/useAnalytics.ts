@@ -172,8 +172,8 @@ export function useAnalytics(period: 'today' | 'week' | 'month' | 'year' = 'mont
         vipCustomers: 0 // Would require VIP customer classification
       };
     },
-    enabled: isAuthenticated,
-    refetchInterval: 60000 // Refresh every minute
+    enabled: isAuthenticated
+    // Removed refetchInterval - relying on WebSocket events for real-time updates
   });
 }
 

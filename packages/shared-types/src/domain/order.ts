@@ -19,9 +19,13 @@ export interface Order {
   tableId?: string
   customerId?: string
   sessionId?: string
+  guestSessionId?: string // Guest session ID from API
+  tableSessionId?: string // Table session ID from API
   orderNumber: string
   type?: OrderType // Made optional since API doesn't always include this
   status: OrderStatus
+  isLocked?: boolean // Order lock status
+  roundNumber?: number // Round number for multi-round ordering
   items: OrderItem[]
   subtotal: string | number // API returns string, but allow number for flexibility
   tax?: string | number // API field name and optional
@@ -38,6 +42,37 @@ export interface Order {
   customerName?: string // From API
   customerEmail?: string // From API
   customerPhone?: string // From API
+  // POS Integration fields
+  posLastSync?: string | null
+  posOrderId?: string | null
+  posStatus?: string | null
+  // Nested objects from API
+  restaurant?: {
+    id: string
+    name: string
+    description?: string
+    logo?: string
+    address?: string
+    city?: string
+    state?: string
+    zipCode?: string
+    country?: string
+    phoneNumber?: string
+    email?: string
+    website?: string
+    active?: boolean
+    posEnabled?: boolean
+  }
+  table?: {
+    id: string
+    tableNumber: string
+    seats?: number
+    restaurantId?: string
+    qrCode?: string
+    locationDescription?: string
+    shape?: string
+    status?: string
+  }
   createdAt: string
   updatedAt: string
   completedAt?: string

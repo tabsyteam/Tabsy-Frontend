@@ -22,15 +22,13 @@ export function usePayments(filters?: {
   return useQuery({
     queryKey: ['admin', 'payments', filters],
     queryFn: async () => {
-      const paymentsResponse = await tabsyClient.payment.getByRestaurant(
-        filters?.restaurantId || '', // Empty string for all restaurants
-        {
-          limit: 1000,
-          status: filters?.status,
-          dateFrom: filters?.dateFrom?.toISOString(),
-          dateTo: filters?.dateTo?.toISOString()
-        }
-      );
+      const paymentsResponse = await tabsyClient.payment.list({
+        limit: 1000,
+        restaurantId: filters?.restaurantId,
+        status: filters?.status,
+        dateFrom: filters?.dateFrom?.toISOString(),
+        dateTo: filters?.dateTo?.toISOString()
+      });
 
       const payments = paymentsResponse.data || [];
       if (!payments.length) return [];
@@ -116,8 +114,8 @@ export function usePayments(filters?: {
         }
       };
     },
-    enabled: isAuthenticated,
-    refetchInterval: 30000
+    enabled: isAuthenticated
+    // Removed refetchInterval - relying on WebSocket events for real-time updates
   });
 }
 
@@ -171,8 +169,8 @@ export function usePaymentMetrics(period: 'today' | 'week' | 'month' | 'quarter'
       const response = await tabsyClient.paymentMetrics.getMetricsForPeriod(period, restaurantId, true);
       return response.data;
     },
-    enabled: isAuthenticated,
-    refetchInterval: 30000
+    enabled: isAuthenticated
+    // Removed refetchInterval - relying on WebSocket events for real-time updates
   });
 }
 
@@ -185,8 +183,8 @@ export function useRealTimePaymentMetrics(restaurantId?: string) {
       const response = await tabsyClient.paymentMetrics.getRealTimeMetrics(restaurantId);
       return response.data;
     },
-    enabled: isAuthenticated,
-    refetchInterval: 5000
+    enabled: isAuthenticated
+    // Removed refetchInterval - relying on WebSocket events for real-time updates
   });
 }
 
@@ -199,8 +197,8 @@ export function usePaymentHealthStatus(restaurantId?: string) {
       const response = await tabsyClient.paymentMetrics.getHealthStatus(restaurantId);
       return response.data;
     },
-    enabled: isAuthenticated,
-    refetchInterval: 30000
+    enabled: isAuthenticated
+    // Removed refetchInterval - relying on WebSocket events for real-time updates
   });
 }
 
@@ -213,8 +211,8 @@ export function usePaymentAlerts(restaurantId?: string) {
       const response = await tabsyClient.paymentMetrics.getAlerts(restaurantId);
       return response.data;
     },
-    enabled: isAuthenticated,
-    refetchInterval: 15000
+    enabled: isAuthenticated
+    // Removed refetchInterval - relying on WebSocket events for real-time updates
   });
 }
 
@@ -304,7 +302,7 @@ export function useLivePayments() {
   return useQuery({
     queryKey: ['admin', 'payments', 'live'],
     queryFn: async () => {
-      const paymentsResponse = await tabsyClient.payment.getByRestaurant('', { limit: 50 });
+      const paymentsResponse = await tabsyClient.payment.list({ limit: 50 });
       const payments = paymentsResponse.data || [];
 
       return payments.filter(p =>
@@ -313,7 +311,7 @@ export function useLivePayments() {
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
     },
-    enabled: isAuthenticated,
-    refetchInterval: 5000 // Refresh every 5 seconds for live view
+    enabled: isAuthenticated
+    // Removed refetchInterval - relying on WebSocket events for real-time updates
   });
 }

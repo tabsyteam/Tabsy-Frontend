@@ -105,6 +105,7 @@ export interface UpdateRestaurantRequest {
 export interface UpdateRestaurantFormData {
   name?: string;
   description?: string;
+  logo?: string;
   address?: {
     street?: string;
     city?: string;
@@ -119,6 +120,7 @@ export interface UpdateRestaurantFormData {
   };
   cuisine?: string[];
   priceRange?: 1 | 2 | 3 | 4;
+  posEnabled?: boolean;
   isActive?: boolean;
   status?: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'SUSPENDED';
 }

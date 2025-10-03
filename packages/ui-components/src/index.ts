@@ -4,6 +4,8 @@ export * from './components/input'
 export * from './components/card'
 export * from './components/badge'
 export * from './components/customization-display'
+export * from './components/ui/select'
+export * from './components/ui/dropdown-menu'
 
 // Form Components with Validation
 export * from './components/Form'

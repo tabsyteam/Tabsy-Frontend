@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { SessionManager } from '@/lib/session'
 import { STORAGE_KEYS } from '@/constants/storage'
-import { useBillStatus } from '@/hooks/useBillStatus'
+import { useBillStatus } from '@/hooks/useBillData' // ✅ Updated to use React Query version
 
 interface BottomNavProps {
   cartItemCount?: number
@@ -32,8 +32,22 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
   const [tableNumber, setTableNumber] = useState<string | null>(null)
 
   // Get bill status for badge indicator
-  const { hasBill, remainingBalance, isPaid } = useBillStatus()
-  const shouldShowBillBadge = hasBill && !isPaid && remainingBalance > 0
+  // ✅ Data automatically updated via WebSocketEventCoordinator → React Query cache
+  const { hasBill, remainingBalance, isPaid, billAmount } = useBillStatus()
+  const roundedBalance = Math.round(remainingBalance)
+  const shouldShowBillBadge = hasBill && !isPaid && remainingBalance > 0 && roundedBalance > 0
+
+  // DEBUG: Log badge values to track updates
+  useEffect(() => {
+    console.log('[BottomNav] Bill status values:', {
+      hasBill,
+      remainingBalance,
+      billAmount,
+      isPaid,
+      shouldShowBillBadge,
+      badgeDisplay: shouldShowBillBadge ? `$${roundedBalance}` : 'hidden'
+    })
+  }, [hasBill, remainingBalance, billAmount, isPaid, shouldShowBillBadge])
 
   useEffect(() => {
     // Update session state
@@ -66,6 +80,10 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
     // Update last activity when component renders
     SessionManager.updateLastActivity()
   }, [pathname])
+
+  // ✅ REMOVED: WebSocket event listeners (now handled by WebSocketEventCoordinator)
+  // Bill data automatically updates via centralized coordinator → React Query cache
+  // No need for component-level listeners - prevents duplicate API calls
 
   const navItems = useMemo(() => [
     {
@@ -103,11 +121,11 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
       label: tableNumber ? `Table ${tableNumber}` : 'Table',
       icon: Users,
       path: `/table${hasSession ? SessionManager.getDiningQueryParams() : ''}`,
-      badge: shouldShowBillBadge ? `$${remainingBalance.toFixed(0)}` : null,
+      badge: shouldShowBillBadge ? `$${roundedBalance}` : null,
       badgeType: 'bill' as const,
       disabled: false // Always available to show session status
     }
-  ], [hasSession, cartItemCount, hasCurrentOrder, tableNumber, shouldShowBillBadge, remainingBalance])
+  ], [hasSession, cartItemCount, hasCurrentOrder, tableNumber, shouldShowBillBadge, roundedBalance])
 
   const isActive = useCallback((item: typeof navItems[0]) => {
     if (item.id === 'home') {
@@ -222,7 +240,11 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
                         ease: "easeInOut"
                       }
                     }}
-                    className={`absolute -top-1 -right-1 ${
+                    className={`absolute ${
+                      item.id === 'table' && 'badgeType' in item && item.badgeType === 'bill'
+                        ? '-top-2 -right-4'  // Bill badge: position further right to avoid covering icon
+                        : '-top-1 -right-1'   // Default badge position
+                    } ${
                       item.id === 'cart'
                         ? 'bg-status-error text-status-error-foreground shadow-lg shadow-status-error/30'
                         : item.id === 'table' && 'badgeType' in item && item.badgeType === 'bill'

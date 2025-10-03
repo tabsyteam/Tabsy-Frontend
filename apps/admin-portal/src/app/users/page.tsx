@@ -2,7 +2,20 @@
 
 import { useState, useMemo } from 'react';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { Button } from '@tabsy/ui-components';
+import { DashboardLayout } from '@/components/layouts/DashboardLayout';
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@tabsy/ui-components';
 import {
   Users,
   Plus,
@@ -34,7 +47,7 @@ import { useUsers, useCreateUser, useUpdateUser, useDeleteUser } from '@/hooks/a
 import { formatDistanceToNow, format } from 'date-fns';
 import AddUserModal from '@/components/users/AddUserModal';
 import UserDetailsModal from '@/components/users/UserDetailsModal';
-import { User, UserRole } from '@tabsy/shared-types';
+import { User, UserRole, getUserStatus } from '@tabsy/shared-types';
 import { toast } from 'sonner';
 
 // Role Badge Component
@@ -114,7 +127,6 @@ export default function UsersPage() {
   const [sortBy, setSortBy] = useState<'name' | 'createdAt' | 'lastLogin'>('createdAt');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState(1);
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   // Fetch users data
@@ -147,13 +159,11 @@ export default function UsersPage() {
   const handleEdit = (user: User) => {
     setSelectedUser(user);
     setShowAddModal(true);
-    setActiveDropdown(null);
   };
 
   const handleViewDetails = (user: User) => {
     setSelectedUser(user);
     setShowDetailsModal(true);
-    setActiveDropdown(null);
   };
 
   const handleDelete = async (user: User) => {
@@ -164,27 +174,24 @@ export default function UsersPage() {
         // Error handling is done in the mutation hook
       }
     }
-    setActiveDropdown(null);
   };
 
   const handleResetPassword = (user: User) => {
     // TODO: Implement password reset
     toast.success(`Password reset link sent to ${user.email}`);
-    setActiveDropdown(null);
   };
 
   const handleToggleStatus = async (user: User) => {
     // TODO: Implement status toggle
     const action = (user as any).active ? 'deactivated' : 'activated';
     toast.success(`User ${action} successfully`);
-    setActiveDropdown(null);
   };
 
   return (
     <ProtectedRoute requiredRoles={[UserRole.ADMIN]}>
-      <div className="min-h-screen bg-background">
-        {/* Header */}
-        <div className="bg-surface border-b border-border-tertiary">
+      <DashboardLayout breadcrumbs={[{ label: 'Users' }]}>
+        {/* Page Header */}
+        <div className="bg-surface border-b border-border-default">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center py-6">
               <div>
@@ -238,39 +245,42 @@ export default function UsersPage() {
 
               {/* Filters */}
               <div className="flex gap-2">
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value as any)}
-                  className="px-4 py-2 border border-border-tertiary rounded-lg input-professional"
-                >
-                  <option value="all">All Roles</option>
-                  <option value={UserRole.ADMIN}>Admin</option>
-                  <option value={UserRole.RESTAURANT_OWNER}>Restaurant Owner</option>
-                  <option value={UserRole.RESTAURANT_STAFF}>Restaurant Staff</option>
-                  <option value={UserRole.CUSTOMER}>Customer</option>
-                </select>
+                <Select value={roleFilter} onValueChange={(value) => setRoleFilter(value as any)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All Roles" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Roles</SelectItem>
+                    <SelectItem value={UserRole.ADMIN}>Admin</SelectItem>
+                    <SelectItem value={UserRole.RESTAURANT_OWNER}>Restaurant Owner</SelectItem>
+                    <SelectItem value={UserRole.RESTAURANT_STAFF}>Restaurant Staff</SelectItem>
+                    <SelectItem value={UserRole.CUSTOMER}>Customer</SelectItem>
+                  </SelectContent>
+                </Select>
 
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="px-4 py-2 border border-border-tertiary rounded-lg input-professional"
-                >
-                  <option value="all">All Status</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="unverified">Unverified</option>
-                </select>
+                <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="All Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="unverified">Unverified</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 {/* Sort */}
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-4 py-2 border border-border-tertiary rounded-lg input-professional"
-                >
-                  <option value="name">Name</option>
-                  <option value="createdAt">Date Added</option>
-                  <option value="lastLogin">Last Login</option>
-                </select>
+                <Select value={sortBy} onValueChange={(value) => setSortBy(value as any)}>
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="name">Name</SelectItem>
+                    <SelectItem value="createdAt">Date Added</SelectItem>
+                    <SelectItem value="lastLogin">Last Login</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 <button
                   onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
@@ -313,7 +323,7 @@ export default function UsersPage() {
 
         {/* Users Table */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
-          <div className="bg-surface rounded-lg shadow-card overflow-hidden">
+          <div className="bg-surface rounded-lg shadow-card overflow-visible">
             {isLoading ? (
               <div className="p-8 text-center">
                 <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-primary border-t-transparent rounded-full"></div>
@@ -326,7 +336,7 @@ export default function UsersPage() {
               </div>
             ) : (
               <>
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-visible">
                   <table className="w-full table-professional">
                     <thead>
                       <tr>
@@ -388,7 +398,7 @@ export default function UsersPage() {
                             <RoleBadge role={user.role} />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <StatusBadge status={user.status} />
+                            <StatusBadge status={getUserStatus(user)} />
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-content-secondary">
@@ -397,64 +407,48 @@ export default function UsersPage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right">
-                            <div className="relative">
-                              <button
-                                onClick={() => setActiveDropdown(activeDropdown === user.id ? null : user.id)}
-                                className="p-2 hover:bg-surface-secondary rounded-full transition-colors"
-                              >
-                                <MoreVertical className="h-4 w-4 text-content-tertiary" />
-                              </button>
-                              {activeDropdown === user.id && (
-                                <div className="absolute right-0 mt-2 w-48 bg-surface rounded-lg shadow-lg border border-border-tertiary z-10">
-                                  <div className="py-1">
-                                    <button
-                                      onClick={() => handleViewDetails(user)}
-                                      className="flex items-center px-4 py-2 text-sm text-content-primary hover:bg-surface-secondary w-full text-left"
-                                    >
-                                      <Eye className="h-4 w-4 mr-2" />
-                                      View Details
-                                    </button>
-                                    <button
-                                      onClick={() => handleEdit(user)}
-                                      className="flex items-center px-4 py-2 text-sm text-content-primary hover:bg-surface-secondary w-full text-left"
-                                    >
-                                      <Edit className="h-4 w-4 mr-2" />
-                                      Edit
-                                    </button>
-                                    <button
-                                      onClick={() => handleResetPassword(user)}
-                                      className="flex items-center px-4 py-2 text-sm text-content-primary hover:bg-surface-secondary w-full text-left"
-                                    >
-                                      <Key className="h-4 w-4 mr-2" />
-                                      Reset Password
-                                    </button>
-                                    <button
-                                      onClick={() => handleToggleStatus(user)}
-                                      className="flex items-center px-4 py-2 text-sm text-content-primary hover:bg-surface-secondary w-full text-left"
-                                    >
-                                      {user.status === 'ACTIVE' ? (
-                                        <>
-                                          <Lock className="h-4 w-4 mr-2" />
-                                          Deactivate
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Unlock className="h-4 w-4 mr-2" />
-                                          Activate
-                                        </>
-                                      )}
-                                    </button>
-                                    <button
-                                      onClick={() => handleDelete(user)}
-                                      className="flex items-center px-4 py-2 text-sm text-status-error hover:bg-status-error-light w-full text-left"
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Delete
-                                    </button>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="p-2 hover:bg-surface-secondary rounded-full transition-colors">
+                                  <MoreVertical className="h-4 w-4 text-content-tertiary" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleViewDetails(user)}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleEdit(user)}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleResetPassword(user)}>
+                                  <Key className="h-4 w-4 mr-2" />
+                                  Reset Password
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleToggleStatus(user)}>
+                                  {user.active !== false ? (
+                                    <>
+                                      <Lock className="h-4 w-4 mr-2" />
+                                      Deactivate
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Unlock className="h-4 w-4 mr-2" />
+                                      Activate
+                                    </>
+                                  )}
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(user)}
+                                  className="text-status-error focus:text-status-error"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </td>
                         </tr>
                       ))}
@@ -545,7 +539,7 @@ export default function UsersPage() {
             }}
           />
         )}
-      </div>
+      </DashboardLayout>
     </ProtectedRoute>
   );
 }

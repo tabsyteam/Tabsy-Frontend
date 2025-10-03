@@ -22,8 +22,9 @@ import {
 import { tabsyClient } from '@tabsy/api-client'
 import { format, formatDistanceToNow } from 'date-fns'
 import type { Payment, PaymentStatus, PaymentMethod } from '@tabsy/shared-types'
-import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
+import { useWebSocket } from '@tabsy/ui-components'
 import { PaymentDetailsModal } from './PaymentDetailsModal'
+import { logger } from '../../lib/logger'
 
 interface ActivePaymentsProps {
   restaurantId: string

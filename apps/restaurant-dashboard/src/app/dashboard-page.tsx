@@ -107,12 +107,8 @@ export function DashboardClient(): JSX.Element {
   // Assistance alerts and notifications
   const [assistanceNotifications, setAssistanceNotifications] = useState<Notification[]>([])
 
-  // Notification sound for assistance requests
-  const { playSound: playAssistanceSound } = useNotificationSound({
-    enabled: true,
-    volume: 0.7,
-    priority: 'high'
-  })
+  // Note: Assistance sound is now handled by Header.tsx using modern sound system
+  // Removed duplicate useNotificationSound hook to prevent double sounds
 
   // Re-enable notifications with proper configuration
   const notificationHooks = createNotificationHooks(useQuery)
@@ -166,27 +162,54 @@ export function DashboardClient(): JSX.Element {
     return
   }, [auth?.isLoading, auth?.isVerifying, auth?.isAuthenticated, hasRestaurantAccess, restaurantId, router])
 
-  // Update assistance notifications from notification data with deduplication
+  // Sync with server notifications (for initial load and when notifications are marked as read)
   useEffect(() => {
     if (notificationsData?.notifications) {
       const assistanceNotifs = notificationsData.notifications.filter(
         (notif: Notification) => notif.type === 'ASSISTANCE_REQUIRED' && !notif.isRead
       )
 
-      // Deduplicate notifications by ID to prevent duplicates
       setAssistanceNotifications(prev => {
-        const existingIds = new Set(prev.map((notif: Notification) => notif.id))
-        const newNotifs = assistanceNotifs.filter((notif: Notification) => !existingIds.has(notif.id))
+        // DEDUPLICATION STRATEGY:
+        // Use assistanceRequestId as the unique key (same for all staff notifications of one request)
+        // This ensures each user sees only ONE notification per assistance request
 
-        if (newNotifs.length === 0 && prev.length === assistanceNotifs.length) {
-          // No changes, return previous state to prevent re-renders
-          return prev
-        }
+        const deduplicationMap = new Map<string, Notification>()
 
-        // Return deduplicated list sorted by creation time (newest first)
-        return assistanceNotifs.sort((a: Notification, b: Notification) =>
+        // Step 1: Add all API notifications, deduplicating by assistanceRequestId
+        assistanceNotifs.forEach((notif: Notification) => {
+          const requestId = (notif.metadata as any)?.assistanceRequestId || notif.id
+
+          // Only keep the first occurrence of each assistanceRequestId
+          if (!deduplicationMap.has(requestId)) {
+            deduplicationMap.set(requestId, notif)
+          }
+        })
+
+        // Step 2: Convert to sorted array (newest first)
+        const deduplicated = Array.from(deduplicationMap.values()).sort((a, b) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )
+
+        // Step 3: Check if there are actual changes (prevent unnecessary re-renders)
+        if (prev.length === deduplicated.length) {
+          const prevIds = prev.map(n => (n.metadata as any)?.assistanceRequestId || n.id).sort().join(',')
+          const newIds = deduplicated.map(n => (n.metadata as any)?.assistanceRequestId || n.id).sort().join(',')
+          if (prevIds === newIds) {
+            return prev // No changes, prevent re-render
+          }
+        }
+
+        // Debug log
+        if (deduplicated.length > 0) {
+          logger.assistance('Assistance notifications updated', {
+            total: assistanceNotifs.length,
+            afterDeduplication: deduplicated.length,
+            requestIds: deduplicated.map(n => (n.metadata as any)?.assistanceRequestId)
+          })
+        }
+
+        return deduplicated
       })
     }
   }, [notificationsData])
@@ -195,15 +218,15 @@ export function DashboardClient(): JSX.Element {
   const handleAssistanceRequested = useCallback((payload: any) => {
     logger.assistance('Assistance requested', payload)
 
-    // Play assistance sound immediately
-    playAssistanceSound()
+    // Note: Sound is played by Header.tsx WebSocket handler
+    // Removed duplicate sound here to prevent double-playing
 
     // Browser notification for background alerts
     if ('Notification' in window && Notification.permission === 'granted') {
       new window.Notification('🚨 Assistance Request', {
         body: `Table ${payload.tableId} needs assistance${payload.message ? ': ' + payload.message : ''}`,
         icon: '/favicon.ico',
-        tag: 'assistance-request',
+        tag: `assistance-${payload.assistanceRequestId || payload.tableId}`,
         requireInteraction: true
       })
     } else if ('Notification' in window && Notification.permission === 'default') {
@@ -211,9 +234,11 @@ export function DashboardClient(): JSX.Element {
       Notification.requestPermission()
     }
 
-    // Refetch notifications to get the latest from server (single source of truth)
+    // Trigger immediate refetch to get the real notification for current user
+    // The notification is already created on the server with proper userId
+    // This is fast because the notification was just created
     refetchNotifications()
-  }, [playAssistanceSound, refetchNotifications])
+  }, [refetchNotifications])
 
   useWebSocketEvent('assistance:requested', handleAssistanceRequested, [handleAssistanceRequested])
 

@@ -14,7 +14,9 @@ import { useApi } from '@/components/providers/api-provider'
 import { useCart } from '@/hooks/useCart'
 import { useMenuItemActions } from '@/hooks/useMenuItemActions'
 import { MenuItem, MenuCategory, AllergyInfo } from '@tabsy/shared-types'
+import { dualReadSession } from '@/lib/unifiedSessionStorage'
 import { SessionManager } from '@/lib/session'
+import { useMenuData } from '@/hooks/useMenuData' // ✅ NEW: React Query hook
 
 const convertAllergyInfoToArray = (allergyInfo?: AllergyInfo): string[] | undefined => {
   if (!allergyInfo) return undefined
@@ -51,15 +53,35 @@ export function SearchView() {
   })
 
   const restaurantId = hasValidUrlParams ? urlRestaurantId : session?.restaurantId
+
+  // ✅ NEW: Use React Query hook for menu data (prevents duplicate API calls)
+  const {
+    data: menuCategories = [],
+    isLoading: loadingMenu,
+    error: menuError
+  } = useMenuData({
+    restaurantId,
+    enabled: !!restaurantId
+  })
+
+  // Extract all menu items for search/autocomplete
+  const allMenuItems = React.useMemo(() => {
+    const items: MenuItem[] = []
+    menuCategories.forEach((category: MenuCategory) => {
+      if (category.items) {
+        items.push(...category.items)
+      }
+    })
+    return items
+  }, [menuCategories])
+
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<MenuItem[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [showFilters, setShowFilters] = useState(false)
   const [recentSearches, setRecentSearches] = useState<string[]>([])
-  const [menuCategories, setMenuCategories] = useState<MenuCategory[]>([])
   const [menuSuggestions, setMenuSuggestions] = useState<MenuItem[]>([])
-  const [allMenuItems, setAllMenuItems] = useState<MenuItem[]>([])
   const [suggestionTimeout, setSuggestionTimeout] = useState<NodeJS.Timeout | null>(null)
 
   // Menu item actions (favorites, cart, modal)
@@ -81,7 +103,7 @@ export function SearchView() {
     'Pizza', 'Burger', 'Pasta', 'Salad', 'Dessert', 'Coffee', 'Appetizer', 'Drinks'
   ]
 
-  // Load recent searches from localStorage and menu categories
+  // Load recent searches from localStorage
   useEffect(() => {
     const stored = localStorage.getItem('tabsy-recent-searches')
     if (stored) {
@@ -91,41 +113,10 @@ export function SearchView() {
         console.error('Failed to parse recent searches:', e)
       }
     }
+  }, [])
 
-    // Load menu categories and all items for auto-completion
-    const loadMenuData = async () => {
-      if (!restaurantId) return
-
-      try {
-        const menuResponse = await api.menu.getActiveMenu(restaurantId)
-        if (menuResponse.success && menuResponse.data) {
-          let categories = []
-          let allItems: MenuItem[] = []
-
-          if (Array.isArray(menuResponse.data)) {
-            const firstMenu = menuResponse.data[0]
-            categories = firstMenu?.categories || []
-          } else if (menuResponse.data.categories) {
-            categories = menuResponse.data.categories
-          }
-
-          // Extract all menu items from categories for auto-completion
-          categories.forEach((category: MenuCategory) => {
-            if (category.items) {
-              allItems.push(...category.items)
-            }
-          })
-
-          setMenuCategories(categories)
-          setAllMenuItems(allItems)
-        }
-      } catch (error) {
-        console.error('Failed to load menu data:', error)
-      }
-    }
-
-    loadMenuData()
-  }, [restaurantId, api])
+  // ✅ REMOVED: Old loadMenuData function - now handled by useMenuData hook
+  // Menu categories and items are automatically loaded via React Query
 
   // Cleanup timeout on unmount
   useEffect(() => {

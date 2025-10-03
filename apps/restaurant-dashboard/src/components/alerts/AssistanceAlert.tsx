@@ -102,6 +102,7 @@ export function AssistanceAlert({ notification, onDismiss, onAcknowledge }: Assi
   const handleAcknowledge = async () => {
     setAcknowledging(true)
     try {
+      // Mark notification as read on server
       await tabsyClient.notification.markAsRead(notification.id)
       // Invalidate notifications cache to update badge count immediately
       queryClient.invalidateQueries({ queryKey: ['notifications'] })

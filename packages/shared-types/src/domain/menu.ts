@@ -63,8 +63,8 @@ export interface MenuCategory {
   name: string
   description: string
   displayOrder: number
-  isActive: boolean  // Keep this as isActive for now to maintain backward compatibility with frontend components
-  imageUrl?: string  // Keep this as imageUrl for frontend compatibility
+  active: boolean    // Backend sends 'active' field
+  imageUrl?: string  // Backend sends imageUrl for category images
   items: MenuItem[]
   createdAt: string
   updatedAt: string
@@ -76,6 +76,7 @@ export interface MenuItem {
   name: string
   description: string
   status: MenuItemStatus
+  active?: boolean // Backend sends 'active' field - indicates if item is available
   basePrice: number
   price?: number // Backend might return price instead of basePrice
   displayOrder: number

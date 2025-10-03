@@ -26,7 +26,18 @@ export function useOrders(filters?: {
         limit: 1000 // Get more orders for admin view
       });
 
-      const orders = ordersResponse.data || [];
+      // Handle response structure: data can be {orders: [], totalCount: number} or Order[]
+      const responseData = ordersResponse.data as any;
+      const orders = Array.isArray(responseData) ? responseData : (responseData?.orders || []);
+
+      console.log('useOrders Debug:', {
+        responseData,
+        isArray: Array.isArray(responseData),
+        orders,
+        ordersLength: orders.length,
+        filters
+      });
+
       if (!orders.length) return [];
 
       let filtered = [...orders];
@@ -70,8 +81,13 @@ export function useOrders(filters?: {
         const searchLower = filters.search.toLowerCase();
         filtered = filtered.filter(o =>
           o.id?.toLowerCase().includes(searchLower) ||
-          o.customerId?.toLowerCase().includes(searchLower) ||
-          o.tableId?.toLowerCase().includes(searchLower)
+          o.orderNumber?.toLowerCase().includes(searchLower) ||
+          o.customerName?.toLowerCase().includes(searchLower) ||
+          o.customerEmail?.toLowerCase().includes(searchLower) ||
+          o.guestSessionId?.toLowerCase().includes(searchLower) ||
+          o.tableId?.toLowerCase().includes(searchLower) ||
+          o.table?.tableNumber?.toLowerCase().includes(searchLower) ||
+          o.restaurant?.name?.toLowerCase().includes(searchLower)
         );
       }
 
@@ -94,8 +110,8 @@ export function useOrders(filters?: {
       // Return filtered orders (pagination will be handled in the component)
       return filtered;
     },
-    enabled: isAuthenticated,
-    refetchInterval: 30000 // Refresh every 30 seconds
+    enabled: isAuthenticated
+    // Removed refetchInterval - relying on WebSocket events for real-time updates
   });
 }
 
@@ -108,8 +124,8 @@ export function useOrder(orderId: string) {
       const response = await tabsyClient.order.getById(orderId);
       return response.data;
     },
-    enabled: isAuthenticated && !!orderId,
-    refetchInterval: 10000 // Refresh every 10 seconds for real-time updates
+    enabled: isAuthenticated && !!orderId
+    // Removed refetchInterval - relying on WebSocket events for real-time updates
   });
 }
 
@@ -155,21 +171,42 @@ export function useCancelOrder() {
   });
 }
 
-export function useOrderMetrics() {
+export function useOrderMetrics(dateRange?: 'all' | 'today' | 'week' | 'month') {
   const { isAuthenticated } = useAuth();
 
   return useQuery({
-    queryKey: ['admin', 'orders', 'metrics'],
+    queryKey: ['admin', 'orders', 'metrics', dateRange],
     queryFn: async () => {
-      const now = new Date();
-      const dateFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
       const ordersResponse = await tabsyClient.order.list({ limit: 10000 });
-      const orders = ordersResponse.data || [];
+      // Handle response structure: data can be {orders: [], totalCount: number} or Order[]
+      const responseData = ordersResponse.data as any;
+      const orders = Array.isArray(responseData) ? responseData : (responseData?.orders || []);
 
-      const todayOrders = orders?.filter(o =>
-        new Date(o.createdAt) >= dateFrom
-      ) || [];
+      // Apply date range filter
+      let filteredOrders = orders || [];
+
+      if (dateRange && dateRange !== 'all') {
+        const now = new Date();
+        let dateFrom: Date;
+
+        switch (dateRange) {
+          case 'today':
+            dateFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+          case 'week':
+            dateFrom = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            break;
+          case 'month':
+            dateFrom = new Date(now.getFullYear(), now.getMonth(), 1);
+            break;
+          default:
+            dateFrom = new Date(0);
+        }
+
+        filteredOrders = orders.filter((o: any) => new Date(o.createdAt) >= dateFrom);
+      }
+
+      const todayOrders = filteredOrders;
 
       const metrics = {
         totalOrders: todayOrders.length,
@@ -240,7 +277,9 @@ export function useLiveOrders() {
     queryKey: ['admin', 'orders', 'live'],
     queryFn: async () => {
       const ordersResponse = await tabsyClient.order.list({ limit: 100 });
-      const orders = ordersResponse.data || [];
+      // Handle response structure: data can be {orders: [], totalCount: number} or Order[]
+      const responseData = ordersResponse.data as any;
+      const orders = Array.isArray(responseData) ? responseData : (responseData?.orders || []);
 
       const liveOrders = orders.filter(o =>
         [OrderStatus.RECEIVED, OrderStatus.PREPARING, OrderStatus.READY].includes(o.status)
@@ -250,8 +289,8 @@ export function useLiveOrders() {
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
     },
-    enabled: isAuthenticated,
-    refetchInterval: 5000 // Refresh every 5 seconds for live view
+    enabled: isAuthenticated
+    // Removed refetchInterval - relying on WebSocket events for real-time updates
   });
 }
 

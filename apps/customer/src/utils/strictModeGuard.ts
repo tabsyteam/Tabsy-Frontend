@@ -85,7 +85,21 @@ class StrictModeGuard {
     try {
       console.log('[StrictModeGuard] Executing operation for the first time:', operationKey)
       const result = await operation()
-      this.markExecuted(operationKey, result)
+
+      // Only cache successful results (not undefined/null/false)
+      // This prevents caching failed API calls
+      if (result && typeof result === 'object' && 'success' in result) {
+        const apiResult = result as any
+        if (apiResult.success && apiResult.data) {
+          this.markExecuted(operationKey, result)
+          console.log('[StrictModeGuard] ✅ Cached successful API result:', operationKey)
+        } else {
+          console.log('[StrictModeGuard] ⚠️ Not caching failed API result:', operationKey)
+        }
+      } else {
+        this.markExecuted(operationKey, result)
+      }
+
       return result
     } catch (error) {
       console.error('[StrictModeGuard] Operation failed:', operationKey, error)

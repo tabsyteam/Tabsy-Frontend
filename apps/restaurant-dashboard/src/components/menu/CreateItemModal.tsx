@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button } from '@tabsy/ui-components';
+import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@tabsy/ui-components';
 import { useMutation } from '@tanstack/react-query';
 import { tabsyClient } from '@tabsy/api-client';
 import { toast } from 'sonner';
@@ -729,24 +729,28 @@ export function CreateItemModal({
                     >
                       Category *
                     </label>
-                    <select
-                      id="category"
+                    <Select
                       value={formData.categoryId}
-                      onChange={(e) => handleInputChange('categoryId', e.target.value)}
-                      className={`form-select ${
-                        errors.categoryId
-                          ? 'border-destructive focus:border-destructive focus:ring-destructive/20'
-                          : ''
-                      }`}
+                      onValueChange={(value) => handleInputChange('categoryId', value)}
                       disabled={createItemMutation.isPending}
                     >
-                      <option value="">Select a category</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger
+                        className={`w-full ${
+                          errors.categoryId
+                            ? 'border-destructive focus:border-destructive focus:ring-destructive/20'
+                            : ''
+                        }`}
+                      >
+                        <SelectValue placeholder="Select a category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     {errors.categoryId && (
                       <div className="flex items-center mt-2 text-sm text-destructive">
                         <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />

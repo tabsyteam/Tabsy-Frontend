@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import { useWebSocketEvent, useWebSocket } from '@tabsy/ui-components'
 import { SessionManager } from '@/lib/session'
 import { SessionTransitionModal } from './SessionTransitionModal'
-import { useToast } from '@tabsy/ui-components'
+import { toast } from 'sonner'
 import { useCart } from '@/hooks/useCart'
 
 interface SessionReplacementHandlerProps {
@@ -15,7 +15,6 @@ interface SessionReplacementHandlerProps {
 function SessionReplacementHandlerInner({ children }: SessionReplacementHandlerProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { toast } = useToast()
   const { clearCart } = useCart()
   const { client, isConnected, disconnect } = useWebSocket()
 
@@ -31,12 +30,26 @@ function SessionReplacementHandlerInner({ children }: SessionReplacementHandlerP
   const hasHandledReplacement = useRef(false)
   const reconnectAttempts = useRef(0)
   const maxReconnectAttempts = 3
+  const isMountedRef = useRef(true)
+  const timeoutIdsRef = useRef<NodeJS.Timeout[]>([])
 
   // Get restaurant name from session
   useEffect(() => {
     const session = SessionManager.getDiningSession()
     if (session?.restaurantName) {
       setRestaurantName(session.restaurantName)
+    }
+  }, [])
+
+  // Cleanup all timeouts on unmount
+  useEffect(() => {
+    isMountedRef.current = true
+
+    return () => {
+      isMountedRef.current = false
+      // Clear all tracked timeouts
+      timeoutIdsRef.current.forEach(clearTimeout)
+      timeoutIdsRef.current = []
     }
   }, [])
 
@@ -61,7 +74,9 @@ function SessionReplacementHandlerInner({ children }: SessionReplacementHandlerP
       clearCart()
 
       // Disconnect WebSocket
-      disconnect()
+      if (disconnect && typeof disconnect === 'function') {
+        (disconnect as () => void)()
+      }
 
       console.log('✅ [SessionReplacementHandler] Session cleanup complete')
     } catch (error) {
@@ -69,11 +84,12 @@ function SessionReplacementHandlerInner({ children }: SessionReplacementHandlerP
     }
 
     // Navigate to home after a short delay
-    setTimeout(() => {
-      if (pathname !== '/') {
+    const timeoutId = setTimeout(() => {
+      if (isMountedRef.current && pathname !== '/') {
         router.push('/')
       }
     }, 100)
+    timeoutIdsRef.current.push(timeoutId)
   }, [clearCart, disconnect, router, pathname])
 
   // Handle pre-disconnection notification (graceful session ending)
@@ -94,12 +110,11 @@ function SessionReplacementHandlerInner({ children }: SessionReplacementHandlerP
     })
 
     // Show toast notification as well
-    toast({
-      title: "Session Complete",
+    toast.success("Session Complete", {
       description: "Thank you for dining with us! Your session has ended.",
       duration: 5000,
     })
-  }, [toast], 'SessionReplacementHandler')
+  }, [], 'SessionReplacementHandler')
 
   // Handle session replaced event (new guest arrived)
   useWebSocketEvent('sessionReplaced', (data: any) => {
@@ -124,15 +139,13 @@ function SessionReplacementHandlerInner({ children }: SessionReplacementHandlerP
     console.log('🔔 [SessionReplacementHandler] Invalid session event received:', data)
 
     // Show toast with helpful message
-    toast({
-      title: "Session Invalid",
+    toast.error("Session Invalid", {
       description: "Please scan the QR code at your table to start a new session.",
-      variant: "destructive",
       duration: 5000,
     })
 
     handleSessionCleanup('error')
-  }, [toast, handleSessionCleanup], 'SessionReplacementHandler')
+  }, [handleSessionCleanup], 'SessionReplacementHandler')
 
   // Handle WebSocket disconnection with proper error messages
   useWebSocketEvent('disconnect', (reason: any) => {
@@ -152,8 +165,8 @@ function SessionReplacementHandlerInner({ children }: SessionReplacementHandlerP
           console.log(`🔄 Reconnection attempt ${reconnectAttempts.current}/${maxReconnectAttempts}`)
 
           // Wait a bit before showing the modal to see if reconnection succeeds
-          setTimeout(() => {
-            if (!isConnected) {
+          const timeoutId = setTimeout(() => {
+            if (isMountedRef.current && !isConnected) {
               // Show session replaced modal if still disconnected
               setModalState({
                 isOpen: true,
@@ -161,12 +174,15 @@ function SessionReplacementHandlerInner({ children }: SessionReplacementHandlerP
               })
             }
           }, 2000)
+          timeoutIdsRef.current.push(timeoutId)
         } else {
           // Max attempts reached, show modal
-          setModalState({
-            isOpen: true,
-            type: 'session-replaced'
-          })
+          if (isMountedRef.current) {
+            setModalState({
+              isOpen: true,
+              type: 'session-replaced'
+            })
+          }
         }
       }
     }
@@ -184,23 +200,24 @@ function SessionReplacementHandlerInner({ children }: SessionReplacementHandlerP
       if (!hasHandledReplacement.current) {
         hasHandledReplacement.current = true
 
-        toast({
-          title: "Session Error",
+        toast.error("Session Error", {
           description: "Your session has ended. Please scan the QR code to continue.",
-          variant: "destructive",
           duration: 5000,
         })
 
         // Show modal after a short delay
-        setTimeout(() => {
-          setModalState({
-            isOpen: true,
-            type: 'session-replaced'
-          })
+        const timeoutId = setTimeout(() => {
+          if (isMountedRef.current) {
+            setModalState({
+              isOpen: true,
+              type: 'session-replaced'
+            })
+          }
         }, 1000)
+        timeoutIdsRef.current.push(timeoutId)
       }
     }
-  }, [toast], 'SessionReplacementHandler')
+  }, [], 'SessionReplacementHandler')
 
   // Handle successful reconnection
   useWebSocketEvent('connect', () => {
@@ -221,26 +238,16 @@ function SessionReplacementHandlerInner({ children }: SessionReplacementHandlerP
     setModalState(prev => ({ ...prev, isOpen: false }))
 
     // Perform cleanup after modal closes
-    setTimeout(() => {
-      handleSessionCleanup('replaced')
+    const timeoutId = setTimeout(() => {
+      if (isMountedRef.current) {
+        handleSessionCleanup('replaced')
+      }
     }, 300)
+    timeoutIdsRef.current.push(timeoutId)
   }, [handleSessionCleanup])
 
-  // Handle payment success event to show thank you modal
-  useWebSocketEvent('payment:completed', (data: any) => {
-    console.log('💳 [SessionReplacementHandler] Payment completed:', data)
-
-    // Show thank you modal
-    setModalState({
-      isOpen: true,
-      type: 'thank-you'
-    })
-
-    // Clear session after a delay
-    setTimeout(() => {
-      handleSessionCleanup('ended')
-    }, 5000)
-  }, [handleSessionCleanup], 'SessionReplacementHandler')
+  // Note: payment:completed event is handled by PaymentView/PaymentSuccessView
+  // Session cleanup after payment should only happen after user views success page
 
   return (
     <>

@@ -1,14 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-  Server, Database, AlertTriangle, 
+import {
+  Server, Database, AlertTriangle,
   Cpu,
   RefreshCw, Download,
   CheckCircle,
   XCircle, AlertCircle, Info
 } from 'lucide-react'
 import { format } from 'date-fns'
+import { useSystemHealth } from '@/hooks/api/useSystem'
 
 interface SystemStatus {
   overall: 'healthy' | 'warning' | 'critical'
@@ -79,108 +80,83 @@ export function SystemAdministration({
   onBackup, 
   onUpdateSettings 
 }: SystemAdministrationProps) {
-  const [systemStatus, setSystemStatus] = useState<SystemStatus | null>(null)
-  const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null)
   const [activeTab, setActiveTab] = useState<'status' | 'settings' | 'logs'>('status')
-  const [loading, setLoading] = useState(true)
+  const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null)
 
-  // Mock data - replace with real API calls
+  // Fetch real system health data from API
+  const { data: healthData, isLoading: healthLoading, error: healthError } = useSystemHealth()
+
+  // Initialize settings with default values
   useEffect(() => {
-    const fetchSystemData = async () => {
-      setLoading(true)
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      const mockStatus: SystemStatus = {
-        overall: 'healthy',
-        services: [
-          { name: 'API Server', status: 'running', uptime: '15d 3h 42m', lastCheck: new Date().toISOString() },
-          { name: 'WebSocket Server', status: 'running', uptime: '15d 3h 42m', lastCheck: new Date().toISOString() },
-          { name: 'Database', status: 'running', uptime: '30d 12h 15m', lastCheck: new Date().toISOString() },
-          { name: 'Redis Cache', status: 'running', uptime: '7d 8h 30m', lastCheck: new Date().toISOString() },
-          { name: 'Payment Service', status: 'error', uptime: '0m', lastCheck: new Date().toISOString() }
-        ],
-        performance: {
-          cpu: 45,
-          memory: 68,
-          disk: 32,
-          network: 15
+    setSystemSettings({
+      maintenance: {
+        enabled: false,
+        message: 'System maintenance in progress. We\'ll be back shortly.',
+        scheduledAt: undefined
+      },
+      backups: {
+        enabled: true,
+        frequency: 'daily',
+        retention: 30,
+        lastBackup: new Date(Date.now() - 86400000).toISOString()
+      },
+      notifications: {
+        emailAlerts: true,
+        smsAlerts: false,
+        webhookUrl: 'https://api.slack.com/incoming/webhooks/...'
+      },
+      security: {
+        passwordPolicy: {
+          minLength: 8,
+          requireSpecialChars: true,
+          requireNumbers: true,
+          expiryDays: 90
         },
-        database: {
-          status: 'connected',
-          connections: 25,
-          maxConnections: 100,
-          queryTime: 1.2
-        },
-        logs: [
-          { 
-            id: '1', 
-            level: 'error', 
-            message: 'Payment service connection timeout', 
-            timestamp: new Date().toISOString(), 
-            source: 'payment-service' 
-          },
-          { 
-            id: '2', 
-            level: 'warning', 
-            message: 'High memory usage detected on API server', 
-            timestamp: new Date(Date.now() - 300000).toISOString(), 
-            source: 'api-server' 
-          },
-          { 
-            id: '3', 
-            level: 'info', 
-            message: 'Database backup completed successfully', 
-            timestamp: new Date(Date.now() - 600000).toISOString(), 
-            source: 'backup-service' 
-          },
-          { 
-            id: '4', 
-            level: 'info', 
-            message: 'New restaurant registered: Bella Italia', 
-            timestamp: new Date(Date.now() - 900000).toISOString(), 
-            source: 'api-server' 
-          }
-        ]
+        sessionTimeout: 3600,
+        maxFailedAttempts: 5
       }
-
-      const mockSettings: SystemSettings = {
-        maintenance: {
-          enabled: false,
-          message: 'System maintenance in progress. We\'ll be back shortly.',
-          scheduledAt: undefined
-        },
-        backups: {
-          enabled: true,
-          frequency: 'daily',
-          retention: 30,
-          lastBackup: new Date(Date.now() - 86400000).toISOString()
-        },
-        notifications: {
-          emailAlerts: true,
-          smsAlerts: false,
-          webhookUrl: 'https://api.slack.com/incoming/webhooks/...'
-        },
-        security: {
-          passwordPolicy: {
-            minLength: 8,
-            requireSpecialChars: true,
-            requireNumbers: true,
-            expiryDays: 90
-          },
-          sessionTimeout: 3600,
-          maxFailedAttempts: 5
-        }
-      }
-      
-      setSystemStatus(mockStatus)
-      setSystemSettings(mockSettings)
-      setLoading(false)
-    }
-
-    fetchSystemData()
+    })
   }, [])
+
+  // Transform health data to system status
+  const systemStatus: SystemStatus | null = healthData ? {
+    overall: healthData.status === 'healthy' ? 'healthy' : 'critical',
+    services: [
+      {
+        name: 'API Server',
+        status: healthData.services.api === 'healthy' ? 'running' : 'error',
+        uptime: healthData.uptime || 'N/A',
+        lastCheck: healthData.lastCheck
+      },
+      {
+        name: 'Database',
+        status: healthData.services.database === 'healthy' ? 'running' : 'error',
+        uptime: healthData.uptime || 'N/A',
+        lastCheck: healthData.lastCheck
+      },
+      {
+        name: 'Redis Cache',
+        status: healthData.services.redis === 'healthy' ? 'running' : healthData.services.redis === 'unhealthy' ? 'error' : 'stopped',
+        uptime: healthData.uptime || 'N/A',
+        lastCheck: healthData.lastCheck
+      }
+    ],
+    performance: {
+      cpu: parseFloat(healthData.cpuUsage) || 0,
+      memory: parseFloat(healthData.memoryUsage) || 0,
+      disk: parseFloat(healthData.diskUsage) || 0,
+      network: 0 // Not provided by backend
+    },
+    database: {
+      status: healthData.services.database === 'healthy' ? 'connected' : 'disconnected',
+      connections: 0, // Not provided by backend
+      maxConnections: 100,
+      queryTime: 0 // Not provided by backend
+    },
+    logs: [] // Logs would need a separate endpoint
+  } : null
+
+  const loading = healthLoading
 
   const getStatusIcon = (status: string) => {
     switch (status) {

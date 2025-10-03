@@ -35,36 +35,36 @@ export default function AdminLoginPage() {
   // Show loading while checking authentication
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-theme-gradient flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-theme-primary border-t-transparent rounded-full"></div>
-          <p className="text-theme-text-secondary">Loading...</p>
+          <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-accent border-t-transparent rounded-full"></div>
+          <p className="text-content-secondary">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-theme-gradient flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
         <div className="text-center space-y-3">
-          <div className="mx-auto h-16 w-16 bg-theme-primary rounded-full flex items-center justify-center shadow-lg">
-            <Shield className="h-8 w-8 text-theme-surface" />
+          <div className="mx-auto h-16 w-16 bg-primary rounded-full flex items-center justify-center shadow-lg">
+            <Shield className="h-8 w-8 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-theme-text-primary">Admin Portal</h1>
-            <p className="text-theme-text-secondary mt-2">Secure access to system administration</p>
+            <h1 className="text-3xl font-bold text-content-primary">Admin Portal</h1>
+            <p className="text-content-secondary mt-2">Secure access to system administration</p>
           </div>
         </div>
 
         {/* Security Notice */}
-        <div className="bg-theme-primary-light border border-theme-border rounded-lg p-4">
+        <div className="bg-primary-light border border-primary/20 rounded-lg p-4">
           <div className="flex items-start space-x-3">
-            <ShieldCheck className="h-5 w-5 text-theme-primary mt-0.5 flex-shrink-0" />
+            <ShieldCheck className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
             <div className="text-sm">
-              <h3 className="font-medium text-theme-text-primary mb-1">Secure Admin Access</h3>
-              <p className="text-theme-text-secondary">
+              <h3 className="font-medium text-content-primary mb-1">Secure Admin Access</h3>
+              <p className="text-content-secondary">
                 This portal is for authorized administrators only. All access is monitored and logged.
               </p>
             </div>
@@ -72,8 +72,8 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Login Form */}
-        <div className="bg-theme-surface rounded-lg shadow-lg p-6">
-          <LoginForm 
+        <div className="bg-surface rounded-lg shadow-lg p-6 border border-border-tertiary">
+          <LoginForm
             onSuccess={handleLoginSuccess}
             redirectTo="/dashboard"
             showRegisterLink={false}
@@ -82,31 +82,31 @@ export default function AdminLoginPage() {
 
         {/* Footer */}
         <div className="text-center space-y-4">
-          <div className="text-sm text-theme-text-secondary">
+          <div className="text-sm text-content-secondary">
             Need admin account access?{' '}
             <a
               href="mailto:admin@tabsy.com"
-              className="text-theme-primary hover:text-theme-primary-hover hover:underline font-medium transition-colors"
+              className="text-primary hover:text-primary-hover hover:underline font-medium transition-colors"
             >
               Contact system administrator
             </a>
           </div>
-          
-          <div className="text-xs text-theme-text-muted space-y-1">
+
+          <div className="text-xs text-content-tertiary space-y-1">
             <div>
               For technical support:{' '}
               <a
                 href="mailto:support@tabsy.com"
-                className="text-theme-primary hover:text-theme-primary-hover hover:underline transition-colors"
+                className="text-primary hover:text-primary-hover hover:underline transition-colors"
               >
                 support@tabsy.com
               </a>
             </div>
-            <div className="text-theme-text-muted">
+            <div className="text-content-tertiary">
               Restaurant access:{' '}
               <a
                 href="http://localhost:3000/login"
-                className="text-theme-primary hover:text-theme-primary-hover hover:underline transition-colors"
+                className="text-primary hover:text-primary-hover hover:underline transition-colors"
               >
                 Restaurant Portal
               </a>
@@ -114,7 +114,7 @@ export default function AdminLoginPage() {
               Customer ordering:{' '}
               <a
                 href="http://localhost:3001"
-                className="text-theme-primary hover:text-theme-primary-hover hover:underline transition-colors"
+                className="text-primary hover:text-primary-hover hover:underline transition-colors"
               >
                 Customer App
               </a>

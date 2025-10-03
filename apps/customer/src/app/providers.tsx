@@ -8,90 +8,130 @@ import { CartProvider } from '@/hooks/useCart'
 import { NavigationProvider } from '@/components/providers/navigation-provider'
 import { SessionReplacementHandler } from '@/components/session/SessionReplacementHandler'
 import { WebSocketErrorBoundary } from '@/components/session/WebSocketErrorBoundary'
+import { WebSocketEventCoordinator } from '@/providers/WebSocketEventCoordinator'
 
 // NEW: Import unified providers for testing alongside existing ones
 import { ConnectionProvider, WebSocketProvider, SessionProvider } from '@tabsy/ui-components'
 import { tabsyClient } from '@tabsy/api-client'
+import { unifiedSessionStorage } from '@/lib/unifiedSessionStorage'
 
-// Create a client
+// Create a client with optimized defaults to prevent duplicate API calls
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Stale time for better performance
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      // Cache time for offline support
+      // CRITICAL: Prevent duplicate fetches by caching aggressively
+      staleTime: 1000 * 60 * 5, // 5 minutes - data stays fresh, won't refetch
+
+      // Keep in cache for 30 minutes even if unused
       gcTime: 1000 * 60 * 30, // 30 minutes (formerly cacheTime)
-      // Refetch on window focus for fresh data
-      refetchOnWindowFocus: true,
-      // Retry failed requests
+
+      // IMPORTANT: Don't refetch on window focus by default
+      // Individual hooks can override this for real-time data
+      refetchOnWindowFocus: false,
+
+      // Don't refetch on mount if we have cached data
+      refetchOnMount: false,
+
+      // Retry failed requests with smart logic
       retry: (failureCount, error: any) => {
-        // Don't retry on 4xx errors
+        // Don't retry on 4xx errors (client errors)
         if (error?.status >= 400 && error?.status < 500) {
           return false
         }
-        // Retry up to 3 times for other errors
-        return failureCount < 3
+        // Retry up to 2 times for server errors (reduced from 3)
+        return failureCount < 2
       },
+
+      // Exponential backoff for retries
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+
+      // Network mode - fail fast on offline
+      networkMode: 'online',
     },
     mutations: {
       // Retry failed mutations once
       retry: 1,
+      // Network mode for mutations
+      networkMode: 'online',
     },
   },
 })
 
 // Inner provider that integrates with SessionProvider (Layer 3)
 function WebSocketWithSessionIntegration({ children }: { children: React.ReactNode }) {
+  // Use lazy initialization to prevent SSR hydration mismatch
+  // This ensures the initial state is consistent between server and client
   const [sessionData, setSessionData] = useState<{
     restaurantId?: string
     tableId?: string
     sessionId?: string
-  } | null>(null)
+  } | null>(() => {
+    // On server, return null
+    if (typeof window === 'undefined') return null
+
+    // On client, try to get session from storage
+    try {
+      const unifiedSession = unifiedSessionStorage.getSession()
+      if (unifiedSession) {
+        return {
+          restaurantId: unifiedSession.restaurantId,
+          tableId: unifiedSession.tableId,
+          sessionId: unifiedSession.guestSessionId
+        }
+      }
+    } catch (error) {
+      console.warn('[WebSocketWithSessionIntegration] Failed to get initial session data:', error)
+    }
+
+    return null
+  })
 
   // Define updateSessionData function - checking session storage for WebSocket auth data
   const updateSessionData = useCallback(() => {
     if (typeof window === 'undefined') return
 
     try {
-      // Get dining session data (primary source)
-      const diningSessionStr = sessionStorage.getItem('tabsy-dining-session')
-      const guestSessionId = sessionStorage.getItem('tabsy-guest-session-id')
+      // FIXED: Use unifiedSessionStorage instead of direct sessionStorage access
+      const unifiedSession = unifiedSessionStorage.getSession()
 
-      if (diningSessionStr) {
-        const diningSession = JSON.parse(diningSessionStr)
+      if (unifiedSession) {
         const newSessionData = {
-          restaurantId: diningSession.restaurantId,
-          tableId: diningSession.tableId,
-          sessionId: guestSessionId || diningSession.sessionId
+          restaurantId: unifiedSession.restaurantId,
+          tableId: unifiedSession.tableId,
+          sessionId: unifiedSession.guestSessionId
         }
 
         // Only update if session data actually changed
-        if (!sessionData ||
-            sessionData.restaurantId !== newSessionData.restaurantId ||
-            sessionData.tableId !== newSessionData.tableId ||
-            sessionData.sessionId !== newSessionData.sessionId) {
-          setSessionData(newSessionData)
-          console.log('[WebSocketWithSessionIntegration] Session data updated:', {
-            restaurantId: newSessionData.restaurantId,
-            tableId: newSessionData.tableId,
-            hasSessionId: !!newSessionData.sessionId
-          })
-        }
-      } else if (guestSessionId && (!sessionData || sessionData.sessionId !== guestSessionId)) {
-        // Partial session data - only have guest session ID
-        // Try to recover restaurant and table IDs from URL or existing data
-        setSessionData(prev => ({
-          ...prev,
-          sessionId: guestSessionId
-        }))
-      } else if (!diningSessionStr && !guestSessionId && sessionData) {
-        setSessionData(null)
+        setSessionData(prevSessionData => {
+          if (!prevSessionData ||
+              prevSessionData.restaurantId !== newSessionData.restaurantId ||
+              prevSessionData.tableId !== newSessionData.tableId ||
+              prevSessionData.sessionId !== newSessionData.sessionId) {
+            console.log('[WebSocketWithSessionIntegration] Session data updated from unified storage:', {
+              restaurantId: newSessionData.restaurantId,
+              tableId: newSessionData.tableId,
+              hasSessionId: !!newSessionData.sessionId,
+              guestSessionId: newSessionData.sessionId
+            })
+            return newSessionData
+          }
+          return prevSessionData
+        })
+      } else {
+        // No unified session found
+        setSessionData(prevSessionData => {
+          if (prevSessionData) {
+            console.log('[WebSocketWithSessionIntegration] No unified session found, clearing session data')
+            return null
+          }
+          return prevSessionData
+        })
       }
     } catch (error) {
-      console.warn('[WebSocketWithSessionIntegration] Failed to parse session data:', error)
+      console.warn('[WebSocketWithSessionIntegration] Failed to get session data:', error)
       setSessionData(null)
     }
-  }, [sessionData])
+  }, []) // Remove sessionData dependency to fix stale closure issue
 
   // Monitor session storage for WebSocket auth data
   useEffect(() => {
@@ -101,8 +141,9 @@ function WebSocketWithSessionIntegration({ children }: { children: React.ReactNo
 
     // Listen for storage changes from other tabs
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'tabsy-dining-session' || e.key === 'tabsy-guest-session-id') {
-        console.log('[WebSocketWithSessionIntegration] Storage changed, updating session data')
+      // FIXED: Listen for unified session key changes
+      if (e.key === 'tabsy-session' || e.key === 'tabsy-guest-session-id') {
+        console.log('[WebSocketWithSessionIntegration] Unified session storage changed, updating session data')
         updateSessionData()
       }
     }
@@ -202,14 +243,19 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <ConnectionProvider apiClient={tabsyClient}>
             <WebSocketErrorBoundary>
               <WebSocketWithSessionIntegration>
-                <CartProvider>
-                  <SessionReplacementHandler>
-                    <NavigationProvider>
-                      {children}
-                      {/* Dev tools temporarily disabled due to type conflicts */}
-                    </NavigationProvider>
-                  </SessionReplacementHandler>
-                </CartProvider>
+                {/* 🎯 Centralized WebSocket Event Coordinator */}
+                {/* This is the ONLY place where global events are listened to */}
+                {/* All components read from React Query cache instead of listening directly */}
+                <WebSocketEventCoordinator>
+                  <CartProvider>
+                    <SessionReplacementHandler>
+                      <NavigationProvider>
+                        {children}
+                        {/* Dev tools temporarily disabled due to type conflicts */}
+                      </NavigationProvider>
+                    </SessionReplacementHandler>
+                  </CartProvider>
+                </WebSocketEventCoordinator>
               </WebSocketWithSessionIntegration>
             </WebSocketErrorBoundary>
           </ConnectionProvider>
