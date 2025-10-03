@@ -25,7 +25,7 @@ import {
 } from 'lucide-react'
 import { tabsyClient } from '@tabsy/api-client'
 import { format, subDays, startOfDay, endOfDay, parseISO } from 'date-fns'
-import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
+import { useWebSocket } from '@tabsy/ui-components'
 import type { PaymentMetrics, RealTimePaymentMetrics, PaymentHealthStatus, PaymentAlert } from '@tabsy/shared-types'
 // Chart library - Required dependency: recharts ^3.2.1 (installed in package.json)
 import {
@@ -124,21 +124,11 @@ export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
     }
   })
 
-  // WebSocket event handlers for payment-related events
-  const handlePaymentEvent = useCallback(() => {
-    // Invalidate all payment-related queries when any payment event occurs
-    queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-realtime', restaurantId] })
-    queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-health', restaurantId] })
-    queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-alerts', restaurantId] })
-    queryClient.invalidateQueries({ queryKey: ['restaurant', 'payment-analytics', restaurantId] })
-  }, [queryClient, restaurantId])
-
-  // Register WebSocket event listeners for all payment events
-  useWebSocketEvent('payment:completed', handlePaymentEvent, [handlePaymentEvent])
-  useWebSocketEvent('payment:failed', handlePaymentEvent, [handlePaymentEvent])
-  useWebSocketEvent('payment:created', handlePaymentEvent, [handlePaymentEvent])
-  useWebSocketEvent('payment:refunded', handlePaymentEvent, [handlePaymentEvent])
-  useWebSocketEvent('payment:cancelled', handlePaymentEvent, [handlePaymentEvent])
+  /**
+   * SENIOR ARCHITECTURE NOTE:
+   * WebSocket listeners removed - centralized in PaymentManagement.tsx via usePaymentWebSocketSync
+   * This component now relies on React Query cache updates from the centralized hook.
+   */
 
 
   const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`

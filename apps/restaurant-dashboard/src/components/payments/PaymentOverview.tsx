@@ -20,8 +20,10 @@ import {
 } from 'lucide-react'
 import { tabsyClient } from '@tabsy/api-client'
 import { format } from 'date-fns'
-import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
+import { useWebSocket } from '@tabsy/ui-components'
 import { PaymentMetricsError } from '@tabsy/shared-types'
+import { logger } from '../../lib/logger'
+import { QUERY_STALE_TIME, QUERY_REFETCH_INTERVAL } from '../../lib/constants'
 
 interface PaymentOverviewProps {
   restaurantId: string
@@ -52,30 +54,38 @@ interface PaymentMetrics {
   transactionTrend: number
 }
 
+/**
+ * PaymentOverview Component
+ *
+ * SENIOR ARCHITECTURE NOTE:
+ * WebSocket event listeners removed - now centralized in PaymentManagement.tsx
+ * This component relies on React Query cache updates from usePaymentWebSocketSync.
+ * Optimized staleTime based on WebSocket connection status.
+ */
 export function PaymentOverview({ restaurantId, isVisible = true }: PaymentOverviewProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('today')
-  const [realtimeUpdates, setRealtimeUpdates] = useState(0)
   const queryClient = useQueryClient()
   const { isConnected } = useWebSocket()
 
   const { data: metrics, isLoading, error, refetch } = useQuery({
     queryKey: ['restaurant', 'payment-metrics', restaurantId, selectedPeriod],
     queryFn: async () => {
-      console.log('[PaymentOverview] Fetching payments for restaurant:', restaurantId)
+      logger.debug('Fetching payment metrics', { restaurantId, selectedPeriod })
       const response = await tabsyClient.payment.getByRestaurant(restaurantId, {
         limit: 1000,
         dateFrom: getDateFrom(selectedPeriod)
       })
 
-      console.log('[PaymentOverview] API response:', response)
       if (response.success && response.data) {
-        console.log('[PaymentOverview] Total payments fetched:', response.data.length)
+        logger.debug('Payment metrics fetched', { count: response.data.length })
         return calculateMetrics(response.data)
       }
       throw new PaymentMetricsError('Unable to fetch payment metrics', restaurantId, selectedPeriod, error || undefined)
     },
     refetchOnMount: true,
-    staleTime: 0, // Force fresh data on mount
+    // OPTIMIZATION: Use longer staleTime when WebSocket connected (centralized sync handles updates)
+    staleTime: isConnected ? QUERY_STALE_TIME.MEDIUM : QUERY_STALE_TIME.SHORT,
+    refetchInterval: isConnected ? false : QUERY_REFETCH_INTERVAL.FAST,
     retry: (failureCount, error) => {
       // Don't retry if we're getting client errors
       if (error && typeof error === 'object' && 'status' in error) {
@@ -86,101 +96,8 @@ export function PaymentOverview({ restaurantId, isVisible = true }: PaymentOverv
     }
   })
 
-  // WebSocket event handlers for real-time metrics updates
-  const handlePaymentCompleted = useCallback((data: any) => {
-    console.log('💰 Payment completed - updating metrics:', data)
-
-    // Optimistically update metrics instead of full invalidation
-    queryClient.setQueryData(['restaurant', 'payment-metrics', restaurantId, selectedPeriod], (oldMetrics: PaymentMetrics | undefined) => {
-      if (!oldMetrics) return oldMetrics
-
-      const amount = typeof data.amount === 'number' ? data.amount : 0
-      return {
-        ...oldMetrics,
-        todayRevenue: oldMetrics.todayRevenue + amount,
-        todayTransactions: oldMetrics.todayTransactions + 1,
-        successRate: oldMetrics.todayTransactions > 0
-          ? ((oldMetrics.todayTransactions * oldMetrics.successRate / 100) + 1) / (oldMetrics.todayTransactions + 1) * 100
-          : 100,
-        averageTransaction: oldMetrics.todayTransactions > 0
-          ? (oldMetrics.todayRevenue + amount) / (oldMetrics.todayTransactions + 1)
-          : amount
-      }
-    })
-
-    setRealtimeUpdates(prev => prev + 1)
-  }, [queryClient, restaurantId, selectedPeriod])
-
-  const handlePaymentFailed = useCallback((data: any) => {
-    console.log('💥 Payment failed - updating metrics:', data)
-
-    // Optimistically update failure metrics
-    queryClient.setQueryData(['restaurant', 'payment-metrics', restaurantId, selectedPeriod], (oldMetrics: PaymentMetrics | undefined) => {
-      if (!oldMetrics) return oldMetrics
-
-      const totalTransactions = oldMetrics.todayTransactions + 1
-      const successfulTransactions = Math.round(oldMetrics.todayTransactions * oldMetrics.successRate / 100)
-
-      return {
-        ...oldMetrics,
-        todayTransactions: totalTransactions,
-        failureRate: ((oldMetrics.todayTransactions * oldMetrics.failureRate / 100) + 1) / totalTransactions * 100,
-        successRate: successfulTransactions / totalTransactions * 100
-      }
-    })
-
-    setRealtimeUpdates(prev => prev + 1)
-  }, [queryClient, restaurantId, selectedPeriod])
-
-  const handlePaymentRefunded = useCallback((data: any) => {
-    console.log('🔄 Payment refunded - updating metrics:', data)
-
-    // Optimistically update refund metrics
-    queryClient.setQueryData(['restaurant', 'payment-metrics', restaurantId, selectedPeriod], (oldMetrics: PaymentMetrics | undefined) => {
-      if (!oldMetrics) return oldMetrics
-
-      const refundAmount = typeof data.refundAmount === 'number' ? data.refundAmount : (typeof data.amount === 'number' ? data.amount : 0)
-
-      return {
-        ...oldMetrics,
-        refundCount: oldMetrics.refundCount + 1,
-        refundAmount: oldMetrics.refundAmount + refundAmount,
-        todayRevenue: oldMetrics.todayRevenue - refundAmount // Subtract refund from revenue
-      }
-    })
-
-    setRealtimeUpdates(prev => prev + 1)
-  }, [queryClient, restaurantId, selectedPeriod])
-
-  const handlePaymentCreated = useCallback((data: any) => {
-    console.log('🆕🎯 [PaymentOverview] Payment created - updating metrics:', data)
-    console.log('🆕🎯 [PaymentOverview] Payment data keys:', Object.keys(data || {}))
-    console.log('🆕🎯 [PaymentOverview] Current restaurant ID:', restaurantId)
-
-    // Optimistically update pending payment metrics
-    queryClient.setQueryData(['restaurant', 'payment-metrics', restaurantId, selectedPeriod], (oldMetrics: PaymentMetrics | undefined) => {
-      if (!oldMetrics) return oldMetrics
-
-      const amount = typeof data.amount === 'number' ? data.amount : 0
-
-      return {
-        ...oldMetrics,
-        pendingPayments: oldMetrics.pendingPayments + 1,
-        pendingAmount: oldMetrics.pendingAmount + amount
-      }
-    })
-
-    setRealtimeUpdates(prev => prev + 1)
-    console.log('🆕✅ [PaymentOverview] Payment created - metrics updated optimistically')
-  }, [queryClient, restaurantId, selectedPeriod])
-
-  // Register WebSocket event listeners
-  useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted])
-  useWebSocketEvent('payment:failed', handlePaymentFailed, [handlePaymentFailed])
-  useWebSocketEvent('payment:refunded', handlePaymentRefunded, [handlePaymentRefunded])
-  useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated])
-
-  function getDateFrom(period: string): string {
+  // Memoized helper functions
+  const getDateFrom = useCallback((period: string): string => {
     const now = new Date()
     switch (period) {
       case 'today':
@@ -194,16 +111,16 @@ export function PaymentOverview({ restaurantId, isVisible = true }: PaymentOverv
       default:
         return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
     }
-  }
+  }, [])
 
-  function calculateTrendPercentage(current: number, previous: number): number {
+  const calculateTrendPercentage = useCallback((current: number, previous: number): number => {
     if (previous === 0) {
       return current > 0 ? 100 : 0
     }
     return ((current - previous) / previous) * 100
-  }
+  }, [])
 
-  function calculateMetrics(payments: any[]): PaymentMetrics {
+  const calculateMetrics = useMemo(() => (payments: any[]): PaymentMetrics => {
     const today = new Date()
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
     const yesterdayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1)
@@ -286,22 +203,22 @@ export function PaymentOverview({ restaurantId, isVisible = true }: PaymentOverv
         yesterdayCompleted.length
       ),
     }
-  }
+  }, [calculateTrendPercentage])
 
-  const formatCurrency = (amount: number) => `$${Number(amount || 0).toFixed(2)}`
-  const formatPercent = (percent: number) => `${percent.toFixed(1)}%`
+  const formatCurrency = useCallback((amount: number) => `$${Number(amount || 0).toFixed(2)}`, [])
+  const formatPercent = useCallback((percent: number) => `${percent.toFixed(1)}%`, [])
 
-  const getTrendIcon = (trend: number) => {
+  const getTrendIcon = useCallback((trend: number) => {
     if (trend > 0) return <ArrowUp className="w-4 h-4 text-status-success" />
     if (trend < 0) return <ArrowDown className="w-4 h-4 text-status-error" />
     return null
-  }
+  }, [])
 
-  const getTrendColor = (trend: number) => {
+  const getTrendColor = useCallback((trend: number) => {
     if (trend > 0) return 'text-status-success'
     if (trend < 0) return 'text-status-error'
     return 'text-content-secondary'
-  }
+  }, [])
 
   if (error) {
     return (
@@ -339,11 +256,6 @@ export function PaymentOverview({ restaurantId, isVisible = true }: PaymentOverv
                 <WifiOff className="w-4 h-4 text-status-error" />
                 <span className="text-sm text-status-error">Offline</span>
               </>
-            )}
-            {realtimeUpdates > 0 && (
-              <span className="text-xs text-content-tertiary">
-                ({realtimeUpdates} updates)
-              </span>
             )}
           </div>
         </div>

@@ -28,19 +28,21 @@ export const PendingCashPayments = forwardRef<PendingCashPaymentsRef, PendingCas
   const [processingPayments, setProcessingPayments] = useState<Set<string>>(new Set())
   const queryClient = useQueryClient()
 
-  console.log('🏪💰 [PendingCashPayments] Component rendered with restaurantId:', restaurantId)
+  /**
+   * SENIOR ARCHITECTURE NOTE:
+   * WebSocket listeners removed - centralized in PaymentManagement.tsx
+   * Component relies on React Query cache updates from usePaymentWebSocketSync
+   */
 
   // Use React Query for data fetching - prevents duplicate API calls
   const { data: pendingPayments = [], isLoading: loading, refetch } = useQuery<PendingPaymentWithOrder[]>({
     queryKey: ['restaurant', 'pending-cash-payments', restaurantId],
     queryFn: async () => {
-      console.log('[PendingCashPayments] Fetching payments for restaurant:', restaurantId)
+      logger.debug('Fetching pending cash payments', { restaurantId })
       const response = await tabsyClient.payment.getByRestaurant(restaurantId, {
-        // We'll need to filter by PENDING status and CASH method on the frontend
-        // since the API doesn't have specific filters for this yet
+        limit: PAYMENT_QUERY_LIMIT
       })
 
-      console.log('[PendingCashPayments] API response:', response)
       if (response.success && response.data) {
         console.log('[PendingCashPayments] Total payments fetched:', response.data.length)
         // Filter for pending/processing cash payments
