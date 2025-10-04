@@ -26,8 +26,9 @@ export function AuthErrorBoundary({ children, error }: AuthErrorBoundaryProps) {
 
   const handleRetry = () => {
     // Try to refresh the auth token first
-    if (auth.session?.refreshToken) {
-      auth.refreshAuth().catch(() => {
+    const authAny = auth as any // TODO: Fix auth type
+    if (authAny.session?.refreshToken) {
+      authAny.refreshAuth().catch(() => {
         // If refresh fails, redirect to login
         handleLoginRedirect()
       })
@@ -38,7 +39,8 @@ export function AuthErrorBoundary({ children, error }: AuthErrorBoundaryProps) {
   }
 
   const handleLoginRedirect = async () => {
-    await auth.logout()
+    const authAny = auth as any // TODO: Fix auth type
+    await authAny.logout()
     router.push('/login')
   }
 

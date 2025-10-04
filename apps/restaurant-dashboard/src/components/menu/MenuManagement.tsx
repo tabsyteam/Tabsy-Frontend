@@ -59,7 +59,8 @@ export function MenuManagement({ restaurantId }: MenuManagementProps) {
   const queryClient = useQueryClient();
 
   // Authentication
-  const { session, user, isLoading: authLoading } = useAuth();
+  const authData = useAuth() as any;
+  const { session, user, isLoading: authLoading } = authData;
 
   // Sync authentication token with global API client
   if (session?.token && tabsyClient.getAuthToken() !== session.token) {

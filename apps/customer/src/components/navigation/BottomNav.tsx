@@ -11,7 +11,6 @@ import {
   Users
 } from 'lucide-react'
 import { SessionManager } from '@/lib/session'
-import { STORAGE_KEYS } from '@/constants/storage'
 import { useBillStatus } from '@/hooks/useBillData' // ✅ Updated to use React Query version
 
 interface BottomNavProps {
@@ -29,7 +28,6 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
   const router = useRouter()
   const [hasSession, setHasSession] = useState(false)
   const [hasCurrentOrder, setHasCurrentOrder] = useState(false)
-  const [tableNumber, setTableNumber] = useState<string | null>(null)
 
   // Get bill status for badge indicator
   // ✅ Data automatically updated via WebSocketEventCoordinator → React Query cache
@@ -55,27 +53,6 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
 
     // Update current order state - use canAccessOrders for better check
     setHasCurrentOrder(SessionManager.canAccessOrders())
-
-    // Get table number from session or saved table info
-    const session = SessionManager.getDiningSession()
-    let tableNum = null
-
-    if (session?.tableName) {
-      tableNum = session.tableName
-    } else {
-      // Try to get from saved table info
-      const savedTableInfo = sessionStorage.getItem(STORAGE_KEYS.TABLE_INFO)
-      if (savedTableInfo) {
-        try {
-          const tableInfo = JSON.parse(savedTableInfo)
-          tableNum = tableInfo?.table?.number
-        } catch (error) {
-          console.warn('Failed to parse table info:', error)
-        }
-      }
-    }
-
-    setTableNumber(tableNum)
 
     // Update last activity when component renders
     SessionManager.updateLastActivity()
@@ -118,14 +95,14 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
     },
     {
       id: 'table',
-      label: tableNumber ? `Table ${tableNumber}` : 'Table',
+      label: 'Table',
       icon: Users,
       path: `/table${hasSession ? SessionManager.getDiningQueryParams() : ''}`,
       badge: shouldShowBillBadge ? `$${roundedBalance}` : null,
       badgeType: 'bill' as const,
       disabled: false // Always available to show session status
     }
-  ], [hasSession, cartItemCount, hasCurrentOrder, tableNumber, shouldShowBillBadge, roundedBalance])
+  ], [hasSession, cartItemCount, hasCurrentOrder, shouldShowBillBadge, roundedBalance])
 
   const isActive = useCallback((item: typeof navItems[0]) => {
     if (item.id === 'home') {

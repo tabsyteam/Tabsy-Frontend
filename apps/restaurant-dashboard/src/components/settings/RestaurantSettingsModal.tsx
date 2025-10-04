@@ -313,6 +313,60 @@ export function RestaurantSettingsModal({
 
             {activeTab === 'operational' && (
               <div className="space-y-6">
+                {/* Tax Configuration (Read-Only) */}
+                <div className="bg-primary-light/5 border-l-4 border-primary rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-5 h-5 text-primary" />
+                      <h3 className="text-sm font-medium text-content-primary">Tax Configuration</h3>
+                    </div>
+                    <span className="px-2 py-1 text-xs font-medium bg-surface-secondary text-content-tertiary rounded">
+                      View Only
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 mb-4">
+                    <div className="bg-surface-secondary rounded-lg p-3">
+                      <p className="text-xs text-content-secondary mb-1">Tax Rate</p>
+                      <p className="text-lg font-bold text-primary">
+                        {((Number(restaurant?.taxRatePercentage || 0.10)) * 100).toFixed(2)}%
+                      </p>
+                      <p className="text-xs text-content-tertiary mt-1">
+                        Decimal: {Number(restaurant?.taxRatePercentage || 0.10).toFixed(4)}
+                      </p>
+                    </div>
+
+                    <div className="bg-surface-secondary rounded-lg p-3">
+                      <p className="text-xs text-content-secondary mb-1">Fixed Amount</p>
+                      <p className="text-lg font-bold text-primary">
+                        ${Number(restaurant?.taxFixedAmount || 0).toFixed(2)}
+                      </p>
+                      <p className="text-xs text-content-tertiary mt-1">Per order</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-surface-tertiary border border-border rounded-lg p-3">
+                    <p className="text-xs text-content-secondary mb-2">Formula:</p>
+                    <p className="text-xs font-mono text-content-primary mb-2">
+                      Tax = (Subtotal × {Number(restaurant?.taxRatePercentage || 0.10).toFixed(4)}) + ${Number(restaurant?.taxFixedAmount || 0).toFixed(2)}
+                    </p>
+                    <div className="pt-2 border-t border-border">
+                      <p className="text-xs text-content-secondary">Example on $100 order:</p>
+                      <p className="text-xs text-content-primary font-medium">
+                        ${(100 * Number(restaurant?.taxRatePercentage || 0.10) + Number(restaurant?.taxFixedAmount || 0)).toFixed(2)} tax
+                        → ${(100 + (100 * Number(restaurant?.taxRatePercentage || 0.10)) + Number(restaurant?.taxFixedAmount || 0)).toFixed(2)} total
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-start gap-2 text-xs text-content-tertiary bg-amber-500/10 p-2 rounded">
+                    <SettingsIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <p>
+                      Tax settings can only be modified by administrators. Contact your system admin to update tax configuration.
+                    </p>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-content-secondary">
                     POS Integration

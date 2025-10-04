@@ -78,7 +78,7 @@ export function TableCard({
     setIsUpdatingStatus(true);
     try {
       await onStatusChange(table, newStatus);
-      toast.success(`Table ${table.number} status updated to ${getStatusDisplayName(newStatus)}`);
+      toast.success(`Table ${table.tableNumber} status updated to ${getStatusDisplayName(newStatus)}`);
     } catch (error) {
       toast.error('Failed to update table status');
     } finally {
@@ -91,7 +91,7 @@ export function TableCard({
     setIsUpdatingStatus(true);
     try {
       await onReset(table);
-      toast.success(`Table ${table.number} has been reset`);
+      toast.success(`Table ${table.tableNumber} has been reset`);
     } catch (error) {
       toast.error('Failed to reset table');
     } finally {
@@ -231,7 +231,7 @@ export function TableCard({
 
               <div className="flex items-center space-x-6">
                 <div>
-                  <span className="font-semibold text-foreground text-lg group-hover:text-primary transition-colors">Table {table.number}</span>
+                  <span className="font-semibold text-foreground text-lg group-hover:text-primary transition-colors">Table {table.tableNumber}</span>
                   <div className="flex items-center space-x-1 mt-1">
                     <Users className="h-3.5 w-3.5 text-primary flex-shrink-0" />
                     <span className="text-sm font-medium text-primary">{table.capacity} seats</span>
@@ -326,7 +326,7 @@ export function TableCard({
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-foreground text-base mb-2 truncate group-hover:text-primary transition-colors leading-tight">
-                Table {table.number}
+                Table {table.tableNumber}
               </h3>
               <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
                 table.status === 'AVAILABLE' ? 'status-success' :

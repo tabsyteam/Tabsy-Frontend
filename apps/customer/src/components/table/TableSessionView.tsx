@@ -37,7 +37,7 @@ interface TableInfo {
   }
   table: {
     id: string
-    number: string
+    tableNumber: string
   }
 }
 
@@ -129,7 +129,7 @@ export function TableSessionView() {
           },
           table: {
             id: session.tableId,
-            number: session.tableName
+            tableNumber: session.tableName
           }
         })
       }
@@ -145,7 +145,7 @@ export function TableSessionView() {
             SessionManager.setDiningSession({
               ...session,
               restaurantName: parsedInfo.restaurant.name,
-              tableName: parsedInfo.table.number
+              tableName: parsedInfo.table.tableNumber
             })
           } catch (error) {
             console.error('Failed to parse table info:', error)
@@ -165,7 +165,7 @@ export function TableSessionView() {
                 },
                 table: {
                   id: parsedQrData.table.id,
-                  number: parsedQrData.table.number
+                  tableNumber: parsedQrData.table.tableNumber
                 }
               }
               setTableInfo(info)
@@ -174,7 +174,7 @@ export function TableSessionView() {
               SessionManager.setDiningSession({
                 ...session,
                 restaurantName: info.restaurant.name,
-                tableName: info.table.number
+                tableName: info.table.tableNumber
               })
             } catch (error) {
               console.error('Failed to parse QR access data:', error)
@@ -190,7 +190,7 @@ export function TableSessionView() {
               },
               table: {
                 id: session.tableId,
-                number: session.tableId.split('-').pop() || 'Your Table'
+                tableNumber: session.tableId.split('-').pop() || 'Your Table'
               }
             })
           }
@@ -476,7 +476,7 @@ export function TableSessionView() {
                 {tableInfo?.restaurant.name || 'Restaurant'}
               </h2>
               <p className="text-content-secondary">
-                Table {tableInfo?.table.number || 'N/A'}
+                Table {tableInfo?.table.tableNumber || 'N/A'}
               </p>
             </div>
           </div>

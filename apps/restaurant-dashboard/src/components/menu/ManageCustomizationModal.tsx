@@ -456,7 +456,7 @@ export function ManageCustomizationModal({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={(e) => {
+                        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                           e.stopPropagation();
                           handleDeleteOption(option.id);
                         }}

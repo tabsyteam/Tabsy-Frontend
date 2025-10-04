@@ -661,7 +661,7 @@ export function CreateItemModal({
                       type="button"
                       variant="outline"
                       disabled={createItemMutation.isPending}
-                      onClick={(e) => {
+                      onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                         e.stopPropagation();
                         handleImageSelect();
                       }}
@@ -731,7 +731,7 @@ export function CreateItemModal({
                     </label>
                     <Select
                       value={formData.categoryId}
-                      onValueChange={(value) => handleInputChange('categoryId', value)}
+                      onValueChange={(value: string) => handleInputChange('categoryId', value)}
                       disabled={createItemMutation.isPending}
                     >
                       <SelectTrigger

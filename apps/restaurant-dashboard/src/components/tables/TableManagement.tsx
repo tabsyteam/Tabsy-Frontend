@@ -97,7 +97,7 @@ export function TableManagement({ restaurantId }: TableManagementProps) {
   // Filter and search logic
   const filteredTables = tables.filter((table: Table) => {
     const matchesSearch =
-      table.number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      table.tableNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       table.notes?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       table.capacity?.toString().includes(searchQuery);
 

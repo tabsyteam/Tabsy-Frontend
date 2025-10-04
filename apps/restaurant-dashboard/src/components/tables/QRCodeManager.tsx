@@ -178,7 +178,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
           ctx.fillStyle = '#1E3A8A';
           ctx.font = 'bold 32px Arial';
           ctx.textAlign = 'center';
-          ctx.fillText(`Table ${table.number}`, size / 2, 120);
+          ctx.fillText(`Table ${table.tableNumber}`, size / 2, 120);
 
           // Subtitle
           ctx.fillStyle = '#0D9488';
@@ -254,7 +254,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
               const downloadUrl = URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.href = downloadUrl;
-              a.download = `tabsy-table-${table.number}-qr-menu.png`;
+              a.download = `tabsy-table-${table.tableNumber}-qr-menu.png`;
               document.body.appendChild(a);
               a.click();
               document.body.removeChild(a);
@@ -291,7 +291,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
         <!DOCTYPE html>
         <html>
           <head>
-            <title>Tabsy - Table ${table.number} QR Menu</title>
+            <title>Tabsy - Table ${table.tableNumber} QR Menu</title>
             <style>
               @media print {
                 @page {
@@ -585,7 +585,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
                   <div class="tabsy-logo">Tabsy</div>
                   <div class="tagline">Digital Menu Experience</div>
                 </div>
-                <h1 class="table-header">Table ${table.number}</h1>
+                <h1 class="table-header">Table ${table.tableNumber}</h1>
                 <p class="table-subtitle">Capacity: ${table.capacity} seats • Scan to Order</p>
               </div>
 
@@ -594,7 +594,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
                 <!-- QR Code Section -->
                 <div class="qr-section">
                   <div class="qr-wrapper">
-                    <img src="${qrImageUrl}" alt="Tabsy QR Code for Table ${table.number}" class="qr-image" />
+                    <img src="${qrImageUrl}" alt="Tabsy QR Code for Table ${table.tableNumber}" class="qr-image" />
                   </div>
                   <div class="qr-label">📱 Scan with Your Phone Camera</div>
                 </div>
@@ -741,7 +741,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
             </div>
             <div>
               <h2 className="text-xl font-bold text-primary">
-                Table {table.number} QR Code
+                Table {table.tableNumber} QR Code
               </h2>
               <p className="text-sm text-content-secondary">
                 Powered by Tabsy • Digital Menu Experience
@@ -775,7 +775,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
                 {qrImageUrl ? (
                   <img
                     src={qrImageUrl}
-                    alt={`QR Code for Table ${table.number}`}
+                    alt={`QR Code for Table ${table.tableNumber}`}
                     className="w-full h-full object-contain rounded-lg"
                     onLoad={() => console.log('QR image loaded successfully')}
                     onError={(e) => console.log('QR image failed to load:', e)}
@@ -791,7 +791,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
                       <p className="text-sm text-primary font-medium">
                         {qrImageLoading ? 'Loading QR Code...' : 'QR Code Preview'}
                       </p>
-                      <p className="text-xs text-primary/70 mt-1">Table {table.number}</p>
+                      <p className="text-xs text-primary/70 mt-1">Table {table.tableNumber}</p>
                     </div>
                   </div>
                 )}
@@ -799,7 +799,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
 
               {/* Table Info Banner */}
               <div className="absolute bottom-3 left-3 right-3 bg-gradient-primary text-primary-foreground px-3 py-1.5 rounded-lg">
-                <p className="text-xs font-semibold text-center">Table {table.number} • Tabsy Menu</p>
+                <p className="text-xs font-semibold text-center">Table {table.tableNumber} • Tabsy Menu</p>
               </div>
             </div>
 
@@ -845,7 +845,7 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <span className="text-content-secondary">Table Number:</span>
-                  <p className="font-medium text-content-primary">{table.number}</p>
+                  <p className="font-medium text-content-primary">{table.tableNumber}</p>
                 </div>
                 <div>
                   <span className="text-content-secondary">Capacity:</span>

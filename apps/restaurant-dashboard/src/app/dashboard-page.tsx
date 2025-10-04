@@ -19,9 +19,10 @@ import { createDashboardHooks, createNotificationHooks } from '@tabsy/react-quer
 import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AssistanceAlertsContainer } from '@/components/alerts/AssistanceAlert'
-import { useWebSocket, useWebSocketEvent } from '@tabsy/ui-components'
+import { useWebSocket } from '@tabsy/ui-components'
 import { type Notification } from '@tabsy/shared-types'
 import { useNotificationSound } from '@/hooks/useNotificationSound'
+import { useOrderWebSocketSync, useAssistanceWebSocketSync } from '@/hooks/useWebSocketSync'
 
 interface DashboardStats {
   todayOrders: number
@@ -46,7 +47,7 @@ interface DashboardStats {
  */
 export function DashboardClient(): JSX.Element {
   const router = useRouter()
-  const auth = useAuth()
+  const auth = useAuth() as any // TODO: Fix auth type definition
   const user = auth?.user as UserType | null
   // State hooks - ADD MENU AND TABLES AS VIEWS
   const [currentView, setCurrentView] = useState<'overview' | 'orders' | 'menu' | 'tables' | 'payments' | 'feedback'>('overview')
@@ -54,6 +55,15 @@ export function DashboardClient(): JSX.Element {
   
   // Get current restaurant
   const { restaurantId, restaurant, hasRestaurantAccess, isLoading: restaurantLoading } = useCurrentRestaurant()
+
+  /**
+   * SENIOR ARCHITECTURE: Centralized WebSocket Sync
+   * Order and Assistance events managed at dashboard level
+   * Payment events managed in PaymentManagement component
+   * Note: Hooks called unconditionally (React rules), but only activate when restaurantId exists
+   */
+  useOrderWebSocketSync(restaurantId || '')
+  useAssistanceWebSocketSync(restaurantId || '')
 
   // Query client for cache invalidation
   const queryClient = useQueryClient()
@@ -240,32 +250,23 @@ export function DashboardClient(): JSX.Element {
     refetchNotifications()
   }, [refetchNotifications])
 
-  useWebSocketEvent('assistance:requested', handleAssistanceRequested, [handleAssistanceRequested])
+  /**
+   * SENIOR ARCHITECTURE NOTE:
+   * assistance:requested event handler removed - now centralized in useAssistanceWebSocketSync
+   * Called at top of this component (line 65-66)
+   */
 
-  // Note: notification:created event handler removed to prevent duplicate refetches
-  // since assistance:requested already triggers refetchNotifications()
-
-  // Note: Removed duplicate order:created and order:status_updated handlers
-  // Dashboard metrics are automatically updated through React Query's invalidation cascade
-  // when the Header component invalidates the orders cache
-
-  const handlePaymentCompleted = useCallback((payload: any) => {
-    logger.payment('Payment completed', payload)
-    // Only invalidate revenue-related queries with throttling
-    setTimeout(() => {
-      queryClient.invalidateQueries({
-        queryKey: ['dashboard-metrics', restaurantId],
-        exact: false
-      })
-      queryClient.invalidateQueries({
-        queryKey: ['weekly-stats', restaurantId],
-        exact: false
-      })
-    }, PAYMENT_INVALIDATION_DELAY)
-  }, [queryClient, restaurantId])
-
-  // Listen for payment events to keep dashboard in sync
-  useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted])
+  /**
+   * SENIOR ARCHITECTURE NOTE:
+   * All duplicate WebSocket event handlers removed:
+   * - order:created → useOrderWebSocketSync (line 65)
+   * - order:status_updated → useOrderWebSocketSync (line 65)
+   * - assistance:requested → useAssistanceWebSocketSync (line 66)
+   * - payment:completed → usePaymentWebSocketSync (in PaymentManagement.tsx)
+   *
+   * Dashboard metrics are automatically updated through React Query's invalidation cascade
+   * when centralized hooks invalidate their respective caches.
+   */
 
   // OPTIMIZATION: Memoize assistance handlers to prevent child re-renders
   const handleDismissAssistance = useCallback((notificationId: string) => {

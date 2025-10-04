@@ -25,6 +25,7 @@ import type { Payment, PaymentStatus, PaymentMethod } from '@tabsy/shared-types'
 import { useWebSocket } from '@tabsy/ui-components'
 import { PaymentDetailsModal } from './PaymentDetailsModal'
 import { logger } from '../../lib/logger'
+import { QUERY_STALE_TIME, QUERY_REFETCH_INTERVAL } from '../../lib/constants'
 
 interface ActivePaymentsProps {
   restaurantId: string
@@ -37,9 +38,17 @@ export interface ActivePaymentsRef {
   exportData: () => void
 }
 
+/**
+ * ActivePayments Component
+ *
+ * SENIOR ARCHITECTURE NOTE:
+ * WebSocket listeners removed - centralized in PaymentManagement.tsx
+ * All 5 payment event listeners now handled by usePaymentWebSocketSync hook.
+ * Component relies on React Query cache updates from centralized sync.
+ * Optimized with conditional staleTime based on WebSocket connection status.
+ */
 export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>(
   ({ restaurantId, hideControls = false, filterStatus = 'all' }, ref) => {
-  const [realtimeUpdates, setRealtimeUpdates] = useState(0)
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
@@ -49,210 +58,46 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
   const { data: activePayments, isLoading, error, refetch } = useQuery({
     queryKey: ['restaurant', 'active-payments', restaurantId, filterStatus],
     queryFn: async () => {
+      logger.debug('Fetching active payments', { restaurantId, filterStatus })
       const response = await tabsyClient.payment.getByRestaurant(restaurantId, {
         limit: 100
-        // Server-side filtering for restaurant-specific payments
       })
 
       if (response.success && response.data) {
-        // Apply parent filter status
         let filteredData = response.data
         if (filterStatus === 'all') {
-          // Filter for active payments (pending, processing)
           filteredData = response.data.filter((payment: Payment) =>
             ['PENDING', 'PROCESSING'].includes(payment.status)
           )
         } else {
-          // Apply specific status filter
           filteredData = response.data.filter((payment: Payment) =>
             payment.status === filterStatus
           )
         }
 
+        logger.debug('Active payments filtered', { count: filteredData.length })
         return filteredData.sort((a: Payment, b: Payment) =>
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )
       }
       throw new Error('Failed to fetch active payments')
     },
-    refetchInterval: false, // Removed polling - rely on WebSockets only
+    staleTime: isConnected ? QUERY_STALE_TIME.MEDIUM : QUERY_STALE_TIME.SHORT,
+    refetchInterval: isConnected ? false : QUERY_REFETCH_INTERVAL.FAST,
   })
 
-  // WebSocket event handlers for real-time payment updates
-  const handlePaymentCreated = useCallback((data: any) => {
-    console.log('🆕🎯 [ActivePayments] Payment created event received:', data)
-    console.log('🆕🎯 [ActivePayments] Current restaurant ID:', restaurantId)
-    console.log('🆕🎯 [ActivePayments] Event data restaurant ID:', data?.restaurantId)
-    console.log('🆕🎯 [ActivePayments] Payment data keys:', Object.keys(data || {}))
+  /**
+   * WebSocket event handlers removed - now centralized.
+   * The following 5 handlers were removed:
+   * - handlePaymentCreated
+   * - handlePaymentStatusUpdated
+   * - handlePaymentCompleted
+   * - handlePaymentFailed
+   * - handlePaymentCancelled
+   * All ~170 lines of duplicate event handling code eliminated.
+   */
 
-    // Only process events for this restaurant
-    if (data?.restaurantId !== restaurantId) {
-      console.log('🆕❌ [ActivePayments] Ignoring event - different restaurant:', data?.restaurantId, 'vs', restaurantId)
-      return
-    }
-
-    // Force immediate refetch like order handlers do
-    queryClient.invalidateQueries({ queryKey: ['restaurant', 'active-payments', restaurantId] })
-
-    // Also invalidate payments list to refresh payment components
-    queryClient.invalidateQueries({
-      queryKey: ['restaurants', restaurantId, 'payments']
-    })
-
-    setRealtimeUpdates(prev => prev + 1)
-
-    // Add toast notification like OrdersManagement does
-    console.log('💳✅ [ActivePayments] Payment created - queries invalidated and UI updated')
-  }, [queryClient, restaurantId])
-
-  const handlePaymentStatusUpdated = useCallback((data: any) => {
-    console.log('🔄🎯 [ActivePayments] Payment status updated event received:', data)
-    console.log('🔄🎯 [ActivePayments] Event data keys:', Object.keys(data || {}))
-    console.log('🔄🎯 [ActivePayments] Event restaurantId:', data?.restaurantId, 'type:', typeof data?.restaurantId)
-    console.log('🔄🎯 [ActivePayments] Current restaurantId:', restaurantId, 'type:', typeof restaurantId)
-    console.log('🔄🎯 [ActivePayments] PaymentId in event:', data?.paymentId)
-    console.log('🔄🎯 [ActivePayments] New status:', data?.status)
-
-    // Check for restaurantId in nested data structure or at root level
-    const eventRestaurantId = data?.restaurantId || data?.data?.restaurantId
-
-    // Only process events for this restaurant (convert both to strings for comparison)
-    if (eventRestaurantId && String(eventRestaurantId) !== String(restaurantId)) {
-      console.log('🔄❌ [ActivePayments] Ignoring status update - different restaurant:', eventRestaurantId, 'vs', restaurantId)
-      return
-    }
-
-    // Get paymentId from data or nested data structure
-    const paymentId = data?.paymentId || data?.data?.paymentId
-    const newStatus = data?.status || data?.data?.status
-
-    if (!paymentId) {
-      console.log('🔄❌ [ActivePayments] No paymentId found in status update event')
-      return
-    }
-
-    console.log('🔄✅ [ActivePayments] Processing payment status update for payment:', paymentId, 'to status:', newStatus)
-
-    // Update cached payment data
-    queryClient.setQueryData(['restaurant', 'active-payments', restaurantId], (oldData: Payment[] | undefined) => {
-      if (!oldData) return oldData
-
-      const updatedData = oldData.map(payment =>
-        payment.id === paymentId
-          ? { ...payment, status: newStatus as PaymentStatus, updatedAt: data.updatedAt || new Date().toISOString() }
-          : payment
-      ).filter(payment =>
-        // Keep only pending/processing payments for active view
-        ['PENDING', 'PROCESSING'].includes(payment.status)
-      )
-
-      console.log('🔄✅ [ActivePayments] Payment status updated. Before:', oldData.length, 'After:', updatedData.length)
-
-      // If payment was completed, also invalidate queries to ensure consistency
-      if (newStatus === 'COMPLETED') {
-        console.log('🔄✅ [ActivePayments] Payment completed via status update, invalidating queries')
-        queryClient.invalidateQueries({ queryKey: ['restaurant', 'active-payments', restaurantId] })
-        queryClient.invalidateQueries({ queryKey: ['restaurants', restaurantId, 'payments'] })
-      }
-
-      return updatedData
-    })
-    setRealtimeUpdates(prev => prev + 1)
-  }, [queryClient, restaurantId])
-
-  const handlePaymentCompleted = useCallback((data: any) => {
-    console.log('✅🎯 [ActivePayments] Payment completed event received:', data)
-    console.log('✅🎯 [ActivePayments] Event data keys:', Object.keys(data || {}))
-    console.log('✅🎯 [ActivePayments] Event restaurantId:', data?.restaurantId, 'type:', typeof data?.restaurantId)
-    console.log('✅🎯 [ActivePayments] Current restaurantId:', restaurantId, 'type:', typeof restaurantId)
-    console.log('✅🎯 [ActivePayments] PaymentId in event:', data?.paymentId)
-
-    // Check for restaurantId in nested data structure or at root level
-    const eventRestaurantId = data?.restaurantId || data?.data?.restaurantId
-
-    // Only process events for this restaurant (convert both to strings for comparison)
-    if (eventRestaurantId && String(eventRestaurantId) !== String(restaurantId)) {
-      console.log('✅❌ [ActivePayments] Ignoring completion - different restaurant:', eventRestaurantId, 'vs', restaurantId)
-      return
-    }
-
-    // Get paymentId from data or nested data structure
-    const paymentId = data?.paymentId || data?.data?.paymentId
-
-    if (!paymentId) {
-      console.log('✅❌ [ActivePayments] No paymentId found in event data')
-      return
-    }
-
-    console.log('✅✅ [ActivePayments] Processing payment completion for payment:', paymentId)
-
-    // Remove completed payment from active payments and force refetch to ensure consistency
-    queryClient.setQueryData(['restaurant', 'active-payments', restaurantId], (oldData: Payment[] | undefined) => {
-      if (!oldData) return oldData
-      const filteredData = oldData.filter(payment => payment.id !== paymentId)
-      console.log('✅✅ [ActivePayments] Filtered out completed payment. Before:', oldData.length, 'After:', filteredData.length)
-      return filteredData
-    })
-
-    // Also invalidate the query to ensure fresh data
-    queryClient.invalidateQueries({ queryKey: ['restaurant', 'active-payments', restaurantId] })
-
-    // Invalidate other payment-related queries
-    queryClient.invalidateQueries({ queryKey: ['restaurants', restaurantId, 'payments'] })
-
-    setRealtimeUpdates(prev => prev + 1)
-    console.log('✅✅ [ActivePayments] Payment completed event processed successfully')
-  }, [queryClient, restaurantId])
-
-  const handlePaymentFailed = useCallback((data: any) => {
-    console.log('❌ Payment failed:', data)
-
-    // Only process events for this restaurant
-    if (data?.restaurantId !== restaurantId) {
-      console.log('❌❌ [ActivePayments] Ignoring failure - different restaurant:', data?.restaurantId, 'vs', restaurantId)
-      return
-    }
-
-    // Update payment status and error message
-    queryClient.setQueryData(['restaurant', 'active-payments', restaurantId], (oldData: Payment[] | undefined) => {
-      if (!oldData) return oldData
-
-      return oldData.map(payment =>
-        payment.id === data.paymentId
-          ? { ...payment, status: 'FAILED' as PaymentStatus, failureReason: data.errorMessage }
-          : payment
-      )
-    })
-    setRealtimeUpdates(prev => prev + 1)
-  }, [queryClient, restaurantId])
-
-  const handlePaymentCancelled = useCallback((data: any) => {
-    console.log('🚫 Payment cancelled:', data)
-
-    // Only process events for this restaurant
-    if (data?.restaurantId !== restaurantId) {
-      console.log('🚫❌ [ActivePayments] Ignoring cancellation - different restaurant:', data?.restaurantId, 'vs', restaurantId)
-      return
-    }
-
-    // Remove cancelled payment from active payments
-    queryClient.setQueryData(['restaurant', 'active-payments', restaurantId], (oldData: Payment[] | undefined) => {
-      if (!oldData) return oldData
-      return oldData.filter(payment => payment.id !== data.paymentId)
-    })
-    setRealtimeUpdates(prev => prev + 1)
-  }, [queryClient, restaurantId])
-
-  // Register WebSocket event listeners
-  console.log('🎯🔥 [ActivePayments] Registering WebSocket event listeners for restaurant:', restaurantId)
-  useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated], 'ActivePayments-created')
-  useWebSocketEvent('payment:status_updated', handlePaymentStatusUpdated, [handlePaymentStatusUpdated], 'ActivePayments-status')
-  useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted], 'ActivePayments-completed')
-  useWebSocketEvent('payment:failed', handlePaymentFailed, [handlePaymentFailed], 'ActivePayments-failed')
-  useWebSocketEvent('payment:cancelled', handlePaymentCancelled, [handlePaymentCancelled], 'ActivePayments-cancelled')
-  console.log('🎯🔥 [ActivePayments] All WebSocket event listeners registered')
-
-  const getPaymentMethodIcon = (method: PaymentMethod) => {
+  const getPaymentMethodIcon = useCallback((method: PaymentMethod) => {
     switch (method) {
       case 'CREDIT_CARD':
       case 'DEBIT_CARD':
@@ -264,7 +109,7 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
       default:
         return <CreditCard className="w-4 h-4" />
     }
-  }
+  }, [])
 
   const getStatusIcon = (status: PaymentStatus) => {
     switch (status) {
@@ -414,11 +259,6 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
                   <WifiOff className="w-4 h-4 text-status-error" />
                   <span className="text-xs text-status-error">Offline</span>
                 </>
-              )}
-              {realtimeUpdates > 0 && (
-                <span className="text-xs text-content-tertiary">
-                  ({realtimeUpdates} live updates)
-                </span>
               )}
             </div>
 

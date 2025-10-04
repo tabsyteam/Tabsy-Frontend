@@ -88,7 +88,7 @@ export default function QRCodePage({ params }: QRCodePageProps) {
           },
           table: {
             id: table.id,
-            number: table.tableNumber || table.number,
+            tableNumber: table.tableNumber,
             qrCode: table.qrCode
           }
         }

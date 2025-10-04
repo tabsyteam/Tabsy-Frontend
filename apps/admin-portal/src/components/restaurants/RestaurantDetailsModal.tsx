@@ -44,8 +44,8 @@ export default function RestaurantDetailsModal({
   const queryClient = useQueryClient();
 
   const { data: details, isLoading: loadingDetails } = useRestaurantDetails(restaurant.id);
-  const { data: orders } = useRestaurantOrders(restaurant.id);
-  const { data: tables } = useRestaurantTables(restaurant.id);
+  const { data: ordersData, isLoading: loadingOrders, error: ordersError } = useRestaurantOrders(restaurant.id);
+  const { data: tablesData, isLoading: loadingTables, error: tablesError } = useRestaurantTables(restaurant.id);
 
   /*
    * WebSocket real-time event handlers have been removed to eliminate duplicate order event handling.
@@ -53,15 +53,37 @@ export default function RestaurantDetailsModal({
    * Real-time updates should be handled at the application level, not in individual modals.
    */
 
-  // Calculate statistics
+  // Debug logging
+  console.log('🔍 RestaurantDetailsModal Debug:', {
+    restaurantId: restaurant.id,
+    ordersData,
+    tablesData,
+    ordersError,
+    tablesError,
+    loadingOrders,
+    loadingTables
+  });
+
+  // Normalize data to always be arrays (API might return {data: [...]} or [...])
+  const orders = Array.isArray(ordersData) ? ordersData : (ordersData?.data && Array.isArray(ordersData.data) ? ordersData.data : []);
+  const tables = Array.isArray(tablesData) ? tablesData : (tablesData?.data && Array.isArray(tablesData.data) ? tablesData.data : []);
+
+  console.log('📊 Normalized Data:', {
+    ordersCount: orders.length,
+    tablesCount: tables.length,
+    orders: orders.slice(0, 2), // Show first 2 orders
+    tables: tables.slice(0, 2)  // Show first 2 tables
+  });
+
+  // Calculate statistics safely
   const stats = {
-    totalRevenue: orders?.reduce((sum: number, order: Order) => sum + Number(order.total || 0), 0) || 0,
-    totalOrders: orders?.length || 0,
-    activeOrders: orders?.filter((o: Order) => [OrderStatus.RECEIVED, OrderStatus.PREPARING].includes(o.status)).length || 0,
-    completedOrders: orders?.filter((o: Order) => o.status === OrderStatus.DELIVERED).length || 0,
-    totalTables: tables?.length || 0,
-    occupiedTables: tables?.filter((t: Table) => t.status === TableStatus.OCCUPIED).length || 0,
-    averageOrderValue: orders?.length ? (orders.reduce((sum: number, o: Order) => sum + Number(o.total || 0), 0) / orders.length) : 0
+    totalRevenue: orders.reduce((sum: number, order: Order) => sum + Number(order.total || 0), 0),
+    totalOrders: orders.length,
+    activeOrders: orders.filter((o: Order) => [OrderStatus.RECEIVED, OrderStatus.PREPARING].includes(o.status)).length,
+    completedOrders: orders.filter((o: Order) => o.status === OrderStatus.DELIVERED).length,
+    totalTables: tables.length,
+    occupiedTables: tables.filter((t: Table) => t.status === TableStatus.OCCUPIED).length,
+    averageOrderValue: orders.length ? (orders.reduce((sum: number, o: Order) => sum + Number(o.total || 0), 0) / orders.length) : 0
   };
 
   const tabs = [
@@ -121,7 +143,8 @@ export default function RestaurantDetailsModal({
           <div className="bg-surface rounded-lg p-4 border border-border-tertiary">
             <div className="flex items-center justify-between mb-2">
               <DollarSign className="h-5 w-5 text-primary" />
-              <span className="text-xs text-status-success">+12%</span>
+              {loadingOrders && <span className="text-xs text-content-tertiary">Loading...</span>}
+              {ordersError && <span className="text-xs text-status-error">Error</span>}
             </div>
             <div className="text-2xl font-bold text-content-primary">
               ${stats.totalRevenue.toFixed(2)}
@@ -132,7 +155,11 @@ export default function RestaurantDetailsModal({
           <div className="bg-surface rounded-lg p-4 border border-border-tertiary">
             <div className="flex items-center justify-between mb-2">
               <ShoppingBag className="h-5 w-5 text-primary" />
-              <span className="text-xs text-status-warning">{stats.activeOrders} active</span>
+              {loadingOrders ? (
+                <span className="text-xs text-content-tertiary">Loading...</span>
+              ) : (
+                <span className="text-xs text-status-warning">{stats.activeOrders} active</span>
+              )}
             </div>
             <div className="text-2xl font-bold text-content-primary">
               {stats.totalOrders}
@@ -143,10 +170,14 @@ export default function RestaurantDetailsModal({
           <div className="bg-surface rounded-lg p-4 border border-border-tertiary">
             <div className="flex items-center justify-between mb-2">
               <Users className="h-5 w-5 text-primary" />
-              <span className="text-xs text-status-info">{stats.occupiedTables}/{stats.totalTables}</span>
+              {loadingTables ? (
+                <span className="text-xs text-content-tertiary">Loading...</span>
+              ) : (
+                <span className="text-xs text-status-info">{stats.occupiedTables}/{stats.totalTables}</span>
+              )}
             </div>
             <div className="text-2xl font-bold text-content-primary">
-              {Math.round((stats.occupiedTables / (stats.totalTables || 1)) * 100)}%
+              {stats.totalTables > 0 ? Math.round((stats.occupiedTables / stats.totalTables) * 100) : 0}%
             </div>
             <p className="text-xs text-content-secondary mt-1">Occupancy</p>
           </div>
@@ -291,17 +322,65 @@ export default function RestaurantDetailsModal({
                   <p className="text-sm text-content-secondary leading-relaxed">{restaurant.description}</p>
                 </div>
               )}
+
+              {/* Tax Configuration */}
+              <div className="bg-primary-light/5 border-l-4 border-primary rounded-lg p-4">
+                <h3 className="text-lg font-medium text-content-primary mb-4 flex items-center">
+                  <DollarSign className="h-5 w-5 mr-2 text-primary" />
+                  Tax Configuration
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium text-content-primary">Tax Rate</p>
+                    <p className="text-2xl font-bold text-primary">
+                      {((Number(restaurant.taxRatePercentage || 0.10)) * 100).toFixed(2)}%
+                    </p>
+                    <p className="text-xs text-content-tertiary mt-1">
+                      Decimal: {Number(restaurant.taxRatePercentage || 0.10).toFixed(4)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-content-primary">Fixed Tax Amount</p>
+                    <p className="text-2xl font-bold text-primary">
+                      ${Number(restaurant.taxFixedAmount || 0).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-content-tertiary mt-1">Added to every order</p>
+                  </div>
+                </div>
+                <div className="mt-4 p-3 bg-surface-secondary rounded border border-border-tertiary">
+                  <p className="text-xs text-content-secondary mb-2">Tax Calculation Formula:</p>
+                  <p className="text-sm font-mono text-content-primary">
+                    Tax = (Subtotal × {Number(restaurant.taxRatePercentage || 0.10).toFixed(4)}) + ${Number(restaurant.taxFixedAmount || 0).toFixed(2)}
+                  </p>
+                  <div className="mt-2 pt-2 border-t border-border-tertiary">
+                    <p className="text-xs text-content-secondary">Example on $100 order:</p>
+                    <p className="text-sm text-content-primary">
+                      Tax = ${(100 * Number(restaurant.taxRatePercentage || 0.10) + Number(restaurant.taxFixedAmount || 0)).toFixed(2)}
+                      → Total: ${(100 + (100 * Number(restaurant.taxRatePercentage || 0.10)) + Number(restaurant.taxFixedAmount || 0)).toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
           {activeTab === 'tables' && (
             <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {tables && tables.length > 0 ? (
-                  tables.map((table: Table) => (
+              {loadingTables ? (
+                <div className="text-center py-8">
+                  <p className="text-content-secondary">Loading tables...</p>
+                </div>
+              ) : tablesError ? (
+                <div className="text-center py-8">
+                  <p className="text-status-error">Error loading tables</p>
+                  <p className="text-xs text-content-tertiary mt-2">{String(tablesError)}</p>
+                </div>
+              ) : tables && tables.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {tables.map((table: Table) => (
                     <div key={table.id} className="bg-surface-secondary rounded-lg p-4 border border-border-tertiary">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-content-primary">Table {table.id}</h4>
+                        <h4 className="font-medium text-content-primary">Table {table.tableNumber || table.id}</h4>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           table.status === TableStatus.OCCUPIED ? 'bg-status-error-light text-status-error-dark' :
                           table.status === TableStatus.RESERVED ? 'bg-status-warning-light text-status-warning-dark' :
@@ -311,23 +390,36 @@ export default function RestaurantDetailsModal({
                         </span>
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm text-content-secondary">Status: {table.status === TableStatus.OCCUPIED ? 'Occupied' : table.status === TableStatus.RESERVED ? 'Reserved' : 'Available'}</p>
+                        <p className="text-sm text-content-secondary">Capacity: {table.capacity || 'N/A'} seats</p>
                         {table.qrCode && (
-                          <p className="text-sm text-content-secondary font-mono">QR: {table.qrCode}</p>
+                          <p className="text-sm text-content-secondary font-mono text-xs">QR: {table.qrCode.slice(0, 12)}...</p>
                         )}
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-content-secondary col-span-full text-center py-8">No tables configured</p>
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 bg-surface-secondary rounded-lg border-2 border-dashed border-border-tertiary">
+                  <Users className="h-12 w-12 text-content-tertiary mx-auto mb-3" />
+                  <p className="text-content-secondary font-medium">No tables configured</p>
+                  <p className="text-xs text-content-tertiary mt-1">Add tables to this restaurant to start managing seating</p>
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === 'orders' && (
             <div className="space-y-4">
-              {orders && orders.length > 0 ? (
+              {loadingOrders ? (
+                <div className="text-center py-8">
+                  <p className="text-content-secondary">Loading orders...</p>
+                </div>
+              ) : ordersError ? (
+                <div className="text-center py-8">
+                  <p className="text-status-error">Error loading orders</p>
+                  <p className="text-xs text-content-tertiary mt-2">{String(ordersError)}</p>
+                </div>
+              ) : orders && orders.length > 0 ? (
                 orders.slice(0, 10).map((order: Order) => (
                   <div key={order.id} className="bg-surface-secondary rounded-lg p-4 border border-border-tertiary">
                     <div className="flex items-center justify-between mb-2">
@@ -355,7 +447,11 @@ export default function RestaurantDetailsModal({
                   </div>
                 ))
               ) : (
-                <p className="text-content-secondary text-center py-8">No orders yet</p>
+                <div className="text-center py-12 bg-surface-secondary rounded-lg border-2 border-dashed border-border-tertiary">
+                  <ShoppingBag className="h-12 w-12 text-content-tertiary mx-auto mb-3" />
+                  <p className="text-content-secondary font-medium">No orders yet</p>
+                  <p className="text-xs text-content-tertiary mt-1">Orders placed at this restaurant will appear here</p>
+                </div>
               )}
             </div>
           )}
@@ -370,36 +466,50 @@ export default function RestaurantDetailsModal({
                     <p className="text-2xl font-bold text-content-primary">
                       {stats.totalOrders ? Math.round((stats.completedOrders / stats.totalOrders) * 100) : 0}%
                     </p>
+                    <p className="text-xs text-content-tertiary mt-1">
+                      {stats.completedOrders} of {stats.totalOrders} orders
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-content-secondary">Active Orders</p>
                     <p className="text-2xl font-bold text-status-warning">{stats.activeOrders}</p>
+                    <p className="text-xs text-content-tertiary mt-1">Currently processing</p>
                   </div>
                   <div>
-                    <p className="text-sm text-content-secondary">Table Turnover</p>
-                    <p className="text-2xl font-bold text-content-primary">2.3x</p>
+                    <p className="text-sm text-content-secondary">Table Occupancy</p>
+                    <p className="text-2xl font-bold text-content-primary">
+                      {stats.totalTables > 0 ? Math.round((stats.occupiedTables / stats.totalTables) * 100) : 0}%
+                    </p>
+                    <p className="text-xs text-content-tertiary mt-1">
+                      {stats.occupiedTables} of {stats.totalTables} tables
+                    </p>
                   </div>
                   <div>
-                    <p className="text-sm text-content-secondary">Avg Wait Time</p>
-                    <p className="text-2xl font-bold text-content-primary">18 min</p>
+                    <p className="text-sm text-content-secondary">Total Revenue</p>
+                    <p className="text-2xl font-bold text-content-primary">${stats.totalRevenue.toFixed(2)}</p>
+                    <p className="text-xs text-content-tertiary mt-1">From all orders</p>
                   </div>
                 </div>
               </div>
 
               <div className="bg-surface-secondary rounded-lg p-6 border border-border-tertiary">
-                <h3 className="text-lg font-medium text-content-primary mb-4">Revenue Breakdown</h3>
-                <div className="space-y-3">
+                <h3 className="text-lg font-medium text-content-primary mb-4">Order Statistics</h3>
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-content-secondary">Food Sales</span>
-                    <span className="font-medium text-content-primary">68%</span>
+                    <span className="text-sm text-content-secondary">Total Orders</span>
+                    <span className="font-medium text-content-primary">{stats.totalOrders}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-content-secondary">Beverage Sales</span>
-                    <span className="font-medium text-content-primary">22%</span>
+                    <span className="text-sm text-content-secondary">Completed Orders</span>
+                    <span className="font-medium text-status-success">{stats.completedOrders}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-content-secondary">Other</span>
-                    <span className="font-medium text-content-primary">10%</span>
+                    <span className="text-sm text-content-secondary">Active Orders</span>
+                    <span className="font-medium text-status-warning">{stats.activeOrders}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-content-secondary">Average Order Value</span>
+                    <span className="font-medium text-content-primary">${stats.averageOrderValue.toFixed(2)}</span>
                   </div>
                 </div>
               </div>

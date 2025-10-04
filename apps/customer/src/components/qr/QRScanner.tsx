@@ -101,7 +101,7 @@ export function QRScanner() {
             restaurantId: restaurant.id,
             tableId: table.id,
             restaurantName: restaurant.name,
-            tableName: table.number,
+            tableName: table.tableNumber,
             sessionId: sessionResponse.data.sessionId,
             tableSessionId: sessionResponse.data.tableSessionId,
             createdAt: Date.now()

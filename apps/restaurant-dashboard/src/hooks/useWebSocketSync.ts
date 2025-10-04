@@ -34,7 +34,7 @@ function useDebounce<T extends (...args: any[]) => void>(
   callback: T,
   delay: number
 ): T {
-  const timeoutRef = useRef<NodeJS.Timeout>()
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   return useCallback(
     ((...args: any[]) => {
@@ -100,10 +100,22 @@ export function usePaymentWebSocketSync(restaurantId: string): void {
   const invalidatePaymentQueries = useCallback(() => {
     logger.payment('Invalidating payment queries', { restaurantId })
 
-    // Invalidate only active queries to prevent unnecessary refetches
+    // Invalidate active payments (matches all filterStatus variants)
     queryClient.invalidateQueries({
-      queryKey: ['restaurant', 'payments', restaurantId],
-      refetchType: 'active', // Only refetch queries currently in use
+      queryKey: ['restaurant', 'active-payments', restaurantId],
+      refetchType: 'active',
+    })
+
+    // Invalidate payment history (matches all filter variants)
+    queryClient.invalidateQueries({
+      queryKey: ['restaurant', 'payment-history', restaurantId],
+      refetchType: 'active',
+    })
+
+    // Invalidate pending cash payments
+    queryClient.invalidateQueries({
+      queryKey: ['restaurant', 'pending-cash-payments', restaurantId],
+      refetchType: 'active',
     })
 
     // Invalidate payment metrics
@@ -351,11 +363,12 @@ export function useTableWebSocketSync(restaurantId: string): void {
     [restaurantId, debouncedInvalidate]
   )
 
-  useWebSocketEvent('table:updated', handleTableUpdated, [handleTableUpdated], 'TableWebSocketSync')
-  useWebSocketEvent('table:occupied', handleTableUpdated, [handleTableUpdated], 'TableWebSocketSync')
-  useWebSocketEvent('table:available', handleTableUpdated, [handleTableUpdated], 'TableWebSocketSync')
+  // TODO: Uncomment when table event types are added to @tabsy/shared-types WebSocketEventMap
+  // useWebSocketEvent('table:updated', handleTableUpdated, [handleTableUpdated], 'TableWebSocketSync')
+  // useWebSocketEvent('table:occupied', handleTableUpdated, [handleTableUpdated], 'TableWebSocketSync')
+  // useWebSocketEvent('table:available', handleTableUpdated, [handleTableUpdated], 'TableWebSocketSync')
 
-  logger.debug('Table WebSocket sync initialized', { restaurantId })
+  logger.debug('Table WebSocket sync initialized (events pending type definitions)', { restaurantId })
 }
 
 /**

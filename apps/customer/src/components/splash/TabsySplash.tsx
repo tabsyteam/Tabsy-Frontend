@@ -31,7 +31,7 @@ export function TabsySplash({ restaurant, table }: TabsySplashProps) {
     {
       icon: Wifi,
       title: `Connected to ${restaurant.name}`,
-      subtitle: `Table ${table.number}`,
+      subtitle: `Table ${table.tableNumber}`,
       duration: 400
     },
     {
@@ -249,7 +249,7 @@ export function TabsySplash({ restaurant, table }: TabsySplashProps) {
                   {restaurant.name}
                 </h3>
                 <p className="text-content-secondary text-xs">
-                  Table {table.number} • Connected
+                  Table {table.tableNumber} • Connected
                 </p>
               </div>
 

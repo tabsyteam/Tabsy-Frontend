@@ -8,7 +8,9 @@ import {
   MapPin,
   Phone,
   Mail,
-  Globe
+  Globe,
+  DollarSign,
+  Info
 } from 'lucide-react';
 import { useCreateRestaurant, useUpdateRestaurant } from '@/hooks/api';
 import { Restaurant, CreateRestaurantRequest, UpdateRestaurantRequest } from '@tabsy/shared-types';
@@ -37,7 +39,9 @@ export default function AddRestaurantModal({
     city: '',
     state: '',
     zipCode: '',
-    country: 'USA'
+    country: 'USA',
+    taxRatePercentage: '0.10', // 10% default
+    taxFixedAmount: '0.00'
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -58,7 +62,9 @@ export default function AddRestaurantModal({
         city: restaurant.city || '',
         state: restaurant.state || '',
         zipCode: restaurant.zipCode || '',
-        country: restaurant.country || 'USA'
+        country: restaurant.country || 'USA',
+        taxRatePercentage: restaurant.taxRatePercentage?.toString() || '0.10',
+        taxFixedAmount: restaurant.taxFixedAmount?.toString() || '0.00'
       });
     }
   }, [restaurant]);
@@ -104,6 +110,18 @@ export default function AddRestaurantModal({
       newErrors.website = 'Please enter a valid URL starting with http:// or https://';
     }
 
+    // Tax validation
+    const taxRate = parseFloat(formData.taxRatePercentage);
+    const taxFixed = parseFloat(formData.taxFixedAmount);
+
+    if (isNaN(taxRate) || taxRate < 0 || taxRate > 1) {
+      newErrors.taxRatePercentage = 'Tax rate must be between 0 and 1 (e.g., 0.10 for 10%)';
+    }
+
+    if (isNaN(taxFixed) || taxFixed < 0 || taxFixed > 999.99) {
+      newErrors.taxFixedAmount = 'Fixed amount must be between 0 and 999.99';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -130,7 +148,9 @@ export default function AddRestaurantModal({
           phoneNumber: formData.phone,
           email: formData.email,
           website: formData.website || undefined,
-          active: true
+          active: true,
+          taxRatePercentage: parseFloat(formData.taxRatePercentage),
+          taxFixedAmount: parseFloat(formData.taxFixedAmount)
         };
 
         await updateRestaurant.mutateAsync({
@@ -150,7 +170,9 @@ export default function AddRestaurantModal({
           phoneNumber: formData.phone,
           email: formData.email,
           website: formData.website || undefined,
-          active: true
+          active: true,
+          taxRatePercentage: parseFloat(formData.taxRatePercentage),
+          taxFixedAmount: parseFloat(formData.taxFixedAmount)
           // Note: cuisine, priceRange, and openingHours are not accepted by backend validator
         };
 
@@ -371,6 +393,105 @@ export default function AddRestaurantModal({
             </div>
           </div>
 
+          {/* Tax Configuration (Admin Only) */}
+          <div className="bg-primary-light/5 border-l-4 border-primary rounded-lg p-6">
+            <h3 className="text-lg font-medium text-content-primary mb-2 flex items-center">
+              <DollarSign className="h-5 w-5 mr-2 text-primary" />
+              Tax Configuration
+            </h3>
+            <div className="flex items-start space-x-2 mb-4 text-sm text-content-secondary bg-primary-light/10 p-3 rounded">
+              <Info className="h-4 w-4 mt-0.5 flex-shrink-0 text-primary" />
+              <p>
+                Configure tax calculation for this restaurant. Tax is calculated as: <strong>(Subtotal × Tax Rate %) + Fixed Amount</strong>
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-content-primary mb-2">
+                  Tax Rate (Percentage) *
+                </label>
+                <div className="space-y-2">
+                  <input
+                    type="number"
+                    name="taxRatePercentage"
+                    value={formData.taxRatePercentage}
+                    onChange={handleInputChange}
+                    step="0.0001"
+                    min="0"
+                    max="1"
+                    className={`input-professional w-full ${errors.taxRatePercentage ? 'border-status-error' : ''}`}
+                    placeholder="0.10"
+                  />
+                  <div className="flex items-center justify-between px-3 py-1.5 bg-primary-light/10 rounded text-sm">
+                    <span className="text-content-secondary">Percentage:</span>
+                    <span className="font-semibold text-primary">
+                      {(parseFloat(formData.taxRatePercentage || '0') * 100).toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+                {errors.taxRatePercentage && <p className="mt-1 text-sm text-status-error">{errors.taxRatePercentage}</p>}
+                <p className="mt-1 text-xs text-content-tertiary">Enter as decimal (e.g., 0.10 for 10%)</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-content-primary mb-2">
+                  Fixed Tax Amount *
+                </label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-content-tertiary" />
+                  <input
+                    type="number"
+                    name="taxFixedAmount"
+                    value={formData.taxFixedAmount}
+                    onChange={handleInputChange}
+                    step="0.01"
+                    min="0"
+                    max="999.99"
+                    className={`input-professional w-full pl-10 ${errors.taxFixedAmount ? 'border-status-error' : ''}`}
+                    placeholder="0.00"
+                  />
+                </div>
+                {errors.taxFixedAmount && <p className="mt-1 text-sm text-status-error">{errors.taxFixedAmount}</p>}
+                <p className="mt-1 text-xs text-content-tertiary">Additional flat fee added to tax</p>
+              </div>
+            </div>
+
+            {/* Tax Preview */}
+            <div className="mt-4 p-4 bg-surface-secondary rounded-lg border border-border-tertiary">
+              <h4 className="text-sm font-medium text-content-primary mb-2">Tax Calculation Preview</h4>
+              <div className="space-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-content-secondary">Example Subtotal:</span>
+                  <span className="font-medium text-content-primary">$100.00</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-content-secondary">Tax ({(parseFloat(formData.taxRatePercentage || '0') * 100).toFixed(2)}%):</span>
+                  <span className="font-medium text-content-primary">
+                    ${(100 * parseFloat(formData.taxRatePercentage || '0')).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-content-secondary">Fixed Amount:</span>
+                  <span className="font-medium text-content-primary">
+                    ${parseFloat(formData.taxFixedAmount || '0').toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between pt-2 border-t border-border-tertiary">
+                  <span className="text-content-primary font-medium">Total Tax:</span>
+                  <span className="font-bold text-primary">
+                    ${((100 * parseFloat(formData.taxRatePercentage || '0')) + parseFloat(formData.taxFixedAmount || '0')).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between font-semibold">
+                  <span className="text-content-primary">Order Total:</span>
+                  <span className="text-content-primary">
+                    ${(100 + (100 * parseFloat(formData.taxRatePercentage || '0')) + parseFloat(formData.taxFixedAmount || '0')).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
 
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-6 border-t border-border-tertiary">

@@ -648,7 +648,7 @@ export default function PaymentsPage() {
                             <div className="flex items-center">
                               <DollarSign className="h-4 w-4 text-status-success mr-1" />
                               <span className="text-sm font-bold text-content-primary">
-                                {payment.amount?.toFixed(2)}
+                                {Number(payment.amount || 0).toFixed(2)}
                               </span>
                             </div>
                           </td>

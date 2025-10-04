@@ -329,91 +329,26 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     queryClient.invalidateQueries({ queryKey: ['dashboard-metrics', restaurantId] })
   }, [queryClient, restaurantId, pendingStatusChanges])
 
-  // Payment event handlers
-  const handlePaymentCreated = useCallback((data: any) => {
-    logger.payment('Payment created via WebSocket', {
-      data,
-      keys: Object.keys(data || {}),
-      restaurantId
-    })
+  /**
+   * SENIOR ARCHITECTURE FIX:
+   * Removed cross-concern payment event handlers (lines 332-415).
+   *
+   * CRITICAL VIOLATION FIXED:
+   * OrdersManagement should NOT manage Payment cache - violates Separation of Concerns.
+   * Payment events now handled exclusively by:
+   * - usePaymentWebSocketSync in PaymentManagement.tsx
+   *
+   * This fixes:
+   * - 3 duplicate payment listeners removed
+   * - Cross-domain coupling eliminated
+   * - Cleaner architecture with proper domain boundaries
+   */
 
-    // Invalidate payment-related queries to refresh order cards
-    if (data.orderId) {
-      // Force refresh of the specific order's payment data
-      queryClient.invalidateQueries({
-        queryKey: ['payments', 'order', data.orderId]
-      })
-
-      // Also invalidate main orders query to update payment status in order cards
-      queryClient.invalidateQueries({
-        queryKey: ['orders', 'restaurant', restaurantId]
-      })
-    }
-
-    // Handle table session payments
-    if (data.tableSessionId) {
-      queryClient.invalidateQueries({ queryKey: ['payments', 'table-session', data.tableSessionId] })
-      queryClient.invalidateQueries({ queryKey: ['orders', 'restaurant', restaurantId] })
-      queryClient.invalidateQueries({ queryKey: ['table-sessions', restaurantId] })
-    }
-
-    // Show notification
-    const description = data.tableSessionId
-      ? 'Payment has been initiated for table session'
-      : `${data.paymentMethod === 'CASH' ? 'Cash' : 'Card'} payment requested for order #${data.orderNumber || data.orderId}`
-
-    toast.info('Payment Created', { description })
-
-    logger.payment('Payment created - queries invalidated and toast shown')
-  }, [queryClient, restaurantId])
-
-  const handlePaymentCompleted = useCallback((data: any) => {
-    logger.payment('Payment completed via WebSocket', data)
-
-    // Invalidate payment-related queries to refresh order cards
-    if (data.orderId) {
-      queryClient.invalidateQueries({
-        queryKey: ['payments', 'order', data.orderId]
-      })
-
-      // Also invalidate main orders query to update any payment status
-      queryClient.invalidateQueries({
-        queryKey: ['orders', 'restaurant', restaurantId]
-      })
-    }
-
-    // Show notification
-    toast.success('Payment Completed', {
-      description: `${data.paymentMethod === 'CASH' ? 'Cash' : 'Card'} payment of $${data.amount} confirmed for order #${data.orderNumber || data.orderId}`
-    })
-  }, [queryClient, restaurantId])
-
-  const handlePaymentCancelled = useCallback((data: any) => {
-    logger.payment('Payment cancelled via WebSocket', data)
-
-    // Invalidate payment-related queries to refresh order cards
-    if (data.orderId) {
-      queryClient.invalidateQueries({
-        queryKey: ['payments', 'order', data.orderId]
-      })
-    }
-
-    // Show notification
-    toast.info('Payment Cancelled', {
-      description: `Payment for order #${data.orderNumber || data.orderId} was cancelled`
-    })
-  }, [queryClient])
-
-  // Use clean useWebSocketEvent hooks (prevents duplicate event listeners)
+  // Order event listeners only (payment events removed)
   useWebSocketEvent('order:created', handleNewOrder, [handleNewOrder])
   useWebSocketEvent('order:updated', handleOrderUpdate, [handleOrderUpdate])
   useWebSocketEvent('order:status_updated', handleOrderStatusChange, [handleOrderStatusChange])
 
-  // Payment event listeners
-  useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated])
-  useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted])
-  useWebSocketEvent('payment:cancelled', handlePaymentCancelled, [handlePaymentCancelled])
-  
   // Update selected order when orders data changes
   // Use more efficient comparison instead of expensive JSON.stringify
   useEffect(() => {

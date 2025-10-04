@@ -81,7 +81,7 @@ export function MenuCard(props: MenuCardProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation()
                   onSelect(category)
                 }}
@@ -93,7 +93,7 @@ export function MenuCard(props: MenuCardProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation()
                   onEdit(category)
                 }}
@@ -105,7 +105,7 @@ export function MenuCard(props: MenuCardProps) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                   e.stopPropagation()
                   onDelete(category.id)
                 }}
@@ -205,7 +205,7 @@ export function MenuCard(props: MenuCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation()
                 onSelect(item)
               }}
@@ -217,7 +217,7 @@ export function MenuCard(props: MenuCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation()
                 onEdit(item)
               }}
@@ -229,7 +229,7 @@ export function MenuCard(props: MenuCardProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={(e) => {
+              onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                 e.stopPropagation()
                 onDelete(item.id)
               }}

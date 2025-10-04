@@ -82,7 +82,7 @@ export function TableSessionInitializer({ restaurantId, tableId }: TableSessionI
         },
         table: {
           id: tableInfoData.table.id,
-          number: tableInfoData.table.number || (tableInfoData.table as any).tableNumber,
+          tableNumber: tableInfoData.table.tableNumber,
           qrCode: (tableInfoData.table as any).qrCode || qrCode || ''
         },
         isActive: tableInfoData.isActive

@@ -234,7 +234,7 @@ export function TableDetailsModal({
         tableId: table.id,
         status: newStatus,
       } as any)
-      toast.success(`Table ${table.number} status updated to ${getStatusDisplayName(newStatus)}`)
+      toast.success(`Table ${table.tableNumber} status updated to ${getStatusDisplayName(newStatus)}`)
     } catch (error) {
       toast.error('Failed to update table status')
     } finally {
@@ -248,7 +248,7 @@ export function TableDetailsModal({
         restaurantId: table.restaurantId,
         tableId: table.id,
       } as any)
-      toast.success(`Table ${table.number} has been reset`)
+      toast.success(`Table ${table.tableNumber} has been reset`)
       refetchSessions()
     } catch (error) {
       toast.error('Failed to reset table')
@@ -381,7 +381,7 @@ export function TableDetailsModal({
               </div>
               <div>
                 <h2 className="text-xl font-semibold text-content-primary">
-                  Table {table.number}
+                  Table {table.tableNumber}
                 </h2>
                 <p className="text-sm text-content-secondary">
                   {isUpdatingStatus ? 'Updating...' : getStatusDisplayName(table.status)}
@@ -404,7 +404,7 @@ export function TableDetailsModal({
                     <Hash className="w-4 h-4 text-content-secondary" />
                     <span className="text-sm text-content-secondary">Table Number</span>
                   </div>
-                  <p className="text-lg font-medium text-content-primary">{table.number}</p>
+                  <p className="text-lg font-medium text-content-primary">{table.tableNumber}</p>
                 </div>
 
                 <div className="bg-surface-secondary p-3 sm:p-4 rounded-lg border border-default">

@@ -116,6 +116,17 @@ export class SessionManager {
 
       const response = await client.tableSession.extend(session.tableSessionId)
 
+      // Handle session closed error specifically
+      if (!response.success && response.error?.code === 'SESSION_CLOSED') {
+        console.warn('[SessionManager] ⚠️ Session is closed on backend - cleaning up frontend state')
+
+        // Clear invalid session data (skip redirect - let UI handle it with message)
+        this.handleSessionExpiry(true)
+
+        // Return false to indicate extension failed
+        return false
+      }
+
       if (response.success && response.data) {
         console.log('[SessionManager] ✅ Session extended successfully')
         console.log('[SessionManager] Backend response:', response.data)
@@ -155,10 +166,28 @@ export class SessionManager {
         return true
       } else {
         console.error('[SessionManager] Failed to extend session:', response.error)
+
+        // Handle other session-related errors
+        if (response.error?.code === 'SESSION_NOT_FOUND' ||
+            response.error?.code === 'SESSION_EXPIRED' ||
+            response.error?.code === 'INVALID_SESSION') {
+          console.warn('[SessionManager] ⚠️ Session invalid - cleaning up frontend state')
+          this.handleSessionExpiry(true)  // Skip redirect - let UI handle it with message
+        }
+
         return false
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('[SessionManager] Error extending session:', error)
+
+      // Handle network errors or session-related exceptions
+      if (error?.code === 'SESSION_CLOSED' ||
+          error?.code === 'SESSION_NOT_FOUND' ||
+          error?.code === 'SESSION_EXPIRED') {
+        console.warn('[SessionManager] ⚠️ Session error in catch - cleaning up frontend state')
+        this.handleSessionExpiry(true)  // Skip redirect - let UI handle it with message
+      }
+
       return false
     }
   }
@@ -370,13 +399,13 @@ export class SessionManager {
   }
 
   // Handle session expiry gracefully
-  static handleSessionExpiry(): void {
+  static handleSessionExpiry(skipRedirect: boolean = false): void {
     this.clearDiningSession()
     this.clearCurrentOrder()
     this.clearOrderHistory()
 
-    // Redirect to home or show expiry message
-    if (typeof window !== 'undefined') {
+    // Redirect to home or show expiry message (unless caller wants to handle redirect)
+    if (!skipRedirect && typeof window !== 'undefined') {
       const currentPath = window.location.pathname
       if (currentPath !== '/' && !currentPath.startsWith('/table/')) {
         window.location.href = '/'

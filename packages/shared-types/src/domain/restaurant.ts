@@ -13,6 +13,9 @@ export interface Restaurant {
   phoneNumber: string;
   email: string;
   website?: string;
+  // Tax configuration
+  taxRatePercentage?: number;
+  taxFixedAmount?: number;
   // Other fields
   cuisine?: string[];
   priceRange?: 1 | 2 | 3 | 4;
@@ -76,6 +79,9 @@ export interface CreateRestaurantRequest {
   phoneNumber: string;
   email: string;
   website?: string;
+  // Tax configuration
+  taxRatePercentage?: number;
+  taxFixedAmount?: number;
   // Additional fields
   cuisine?: string[];
   priceRange?: 1 | 2 | 3 | 4;
@@ -97,6 +103,9 @@ export interface UpdateRestaurantRequest {
   phoneNumber?: string;
   email?: string;
   website?: string;
+  // Tax configuration
+  taxRatePercentage?: number;
+  taxFixedAmount?: number;
   active?: boolean; // Backend uses 'active', not 'isActive'
   // Note: cuisine and nested contact/address objects are not supported by backend update validator
 }

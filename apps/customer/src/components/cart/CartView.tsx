@@ -334,7 +334,7 @@ export function CartView() {
                       <div className="flex items-center space-x-4 text-sm text-content-secondary">
                         <span className="flex items-center space-x-1">
                           <Users className="w-3 h-3" />
-                          <span>Table {tableInfo.table.number}</span>
+                          <span>Table {tableInfo.table.tableNumber}</span>
                         </span>
                         <span className="flex items-center space-x-1">
                           <Clock className="w-3 h-3" />

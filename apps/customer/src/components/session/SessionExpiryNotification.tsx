@@ -112,18 +112,37 @@ export default function SessionExpiryNotification({ className }: SessionExpiryNo
         setExpiryInfo(newExpiryInfo)
 
         // Show success message
-        toast.success('Session extended by 30 minutes')
+        toast.success('Session Extended', {
+          description: 'Your session has been extended by 30 minutes',
+          duration: 3000,
+        })
 
         // Dismiss notification after showing updated info
         setTimeout(() => {
           setIsDismissed(true)
         }, 2000) // Give user 2 seconds to see the updated time
       } else {
-        toast.error('Failed to extend session. Please try again.')
+        // Session extension failed - likely SESSION_CLOSED
+        // The SessionManager.extendSession already cleared the session data
+        // Show user-friendly message and guidance
+
+        toast.error('Session Ended', {
+          description: 'Your dining session has ended. Please scan the QR code at your table to start a new session.',
+          duration: 6000,
+        })
+
+        // Redirect to home after showing message
+        setTimeout(() => {
+          window.location.href = '/'
+        }, 3000)
       }
     } catch (error) {
       console.error('[SessionExpiryNotification] Error extending session:', error)
-      toast.error('Failed to extend session. Please try again.')
+
+      toast.error('Unable to Extend Session', {
+        description: 'Please check your connection and try again, or scan the QR code to start a new session.',
+        duration: 5000,
+      })
     } finally {
       setIsExtending(false)
     }

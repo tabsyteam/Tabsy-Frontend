@@ -44,7 +44,7 @@ export class TableAPI {
   private transformTable(backendTable: any): Table {
     return {
       id: backendTable.id,
-      number: backendTable.tableNumber || backendTable.number,
+      tableNumber: backendTable.tableNumber || backendTable.number,
       capacity: backendTable.seats || backendTable.capacity,
       status: backendTable.status,
       notes: backendTable.locationDescription || backendTable.notes,

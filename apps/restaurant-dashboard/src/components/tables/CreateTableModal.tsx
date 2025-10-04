@@ -26,14 +26,14 @@ interface CreateTableModalProps {
 }
 
 interface TableFormData {
-  number: string;
+  tableNumber: string;
   capacity: number;
   shape: TableShape;
   notes: string;
 }
 
 interface FormErrors {
-  number?: string;
+  tableNumber?: string;
   capacity?: string;
   notes?: string;
 }
@@ -45,7 +45,7 @@ export function CreateTableModal({
   onSuccess,
 }: CreateTableModalProps) {
   const [formData, setFormData] = useState<TableFormData>({
-    number: '',
+    tableNumber: '',
     capacity: 4,
     shape: TableShape.ROUND,
     notes: '',
@@ -90,9 +90,9 @@ export function CreateTableModal({
   useEffect(() => {
     if (editingTable) {
       setFormData({
-        number: editingTable.number,
-        capacity: editingTable.capacity,
-        shape: editingTable.shape,
+        tableNumber: editingTable.tableNumber || '',
+        capacity: editingTable.capacity || 4,
+        shape: editingTable.shape || TableShape.ROUND,
         notes: editingTable.notes || '',
       });
     }
@@ -101,19 +101,19 @@ export function CreateTableModal({
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!formData.number.trim()) {
-      newErrors.number = 'Table number is required';
-    } else if (formData.number.trim().length > 10) {
-      newErrors.number = 'Table number must be 10 characters or less';
+    if (!formData.tableNumber || !formData.tableNumber.trim()) {
+      newErrors.tableNumber = 'Table number is required';
+    } else if (formData.tableNumber.trim().length > 10) {
+      newErrors.tableNumber = 'Table number must be 10 characters or less';
     }
 
-    if (formData.capacity < 1) {
+    if (!formData.capacity || formData.capacity < 1) {
       newErrors.capacity = 'Capacity must be at least 1';
     } else if (formData.capacity > 20) {
       newErrors.capacity = 'Capacity cannot exceed 20';
     }
 
-    if (formData.notes.length > 200) {
+    if ((formData.notes || '').length > 200) {
       newErrors.notes = 'Notes must be 200 characters or less';
     }
 
@@ -128,7 +128,7 @@ export function CreateTableModal({
 
     try {
       const submitData = {
-        tableNumber: formData.number.trim(),
+        tableNumber: formData.tableNumber.trim(),
         seats: formData.capacity,
         shape: formData.shape,
         locationDescription: formData.notes.trim() || undefined,
@@ -139,16 +139,16 @@ export function CreateTableModal({
           tableId: editingTable.id,
           ...submitData,
         });
-        toast.success(`Table ${formData.number} updated successfully`);
+        toast.success(`Table ${formData.tableNumber} updated successfully`);
       } else {
         await createTableMutation.mutateAsync(submitData);
-        toast.success(`Table ${formData.number} created successfully`);
+        toast.success(`Table ${formData.tableNumber} created successfully`);
       }
 
       onSuccess();
     } catch (error: any) {
       if (error?.message?.includes('already exists')) {
-        setErrors({ number: 'A table with this number already exists' });
+        setErrors({ tableNumber: 'A table with this number already exists' });
       } else {
         toast.error(isEditing ? 'Failed to update table' : 'Failed to create table');
       }
@@ -217,17 +217,25 @@ export function CreateTableModal({
             </label>
             <input
               type="text"
-              value={formData.number}
-              onChange={(e) => handleInputChange('number', e.target.value)}
+              value={formData.tableNumber}
+              onChange={(e) => handleInputChange('tableNumber', e.target.value)}
               placeholder="e.g., A1, 101, VIP-1"
+              maxLength={10}
               className={`w-full px-3 py-2 border rounded-lg bg-surface text-content-primary placeholder-content-secondary focus:ring-2 focus:ring-primary focus:border-primary ${
-                errors.number ? 'border-status-error' : 'border-default'
+                errors.tableNumber ? 'border-status-error' : 'border-default'
               }`}
               disabled={isLoading}
             />
-            {errors.number && (
-              <p className="mt-1 text-sm text-status-error">{errors.number}</p>
-            )}
+            <div className="flex justify-between mt-1">
+              {errors.tableNumber ? (
+                <p className="text-sm text-status-error">{errors.tableNumber}</p>
+              ) : (
+                <div />
+              )}
+              <p className="text-sm text-content-secondary">
+                {(formData.tableNumber || '').length}/10
+              </p>
+            </div>
           </div>
 
           {/* Capacity */}
@@ -292,6 +300,7 @@ export function CreateTableModal({
               onChange={(e) => handleInputChange('notes', e.target.value)}
               placeholder="Any special notes about this table..."
               rows={3}
+              maxLength={200}
               className={`w-full px-3 py-2 border rounded-lg bg-surface text-content-primary placeholder-content-secondary focus:ring-2 focus:ring-primary focus:border-primary resize-none ${
                 errors.notes ? 'border-status-error' : 'border-default'
               }`}
@@ -302,7 +311,7 @@ export function CreateTableModal({
                 <p className="text-sm text-status-error">{errors.notes}</p>
               )}
               <p className="text-sm text-content-secondary ml-auto">
-                {formData.notes.length}/200
+                {(formData.notes || '').length}/200
               </p>
             </div>
           </div>

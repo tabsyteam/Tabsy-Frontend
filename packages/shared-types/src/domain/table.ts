@@ -8,7 +8,7 @@ export enum TableStatus {
 export interface Table {
   id: string
   restaurantId: string
-  number: string
+  tableNumber: string
   capacity: number
   status: TableStatus
   qrCode: string
@@ -34,7 +34,7 @@ export enum TableShape {
 
 export interface CreateTableRequest {
   restaurantId: string
-  number: string
+  tableNumber: string
   capacity: number
   position?: TablePosition
   shape: TableShape
@@ -42,7 +42,7 @@ export interface CreateTableRequest {
 }
 
 export interface UpdateTableRequest {
-  number?: string
+  tableNumber?: string
   capacity?: number
   status?: TableStatus
   position?: TablePosition

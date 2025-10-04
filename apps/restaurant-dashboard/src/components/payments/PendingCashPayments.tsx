@@ -8,7 +8,8 @@ import { Payment, PaymentStatus, PaymentMethod, Order } from '@tabsy/shared-type
 import { formatDistanceToNow } from 'date-fns'
 import { tabsyClient } from '@tabsy/api-client'
 import { toast } from 'sonner'
-import { useWebSocketEvent } from '@tabsy/ui-components'
+import { logger } from '../../lib/logger'
+import { PAYMENT_QUERY_LIMIT } from '../../lib/constants'
 
 interface PendingCashPaymentsProps {
   restaurantId: string
@@ -44,13 +45,13 @@ export const PendingCashPayments = forwardRef<PendingCashPaymentsRef, PendingCas
       })
 
       if (response.success && response.data) {
-        console.log('[PendingCashPayments] Total payments fetched:', response.data.length)
+        logger.debug('Pending cash payments fetched', { total: response.data.length })
         // Filter for pending/processing cash payments
         const cashPayments = response.data.filter(payment =>
           payment.paymentMethod === PaymentMethod.CASH &&
           (payment.status === PaymentStatus.PENDING || payment.status === PaymentStatus.PROCESSING)
         )
-        console.log('[PendingCashPayments] Filtered cash payments:', cashPayments.length)
+        logger.debug('Filtered cash payments', { count: cashPayments.length })
 
         // Fetch order details for each payment
         const paymentsWithOrders = await Promise.all(
@@ -62,7 +63,7 @@ export const PendingCashPayments = forwardRef<PendingCashPaymentsRef, PendingCas
                 order: orderResponse.success ? orderResponse.data : undefined
               }
             } catch (error) {
-              console.error(`Error fetching order ${payment.orderId}:`, error)
+              logger.error(`Error fetching order ${payment.orderId}`, error)
               return payment
             }
           })
@@ -147,110 +148,12 @@ export const PendingCashPayments = forwardRef<PendingCashPaymentsRef, PendingCas
     }
   }
 
-  // WebSocket event handlers for real-time updates
-  const handlePaymentCreated = useCallback((data: any) => {
-    console.log('🆕💰 [PendingCashPayments] Payment created event:', data)
-
-    // Extract payment details from nested object structure if needed
-    const paymentMethod = data?.payment?.paymentMethod || data?.paymentMethod
-    const paymentStatus = data?.payment?.status || data?.status
-    const eventRestaurantId = data?.restaurantId
-
-    // Only process cash payments for this restaurant
-    if (paymentMethod === 'CASH' &&
-        (paymentStatus === 'PENDING' || paymentStatus === 'PROCESSING') &&
-        eventRestaurantId === restaurantId) {
-      console.log('🆕✅ [PendingCashPayments] Processing cash payment creation')
-      // Invalidate React Query cache to refetch
-      queryClient.invalidateQueries({ queryKey: ['restaurant', 'pending-cash-payments', restaurantId] })
-    } else {
-      console.log('🆕❌ [PendingCashPayments] Ignoring event - not for this restaurant or not cash payment:', {
-        paymentMethod,
-        paymentStatus,
-        eventRestaurantId,
-        expectedRestaurantId: restaurantId
-      })
-    }
-  }, [queryClient, restaurantId])
-
-  const handlePaymentCompleted = useCallback((data: any) => {
-    console.log('✅💰 [PendingCashPayments] Payment completed event:', data)
-
-    // Extract payment method from nested object structure if needed
-    const paymentMethod = data?.payment?.paymentMethod || data?.paymentMethod
-    const eventRestaurantId = data?.restaurantId
-
-    // Only process cash payments for this restaurant
-    if (paymentMethod === 'CASH' && eventRestaurantId === restaurantId) {
-      console.log('✅✅ [PendingCashPayments] Processing cash payment completion')
-      // Update React Query cache to remove completed payment
-      queryClient.setQueryData(['restaurant', 'pending-cash-payments', restaurantId], (oldData: PendingPaymentWithOrder[] | undefined) => {
-        return oldData?.filter(p => p.id !== data.paymentId) || []
-      })
-    } else {
-      console.log('✅❌ [PendingCashPayments] Ignoring completion - not for this restaurant or not cash payment:', {
-        paymentMethod,
-        eventRestaurantId,
-        expectedRestaurantId: restaurantId
-      })
-    }
-  }, [queryClient, restaurantId])
-
-  const handlePaymentCancelled = useCallback((data: any) => {
-    console.log('🚫💰 [PendingCashPayments] Payment cancelled event:', data)
-    console.log('🚫💰 [PendingCashPayments] Full event object keys:', Object.keys(data || {}))
-
-    // For now, let's update the UI for ANY cancellation from this restaurant
-    // since the paymentMethod might not be included in the event
-    if (data?.restaurantId === restaurantId) {
-      console.log('🚫✅ [PendingCashPayments] Processing payment cancellation for this restaurant')
-
-      // Force refetch instead of updating cache directly
-      queryClient.invalidateQueries({ queryKey: ['restaurant', 'pending-cash-payments', restaurantId] })
-
-      // Also try updating cache directly as backup
-      queryClient.setQueryData(['restaurant', 'pending-cash-payments', restaurantId], (oldData: PendingPaymentWithOrder[] | undefined) => {
-        if (!oldData) {
-          console.log('🚫⚠️ [PendingCashPayments] No cached data to update')
-          return []
-        }
-        const filtered = oldData.filter(p => p.id !== data.paymentId)
-        console.log('🚫📊 [PendingCashPayments] Filtered payments:', {
-          before: oldData.length,
-          after: filtered.length,
-          removedPaymentId: data.paymentId,
-          oldDataIds: oldData.map(p => p.id),
-          foundPayment: oldData.find(p => p.id === data.paymentId)
-        })
-        return filtered
-      })
-    } else {
-      console.log('🚫❌ [PendingCashPayments] Ignoring cancellation - different restaurant:', {
-        eventRestaurantId: data?.restaurantId,
-        expectedRestaurantId: restaurantId
-      })
-    }
-  }, [queryClient, restaurantId])
-
-  // Register WebSocket event listeners with proper component name
-  useWebSocketEvent('payment:created', handlePaymentCreated, [handlePaymentCreated], 'PendingCashPayments-created')
-  useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted], 'PendingCashPayments-completed')
-  useWebSocketEvent('payment:cancelled', handlePaymentCancelled, [handlePaymentCancelled], 'PendingCashPayments-cancelled')
-
-  // Add debugging for all events
-  useWebSocketEvent('payment:status_updated', (data: any) => {
-    console.log('🔄💰 [PendingCashPayments] Payment status updated event:', data)
-  }, [], 'PendingCashPayments-debug-status')
-
-  // Test with a simple handler to see if ANY events come through
-  useWebSocketEvent('payment:cancelled', (data: any) => {
-    console.log('🚨💰 [PendingCashPayments] DIRECT payment:cancelled event received!', {
-      paymentId: data?.paymentId,
-      restaurantId: data?.restaurantId,
-      myRestaurantId: restaurantId,
-      fullData: data
-    })
-  }, [], 'PendingCashPayments-direct-cancel')
+  /**
+   * SENIOR ARCHITECTURE NOTE:
+   * WebSocket listeners removed - centralized in PaymentManagement.tsx
+   * All payment events now handled by usePaymentWebSocketSync hook.
+   * Component relies on React Query cache updates from centralized sync.
+   */
 
   const formatTimeAgo = (createdAt: string): string => {
     return formatDistanceToNow(new Date(createdAt), { addSuffix: true })
