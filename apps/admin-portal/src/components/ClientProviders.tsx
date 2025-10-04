@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { AuthProvider, ToastProvider, ConnectionProvider } from '@tabsy/ui-components';
 import { tabsyClient } from '@tabsy/api-client';
+import { ChunkErrorBoundary } from './ChunkErrorBoundary';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -26,15 +27,17 @@ export function ClientProviders({ children }: ClientProvidersProps): JSX.Element
   const apiClient = tabsyClient;
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider apiClient={apiClient}>
-        <ConnectionProvider apiClient={apiClient}>
-          <ToastProvider>
-            {children}
-          </ToastProvider>
-        </ConnectionProvider>
-        <ReactQueryDevtools initialIsOpen={false} />
-      </AuthProvider>
-    </QueryClientProvider>
+    <ChunkErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider apiClient={apiClient}>
+          <ConnectionProvider apiClient={apiClient}>
+            <ToastProvider>
+              {children}
+            </ToastProvider>
+          </ConnectionProvider>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </AuthProvider>
+      </QueryClientProvider>
+    </ChunkErrorBoundary>
   );
 }
