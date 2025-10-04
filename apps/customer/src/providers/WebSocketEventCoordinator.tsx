@@ -24,149 +24,58 @@
  * Usage: Wrap your app with this provider in providers.tsx
  */
 
-import React, { useCallback, useEffect } from 'react'
+import React, { useCallback, useEffect, useRef } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useWebSocketEvent } from '@tabsy/ui-components'
 import { SessionManager } from '@/lib/session'
 import { queryKeys } from '@/hooks/useQueryConfig'
 
+/**
+ * PERFORMANCE OPTIMIZATION: Debounce utility for query invalidations
+ * Prevents multiple rapid WebSocket events from flooding the network with API calls
+ */
+function useDebounce<T extends (...args: any[]) => void>(
+  callback: T,
+  delay: number
+): T {
+  const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
+
+  return useCallback(
+    ((...args: any[]) => {
+      // Clear previous timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+
+      // Set new timeout
+      timeoutRef.current = setTimeout(() => {
+        callback(...args)
+      }, delay)
+    }) as T,
+    [callback, delay]
+  )
+}
+
 export function WebSocketEventCoordinator({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient()
 
-  // ============================================================================
-  // ORDER EVENTS - Single listeners for all order-related events
-  // ============================================================================
-
-  /**
-   * Handle order status updates (PREPARING → READY → DELIVERED → COMPLETED)
-   * Invalidates: bill query (to update price badge)
-   */
-  const handleOrderStatusUpdate = useCallback((data: any) => {
-    console.log('[WebSocketCoordinator] order:status_updated', {
-      orderId: data.orderId,
-      status: data.status,
-      previousStatus: data.previousStatus
-    })
-
+  // PERFORMANCE: Debounce bill invalidations (1 second delay)
+  // If multiple events arrive within 1 second, only refetch once
+  const invalidateBillQuery = useCallback(() => {
     const session = SessionManager.getDiningSession()
     if (session?.tableSessionId) {
-      // Add delay to ensure backend transaction commits
-      setTimeout(() => {
-        console.log('[WebSocketCoordinator] Invalidating bill query')
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.bill(session.tableSessionId),
-          refetchType: 'active'
-        })
-      }, 500)
+      console.log('[WebSocketCoordinator] Invalidating bill query')
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.bill(session.tableSessionId),
+        refetchType: 'active'
+      })
     }
   }, [queryClient])
 
-  /**
-   * Handle general order updates
-   * Invalidates: bill query (to update price badge)
-   */
-  const handleOrderUpdate = useCallback((data: any) => {
-    console.log('[WebSocketCoordinator] order:updated', {
-      orderId: data.orderId,
-      status: data.status
-    })
+  const debouncedInvalidateBill = useDebounce(invalidateBillQuery, 1000)
 
-    const session = SessionManager.getDiningSession()
-    if (session?.tableSessionId) {
-      // Add delay to ensure backend transaction commits
-      setTimeout(() => {
-        console.log('[WebSocketCoordinator] Invalidating bill query')
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.bill(session.tableSessionId),
-          refetchType: 'active'
-        })
-      }, 500)
-    }
-  }, [queryClient])
-
-  /**
-   * Handle new order creation
-   * Invalidates: bill query (to show new orders)
-   */
-  const handleOrderCreated = useCallback((data: any) => {
-    console.log('[WebSocketCoordinator] order:created', {
-      orderId: data.orderId
-    })
-
-    const session = SessionManager.getDiningSession()
-    if (session?.tableSessionId) {
-      setTimeout(() => {
-        console.log('[WebSocketCoordinator] Invalidating bill query')
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.bill(session.tableSessionId),
-          refetchType: 'active'
-        })
-      }, 500)
-    }
-  }, [queryClient])
-
-  // ============================================================================
-  // PAYMENT EVENTS - Single listeners for all payment-related events
-  // ============================================================================
-
-  /**
-   * Handle payment status updates
-   * Invalidates: bill query (to update remaining balance)
-   */
-  const handlePaymentStatusUpdate = useCallback((data: any) => {
-    console.log('[WebSocketCoordinator] payment:status_updated', {
-      paymentId: data.paymentId,
-      status: data.status
-    })
-
-    const session = SessionManager.getDiningSession()
-    if (session?.tableSessionId) {
-      setTimeout(() => {
-        console.log('[WebSocketCoordinator] Invalidating bill query')
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.bill(session.tableSessionId),
-          refetchType: 'active'
-        })
-      }, 500)
-    }
-  }, [queryClient])
-
-  /**
-   * Handle payment completion
-   * Invalidates: bill query (to update paid status)
-   */
-  const handlePaymentCompleted = useCallback((data: any) => {
-    console.log('[WebSocketCoordinator] payment:completed', {
-      paymentId: data.paymentId,
-      amount: data.amount
-    })
-
-    const session = SessionManager.getDiningSession()
-    if (session?.tableSessionId) {
-      setTimeout(() => {
-        console.log('[WebSocketCoordinator] Invalidating bill query')
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.bill(session.tableSessionId),
-          refetchType: 'active'
-        })
-      }, 500)
-    }
-  }, [queryClient])
-
-  // ============================================================================
-  // TABLE SESSION EVENTS - Single listeners for session-related events
-  // ============================================================================
-
-  /**
-   * Handle table session updates
-   * Invalidates: table session query
-   */
-  const handleTableSessionUpdate = useCallback((data: any) => {
-    console.log('[WebSocketCoordinator] table:session_updated', {
-      tableSessionId: data.tableSessionId,
-      status: data.status
-    })
-
+  // PERFORMANCE: Debounce table session invalidations
+  const invalidateTableSessionQuery = useCallback(() => {
     const session = SessionManager.getDiningSession()
     if (session?.tableSessionId) {
       queryClient.invalidateQueries({
@@ -176,23 +85,117 @@ export function WebSocketEventCoordinator({ children }: { children: React.ReactN
     }
   }, [queryClient])
 
+  const debouncedInvalidateTableSession = useDebounce(invalidateTableSessionQuery, 1000)
+
+  // ============================================================================
+  // ORDER EVENTS - Single listeners for all order-related events
+  // ============================================================================
+
+  /**
+   * Handle order status updates (PREPARING → READY → DELIVERED → COMPLETED)
+   * Invalidates: bill query (to update price badge) - DEBOUNCED
+   */
+  const handleOrderStatusUpdate = useCallback((data: any) => {
+    console.log('[WebSocketCoordinator] order:status_updated', {
+      orderId: data.orderId,
+      status: data.status,
+      previousStatus: data.previousStatus
+    })
+
+    // PERFORMANCE: Use debounced invalidation
+    // Multiple rapid status updates will only trigger ONE refetch
+    debouncedInvalidateBill()
+  }, [debouncedInvalidateBill])
+
+  /**
+   * Handle general order updates
+   * Invalidates: bill query (to update price badge) - DEBOUNCED
+   */
+  const handleOrderUpdate = useCallback((data: any) => {
+    console.log('[WebSocketCoordinator] order:updated', {
+      orderId: data.orderId,
+      status: data.status
+    })
+
+    // PERFORMANCE: Use debounced invalidation
+    debouncedInvalidateBill()
+  }, [debouncedInvalidateBill])
+
+  /**
+   * Handle new order creation
+   * Invalidates: bill query (to show new orders) - DEBOUNCED
+   */
+  const handleOrderCreated = useCallback((data: any) => {
+    console.log('[WebSocketCoordinator] order:created', {
+      orderId: data.orderId
+    })
+
+    // PERFORMANCE: Use debounced invalidation
+    debouncedInvalidateBill()
+  }, [debouncedInvalidateBill])
+
+  // ============================================================================
+  // PAYMENT EVENTS - Single listeners for all payment-related events
+  // ============================================================================
+
+  /**
+   * Handle payment status updates
+   * Invalidates: bill query (to update remaining balance) - DEBOUNCED
+   */
+  const handlePaymentStatusUpdate = useCallback((data: any) => {
+    console.log('[WebSocketCoordinator] payment:status_updated', {
+      paymentId: data.paymentId,
+      status: data.status
+    })
+
+    // PERFORMANCE: Use debounced invalidation
+    debouncedInvalidateBill()
+  }, [debouncedInvalidateBill])
+
+  /**
+   * Handle payment completion
+   * Invalidates: bill query (to update paid status) - DEBOUNCED
+   */
+  const handlePaymentCompleted = useCallback((data: any) => {
+    console.log('[WebSocketCoordinator] payment:completed', {
+      paymentId: data.paymentId,
+      amount: data.amount
+    })
+
+    // PERFORMANCE: Use debounced invalidation
+    debouncedInvalidateBill()
+  }, [debouncedInvalidateBill])
+
+  // ============================================================================
+  // TABLE SESSION EVENTS - Single listeners for session-related events
+  // ============================================================================
+
+  /**
+   * Handle table session updates
+   * Invalidates: table session query - DEBOUNCED
+   */
+  const handleTableSessionUpdate = useCallback((data: any) => {
+    console.log('[WebSocketCoordinator] table:session_updated', {
+      tableSessionId: data.tableSessionId,
+      status: data.status
+    })
+
+    // PERFORMANCE: Use debounced invalidation
+    debouncedInvalidateTableSession()
+  }, [debouncedInvalidateTableSession])
+
   /**
    * Handle split calculation updates
-   * Invalidates: bill query
+   * Invalidates: bill query - DEBOUNCED
    */
   const handleSplitCalculationUpdate = useCallback((data: any) => {
     console.log('[WebSocketCoordinator] split:calculation_updated', {
       tableSessionId: data.tableSessionId
     })
 
-    const session = SessionManager.getDiningSession()
-    if (session?.tableSessionId) {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.bill(session.tableSessionId),
-        refetchType: 'active'
-      })
-    }
-  }, [queryClient])
+    // PERFORMANCE: Use debounced invalidation
+    debouncedInvalidateBill()
+  }, [debouncedInvalidateBill])
 
   // ============================================================================
   // REGISTER EVENT LISTENERS - This is the ONLY place these events are heard

@@ -75,13 +75,15 @@ export const queryConfigs = {
     refetchOnMount: false,
   },
 
-  // Real-time data (orders, bill) - short cache, allow refetch
+  // PERFORMANCE OPTIMIZED: Real-time data (orders, bill)
+  // Trust WebSocket invalidations instead of aggressive polling
   realtime: {
     ...defaultQueryOptions,
-    staleTime: 1000 * 30, // 30 seconds
+    staleTime: 1000 * 60 * 2, // 2 minutes (increased from 30s - WebSocket updates trigger invalidations)
     gcTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    refetchOnWindowFocus: true, // Still refetch on window focus (user might have stale data)
+    refetchOnMount: false, // OPTIMIZED: Don't refetch if data is fresh (< 2 min old)
+    refetchOnReconnect: true, // Refetch when network reconnects (recover from offline)
   },
 
   // Session data - cache but allow updates

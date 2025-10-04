@@ -2,8 +2,10 @@
 
 import { useEffect, use, useState, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { TabsyLoader } from '@/components/ui/TabsyLoader'
 import { useApi } from '@/components/providers/api-provider'
+import { queryKeys, queryConfigs } from '@/hooks/useQueryConfig'
 import { toast } from 'sonner'
 
 interface QRCodePageProps {
@@ -18,6 +20,7 @@ export default function QRCodePage({ params }: QRCodePageProps) {
   const { qrCode } = use(params)
   const [isProcessing, setIsProcessing] = useState(true)
   const { api } = useApi()
+  const queryClient = useQueryClient()
 
   // Track if QR code has been processed to prevent React Strict Mode duplicate execution
   const hasProcessed = useRef(false)
@@ -105,11 +108,27 @@ export default function QRCodePage({ params }: QRCodePageProps) {
           qrCode
         })
 
+        // PERFORMANCE OPTIMIZATION: Prefetch menu data immediately
+        // This makes the next page load feel instant!
+        console.log('[QR Page] 🚀 Prefetching menu data for instant load...')
+        try {
+          await queryClient.prefetchQuery({
+            queryKey: queryKeys.menu(restaurantId),
+            queryFn: async () => {
+              const response = await api.restaurants.getMenu(restaurantId)
+              if (!response.success) throw new Error(response.error)
+              return response.data
+            },
+            ...queryConfigs.semiStatic // Menu is semi-static, cache for 10 minutes
+          })
+          console.log('[QR Page] ✅ Menu prefetched successfully')
+        } catch (prefetchError) {
+          // Non-critical - if prefetch fails, the page will just fetch normally
+          console.warn('[QR Page] ⚠️  Menu prefetch failed (non-critical):', prefetchError)
+        }
+
         // NOTE: Session creation is handled by TableSessionManager
         // We just validate QR and redirect - this prevents duplicate session creation
-
-        // Add a small delay to ensure all storage operations complete
-        await new Promise(resolve => setTimeout(resolve, 100))
 
         // Redirect to the actual restaurant/table route with QR context
         router.replace(`/r/${restaurant.id}/t/${table.id}?qr=${qrCode}`)
