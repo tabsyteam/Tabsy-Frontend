@@ -27,6 +27,16 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const url = request.nextUrl.clone()
 
+  // CRITICAL FIX: QR routes with explicit params should ALWAYS be allowed
+  // The QR page will handle clearing/updating any mismatched session storage
+  // Pattern: /table/[qrCode] with ?r= and ?t= params
+  const isQRRoute = pathname.startsWith('/table/') && pathname !== '/table'
+  const hasQRParams = request.nextUrl.searchParams.has('r') || request.nextUrl.searchParams.has('restaurant')
+
+  if (isQRRoute && hasQRParams) {
+    return NextResponse.next()
+  }
+
   // Check if route needs protection
   const isProtectedRoute = PROTECTED_ROUTES.some(route =>
     pathname === route || pathname.startsWith(`${route}/`)
@@ -53,20 +63,6 @@ export function middleware(request: NextRequest) {
 
   // Check if user likely has a valid session
   const hasSession = hasValidUrlParams || sessionCookie
-
-  // DEBUG: Log for QR routes
-  if (pathname.startsWith('/table/') && pathname !== '/table') {
-    console.log('[Middleware] QR Route detected:', {
-      pathname,
-      restaurantId,
-      tableId,
-      hasValidUrlParams,
-      hasSession,
-      isProtectedRoute,
-      isConditionalRoute,
-      isPublicRoute
-    })
-  }
 
   // Handle strictly protected routes (redirect to home)
   if (isProtectedRoute && !hasSession) {

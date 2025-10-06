@@ -16,8 +16,6 @@ interface QRCodePageProps {
 }
 
 export default function QRCodePage({ params }: QRCodePageProps) {
-  console.log('[QR Page] 🚀 QRCodePage COMPONENT RENDERING - THIS MEANS PAGE LOADED')
-
   const router = useRouter()
   const searchParams = useSearchParams()
   const { qrCode } = use(params)
@@ -27,95 +25,80 @@ export default function QRCodePage({ params }: QRCodePageProps) {
 
   // Track if QR code has been processed to prevent React Strict Mode duplicate execution
   const hasProcessed = useRef(false)
-  const mountCount = useRef(0)
-
-  console.log('[QR Page] 📍 Current URL params:', {
-    qrCode,
-    searchParamsKeys: Array.from(searchParams.keys()),
-    r: searchParams.get('r'),
-    t: searchParams.get('t'),
-    restaurant: searchParams.get('restaurant'),
-    table: searchParams.get('table')
-  })
-
-  // Track component lifecycle
-  useEffect(() => {
-    mountCount.current += 1
-    console.log(`[QR Page] 🎬 Component mounted/re-rendered (mount #${mountCount.current})`, {
-      qrCode,
-      hasProcessedFlag: hasProcessed.current
-    })
-
-    return () => {
-      console.log(`[QR Page] 🔚 Component will unmount (was mount #${mountCount.current})`)
-    }
-  }, [qrCode])
 
   useEffect(() => {
     const processQRCode = async () => {
       // Prevent duplicate execution in React Strict Mode or on re-renders
       // CRITICAL: Check and set flag atomically BEFORE any async operations
       if (hasProcessed.current) {
-        console.log('[QR Page] ⚠️ DUPLICATE CALL BLOCKED - Already processed, skipping duplicate execution')
         return
       }
 
       // Mark as processed IMMEDIATELY before any other operations (even setState)
       // This prevents race condition where multiple calls pass the check before flag is set
       hasProcessed.current = true
-      console.log('[QR Page] ✅ PROCESSING QR CODE - First and only execution', { qrCode, timestamp: new Date().toISOString() })
 
       try {
         setIsProcessing(true)
 
+        // CRITICAL FIX: Clear any existing session storage that might conflict
+        // This handles the case where user has session from different table
+        const existingSession = sessionStorage.getItem('tabsy-session')
+        if (existingSession) {
+          try {
+            const parsed = JSON.parse(existingSession)
+
+            // Check if existing session is for a different restaurant/table
+            const newRestaurantId = searchParams.get('r') || searchParams.get('restaurant')
+            const newTableId = searchParams.get('t') || searchParams.get('table')
+
+            if (newRestaurantId && newTableId &&
+                (parsed.restaurantId !== newRestaurantId || parsed.tableId !== newTableId)) {
+              // Clear all session-related storage
+              sessionStorage.removeItem('tabsy-session')
+              sessionStorage.removeItem('tabsy-guest-session-id')
+              sessionStorage.removeItem('tabsy-dining-session')
+              sessionStorage.removeItem('tabsy-table-session-id')
+              sessionStorage.removeItem('tabsy-qr-access')
+
+              // Clear any table-specific keys
+              Object.keys(sessionStorage).forEach(key => {
+                if (key.startsWith('guestSession-') || key.startsWith('tabsy-global-session-state-')) {
+                  sessionStorage.removeItem(key)
+                }
+              })
+            }
+          } catch (e) {
+            sessionStorage.clear()
+          }
+        }
+
         // Get table info via QR access API (public endpoint)
-        console.log('[QR Page] 📡 Fetching table info for QR:', qrCode)
         const tableInfoResponse = await api.qr.getTableInfo(qrCode)
 
-        console.log('[QR Page] 📦 API Response:', {
-          success: tableInfoResponse.success,
-          hasData: !!tableInfoResponse.data,
-          data: tableInfoResponse.data,
-          error: tableInfoResponse.error
-        })
-
         if (!tableInfoResponse.success) {
-          console.error('[QR Page] ❌ API returned success=false:', tableInfoResponse.error)
           throw new Error(tableInfoResponse.error || 'API request failed')
         }
 
         if (!tableInfoResponse.data) {
-          console.error('[QR Page] ❌ No data in response despite success=true')
           throw new Error('No table data received from API')
         }
 
         // Backend returns table with nested restaurant - handle both formats
         const tableData = tableInfoResponse.data
-        console.log('[QR Page] 🔍 Parsing table data:', tableData)
-
         let table, restaurant
 
         if (tableData.table && tableData.restaurant) {
           // Expected format: {table, restaurant}
           table = tableData.table
           restaurant = tableData.restaurant
-          console.log('[QR Page] ✅ Format 1: {table, restaurant}')
         } else if (tableData.restaurant) {
           // Actual backend format: table with nested restaurant
           table = tableData
           restaurant = tableData.restaurant
-          console.log('[QR Page] ✅ Format 2: table with nested restaurant')
         } else {
-          console.error('[QR Page] ❌ Invalid table data format:', tableData)
           throw new Error('Invalid table data format received')
         }
-
-        console.log('[QR Page] 📋 Extracted data:', {
-          restaurantId: restaurant?.id,
-          restaurantName: restaurant?.name,
-          tableId: table?.id,
-          tableNumber: table?.tableNumber
-        })
 
 
         // ARCHITECTURE: React Query is source of truth, not sessionStorage
@@ -150,15 +133,8 @@ export default function QRCodePage({ params }: QRCodePageProps) {
         const restaurantId = searchParams.get('r') || searchParams.get('restaurant') || restaurant.id
         const tableId = searchParams.get('t') || searchParams.get('table') || table.id
 
-        console.log('[QR Page] ✅ QR validated successfully, redirecting to table view', {
-          restaurantId,
-          tableId,
-          qrCode
-        })
-
         // PERFORMANCE OPTIMIZATION: Prefetch menu data immediately
         // This makes the next page load feel instant!
-        console.log('[QR Page] 🚀 Prefetching menu data for instant load...')
         try {
           await queryClient.prefetchQuery({
             queryKey: queryKeys.menu(restaurantId),
@@ -169,10 +145,8 @@ export default function QRCodePage({ params }: QRCodePageProps) {
             },
             ...queryConfigs.semiStatic // Menu is semi-static, cache for 10 minutes
           })
-          console.log('[QR Page] ✅ Menu prefetched successfully')
         } catch (prefetchError) {
           // Non-critical - if prefetch fails, the page will just fetch normally
-          console.warn('[QR Page] ⚠️  Menu prefetch failed (non-critical):', prefetchError)
         }
 
         // NOTE: Session creation is handled by TableSessionManager
@@ -202,7 +176,6 @@ export default function QRCodePage({ params }: QRCodePageProps) {
             onClick: () => router.push('/')
           }
         })
-        console.error('[QRCodePage] Error processing QR code:', error)
         // Redirect to home with error after showing toast
         setTimeout(() => {
           router.replace('/?error=invalid-qr-code')

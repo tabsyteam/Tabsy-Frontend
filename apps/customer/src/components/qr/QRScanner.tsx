@@ -270,9 +270,15 @@ export function QRScanner() {
 
       setIsScanning(true)
 
-      // Wait a moment for DOM to update
+      // Wait a moment for DOM to update and ensure container exists
       setTimeout(async () => {
         try {
+          // Verify container exists in DOM
+          const container = document.getElementById('qr-scanner-container')
+          if (!container) {
+            throw new Error('Scanner container not found in DOM')
+          }
+
           const newScanner = new Html5QrcodeScanner(
             'qr-scanner-container',
             config,
@@ -292,7 +298,7 @@ export function QRScanner() {
             }
           })
         }
-      }, 100)
+      }, 150)
     } catch (error: any) {
       console.error('Failed to start scanner:', error)
 
@@ -407,10 +413,14 @@ export function QRScanner() {
 
       {/* Scanner Area */}
       <div className="relative bg-surface border border-default rounded-2xl md:rounded-3xl max-w-xs md:max-w-sm mx-auto overflow-hidden shadow-xl">
-        {/* Scanner container - always present */}
-        <div ref={scannerRef} id="qr-scanner-container" className={`${isScanning ? '[&>div]:!border-0 [&>div]:!rounded-3xl' : 'hidden'}`} />
+        {/* Scanner container - always present in DOM */}
+        <div
+          ref={scannerRef}
+          id="qr-scanner-container"
+          className={isScanning ? 'block [&>div]:!border-0 [&>div]:!rounded-3xl' : 'hidden'}
+        />
 
-        {isScanning ? (
+        {isScanning && (
           <div className="relative">
             <Button
               variant="ghost"
@@ -429,7 +439,9 @@ export function QRScanner() {
               <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-primary rounded-br-lg"></div>
             </div>
           </div>
-        ) : (
+        )}
+
+        {!isScanning && (
           <div className="aspect-square flex items-center justify-center bg-gradient-to-br from-surface-secondary to-surface-tertiary">
             <div className="text-center space-y-6 p-8">
               <div className="relative">
