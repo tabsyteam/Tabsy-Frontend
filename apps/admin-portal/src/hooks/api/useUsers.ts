@@ -377,3 +377,112 @@ export function useUserStats() {
     enabled: !!session?.token && !authLoading && isTokenSynced
   });
 }
+
+export function useUserOrders(userId: string) {
+  const { session, isAuthenticated, isLoading: authLoading } = useAuth();
+
+  // Sync authentication token with global API client
+  if (session?.token && tabsyClient.getAuthToken() !== session.token) {
+    tabsyClient.setAuthToken(session.token);
+  }
+
+  const isTokenSynced = Boolean(session?.token && tabsyClient.getAuthToken() === session.token);
+
+  return useQuery({
+    queryKey: ['admin', 'user', userId, 'orders'],
+    queryFn: async () => {
+      const response = await tabsyClient.order.list({ customerId: userId });
+      return response.data || [];
+    },
+    enabled: !!session?.token && !authLoading && isTokenSynced && !!userId
+  });
+}
+
+export function useUserRestaurants(userId: string) {
+  const { session, isAuthenticated, isLoading: authLoading } = useAuth();
+
+  // Sync authentication token with global API client
+  if (session?.token && tabsyClient.getAuthToken() !== session.token) {
+    tabsyClient.setAuthToken(session.token);
+  }
+
+  const isTokenSynced = Boolean(session?.token && tabsyClient.getAuthToken() === session.token);
+
+  return useQuery({
+    queryKey: ['admin', 'user', userId, 'restaurants'],
+    queryFn: async () => {
+      // For restaurant owners/staff, fetch their associated restaurants
+      const userResponse = await tabsyClient.user.getById(userId);
+      const user = userResponse.data;
+
+      if (!user) return [];
+
+      // If user has restaurant relationships, fetch those restaurants
+      const restaurantIds: string[] = [];
+      if (user.restaurantOwner?.restaurantId) {
+        restaurantIds.push(user.restaurantOwner.restaurantId);
+      }
+      if (user.restaurantStaff?.restaurantId) {
+        restaurantIds.push(user.restaurantStaff.restaurantId);
+      }
+
+      if (restaurantIds.length === 0) return [];
+
+      // Fetch restaurant details
+      const restaurantPromises = restaurantIds.map(id =>
+        tabsyClient.restaurant.getById(id).catch(() => null)
+      );
+      const restaurants = await Promise.all(restaurantPromises);
+
+      return restaurants.filter(r => r?.data).map(r => r!.data);
+    },
+    enabled: !!session?.token && !authLoading && isTokenSynced && !!userId
+  });
+}
+
+export function useUserMetrics(userId: string) {
+  const { session, isAuthenticated, isLoading: authLoading } = useAuth();
+
+  // Sync authentication token with global API client
+  if (session?.token && tabsyClient.getAuthToken() !== session.token) {
+    tabsyClient.setAuthToken(session.token);
+  }
+
+  const isTokenSynced = Boolean(session?.token && tabsyClient.getAuthToken() === session.token);
+
+  return useQuery({
+    queryKey: ['admin', 'user', userId, 'metrics'],
+    queryFn: async () => {
+      // Fetch orders to calculate metrics
+      const ordersResponse = await tabsyClient.order.list({ customerId: userId });
+      const orders = ordersResponse.data || [];
+
+      const totalOrders = orders.length;
+      const totalSpent = orders.reduce((sum: number, order: any) =>
+        sum + Number(order.total || 0), 0
+      );
+
+      const completedOrders = orders.filter((o: any) => o.status === 'COMPLETED');
+      const avgOrderValue = completedOrders.length > 0
+        ? totalSpent / completedOrders.length
+        : 0;
+
+      // Get date of first and last order
+      const sortedOrders = [...orders].sort((a: any, b: any) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      const firstOrder = sortedOrders[0];
+      const lastOrder = sortedOrders[sortedOrders.length - 1];
+
+      return {
+        totalOrders,
+        totalSpent,
+        avgOrderValue,
+        completedOrders: completedOrders.length,
+        firstOrderDate: firstOrder?.createdAt,
+        lastOrderDate: lastOrder?.createdAt,
+      };
+    },
+    enabled: !!session?.token && !authLoading && isTokenSynced && !!userId
+  });
+}
