@@ -1,0 +1,10 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="128" fill="#1E3A8A"/>
+
+  <!-- Simplified T symbol -->
+  <path d="M160 160C160 146.745 170.745 136 184 136H328C341.255 136 352 146.745 352 160V200C352 213.255 341.255 224 328 224H288V400C288 413.255 277.255 424 264 424H248C234.745 424 224 413.255 224 400V224H184C170.745 224 160 213.255 160 200V160Z" fill="#F8F0E3"/>
+
+  <!-- Orange accent dot -->
+  <circle cx="376" cy="376" r="48" fill="#F97316"/>
+</svg>

@@ -10,8 +10,40 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Tabsy Restaurant Dashboard",
+  title: {
+    default: "Tabsy Restaurant Dashboard",
+    template: "%s | Tabsy Restaurant"
+  },
   description: "Manage your restaurant operations, orders, and analytics",
+  icons: {
+    icon: [
+      {
+        url: '/icon.svg',
+        type: 'image/svg+xml',
+      }
+    ],
+    apple: [
+      {
+        url: '/apple-icon.svg',
+        type: 'image/svg+xml',
+      }
+    ],
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    title: 'Tabsy Restaurant Dashboard',
+    description: 'Manage your restaurant operations, orders, and analytics',
+    siteName: 'Tabsy Restaurant',
+    images: [
+      {
+        url: '/tabsy_logo.svg',
+        width: 1215,
+        height: 333,
+        alt: 'Tabsy Logo',
+      }
+    ],
+  },
 };
 
 // Loading fallback component for Suspense

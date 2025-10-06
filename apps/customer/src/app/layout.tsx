@@ -24,6 +24,20 @@ export const metadata: Metadata = {
   creator: 'Tabsy',
   publisher: 'Tabsy',
   manifest: '/manifest.json',
+  icons: {
+    icon: [
+      {
+        url: '/icon.svg',
+        type: 'image/svg+xml',
+      }
+    ],
+    apple: [
+      {
+        url: '/apple-icon.svg',
+        type: 'image/svg+xml',
+      }
+    ],
+  },
   openGraph: {
     type: 'website',
     locale: 'en_US',
@@ -31,6 +45,14 @@ export const metadata: Metadata = {
     title: 'Tabsy Customer - QR Code Dining',
     description: 'Order food seamlessly with QR code dining experience',
     siteName: 'Tabsy Customer',
+    images: [
+      {
+        url: '/tabsy_logo.svg',
+        width: 1215,
+        height: 333,
+        alt: 'Tabsy Logo',
+      }
+    ],
   },
   appleWebApp: {
     capable: true,

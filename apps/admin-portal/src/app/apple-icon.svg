@@ -1,0 +1,10 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with rounded corners for iOS -->
+  <rect width="180" height="180" rx="40" fill="#1E3A8A"/>
+
+  <!-- Simplified T symbol -->
+  <path d="M56 56C56 51.5817 59.5817 48 64 48H116C120.418 48 124 51.5817 124 56V70C124 74.4183 120.418 78 116 78H102V132C102 136.418 98.4183 140 94 140H86C81.5817 140 78 136.418 78 132V78H64C59.5817 78 56 74.4183 56 70V56Z" fill="#F8F0E3"/>
+
+  <!-- Orange accent dot -->
+  <circle cx="132" cy="132" r="17" fill="#F97316"/>
+</svg>
