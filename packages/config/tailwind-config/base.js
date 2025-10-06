@@ -24,7 +24,9 @@ module.exports = {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
+        // IMPORTANT: Don't override semantic background here
+        // Let semantic.js handle background color
+        // background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
