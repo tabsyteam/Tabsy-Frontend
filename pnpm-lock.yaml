@@ -229,6 +229,9 @@ importers:
       '@tabsy/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
+      '@tabsy/react-query-hooks':
+        specifier: workspace:*
+        version: link:../../packages/react-query-hooks
       '@tabsy/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
