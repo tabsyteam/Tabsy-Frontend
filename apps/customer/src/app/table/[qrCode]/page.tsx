@@ -16,6 +16,8 @@ interface QRCodePageProps {
 }
 
 export default function QRCodePage({ params }: QRCodePageProps) {
+  console.log('[QR Page] 🚀 QRCodePage COMPONENT RENDERING - THIS MEANS PAGE LOADED')
+
   const router = useRouter()
   const searchParams = useSearchParams()
   const { qrCode } = use(params)
@@ -26,6 +28,15 @@ export default function QRCodePage({ params }: QRCodePageProps) {
   // Track if QR code has been processed to prevent React Strict Mode duplicate execution
   const hasProcessed = useRef(false)
   const mountCount = useRef(0)
+
+  console.log('[QR Page] 📍 Current URL params:', {
+    qrCode,
+    searchParamsKeys: Array.from(searchParams.keys()),
+    r: searchParams.get('r'),
+    t: searchParams.get('t'),
+    restaurant: searchParams.get('restaurant'),
+    table: searchParams.get('table')
+  })
 
   // Track component lifecycle
   useEffect(() => {
