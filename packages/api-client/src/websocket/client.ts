@@ -12,6 +12,8 @@ export interface TabsyWebSocketConfig {
     tableId?: string;
     sessionId?: string;
   };
+  // Allow skipping URL validation for singleton initialization (build-time safety)
+  skipUrlValidation?: boolean;
 }
 
 export interface WebSocketEventHandlers {
@@ -24,16 +26,18 @@ export interface WebSocketEventHandlers {
 
 export class TabsyWebSocketClient {
   private socket: Socket | null = null;
-  private config: Required<TabsyWebSocketConfig & { auth: NonNullable<TabsyWebSocketConfig['auth']> }>;
+  private config: Required<Omit<TabsyWebSocketConfig, 'skipUrlValidation'> & { auth: NonNullable<TabsyWebSocketConfig['auth']> }>;
   private eventHandlers: WebSocketEventHandlers = {};
 
   constructor(config: TabsyWebSocketConfig = {}) {
-    if (!config.url) {
+    // Only validate URL if not skipping validation (for build-time safety)
+    // and if autoConnect is true (immediate connection attempt)
+    if (!config.skipUrlValidation && !config.url && config.autoConnect !== false) {
       throw new Error('WebSocket URL is required. Please provide NEXT_PUBLIC_WS_BASE_URL in your environment variables.');
     }
 
     this.config = {
-      url: config.url,
+      url: config.url || '',
       autoConnect: config.autoConnect ?? true,
       reconnectAttempts: config.reconnectAttempts ?? 5,
       reconnectDelay: config.reconnectDelay ?? 1000,
@@ -46,7 +50,7 @@ export class TabsyWebSocketClient {
       },
     };
 
-    if (this.config.autoConnect) {
+    if (this.config.autoConnect && this.config.url) {
       this.connect();
     }
   }
@@ -60,8 +64,13 @@ export class TabsyWebSocketClient {
       return;
     }
 
+    // Validate URL before connecting
+    if (!this.config.url) {
+      throw new Error('WebSocket URL is required. Please provide NEXT_PUBLIC_WS_BASE_URL in your environment variables or set URL via setUrl() before connecting.');
+    }
+
     // Determine the namespace URL
-    const namespaceUrl = this.config.auth.namespace === 'restaurant' 
+    const namespaceUrl = this.config.auth.namespace === 'restaurant'
       ? `${this.config.url}/restaurant`
       : `${this.config.url}/customer`;
 
@@ -131,6 +140,14 @@ export class TabsyWebSocketClient {
     sessionId?: string;
   }): void {
     this.config.auth = { ...this.config.auth, ...auth };
+  }
+
+  /**
+   * Set or update the WebSocket URL
+   * Useful for runtime configuration or when URL is not available at construction time
+   */
+  setUrl(url: string): void {
+    this.config.url = url;
   }
 
   /**
@@ -326,6 +343,9 @@ export class TabsyWebSocketClient {
 }
 
 // Default WebSocket client instance - don't auto-connect until namespace is set
+// Uses skipUrlValidation for safe module-level initialization (build-time safety)
+// URL should be set via setUrl() before calling connect()
 export const websocketClient = new TabsyWebSocketClient({
   autoConnect: false,  // Don't auto-connect until the app determines which namespace to use
+  skipUrlValidation: true,  // Allow instantiation without URL for build-time safety
 });
