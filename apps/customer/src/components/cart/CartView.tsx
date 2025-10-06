@@ -77,14 +77,10 @@ export function CartView() {
   const [editingCartItem, setEditingCartItem] = useState<any>(null)
   const [showEditModal, setShowEditModal] = useState(false)
 
-  // CRITICAL: Only use currency if we have actual restaurant data
-  // If loading, the loading spinner will show (see line 214)
-  const currency = restaurantContext?.restaurant?.currency as CurrencyCode | undefined
-  const formatPrice = (price: number) => {
-    // If no currency yet, use USD as fallback to prevent empty prices
-    if (!currency) return formatPriceUtil(price, 'USD')
-    return formatPriceUtil(price, currency)
-  }
+  // CRITICAL: Get currency from RestaurantContext (directly available)
+  // RestaurantContext provides currency with sessionStorage fallback
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
 
   // Get restaurant and table ID from URL or session
   const urlRestaurantId = searchParams.get('restaurant')
@@ -229,10 +225,9 @@ export function CartView() {
     }
   }
 
-  // CRITICAL: Wait for restaurant data before showing prices
-  // This prevents showing wrong currency or empty prices
-  // Add timeout fallback for production issues
-  if ((loading || isLoading || (restaurantContext?.isLoading && !loadingTimeout)) && !loadingTimeout) {
+  // Show loading only for cart data, not restaurant data
+  // RestaurantContext handles currency fallback from sessionStorage
+  if (loading || isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-background">
         <LoadingSpinner size="xl" />
