@@ -110,6 +110,24 @@ This creates all required database tables. Without this step, the API will fail.
 - ✅ 3-5x faster builds than other platforms
 - ✅ 100% FREE for demo/testing
 
+### 🔧 Important Configuration Notes
+
+For Turborepo monorepos with shared workspace packages, you **must** use this specific configuration:
+
+```
+Framework Preset: Next.js
+Root Directory: apps/[app-name]
+Build Command: cd ../.. && turbo build --filter=@tabsy/[app-name]
+Output Directory: .next
+Install Command: cd ../.. && pnpm install
+```
+
+**Why these settings:**
+- **Root Directory** points to the app folder so Vercel detects Next.js in package.json
+- **Install Command** runs from monorepo root to install all workspace dependencies
+- **Build Command** uses Turbo to build the app + all its shared package dependencies
+- All three command overrides must be enabled
+
 ---
 
 ### 4A. Customer App (4 min)
@@ -121,9 +139,9 @@ This creates all required database tables. Without this step, the API will fail.
    ```
    Framework Preset: Next.js
    Root Directory: apps/customer
-   Build Command: (leave empty - auto-detected)
-   Output Directory: .next
-   Install Command: pnpm install
+   Build Command: cd ../.. && turbo build --filter=@tabsy/customer (enable Override)
+   Output Directory: .next (enable Override)
+   Install Command: cd ../.. && pnpm install (enable Override)
    ```
 
 5. Click **"Environment Variables"** → Add:
@@ -146,8 +164,11 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 2. Import **`Tabsy-Frontend`** again
 3. Configure:
    ```
+   Framework Preset: Next.js
    Root Directory: apps/restaurant-dashboard
-   (rest same as customer app)
+   Build Command: cd ../.. && turbo build --filter=@tabsy/restaurant-dashboard (enable Override)
+   Output Directory: .next (enable Override)
+   Install Command: cd ../.. && pnpm install (enable Override)
    ```
 
 4. Environment Variables:
@@ -170,7 +191,11 @@ NEXT_PUBLIC_RESTAURANT_APP_URL=https://tabsy-restaurant.vercel.app
 2. Import **`Tabsy-Frontend`** again
 3. Configure:
    ```
+   Framework Preset: Next.js
    Root Directory: apps/admin-portal
+   Build Command: cd ../.. && turbo build --filter=@tabsy/admin-portal (enable Override)
+   Output Directory: .next (enable Override)
+   Install Command: cd ../.. && pnpm install (enable Override)
    ```
 
 4. Environment Variables:
