@@ -414,7 +414,7 @@ export function DashboardClient(): JSX.Element {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50">
+    <div className="min-h-screen bg-background">
       {/* Modern Responsive Header */}
       <Header
         user={user}

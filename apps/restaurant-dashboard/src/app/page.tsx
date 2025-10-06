@@ -20,7 +20,7 @@ export default function HomePage(): JSX.Element {
 
   // Show loading while determining authentication state
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 flex items-center justify-center">
+    <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="text-center">
         <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-primary border-t-transparent rounded-full"></div>
         <p className="text-foreground/70">Loading...</p>

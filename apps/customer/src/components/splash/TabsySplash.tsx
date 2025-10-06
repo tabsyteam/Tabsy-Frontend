@@ -61,7 +61,7 @@ export function TabsySplash({ restaurant, table }: TabsySplashProps) {
   }, [])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="text-center space-y-8 max-w-md w-full">
         {/* Tabsy Logo Animation */}
         <motion.div

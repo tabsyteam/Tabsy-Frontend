@@ -23,7 +23,7 @@ export default async function TablePage({ params }: TablePageProps): Promise<JSX
   const { restaurantId, tableId } = await params
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/5">
+    <div className="min-h-screen bg-background">
       <Suspense fallback={<LoadingSpinner />}>
         <TableSessionInitializer
           restaurantId={restaurantId}

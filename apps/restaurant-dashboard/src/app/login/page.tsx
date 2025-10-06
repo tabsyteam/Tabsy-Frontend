@@ -79,7 +79,7 @@ function RestaurantLoginContent() {
   // Show loading while checking authentication (with timeout fallback)
   if ((isLoading || isVerifying) && !loadingTimeout) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-primary border-t-transparent rounded-full"></div>
           <p className="text-muted-foreground">
@@ -99,7 +99,7 @@ function RestaurantLoginContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 relative overflow-hidden">
+    <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
       <div className="absolute top-0 left-0 w-full h-full">
@@ -205,7 +205,7 @@ function RestaurantLoginContent() {
 export default function RestaurantLoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin h-8 w-8 mx-auto mb-4 border-2 border-primary border-t-transparent rounded-full"></div>
           <p className="text-muted-foreground">Loading...</p>
