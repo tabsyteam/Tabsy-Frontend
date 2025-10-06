@@ -33,13 +33,15 @@ Example: postgresql://user:pass@ep-xxx.aws.neon.tech/neondb?sslmode=require&pgbo
 1. Go to **https://console.upstash.com**
 2. Sign up with GitHub
 3. Create database: `tabsy-redis` (Regional, same region as Neon)
-4. Go to **REST API** tab
-5. Copy **UPSTASH_REDIS_REST_URL**
+4. Click **"Connect"** → **"Redis Client"** tab (NOT REST API!)
+5. Copy the **Native Redis URL** (starts with `rediss://`)
 6. Save it
 
 ```
-Example: https://xxx.upstash.io
+Example: rediss://default:AbCdEf...@abc-xyz.upstash.io:6379
 ```
+
+**Important**: Use the Native Redis URL (rediss://), NOT the REST API URL. The backend uses Socket.IO Redis adapter which requires native TCP connections for pub/sub support.
 
 ---
 
