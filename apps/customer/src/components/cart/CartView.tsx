@@ -66,6 +66,7 @@ export function CartView() {
   const searchParams = useSearchParams()
   const { cart, cartCount, cartTotal, updateQuantity, updateCartItem, removeFromCart, clearCart, isLoading, getCartItem } = useCart()
   const [loading, setLoading] = useState(true)
+  const [loadingTimeout, setLoadingTimeout] = useState(false)
   const [specialInstructions, setSpecialInstructions] = useState('')
 
   // ARCHITECTURE: Get currency from RestaurantContext (powered by React Query)
@@ -80,8 +81,8 @@ export function CartView() {
   // If loading, the loading spinner will show (see line 214)
   const currency = restaurantContext?.restaurant?.currency as CurrencyCode | undefined
   const formatPrice = (price: number) => {
-    // If no currency yet, return empty string (won't be shown during loading anyway)
-    if (!currency) return ''
+    // If no currency yet, use USD as fallback to prevent empty prices
+    if (!currency) return formatPriceUtil(price, 'USD')
     return formatPriceUtil(price, currency)
   }
 
@@ -103,6 +104,18 @@ export function CartView() {
     // RestaurantContext (powered by React Query) is the single source of truth
     setLoading(false)
   }, [])
+
+  // Add timeout for restaurant context loading (production fallback)
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (restaurantContext?.isLoading && !restaurantContext?.restaurant) {
+        console.warn('[CartView] Restaurant data loading timed out, using fallback')
+        setLoadingTimeout(true)
+      }
+    }, 10000) // 10 second timeout
+
+    return () => clearTimeout(timeout)
+  }, [restaurantContext?.isLoading, restaurantContext?.restaurant])
 
 
   const handleUpdateQuantity = (cartItemId: string, newQuantity: number) => {
@@ -218,9 +231,10 @@ export function CartView() {
 
   // CRITICAL: Wait for restaurant data before showing prices
   // This prevents showing wrong currency or empty prices
-  if (loading || isLoading || restaurantContext?.isLoading || !restaurantContext?.restaurant) {
+  // Add timeout fallback for production issues
+  if ((loading || isLoading || (restaurantContext?.isLoading && !loadingTimeout)) && !loadingTimeout) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex justify-center items-center min-h-screen bg-background">
         <LoadingSpinner size="xl" />
       </div>
     )
