@@ -27,9 +27,7 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { User as UserType, UserRole, Order, Restaurant } from '@tabsy/shared-types';
-import { useUserActivity } from '@/hooks/api';
-// TODO: Implement these hooks when backend endpoints are ready
-// import { useUserOrders, useUserRestaurants, useUserMetrics } from '@/hooks/api';
+import { useUserOrders, useUserRestaurants, useUserMetrics, useUserActivity } from '@/hooks/api';
 import { format, formatDistanceToNow } from 'date-fns';
 import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency';
 
@@ -46,13 +44,9 @@ export default function UserDetailsModal({
 }: UserDetailsModalProps): JSX.Element {
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'orders' | 'security'>('overview');
 
-  // TODO: Implement these hooks when backend endpoints are ready
-  // const { data: orders } = useUserOrders(user.id);
-  // const { data: restaurants } = useUserRestaurants(user.id);
-  // const { data: metrics } = useUserMetrics(user.id);
-  const orders = undefined;
-  const restaurants = undefined;
-  const metrics = undefined;
+  const { data: orders } = useUserOrders(user.id);
+  const { data: restaurants } = useUserRestaurants(user.id);
+  const { data: metrics } = useUserMetrics(user.id);
   const { data: activity } = useUserActivity(user.id);
 
   const tabs = [
