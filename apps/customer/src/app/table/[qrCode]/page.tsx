@@ -61,25 +61,50 @@ export default function QRCodePage({ params }: QRCodePageProps) {
         console.log('[QR Page] 📡 Fetching table info for QR:', qrCode)
         const tableInfoResponse = await api.qr.getTableInfo(qrCode)
 
-        if (!tableInfoResponse.success || !tableInfoResponse.data) {
-          throw new Error(tableInfoResponse.error || 'Invalid QR code')
+        console.log('[QR Page] 📦 API Response:', {
+          success: tableInfoResponse.success,
+          hasData: !!tableInfoResponse.data,
+          data: tableInfoResponse.data,
+          error: tableInfoResponse.error
+        })
+
+        if (!tableInfoResponse.success) {
+          console.error('[QR Page] ❌ API returned success=false:', tableInfoResponse.error)
+          throw new Error(tableInfoResponse.error || 'API request failed')
+        }
+
+        if (!tableInfoResponse.data) {
+          console.error('[QR Page] ❌ No data in response despite success=true')
+          throw new Error('No table data received from API')
         }
 
         // Backend returns table with nested restaurant - handle both formats
         const tableData = tableInfoResponse.data
+        console.log('[QR Page] 🔍 Parsing table data:', tableData)
+
         let table, restaurant
 
         if (tableData.table && tableData.restaurant) {
           // Expected format: {table, restaurant}
           table = tableData.table
           restaurant = tableData.restaurant
+          console.log('[QR Page] ✅ Format 1: {table, restaurant}')
         } else if (tableData.restaurant) {
           // Actual backend format: table with nested restaurant
           table = tableData
           restaurant = tableData.restaurant
+          console.log('[QR Page] ✅ Format 2: table with nested restaurant')
         } else {
+          console.error('[QR Page] ❌ Invalid table data format:', tableData)
           throw new Error('Invalid table data format received')
         }
+
+        console.log('[QR Page] 📋 Extracted data:', {
+          restaurantId: restaurant?.id,
+          restaurantName: restaurant?.name,
+          tableId: table?.id,
+          tableNumber: table?.tableNumber
+        })
 
 
         // ARCHITECTURE: React Query is source of truth, not sessionStorage
