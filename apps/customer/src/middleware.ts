@@ -27,10 +27,6 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const url = request.nextUrl.clone()
 
-  // IMPORTANT: QR code routes should ALWAYS be allowed through
-  // They handle their own validation and session creation
-  const isQRCodeRoute = pathname.startsWith('/table/') && pathname !== '/table'
-
   // Check if route needs protection
   const isProtectedRoute = PROTECTED_ROUTES.some(route =>
     pathname === route || pathname.startsWith(`${route}/`)
@@ -41,11 +37,6 @@ export function middleware(request: NextRequest) {
   )
 
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname)
-
-  // QR code routes bypass all middleware checks
-  if (isQRCodeRoute) {
-    return NextResponse.next()
-  }
 
   // Get session info from query params or cookies
   // Support both short (r/t) and long (restaurant/table) formats
@@ -62,6 +53,20 @@ export function middleware(request: NextRequest) {
 
   // Check if user likely has a valid session
   const hasSession = hasValidUrlParams || sessionCookie
+
+  // DEBUG: Log for QR routes
+  if (pathname.startsWith('/table/') && pathname !== '/table') {
+    console.log('[Middleware] QR Route detected:', {
+      pathname,
+      restaurantId,
+      tableId,
+      hasValidUrlParams,
+      hasSession,
+      isProtectedRoute,
+      isConditionalRoute,
+      isPublicRoute
+    })
+  }
 
   // Handle strictly protected routes (redirect to home)
   if (isProtectedRoute && !hasSession) {
