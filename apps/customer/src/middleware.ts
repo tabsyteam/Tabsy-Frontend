@@ -39,8 +39,11 @@ export function middleware(request: NextRequest) {
   const isPublicRoute = PUBLIC_ROUTES.includes(pathname)
 
   // Get session info from query params or cookies
-  const restaurantId = request.nextUrl.searchParams.get('restaurant')
-  const tableId = request.nextUrl.searchParams.get('table')
+  // Support both short (r/t) and long (restaurant/table) formats
+  const restaurantId = request.nextUrl.searchParams.get('restaurant') ||
+                      request.nextUrl.searchParams.get('r')
+  const tableId = request.nextUrl.searchParams.get('table') ||
+                 request.nextUrl.searchParams.get('t')
   const sessionCookie = request.cookies.get('sessionId')
 
   // Validate URL parameters
@@ -64,8 +67,10 @@ export function middleware(request: NextRequest) {
 
   // Handle public routes when user has session
   if (isPublicRoute && hasSession && hasValidUrlParams) {
-    // Redirect to menu page with session params
+    // Redirect to menu page with session params (use long format)
     url.pathname = '/menu'
+    url.searchParams.delete('r')
+    url.searchParams.delete('t')
     url.searchParams.set('restaurant', restaurantId!)
     url.searchParams.set('table', tableId!)
     return NextResponse.redirect(url)

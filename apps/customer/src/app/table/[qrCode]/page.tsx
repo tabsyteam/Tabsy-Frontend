@@ -110,8 +110,9 @@ export default function QRCodePage({ params }: QRCodePageProps) {
         sessionStorage.setItem('tabsy-qr-access', JSON.stringify(qrAccessData))
 
         // Get restaurant/table IDs for redirect
-        const restaurantId = searchParams.get('r') || restaurant.id
-        const tableId = searchParams.get('t') || table.id
+        // Support both short (r/t) and long (restaurant/table) query param formats
+        const restaurantId = searchParams.get('r') || searchParams.get('restaurant') || restaurant.id
+        const tableId = searchParams.get('t') || searchParams.get('table') || table.id
 
         console.log('[QR Page] ✅ QR validated successfully, redirecting to table view', {
           restaurantId,
