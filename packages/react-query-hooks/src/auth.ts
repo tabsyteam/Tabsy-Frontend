@@ -1,30 +1,32 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { 
-  User, 
+import {
+  User,
   UserRole,
   UserStatus,
-  LoginCredentials, 
-  RegisterData, 
-  LoginResponse, 
+  LoginCredentials,
+  RegisterData,
+  LoginResponse,
   RefreshTokenResponse,
-  AuthError 
+  AuthError
 } from '@tabsy/shared-types';
 import { createTabsyClient, tabsyClient } from '@tabsy/api-client';
 
-// Get API base URL from environment or use global client's baseURL
-function getAPIBaseURL(): string {
-  // Try to get from environment (works in Next.js apps)
-  if (typeof window !== 'undefined' && (window as any).process?.env?.NEXT_PUBLIC_API_BASE_URL) {
-    return (window as any).process.env.NEXT_PUBLIC_API_BASE_URL;
+// Declare process.env types for Next.js environment variables
+declare const process: {
+  env: {
+    NEXT_PUBLIC_API_BASE_URL?: string
   }
-  if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_BASE_URL) {
-    return process.env.NEXT_PUBLIC_API_BASE_URL;
-  }
-  // Fallback: use global client which gets URL from app config
-  return tabsyClient.axios.defaults.baseURL || '';
+}
+
+// Get API base URL from environment
+// In Next.js, NEXT_PUBLIC_* variables are replaced at build time by webpack
+function getAPIBaseURL(): string | undefined {
+  // Next.js replaces process.env.NEXT_PUBLIC_* at build time with actual values
+  return process.env.NEXT_PUBLIC_API_BASE_URL
 }
 
 // Create API client instance for auth operations
+// Will use the tabsyClient's base URL if no env var is set
 const apiClient = createTabsyClient({
   baseURL: getAPIBaseURL(),
   timeout: 10000

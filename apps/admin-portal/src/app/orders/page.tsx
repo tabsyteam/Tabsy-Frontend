@@ -102,14 +102,14 @@ export default function OrdersPage() {
   const { data: metrics } = useOrderMetrics(dateFilter);
 
   // Debug logging
-  console.log('Orders Page Debug:', {
-    ordersData,
-    ordersDataLength: ordersData?.length,
-    isLoading,
-    error,
-    dateFilter,
-    statusFilter
-  });
+  // console.log('Orders Page Debug:', {
+  //   ordersData,
+  //   ordersDataLength: ordersData?.length,
+  //   isLoading,
+  //   error,
+  //   dateFilter,
+  //   statusFilter
+  // });
 
   // WebSocket connection removed - using standard API data fetching with manual/periodic refresh
 

@@ -1,3 +1,11 @@
+// Declare process.env types for Next.js environment variables
+declare const process: {
+  env: {
+    NEXT_PUBLIC_API_URL?: string
+    NEXT_PUBLIC_API_BASE_URL?: string
+  }
+}
+
 export * from "./client"
 export * from "./endpoints/auth"
 export * from "./endpoints/restaurant"
@@ -128,19 +136,12 @@ export function createTabsyClient(config?: ApiClientConfig): TabsyAPI {
 
 /**
  * Helper to get base URL from environment
+ * In Next.js, NEXT_PUBLIC_* variables are replaced at build time by webpack
  */
 function getBaseURLFromEnv(): string | undefined {
-  // Check if we're in a browser context with Next.js env vars
-  if (typeof window !== 'undefined' && (window as any).process?.env) {
-    return (window as any).process.env.NEXT_PUBLIC_API_URL || (window as any).process.env.NEXT_PUBLIC_API_BASE_URL
-  }
-
-  // Check if we're in Node.js context (SSR) with process.env
-  if (typeof globalThis !== 'undefined' && (globalThis as any).process?.env) {
-    return (globalThis as any).process.env.NEXT_PUBLIC_API_URL || (globalThis as any).process.env.NEXT_PUBLIC_API_BASE_URL
-  }
-
-  return undefined
+  // Next.js replaces process.env.NEXT_PUBLIC_* at build time with actual values
+  // This works in both browser and SSR contexts
+  return process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL
 }
 
 /**
