@@ -19,6 +19,7 @@ import {
   Nut
 } from 'lucide-react'
 import { SpiceLevel, DietaryType, MenuItem } from '@tabsy/shared-types'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface MenuItemCardProps {
   item: MenuItem
@@ -31,6 +32,7 @@ interface MenuItemCardProps {
   className?: string
   layout?: 'grid' | 'list'
   showQuickAdd?: boolean
+  currency?: string // ISO 4217 currency code (USD, AED, INR)
 }
 
 const MenuItemCard = React.memo<MenuItemCardProps>(({
@@ -43,7 +45,8 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
   isFavorite = false,
   className = '',
   layout = 'grid',
-  showQuickAdd = true
+  showQuickAdd = true,
+  currency = 'USD'
 }) => {
   const [localQuantity, setLocalQuantity] = useState(quantity || 0)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
@@ -117,8 +120,9 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
     e.stopPropagation() // Prevent card click event
   }
 
-  const formatPrice = (price: number) => {
-    return `$${Number(price || 0).toFixed(2)}`
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number, curr: string = 'USD') => {
+    return formatPriceUtil(price, curr as CurrencyCode)
   }
 
   const getDietaryIcon = (indicator: string) => {
@@ -255,7 +259,7 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-h3 font-bold text-primary">
-                  {formatPrice(item.price)}
+                  {formatPrice(item.price, currency)}
                 </span>
 
                 <div className='flex self-end gap-2'>
@@ -463,7 +467,7 @@ const MenuItemCard = React.memo<MenuItemCardProps>(({
         <div className="mt-auto">
           <div className="flex items-center justify-between gap-1.5 sm:gap-2 mb-1.5 sm:mb-2">
             <span className="text-lg sm:text-h2 font-bold text-primary">
-              {formatPrice(item.price)}
+              {formatPrice(item.price, currency)}
             </span>
 
             {/* Info Button */}

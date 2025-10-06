@@ -2,7 +2,7 @@
  * Currency formatting utilities for Tabsy platform
  */
 
-export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY';
+export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'CAD' | 'AUD' | 'JPY' | 'AED' | 'INR';
 
 export interface CurrencyFormatOptions {
   locale?: string;
@@ -17,6 +17,8 @@ const CURRENCY_CONFIG = {
   CAD: { symbol: 'C$', locale: 'en-CA' },
   AUD: { symbol: 'A$', locale: 'en-AU' },
   JPY: { symbol: '¥', locale: 'ja-JP' },
+  AED: { symbol: 'د.إ', locale: 'ar-AE' },
+  INR: { symbol: '₹', locale: 'en-IN' },
 } as const;
 
 /**
@@ -143,7 +145,7 @@ export const roundCurrency = (amount: number): number => {
  * Get currency symbol by code
  */
 export const getCurrencySymbol = (currency: CurrencyCode): string => {
-  return CURRENCY_CONFIG[currency].symbol;
+  return CURRENCY_CONFIG[currency]?.symbol || '$';
 };
 
 /**

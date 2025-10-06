@@ -8,7 +8,7 @@ import {
   Trash2,
   Package,
   Utensils,
-  DollarSign,
+  Banknote,
   Clock,
   Users,
   Tag,
@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import type { MenuCategory, MenuItem, AllergyInfo } from '@tabsy/shared-types';
 import { MenuItemStatus } from '@tabsy/shared-types';
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant';
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency';
 
 interface MenuDetailSlidePanelProps {
   isOpen: boolean;
@@ -50,6 +52,10 @@ export function MenuDetailSlidePanel({
 }: MenuDetailSlidePanelProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
+
+  // Always call hooks at the top before any conditional returns
+  const { restaurant } = useCurrentRestaurant();
+  const currency = (restaurant?.currency as CurrencyCode) || 'USD';
 
   const getAllergensList = (allergyInfo?: AllergyInfo): string[] => {
     if (!allergyInfo) return [];
@@ -108,13 +114,10 @@ export function MenuDetailSlidePanel({
   const data = type === 'category' ? category : item;
   if (!data) return null;
 
+  // Use shared utility for consistent formatting
   const formatPrice = (price: number | string) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(numPrice); // Backend sends decimal numbers, not cents
+    return formatPriceUtil(numPrice, currency);
   };
 
   const tabs = [
@@ -310,7 +313,7 @@ export function MenuDetailSlidePanel({
                                 {formatPrice(item.basePrice || item.price || 0)}
                               </p>
                             </div>
-                            <DollarSign className="h-8 w-8 text-primary/40" />
+                            <Banknote className="h-8 w-8 text-primary/40" />
                           </div>
                         </div>
                         {item.preparationTime && (

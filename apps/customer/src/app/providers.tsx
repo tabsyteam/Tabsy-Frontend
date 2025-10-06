@@ -9,6 +9,7 @@ import { NavigationProvider } from '@/components/providers/navigation-provider'
 import { SessionReplacementHandler } from '@/components/session/SessionReplacementHandler'
 import { WebSocketErrorBoundary } from '@/components/session/WebSocketErrorBoundary'
 import { WebSocketEventCoordinator } from '@/providers/WebSocketEventCoordinator'
+import { GlobalRestaurantProvider } from '@/providers/GlobalRestaurantProvider'
 
 // NEW: Import unified providers for testing alongside existing ones
 import { ConnectionProvider, WebSocketProvider, SessionProvider } from '@tabsy/ui-components'
@@ -176,32 +177,20 @@ function WebSocketWithSessionIntegration({ children }: { children: React.ReactNo
   // Additional effect to check for session data when component mounts or updates
   // This helps with initial navigation timing issues
   useEffect(() => {
-    const checkSessionDataPeriodically = () => {
-      if (!sessionData) {
-        updateSessionData()
-      }
+    // Check immediately on mount only
+    if (!sessionData) {
+      updateSessionData()
     }
 
-    // Check immediately on mount
-    checkSessionDataPeriodically()
-
-    // Check periodically until we have session data (for up to 10 seconds)
-    let attempts = 0
-    const maxAttempts = 20 // 10 seconds with 500ms intervals
-    const intervalId = setInterval(() => {
-      if (!sessionData && attempts < maxAttempts) {
-        console.log(`[WebSocketWithSessionIntegration] Retry ${attempts + 1}/${maxAttempts} checking for session data`)
-        checkSessionDataPeriodically()
-        attempts++
-      } else {
-        clearInterval(intervalId)
-      }
-    }, 500)
-
-    return () => {
-      clearInterval(intervalId)
-    }
-  }, [sessionData])
+    // REMOVED: Periodic 500ms polling for up to 10 seconds
+    // Container deployment optimization: Prevents wasteful CPU usage during initialization
+    // Session data is now populated via:
+    // 1. Initial check on mount (above)
+    // 2. Storage event listeners (already set up in parent effect)
+    // 3. Visibility/focus event listeners (already set up in parent effect)
+    //
+    // The event-driven approach is more efficient and responsive than polling
+  }, [sessionData, updateSessionData])
 
   // Only connect if we have the required customer auth data
   const canConnect = sessionData?.sessionId && sessionData?.tableId && sessionData?.restaurantId
@@ -217,6 +206,7 @@ function WebSocketWithSessionIntegration({ children }: { children: React.ReactNo
 
   return (
     <WebSocketProvider
+      url={process.env.NEXT_PUBLIC_WS_BASE_URL}
       authToken={sessionData?.sessionId}
       restaurantId={sessionData?.restaurantId}
       tableId={sessionData?.tableId}
@@ -247,14 +237,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 {/* This is the ONLY place where global events are listened to */}
                 {/* All components read from React Query cache instead of listening directly */}
                 <WebSocketEventCoordinator>
-                  <CartProvider>
-                    <SessionReplacementHandler>
-                      <NavigationProvider>
-                        {children}
-                        {/* Dev tools temporarily disabled due to type conflicts */}
-                      </NavigationProvider>
-                    </SessionReplacementHandler>
-                  </CartProvider>
+                  {/* 🌍 Global Restaurant Context - Provides currency and restaurant data to all components */}
+                  <GlobalRestaurantProvider>
+                    <CartProvider>
+                      <SessionReplacementHandler>
+                        <NavigationProvider>
+                          {children}
+                          {/* Dev tools temporarily disabled due to type conflicts */}
+                        </NavigationProvider>
+                      </SessionReplacementHandler>
+                    </CartProvider>
+                  </GlobalRestaurantProvider>
                 </WebSocketEventCoordinator>
               </WebSocketWithSessionIntegration>
             </WebSocketErrorBoundary>

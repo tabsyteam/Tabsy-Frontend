@@ -15,6 +15,8 @@ import { ItemDetailModal } from '@/components/menu/ItemDetailModal'
 import { calculateTax } from '@/constants/tax'
 import { STORAGE_KEYS } from '@/constants/storage'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 
 interface TableInfo {
@@ -22,6 +24,7 @@ interface TableInfo {
     id: string
     name: string
     logo?: string
+    currency?: string
   }
   table: {
     id: string
@@ -62,13 +65,25 @@ export function CartView() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { cart, cartCount, cartTotal, updateQuantity, updateCartItem, removeFromCart, clearCart, isLoading, getCartItem } = useCart()
-  const [tableInfo, setTableInfo] = useState<TableInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [specialInstructions, setSpecialInstructions] = useState('')
+
+  // ARCHITECTURE: Get currency from RestaurantContext (powered by React Query)
+  // SIMPLE LOGIC: Wait for restaurant data. Don't show prices with wrong currency.
+  const restaurantContext = useRestaurantOptional()
 
   // Edit modal state
   const [editingCartItem, setEditingCartItem] = useState<any>(null)
   const [showEditModal, setShowEditModal] = useState(false)
+
+  // CRITICAL: Only use currency if we have actual restaurant data
+  // If loading, the loading spinner will show (see line 214)
+  const currency = restaurantContext?.restaurant?.currency as CurrencyCode | undefined
+  const formatPrice = (price: number) => {
+    // If no currency yet, return empty string (won't be shown during loading anyway)
+    if (!currency) return ''
+    return formatPriceUtil(price, currency)
+  }
 
   // Get restaurant and table ID from URL or session
   const urlRestaurantId = searchParams.get('restaurant')
@@ -84,16 +99,8 @@ export function CartView() {
   const tableId = hasValidUrlParams ? urlTableId : session?.tableId
 
   useEffect(() => {
-    // Load table info from sessionStorage
-    const savedTableInfo = sessionStorage.getItem(STORAGE_KEYS.TABLE_INFO)
-    if (savedTableInfo) {
-      try {
-        setTableInfo(JSON.parse(savedTableInfo))
-      } catch (error) {
-        console.error('Failed to parse table info:', error)
-      }
-    }
-
+    // ARCHITECTURE NOTE: No need to load from sessionStorage anymore
+    // RestaurantContext (powered by React Query) is the single source of truth
     setLoading(false)
   }, [])
 
@@ -209,7 +216,9 @@ export function CartView() {
     }
   }
 
-  if (loading || isLoading) {
+  // CRITICAL: Wait for restaurant data before showing prices
+  // This prevents showing wrong currency or empty prices
+  if (loading || isLoading || restaurantContext?.isLoading || !restaurantContext?.restaurant) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <LoadingSpinner size="xl" />
@@ -313,13 +322,13 @@ export function CartView() {
             {/* Cart Items */}
             <div className="lg:col-span-2 space-y-4">
               {/* Restaurant & Table Info */}
-              {tableInfo && (
+              {restaurantContext?.restaurant && restaurantContext?.table && (
                 <div className="bg-surface rounded-xl border p-4 mb-6">
                   <div className="flex items-center space-x-3">
-                    {tableInfo.restaurant.logo ? (
+                    {restaurantContext.restaurant.logo ? (
                       <img
-                        src={tableInfo.restaurant.logo}
-                        alt={tableInfo.restaurant.name}
+                        src={restaurantContext.restaurant.logo}
+                        alt={restaurantContext.restaurant.name}
                         className="w-12 h-12 rounded-full object-cover"
                       />
                     ) : (
@@ -329,12 +338,12 @@ export function CartView() {
                     )}
                     <div className="flex-1">
                       <h3 className="font-semibold text-content-primary">
-                        {tableInfo.restaurant.name}
+                        {restaurantContext.restaurant.name}
                       </h3>
                       <div className="flex items-center space-x-4 text-sm text-content-secondary">
                         <span className="flex items-center space-x-1">
                           <Users className="w-3 h-3" />
-                          <span>Table {tableInfo.table.tableNumber}</span>
+                          <span>Table {restaurantContext.table.tableNumber}</span>
                         </span>
                         <span className="flex items-center space-x-1">
                           <Clock className="w-3 h-3" />
@@ -483,17 +492,17 @@ export function CartView() {
 
                           <div className="text-right">
                             <div className="text-lg font-semibold text-primary">
-                              ${(() => {
+                              {formatPrice((() => {
                                 const optionsTotal = item.options?.reduce((sum, option) => sum + (option.price || 0), 0) || 0
-                                return ((Number(item.basePrice) + optionsTotal) * item.quantity).toFixed(2)
-                              })()}
+                                return (Number(item.basePrice) + optionsTotal) * item.quantity
+                              })())}
                             </div>
                             {item.quantity > 1 && (
                               <div className="text-xs text-content-tertiary">
-                                ${(() => {
+                                {formatPrice((() => {
                                   const optionsTotal = item.options?.reduce((sum, option) => sum + (option.price || 0), 0) || 0
-                                  return (Number(item.basePrice) + optionsTotal).toFixed(2)
-                                })()} each
+                                  return Number(item.basePrice) + optionsTotal
+                                })())} each
                               </div>
                             )}
                           </div>
@@ -533,16 +542,16 @@ export function CartView() {
                 <div className="space-y-3 mb-6">
                   <div className="flex justify-between text-content-secondary">
                     <span>Subtotal ({getTotalItems()} items)</span>
-                    <span>${getSubtotal().toFixed(2)}</span>
+                    <span>{formatPrice(getSubtotal())}</span>
                   </div>
                   <div className="flex justify-between text-content-secondary">
                     <span>Tax</span>
-                    <span>${getTax().toFixed(2)}</span>
+                    <span>{formatPrice(getTax())}</span>
                   </div>
                   <div className="border-t pt-3">
                     <div className="flex justify-between text-lg font-semibold text-content-primary">
                       <span>Total</span>
-                      <span>${getTotal().toFixed(2)}</span>
+                      <span>{formatPrice(getTotal())}</span>
                     </div>
                   </div>
                 </div>

@@ -16,6 +16,8 @@ export interface Restaurant {
   // Tax configuration
   taxRatePercentage?: number;
   taxFixedAmount?: number;
+  // Currency configuration
+  currency?: string; // ISO 4217 currency code (USD, AED, INR, etc.)
   // Other fields
   cuisine?: string[];
   priceRange?: 1 | 2 | 3 | 4;
@@ -82,6 +84,8 @@ export interface CreateRestaurantRequest {
   // Tax configuration
   taxRatePercentage?: number;
   taxFixedAmount?: number;
+  // Currency configuration
+  currency?: string; // ISO 4217 currency code (USD, AED, INR, etc.)
   // Additional fields
   cuisine?: string[];
   priceRange?: 1 | 2 | 3 | 4;
@@ -106,6 +110,8 @@ export interface UpdateRestaurantRequest {
   // Tax configuration
   taxRatePercentage?: number;
   taxFixedAmount?: number;
+  // Currency configuration
+  currency?: string; // ISO 4217 currency code (USD, AED, INR, etc.)
   active?: boolean; // Backend uses 'active', not 'isActive'
   // Note: cuisine and nested contact/address objects are not supported by backend update validator
 }
@@ -132,4 +138,5 @@ export interface UpdateRestaurantFormData {
   posEnabled?: boolean;
   isActive?: boolean;
   status?: 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'SUSPENDED';
+  currency?: string;
 }

@@ -8,7 +8,6 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  DollarSign,
   CreditCard,
   Banknote,
   RefreshCw,
@@ -447,7 +446,7 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
           <div className="bg-surface p-3 rounded-lg border">
             <div className="flex items-center gap-2">
               <div className="p-1.5 bg-status-success-light rounded">
-                <DollarSign className="w-4 h-4 text-status-success" />
+                <Banknote className="w-4 h-4 text-status-success" />
               </div>
               <div>
                 <p className="text-xs text-content-secondary">Amount</p>

@@ -8,8 +8,7 @@ import {
   ArrowLeft,
   CreditCard,
   Smartphone,
-  DollarSign,
-  Receipt,
+  ReceiptText,
   CheckCircle,
   AlertCircle,
   Info,
@@ -30,6 +29,8 @@ import { StripeProvider } from '@/components/providers/stripe-provider'
 import { PaymentForm } from './PaymentForm'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { useWebSocketEvent } from '@tabsy/ui-components'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface Order {
   id: string
@@ -86,6 +87,11 @@ export function PaymentView() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { api } = useApi()
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
 
   // Order-based payment state
   const [order, setOrder] = useState<Order | null>(null)
@@ -729,7 +735,7 @@ export function PaymentView() {
           setPaymentBreakdown(response.data.breakdown)
 
           toast.success('Tip updated successfully!', {
-            description: `Payment amount updated to $${response.data.amount.toFixed(2)}`,
+            description: `Payment amount updated to ${formatPrice(response.data.amount)}`,
             duration: 2000
           })
         } else {
@@ -788,7 +794,7 @@ export function PaymentView() {
           setPaymentBreakdown(response.data.breakdown)
 
           toast.success('Tip updated successfully!', {
-            description: `Payment amount updated to $${response.data.amount.toFixed(2)}`,
+            description: `Payment amount updated to ${formatPrice(response.data.amount)}`,
             duration: 2000
           })
         } else {
@@ -1293,33 +1299,6 @@ export function PaymentView() {
       return
     }
 
-    // In development, trigger webhook simulation to complete the payment
-    if (process.env.NODE_ENV === 'development') {
-      try {
-        console.log(`[PaymentView] 🧪 [DEV] Triggering webhook simulation for payment ${paymentId} with intent ${stripePaymentIntentId}`)
-        const webhookResponse = await api.payment.simulateWebhookSuccess(paymentId, stripePaymentIntentId)
-
-        if (webhookResponse.success) {
-          console.log(`[PaymentView] ✅ [DEV] Webhook simulation completed:`, webhookResponse.data)
-          toast.success('Development: Payment webhook simulated', {
-            description: 'Payment status updated to COMPLETED',
-            duration: 2000
-          })
-        } else {
-          console.error('[PaymentView] ❌ [DEV] Webhook simulation failed:', webhookResponse)
-          toast.warning('Payment succeeded but webhook simulation failed', {
-            description: 'Payment may still be processing',
-            duration: 3000
-          })
-        }
-      } catch (webhookError) {
-        console.error('[PaymentView] ❌ [DEV] Error calling webhook simulation:', webhookError)
-        toast.warning('Payment succeeded but webhook simulation failed', {
-          description: 'Payment may still be processing',
-          duration: 3000
-        })
-      }
-    }
 
     // Get guest session from multiple sources for reliability
     const session = SessionManager.getDiningSession()
@@ -1634,7 +1613,7 @@ export function PaymentView() {
               </p>
               {paymentType !== PaymentType.ORDER && tableBill && (
                 <p className="text-xs text-content-secondary">
-                  Remaining: ${(tableBill.summary.remainingBalance - tableBill.summary.tip).toFixed(2)} of ${(tableBill.summary.subtotal + tableBill.summary.tax).toFixed(2)}
+                  Remaining: {formatPrice(tableBill.summary.remainingBalance - tableBill.summary.tip)} of {formatPrice(tableBill.summary.subtotal + tableBill.summary.tax)}
                 </p>
               )}
             </div>
@@ -1654,7 +1633,7 @@ export function PaymentView() {
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-content-primary flex items-center space-x-2">
-                  <Receipt className="w-5 h-5" />
+                  <ReceiptText className="w-5 h-5" />
                   <span>{paymentType === PaymentType.ORDER ? 'Order Summary' : 'Bill Summary'}</span>
                 </h3>
                 {paymentType === PaymentType.TABLE_SESSION && sessionUsers.length > 1 && (
@@ -1678,11 +1657,11 @@ export function PaymentView() {
                         <div className="flex-1">
                           <h4 className="font-medium text-content-primary">{item.name}</h4>
                           <p className="text-sm text-content-secondary">
-                            ${item.unitPrice.toFixed(2)} × {item.quantity}
+                            {formatPrice(item.unitPrice)} × {item.quantity}
                           </p>
                         </div>
                         <div className="font-semibold text-content-primary">
-                          ${item.totalPrice.toFixed(2)}
+                          {formatPrice(item.totalPrice)}
                         </div>
                       </div>
                     ))}
@@ -1691,21 +1670,21 @@ export function PaymentView() {
                   <div className="border-t pt-4 space-y-2">
                     <div className="flex justify-between text-content-secondary">
                       <span>Subtotal</span>
-                      <span>${order.subtotal.toFixed(2)}</span>
+                      <span>{formatPrice(order.subtotal)}</span>
                     </div>
                     <div className="flex justify-between text-content-secondary">
                       <span>Tax</span>
-                      <span>${order.tax.toFixed(2)}</span>
+                      <span>{formatPrice(order.tax)}</span>
                     </div>
                     {order.tip > 0 && (
                       <div className="flex justify-between text-content-secondary">
                         <span>Tip</span>
-                        <span>${order.tip.toFixed(2)}</span>
+                        <span>{formatPrice(order.tip)}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-semibold text-content-primary border-t pt-2">
                       <span>Order Total</span>
-                      <span>${order.total.toFixed(2)}</span>
+                      <span>{formatPrice(order.total)}</span>
                     </div>
                   </div>
                 </>
@@ -1780,7 +1759,7 @@ export function PaymentView() {
                                     {item.quantity}x {item.name}
                                   </span>
                                   <span className={`${roundOrder.isPaid ? 'line-through text-content-tertiary' : 'text-content-primary'}`}>
-                                    ${Number(item.subtotal || 0).toFixed(2)}
+                                    {formatPrice(Number(item.subtotal || 0))}
                                   </span>
                                 </div>
                               ))}
@@ -1805,25 +1784,25 @@ export function PaymentView() {
                   <div className="border-t pt-4 space-y-2">
                     <div className="flex justify-between text-content-secondary">
                       <span>Subtotal</span>
-                      <span>${tableBill.summary.subtotal.toFixed(2)}</span>
+                      <span>{formatPrice(tableBill.summary.subtotal)}</span>
                     </div>
                     <div className="flex justify-between text-content-secondary">
                       <span>Tax</span>
-                      <span>${tableBill.summary.tax.toFixed(2)}</span>
+                      <span>{formatPrice(tableBill.summary.tax)}</span>
                     </div>
                     <div className="flex justify-between text-content-secondary">
                       <span>Total</span>
-                      <span>${(tableBill.summary.subtotal + tableBill.summary.tax).toFixed(2)}</span>
+                      <span>{formatPrice(tableBill.summary.subtotal + tableBill.summary.tax)}</span>
                     </div>
                     {tableBill.summary.totalPaid > 0 && (
                       <div className="flex justify-between text-status-success">
                         <span>Already Paid</span>
-                        <span>-${tableBill.summary.totalPaid.toFixed(2)}</span>
+                        <span>-{formatPrice(tableBill.summary.totalPaid)}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-semibold text-content-primary border-t pt-2">
                       <span>Amount Due</span>
-                      <span>${(tableBill.summary.remainingBalance - tableBill.summary.tip).toFixed(2)}</span>
+                      <span>{formatPrice(tableBill.summary.remainingBalance - tableBill.summary.tip)}</span>
                     </div>
                   </div>
                 </>
@@ -1857,7 +1836,7 @@ export function PaymentView() {
                       disabled={processing || updatingTip}
                     >
                       <span className="text-sm font-semibold">{tip.label}</span>
-                      <span className="text-xs">${tip.amount.toFixed(2)}</span>
+                      <span className="text-xs">{formatPrice(tip.amount)}</span>
                     </Button>
                   )
                 })}
@@ -1865,7 +1844,7 @@ export function PaymentView() {
 
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
-                  <DollarSign className="w-4 h-4 text-content-tertiary" />
+                  <Banknote className="w-4 h-4 text-content-tertiary" />
                   <input
                     type="number"
                     value={customTip}
@@ -2109,7 +2088,7 @@ export function PaymentView() {
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-content-secondary">
                   <span>{paymentType === PaymentType.ORDER ? 'Order Total' : 'Amount Due'}</span>
-                  <span>${getPaymentAmount().toFixed(2)}</span>
+                  <span>{formatPrice(getPaymentAmount())}</span>
                 </div>
 
                 {(() => {
@@ -2130,7 +2109,7 @@ export function PaymentView() {
                   return currentTipAmount > 0 ? (
                     <div className="flex justify-between text-content-secondary">
                       <span>Tip</span>
-                      <span>${currentTipAmount.toFixed(2)}</span>
+                      <span>{formatPrice(currentTipAmount)}</span>
                     </div>
                   ) : null
                 })()}
@@ -2138,7 +2117,7 @@ export function PaymentView() {
                 <div className="border-t pt-3">
                   <div className="flex justify-between text-xl font-bold text-content-primary">
                     <span>Total</span>
-                    <span>${getFinalTotal().toFixed(2)}</span>
+                    <span>{formatPrice(getFinalTotal())}</span>
                   </div>
                 </div>
 
@@ -2149,21 +2128,21 @@ export function PaymentView() {
                     <div className="space-y-1 text-xs text-status-success">
                       <div className="flex justify-between">
                         <span>Subtotal:</span>
-                        <span>${paymentBreakdown.subtotal.toFixed(2)}</span>
+                        <span>{formatPrice(paymentBreakdown.subtotal)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Tax:</span>
-                        <span>${paymentBreakdown.tax.toFixed(2)}</span>
+                        <span>{formatPrice(paymentBreakdown.tax)}</span>
                       </div>
                       {paymentBreakdown.tip > 0 && (
                         <div className="flex justify-between">
                           <span>Tip:</span>
-                          <span>${paymentBreakdown.tip.toFixed(2)}</span>
+                          <span>{formatPrice(paymentBreakdown.tip)}</span>
                         </div>
                       )}
                       <div className="flex justify-between font-medium border-t border-status-success pt-1">
                         <span>Total:</span>
-                        <span>${paymentBreakdown.total.toFixed(2)}</span>
+                        <span>{formatPrice(paymentBreakdown.total)}</span>
                       </div>
                     </div>
                   </div>

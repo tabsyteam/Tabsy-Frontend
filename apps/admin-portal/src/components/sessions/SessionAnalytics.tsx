@@ -8,13 +8,14 @@ type SessionMetrics = RestaurantSessionMetrics
 import {
   TrendingUp,
   TrendingDown,
-  DollarSign,
+  Banknote,
   Clock,
   Users,
   Activity,
   BarChart3
 } from 'lucide-react'
 import { Badge } from '@tabsy/ui-components'
+import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface SessionAnalyticsProps {
   dateRange?: {
@@ -114,7 +115,7 @@ export function SessionAnalytics({ dateRange }: SessionAnalyticsProps) {
     const formatValue = (val: number) => {
       switch (format) {
         case 'currency':
-          return `$${val.toLocaleString()}`
+          return formatPrice(val, 'USD')
         case 'percentage':
           return `${val.toFixed(1)}%`
         case 'time':
@@ -181,7 +182,7 @@ export function SessionAnalytics({ dateRange }: SessionAnalyticsProps) {
         <MetricCard
           title="Total Revenue"
           value={metrics.totalRevenue}
-          icon={DollarSign}
+          icon={Banknote}
           color="bg-info/10 text-info"
           previousValue={previousMetrics?.totalRevenue}
           format="currency"
@@ -270,7 +271,7 @@ export function SessionAnalytics({ dateRange }: SessionAnalyticsProps) {
           </div>
           <div>
             <div className="text-2xl font-bold text-success">
-              ${(metrics.totalRevenue / metrics.totalSessions).toFixed(0)}
+              {formatPrice(metrics.totalRevenue / metrics.totalSessions, 'USD')}
             </div>
             <div className="text-sm text-content-secondary">Avg Revenue</div>
           </div>

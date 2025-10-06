@@ -170,7 +170,7 @@ function RestaurantLoginContent() {
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-border">
                 <div className="flex items-center space-x-4 text-xs text-muted-foreground">
                   <a
-                    href="mailto:support@tabsy.com"
+                    href="mailto:support@tabsy.io"
                     className="flex items-center space-x-1 hover:text-primary transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

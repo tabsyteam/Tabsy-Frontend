@@ -7,7 +7,7 @@ import {
   Clock,
   Users,
   QrCode,
-  DollarSign,
+  Banknote,
   AlertTriangle,
   User,
   ShoppingBag,
@@ -19,6 +19,8 @@ import { MultiUserTableSession, TableSessionUser } from '@tabsy/shared-types'
 import { tabsyClient } from '@tabsy/api-client'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface SessionDetailsModalProps {
   sessionId: string
@@ -48,6 +50,12 @@ export function SessionDetailsModal({ sessionId, onClose, onSessionClosed }: Ses
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null)
   const [paymentSummary, setPaymentSummary] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  const { restaurant } = useCurrentRestaurant()
+  const currency = (restaurant?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
   const [isClosing, setIsClosing] = useState(false)
   const [loadingPaymentSummary, setLoadingPaymentSummary] = useState(false)
 
@@ -224,8 +232,8 @@ export function SessionDetailsModal({ sessionId, onClose, onSessionClosed }: Ses
 
               <div className="bg-surface-secondary p-3 sm:p-4 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="w-4 h-4 text-content-secondary" />
-                  <span className="font-medium">${session.totalAmount.toFixed(2)}</span>
+                  <Banknote className="w-4 h-4 text-content-secondary" />
+                  <span className="font-medium">{formatPrice(session.totalAmount)}</span>
                 </div>
                 <p className="text-sm text-content-secondary">Total Amount</p>
               </div>
@@ -298,7 +306,7 @@ export function SessionDetailsModal({ sessionId, onClose, onSessionClosed }: Ses
                             {order.status}
                           </Badge>
                         </div>
-                        <div className="text-sm font-medium">${Number(order.total || 0).toFixed(2) || '0.00'}</div>
+                        <div className="text-sm font-medium">{formatPrice(Number(order.total || 0))}</div>
                       </div>
                       <div className="text-sm text-content-secondary">
                         Placed by {users.find(u => u.guestSessionId === order.guestSessionId)?.userName || 'Unknown'}
@@ -313,7 +321,7 @@ export function SessionDetailsModal({ sessionId, onClose, onSessionClosed }: Ses
             {/* Enhanced Payment Status */}
             <div>
               <h3 className="font-semibold mb-4 flex items-center gap-2">
-                <DollarSign className="w-5 h-5" />
+                <Banknote className="w-5 h-5" />
                 Payment Status
                 {loadingPaymentSummary && (
                   <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -324,18 +332,18 @@ export function SessionDetailsModal({ sessionId, onClose, onSessionClosed }: Ses
               <div className="bg-surface-secondary p-3 sm:p-4 rounded-lg mb-4">
                 <div className="flex justify-between items-center mb-2">
                   <span>Total Amount:</span>
-                  <span className="font-medium">${paymentSummary?.totalOwed?.toFixed(2) || session.totalAmount.toFixed(2)}</span>
+                  <span className="font-medium">{formatPrice(paymentSummary?.totalOwed || session.totalAmount)}</span>
                 </div>
                 <div className="flex justify-between items-center mb-2">
                   <span>Paid Amount:</span>
-                  <span className="font-medium">${paymentSummary?.totalPaid?.toFixed(2) || Number(session.paidAmount || 0).toFixed(2)}</span>
+                  <span className="font-medium">{formatPrice(paymentSummary?.totalPaid || Number(session.paidAmount || 0))}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span>Remaining:</span>
                   <span className={`font-medium ${
                     (paymentSummary?.isFullyPaid || session.paidAmount >= session.totalAmount) ? 'text-success' : 'text-warning'
                   }`}>
-                    ${paymentSummary?.remainingBalance?.toFixed(2) || (session.totalAmount - session.paidAmount).toFixed(2)}
+                    {formatPrice(paymentSummary?.remainingBalance || (session.totalAmount - session.paidAmount))}
                   </span>
                 </div>
 
@@ -380,12 +388,12 @@ export function SessionDetailsModal({ sessionId, onClose, onSessionClosed }: Ses
                           )}
                         </div>
                         <div className="text-right">
-                          <div className="text-sm font-medium">${order.total.toFixed(2)}</div>
+                          <div className="text-sm font-medium">{formatPrice(order.total)}</div>
                           <div className="text-xs text-content-secondary">
-                            Paid: ${order.paidAmount.toFixed(2)}
+                            Paid: {formatPrice(order.paidAmount)}
                             {!order.isFullyPaid && (
                               <span className="text-warning ml-1">
-                                (${order.remainingAmount.toFixed(2)} due)
+                                ({formatPrice(order.remainingAmount)} due)
                               </span>
                             )}
                           </div>

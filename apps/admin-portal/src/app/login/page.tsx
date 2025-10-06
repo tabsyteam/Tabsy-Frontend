@@ -18,10 +18,12 @@ export default function AdminLoginPage() {
         router.push('/dashboard');
       } else if (userRole === UserRole.RESTAURANT_OWNER || userRole === UserRole.RESTAURANT_STAFF) {
         // Not an admin, redirect to restaurant dashboard
-        window.location.href = 'http://localhost:3000/dashboard';
+        const restaurantUrl = process.env.NEXT_PUBLIC_RESTAURANT_APP_URL || 'http://localhost:3000';
+        window.location.href = `${restaurantUrl}/dashboard`;
       } else {
         // Customer user, redirect to customer app
-        window.location.href = 'http://localhost:3001';
+        const customerUrl = process.env.NEXT_PUBLIC_CUSTOMER_APP_URL || 'http://localhost:3001';
+        window.location.href = customerUrl;
       }
     }
   }, [isAuthenticated, user, router]);
@@ -85,7 +87,7 @@ export default function AdminLoginPage() {
           <div className="text-sm text-content-secondary">
             Need admin account access?{' '}
             <a
-              href="mailto:admin@tabsy.com"
+              href="mailto:admin@tabsy.io"
               className="text-primary hover:text-primary-hover hover:underline font-medium transition-colors"
             >
               Contact system administrator
@@ -96,16 +98,16 @@ export default function AdminLoginPage() {
             <div>
               For technical support:{' '}
               <a
-                href="mailto:support@tabsy.com"
+                href="mailto:support@tabsy.io"
                 className="text-primary hover:text-primary-hover hover:underline transition-colors"
               >
-                support@tabsy.com
+                support@tabsy.io
               </a>
             </div>
             <div className="text-content-tertiary">
               Restaurant access:{' '}
               <a
-                href="http://localhost:3000/login"
+                href={`${process.env.NEXT_PUBLIC_RESTAURANT_APP_URL || 'http://localhost:3000'}/login`}
                 className="text-primary hover:text-primary-hover hover:underline transition-colors"
               >
                 Restaurant Portal
@@ -113,7 +115,7 @@ export default function AdminLoginPage() {
               {' | '}
               Customer ordering:{' '}
               <a
-                href="http://localhost:3001"
+                href={process.env.NEXT_PUBLIC_CUSTOMER_APP_URL || 'http://localhost:3001'}
                 className="text-primary hover:text-primary-hover hover:underline transition-colors"
               >
                 Customer App

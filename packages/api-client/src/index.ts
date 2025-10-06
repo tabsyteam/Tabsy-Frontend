@@ -127,6 +127,26 @@ export function createTabsyClient(config?: ApiClientConfig): TabsyAPI {
 }
 
 /**
- * Default client instance for convenience
+ * Helper to get base URL from environment
  */
-export const tabsyClient = createTabsyClient()
+function getBaseURLFromEnv(): string | undefined {
+  // Check if we're in a browser context with Next.js env vars
+  if (typeof window !== 'undefined' && (window as any).process?.env) {
+    return (window as any).process.env.NEXT_PUBLIC_API_URL || (window as any).process.env.NEXT_PUBLIC_API_BASE_URL
+  }
+
+  // Check if we're in Node.js context (SSR) with process.env
+  if (typeof globalThis !== 'undefined' && (globalThis as any).process?.env) {
+    return (globalThis as any).process.env.NEXT_PUBLIC_API_URL || (globalThis as any).process.env.NEXT_PUBLIC_API_BASE_URL
+  }
+
+  return undefined
+}
+
+/**
+ * Default client instance for convenience
+ * Automatically reads from environment variables if available
+ */
+export const tabsyClient = createTabsyClient({
+  baseURL: getBaseURLFromEnv()
+})

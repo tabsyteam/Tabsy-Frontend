@@ -7,7 +7,7 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  DollarSign,
+  Banknote,
   RefreshCw,
   Clock,
   X,

@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { Button } from '@tabsy/ui-components'
-import { X, Save, Store, MapPin, Phone, Mail, Globe, DollarSign, Clock, Settings as SettingsIcon } from 'lucide-react'
+import { X, Save, Store, MapPin, Phone, Mail, Globe, Banknote, Clock, Settings as SettingsIcon } from 'lucide-react'
 import { Restaurant, UpdateRestaurantRequest, UpdateRestaurantFormData } from '@tabsy/shared-types'
 import { cn } from '@/lib/utils'
+import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface RestaurantSettingsModalProps {
   isOpen: boolean
@@ -23,6 +24,7 @@ export function RestaurantSettingsModal({
 }: RestaurantSettingsModalProps) {
   const [formData, setFormData] = useState<UpdateRestaurantFormData>({})
   const [activeTab, setActiveTab] = useState<'general' | 'contact' | 'operational'>('general')
+  const currency = (restaurant?.currency || 'USD') as CurrencyCode
 
   useEffect(() => {
     if (restaurant && isOpen) {
@@ -45,6 +47,7 @@ export function RestaurantSettingsModal({
           website: restaurant.website || ''
         },
         logo: restaurant.logo || '',
+        currency: restaurant.currency || 'USD',
         posEnabled: restaurant.posEnabled || false,
         isActive: restaurant.active ?? true // API uses 'active', not 'isActive'
       }
@@ -89,6 +92,7 @@ export function RestaurantSettingsModal({
         email: formData.contact?.email || '',
         website: formData.contact?.website || '',
         logo: formData.logo || '',
+        currency: formData.currency || 'USD',
         posEnabled: formData.posEnabled || false,
         active: formData.isActive // Backend expects 'active', not 'isActive'
       }
@@ -317,7 +321,7 @@ export function RestaurantSettingsModal({
                 <div className="bg-primary-light/5 border-l-4 border-primary rounded-lg p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <DollarSign className="w-5 h-5 text-primary" />
+                      <Banknote className="w-5 h-5 text-primary" />
                       <h3 className="text-sm font-medium text-content-primary">Tax Configuration</h3>
                     </div>
                     <span className="px-2 py-1 text-xs font-medium bg-surface-secondary text-content-tertiary rounded">
@@ -339,7 +343,7 @@ export function RestaurantSettingsModal({
                     <div className="bg-surface-secondary rounded-lg p-3">
                       <p className="text-xs text-content-secondary mb-1">Fixed Amount</p>
                       <p className="text-lg font-bold text-primary">
-                        ${Number(restaurant?.taxFixedAmount || 0).toFixed(2)}
+                        {formatPrice(Number(restaurant?.taxFixedAmount || 0), currency)}
                       </p>
                       <p className="text-xs text-content-tertiary mt-1">Per order</p>
                     </div>
@@ -348,13 +352,13 @@ export function RestaurantSettingsModal({
                   <div className="bg-surface-tertiary border border-border rounded-lg p-3">
                     <p className="text-xs text-content-secondary mb-2">Formula:</p>
                     <p className="text-xs font-mono text-content-primary mb-2">
-                      Tax = (Subtotal × {Number(restaurant?.taxRatePercentage || 0.10).toFixed(4)}) + ${Number(restaurant?.taxFixedAmount || 0).toFixed(2)}
+                      Tax = (Subtotal × {Number(restaurant?.taxRatePercentage || 0.10).toFixed(4)}) + {formatPrice(Number(restaurant?.taxFixedAmount || 0), currency)}
                     </p>
                     <div className="pt-2 border-t border-border">
-                      <p className="text-xs text-content-secondary">Example on $100 order:</p>
+                      <p className="text-xs text-content-secondary">Example on {formatPrice(100, currency)} order:</p>
                       <p className="text-xs text-content-primary font-medium">
-                        ${(100 * Number(restaurant?.taxRatePercentage || 0.10) + Number(restaurant?.taxFixedAmount || 0)).toFixed(2)} tax
-                        → ${(100 + (100 * Number(restaurant?.taxRatePercentage || 0.10)) + Number(restaurant?.taxFixedAmount || 0)).toFixed(2)} total
+                        {formatPrice(100 * Number(restaurant?.taxRatePercentage || 0.10) + Number(restaurant?.taxFixedAmount || 0), currency)} tax
+                        → {formatPrice(100 + (100 * Number(restaurant?.taxRatePercentage || 0.10)) + Number(restaurant?.taxFixedAmount || 0), currency)} total
                       </p>
                     </div>
                   </div>
@@ -365,6 +369,34 @@ export function RestaurantSettingsModal({
                       Tax settings can only be modified by administrators. Contact your system admin to update tax configuration.
                     </p>
                   </div>
+                </div>
+
+                {/* Currency Configuration */}
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-sm font-medium text-content-secondary">
+                    <Banknote className="w-4 h-4" />
+                    Currency
+                  </label>
+                  <select
+                    value={formData.currency || restaurant?.currency || 'USD'}
+                    onChange={(e) => handleInputChange('currency', e.target.value)}
+                    className="w-full p-3 bg-surface-secondary rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  >
+                    <option value="USD">USD ($) - US Dollar</option>
+                    <option value="AED">AED (د.إ) - UAE Dirham</option>
+                    <option value="INR">INR (₹) - Indian Rupee</option>
+                  </select>
+                  <p className="text-xs text-content-tertiary">
+                    Select the currency for your restaurant. All prices and payments will use this currency.
+                  </p>
+                  {restaurant && restaurant.currency && restaurant.currency !== (formData.currency || 'USD') && (
+                    <div className="mt-2 flex items-start gap-2 text-xs text-amber-600 dark:text-amber-400 bg-amber-500/10 p-2 rounded">
+                      <SettingsIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                      <p>
+                        Changing currency will affect all future orders. Existing orders will keep their original currency.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">

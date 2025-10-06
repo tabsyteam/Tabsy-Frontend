@@ -2,6 +2,7 @@
 
 import React from 'react'
 import { ShoppingCart, Plus, Minus } from 'lucide-react'
+import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface CartOption {
   optionId: string
@@ -24,6 +25,7 @@ interface CartItemDisplayProps {
   showControls?: boolean
   onQuantityChange?: (quantity: number) => void
   onRemove?: () => void
+  currency?: CurrencyCode
 }
 
 export function CartItemDisplay({
@@ -38,7 +40,8 @@ export function CartItemDisplay({
   className = '',
   showControls = false,
   onQuantityChange,
-  onRemove
+  onRemove,
+  currency = 'USD'
 }: CartItemDisplayProps) {
   const optionsTotal = options.reduce((sum, option) => sum + (option.price || 0), 0)
   const itemTotal = (basePrice + optionsTotal) * quantity
@@ -72,11 +75,11 @@ export function CartItemDisplay({
         </div>
         <div className="text-right">
           <div className="text-xl font-bold text-content-primary">
-            ${itemTotal.toFixed(2)}
+            {formatPrice(itemTotal, currency)}
           </div>
           {quantity > 1 && (
             <div className="text-xs text-content-tertiary">
-              ${(basePrice + optionsTotal).toFixed(2)} each
+              {formatPrice(basePrice + optionsTotal, currency)} each
             </div>
           )}
         </div>
@@ -87,7 +90,7 @@ export function CartItemDisplay({
         <div className="flex justify-between items-center text-sm">
           <span className="text-content-secondary">Base Price</span>
           <span className="font-medium text-content-primary">
-            ${basePrice.toFixed(2)}
+            {formatPrice(basePrice, currency)}
           </span>
         </div>
 
@@ -96,7 +99,7 @@ export function CartItemDisplay({
           <div className="flex justify-between items-center text-sm">
             <span className="text-content-secondary">Cooking Level</span>
             <span className="font-medium text-content-primary">
-              {cookingLevel} (+$0.00)
+              {cookingLevel} (+{formatPrice(0, currency)})
             </span>
           </div>
         )}
@@ -114,7 +117,7 @@ export function CartItemDisplay({
                   {option.valueName}
                 </span>
                 <span className="font-medium text-content-primary">
-                  {option.price > 0 ? `+$${option.price.toFixed(2)}` : 'Free'}
+                  {option.price > 0 ? `+${formatPrice(option.price, currency)}` : 'Free'}
                 </span>
               </div>
             ))}
@@ -129,7 +132,7 @@ export function CartItemDisplay({
                 Subtotal (× {quantity})
               </span>
               <span className="text-content-primary">
-                ${itemTotal.toFixed(2)}
+                {formatPrice(itemTotal, currency)}
               </span>
             </div>
           </div>
@@ -190,8 +193,9 @@ export function CompactCartItemDisplay({
   basePrice,
   quantity,
   options = [],
-  className = ''
-}: Pick<CartItemDisplayProps, 'name' | 'basePrice' | 'quantity' | 'options' | 'className'>) {
+  className = '',
+  currency = 'USD'
+}: Pick<CartItemDisplayProps, 'name' | 'basePrice' | 'quantity' | 'options' | 'className' | 'currency'>) {
   const optionsTotal = options.reduce((sum, option) => sum + (option.price || 0), 0)
   const itemTotal = (basePrice + optionsTotal) * quantity
 
@@ -210,7 +214,7 @@ export function CompactCartItemDisplay({
       </div>
       <div className="text-right">
         <div className="font-semibold text-content-primary">
-          ${itemTotal.toFixed(2)}
+          {formatPrice(itemTotal, currency)}
         </div>
         {quantity > 1 && (
           <div className="text-xs text-content-tertiary">

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@tabsy/ui-components'
 import {
-  DollarSign,
+  Landmark,
   TrendingUp,
   CreditCard,
   Smartphone,
@@ -24,6 +24,8 @@ import { useWebSocket } from '@tabsy/ui-components'
 import { PaymentMetricsError } from '@tabsy/shared-types'
 import { logger } from '../../lib/logger'
 import { QUERY_STALE_TIME, QUERY_REFETCH_INTERVAL } from '../../lib/constants'
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface PaymentOverviewProps {
   restaurantId: string
@@ -66,6 +68,8 @@ export function PaymentOverview({ restaurantId, isVisible = true }: PaymentOverv
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('today')
   const queryClient = useQueryClient()
   const { isConnected } = useWebSocket()
+  const { restaurant } = useCurrentRestaurant()
+  const currency = (restaurant?.currency as CurrencyCode) || 'USD'
 
   const { data: metrics, isLoading, error, refetch } = useQuery({
     queryKey: ['restaurant', 'payment-metrics', restaurantId, selectedPeriod],
@@ -205,7 +209,8 @@ export function PaymentOverview({ restaurantId, isVisible = true }: PaymentOverv
     }
   }, [calculateTrendPercentage])
 
-  const formatCurrency = useCallback((amount: number) => `$${Number(amount || 0).toFixed(2)}`, [])
+  // Use shared utility for consistent formatting
+  const formatCurrency = useCallback((amount: number) => formatPriceUtil(amount, currency), [currency])
   const formatPercent = useCallback((percent: number) => `${percent.toFixed(1)}%`, [])
 
   const getTrendIcon = useCallback((trend: number) => {
@@ -298,7 +303,7 @@ export function PaymentOverview({ restaurantId, isVisible = true }: PaymentOverv
               <div className="flex flex-col space-y-4">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-primary/10 rounded-lg">
-                    <DollarSign className="w-6 h-6 text-primary" />
+                    <Landmark className="w-6 h-6 text-primary" />
                   </div>
                   <div>
                     <p className="text-sm text-content-secondary">Revenue</p>

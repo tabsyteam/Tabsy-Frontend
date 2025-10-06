@@ -19,7 +19,7 @@ import {
   Eye,
   Download,
   Clock,
-  DollarSign,
+  Banknote,
   ChevronLeft,
   ChevronRight,
   RefreshCw,
@@ -46,6 +46,8 @@ import { Order, OrderStatus } from '@tabsy/shared-types';
 import { useAuth } from '@tabsy/ui-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { formatPrice, type CurrencyCode, getOrderCurrency } from '@tabsy/shared-utils';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Status Badge Component
 function StatusBadge({ status }: { status: OrderStatus }) {
@@ -123,6 +125,14 @@ export default function OrdersPage() {
     const end = start + itemsPerPage;
     return ordersData.slice(start, end);
   }, [ordersData, currentPage]);
+
+  // Determine default currency from first order (for aggregate metrics)
+  const defaultCurrency: CurrencyCode = useMemo(() => {
+    if (ordersData && ordersData.length > 0) {
+      return getOrderCurrency(ordersData[0]);
+    }
+    return 'USD';
+  }, [ordersData]);
 
   // Get unique restaurants for filter
   const restaurants = useMemo(() => {
@@ -236,6 +246,7 @@ export default function OrdersPage() {
           const itemsCount = order.items?.length || 0;
           const itemsList = order.items?.map(item => `${item.quantity}x ${item.menuItem?.name}`).join('; ') || '';
 
+          const orderCurrency = getOrderCurrency(order);
           return [
             `"${order.id}"`,
             `"${order.orderNumber || ''}"`,
@@ -245,10 +256,10 @@ export default function OrdersPage() {
             `"${order.restaurant?.name || order.restaurantId}"`,
             `"${order.table?.tableNumber || order.tableId || ''}"`,
             `"${itemsCount} items: ${itemsList}"`,
-            `"$${Number(order.subtotal || 0).toFixed(2)}"`,
-            `"$${Number(order.tax || 0).toFixed(2)}"`,
-            `"$${Number(order.tip || 0).toFixed(2)}"`,
-            `"$${Number(order.total || 0).toFixed(2)}"`,
+            `"${formatPrice(Number(order.subtotal || 0), orderCurrency)}"`,
+            `"${formatPrice(Number(order.tax || 0), orderCurrency)}"`,
+            `"${formatPrice(Number(order.tip || 0), orderCurrency)}"`,
+            `"${formatPrice(Number(order.total || 0), orderCurrency)}"`,
             `"${order.status}"`,
             `"${order.createdAt ? format(new Date(order.createdAt), 'yyyy-MM-dd HH:mm:ss') : ''}"`,
             `"${order.specialInstructions || ''}"`
@@ -284,8 +295,9 @@ export default function OrdersPage() {
   ];
 
   return (
-    <ProtectedRoute>
-      <DashboardLayout breadcrumbs={breadcrumbs}>
+    <ErrorBoundary>
+      <ProtectedRoute>
+        <DashboardLayout breadcrumbs={breadcrumbs}>
         {/* Header Actions */}
         <div className="px-6 py-4 bg-surface border-b border-border-default">
           <div className="flex items-center justify-between">
@@ -353,14 +365,14 @@ export default function OrdersPage() {
 
             <div className="bg-surface rounded-lg shadow-card p-4 border border-border-tertiary">
               <div className="flex items-center justify-between mb-2">
-                <DollarSign className="h-5 w-5 text-status-success" />
+                <Banknote className="h-5 w-5 text-status-success" />
                 <span className="text-xs text-status-info flex items-center">
                   <TrendingUp className="h-3 w-3 mr-1" />
                   +8%
                 </span>
               </div>
               <div className="text-2xl font-bold text-content-primary">
-                ${metrics?.totalRevenue?.toFixed(2) || '0.00'}
+                {formatPrice(metrics?.totalRevenue || 0, defaultCurrency)}
               </div>
               <p className="text-xs text-content-secondary mt-1">Revenue Today</p>
             </div>
@@ -371,7 +383,7 @@ export default function OrdersPage() {
                 <span className="text-xs text-primary">AOV</span>
               </div>
               <div className="text-2xl font-bold text-content-primary">
-                ${metrics?.averageOrderValue?.toFixed(2) || '0.00'}
+                {formatPrice(metrics?.averageOrderValue || 0, defaultCurrency)}
               </div>
               <p className="text-xs text-content-secondary mt-1">Avg Order Value</p>
             </div>
@@ -573,9 +585,8 @@ export default function OrdersPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <DollarSign className="h-4 w-4 text-status-success mr-1" />
                               <span className="text-sm font-bold text-content-primary">
-                                ${Number(order.total || 0).toFixed(2)}
+                                {formatPrice(Number(order.total || 0), getOrderCurrency(order))}
                               </span>
                             </div>
                           </td>
@@ -725,7 +736,8 @@ export default function OrdersPage() {
             onUpdate={() => refetch()}
           />
         )}
-      </DashboardLayout>
-    </ProtectedRoute>
+        </DashboardLayout>
+      </ProtectedRoute>
+    </ErrorBoundary>
   );
 }

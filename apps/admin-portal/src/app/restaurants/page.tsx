@@ -26,7 +26,7 @@ import {
   Phone,
   Mail,
   Clock,
-  DollarSign,
+  Banknote,
   ChevronLeft,
   ChevronRight,
   RefreshCw,

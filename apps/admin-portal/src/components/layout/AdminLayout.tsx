@@ -121,7 +121,7 @@ export function AdminLayout({ initialSection = 'dashboard' }: AdminLayoutProps) 
             </div>
             <div className="ml-3 flex-1">
               <p className="text-sm font-medium text-content-primary">Admin User</p>
-              <p className="text-xs text-content-tertiary">admin@tabsy.com</p>
+              <p className="text-xs text-content-tertiary">admin@tabsy.io</p>
             </div>
             <button className="text-content-tertiary hover:text-content-secondary">
               <LogOut className="w-5 h-5" />

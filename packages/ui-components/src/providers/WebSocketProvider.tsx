@@ -20,6 +20,7 @@ const WebSocketContext = createContext<WebSocketContextValue | null>(null)
 
 interface WebSocketProviderProps {
   children: React.ReactNode
+  url?: string
   authToken?: string
   restaurantId?: string
   tableId?: string
@@ -34,6 +35,7 @@ interface WebSocketProviderProps {
  */
 export function WebSocketProvider({
   children,
+  url,
   authToken,
   restaurantId,
   tableId,
@@ -46,12 +48,22 @@ export function WebSocketProvider({
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const eventListenersRef = useRef<Map<string, Set<Function>>>(new Map())
 
+  // Container deployment optimization: Track reconnection attempts
+  const reconnectAttemptsRef = useRef<number>(0)
+  const maxReconnectAttempts = 10 // Stop trying after 10 attempts
+  const maxReconnectDelay = 30000 // Cap delay at 30 seconds
+
   // Clear reconnection timeout
   const clearReconnectTimeout = useCallback(() => {
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current)
       reconnectTimeoutRef.current = null
     }
+  }, [])
+
+  // Reset reconnection attempts counter
+  const resetReconnectAttempts = useCallback(() => {
+    reconnectAttemptsRef.current = 0
   }, [])
 
   // Connect to WebSocket with proper error handling
@@ -84,6 +96,7 @@ export function WebSocketProvider({
       console.log(`WebSocket: Connecting to ${namespace} namespace...`)
 
       const client = new TabsyWebSocketClient({
+        url,
         auth: {
           token: authToken,
           namespace,
@@ -106,6 +119,7 @@ export function WebSocketProvider({
         setIsConnected(true)
         setError(null)
         clearReconnectTimeout()
+        resetReconnectAttempts() // Reset counter on successful connection
       })
 
 
@@ -125,10 +139,21 @@ export function WebSocketProvider({
           console.log('🌐 [WebSocket] Network or unknown disconnect:', reason)
           // Network issues or unknown, might want to reconnect
           if (autoConnect && !reconnectTimeoutRef.current) {
+            // Container deployment optimization: Limit reconnection attempts
+            if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+              console.log(`❌ [WebSocket] Max reconnection attempts (${maxReconnectAttempts}) reached. Stopping reconnection.`)
+              setError(new Error('Maximum reconnection attempts reached'))
+              return
+            }
+
+            reconnectAttemptsRef.current++
+            // Exponential backoff with cap
+            const delay = Math.min(3000 * Math.pow(2, reconnectAttemptsRef.current - 1), maxReconnectDelay)
+            console.log(`🔄 [WebSocket] Attempting reconnection ${reconnectAttemptsRef.current}/${maxReconnectAttempts} after ${delay}ms...`)
+
             reconnectTimeoutRef.current = setTimeout(() => {
-              console.log('🔄 [WebSocket] Attempting reconnection after disconnect...')
               connect()
-            }, 3000)
+            }, delay)
           }
         }
       })
@@ -151,13 +176,24 @@ export function WebSocketProvider({
           return
         }
 
-        // Auto-reconnect after 5 seconds for other errors
+        // Auto-reconnect for other errors (with limits)
         if (autoConnect) {
+          // Container deployment optimization: Limit reconnection attempts
+          if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+            console.log(`❌ [WebSocket] Max reconnection attempts (${maxReconnectAttempts}) reached. Stopping reconnection.`)
+            setError(new Error('Maximum reconnection attempts reached'))
+            return
+          }
+
           clearReconnectTimeout()
+          reconnectAttemptsRef.current++
+          // Exponential backoff with cap
+          const delay = Math.min(5000 * Math.pow(2, reconnectAttemptsRef.current - 1), maxReconnectDelay)
+          console.log(`🔄 [WebSocket] Attempting reconnection ${reconnectAttemptsRef.current}/${maxReconnectAttempts} after ${delay}ms (after error)...`)
+
           reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('WebSocket: Attempting to reconnect...')
             connect()
-          }, 5000)
+          }, delay)
         }
       })
 
@@ -169,7 +205,7 @@ export function WebSocketProvider({
       console.error('WebSocket: Failed to create connection', error)
       setError(error)
     }
-  }, [authToken, restaurantId, tableId, namespace, autoConnect, clearReconnectTimeout])
+  }, [url, authToken, restaurantId, tableId, namespace, autoConnect, clearReconnectTimeout, resetReconnectAttempts, maxReconnectAttempts, maxReconnectDelay])
 
   // Disconnect
   const disconnect = useCallback(() => {
@@ -264,7 +300,7 @@ export function WebSocketProvider({
     }
   }, [autoConnect, authToken, connect, clearReconnectTimeout])
 
-  // Reconnect when auth token, restaurant, or table changes
+  // Reconnect when auth token, restaurant, table, or URL changes
   useEffect(() => {
     if (isConnected && clientRef.current) {
       disconnect()
@@ -272,7 +308,7 @@ export function WebSocketProvider({
         setTimeout(connect, 100) // Small delay to ensure cleanup
       }
     }
-  }, [authToken, restaurantId, tableId])
+  }, [url, authToken, restaurantId, tableId])
 
   // Connect when session data becomes available (fixes initial connection timing)
   useEffect(() => {

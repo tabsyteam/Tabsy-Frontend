@@ -6,6 +6,8 @@ import { Badge } from '@tabsy/ui-components'
 import type { Table, MultiUserTableSession, TableSessionUser } from '@tabsy/shared-types'
 import { tabsyClient } from '@tabsy/api-client'
 import { toast } from 'sonner'
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
+import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface TableSessionStatusProps {
   table: Table
@@ -58,6 +60,10 @@ export function TableSessionStatus({ table, onSessionDetails }: TableSessionStat
     isLoading: true,
     needsAttention: false
   })
+
+  // Get restaurant currency for proper multi-currency support
+  const { restaurant } = useCurrentRestaurant()
+  const currency = (restaurant?.currency as CurrencyCode) || 'USD'
 
   const api = tabsyClient
 
@@ -202,7 +208,7 @@ export function TableSessionStatus({ table, onSessionDetails }: TableSessionStat
 
         {totalAmount > 0 && (
           <div className="text-sm font-medium text-content-primary">
-            ${totalAmount.toFixed(2)}
+            {formatPrice(totalAmount, currency)}
           </div>
         )}
       </div>
@@ -223,11 +229,11 @@ export function TableSessionStatus({ table, onSessionDetails }: TableSessionStat
           {/* Payment Status */}
           <div className="flex items-center justify-between text-xs">
             <span className="text-content-secondary">
-              Paid: <span className="font-medium text-success">${Number(paidAmount || 0).toFixed(2)}</span>
+              Paid: <span className="font-medium text-success">{formatPrice(Number(paidAmount || 0), currency)}</span>
             </span>
             {remainingAmount > 0 && tableSession.status !== 'CLOSED' && (
               <span className="text-content-secondary">
-                Due: <span className="font-medium text-warning">${remainingAmount.toFixed(2)}</span>
+                Due: <span className="font-medium text-warning">{formatPrice(remainingAmount, currency)}</span>
               </span>
             )}
             {remainingAmount === 0 && (

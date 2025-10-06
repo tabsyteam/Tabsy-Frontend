@@ -12,7 +12,7 @@ import {
   Activity,
   Building,
   ShoppingBag,
-  DollarSign,
+  Banknote,
   Edit,
   Key,
   Lock,
@@ -29,6 +29,7 @@ import {
 import { User as UserType, UserRole, Order, Restaurant } from '@tabsy/shared-types';
 import { useUserOrders, useUserRestaurants, useUserMetrics, useUserActivity } from '@/hooks/api';
 import { format, formatDistanceToNow } from 'date-fns';
+import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency';
 
 interface UserDetailsModalProps {
   user: UserType;
@@ -136,11 +137,11 @@ export default function UserDetailsModal({
 
           <div className="bg-surface rounded-lg p-4 border border-border-tertiary">
             <div className="flex items-center justify-between mb-2">
-              <DollarSign className="h-5 w-5 text-primary" />
+              <Banknote className="h-5 w-5 text-primary" />
               <span className="text-xs text-status-info">Lifetime</span>
             </div>
             <div className="text-2xl font-bold text-content-primary">
-              ${metrics?.totalSpent?.toFixed(2) || '0.00'}
+              {formatPrice(metrics?.totalSpent || 0, 'USD')}
             </div>
             <p className="text-xs text-content-secondary mt-1">Total Spent</p>
           </div>
@@ -151,7 +152,7 @@ export default function UserDetailsModal({
               <span className="text-xs text-primary">Average</span>
             </div>
             <div className="text-2xl font-bold text-content-primary">
-              ${Number(metrics?.avgOrderValue || 0).toFixed(2)}
+              {formatPrice(Number(metrics?.avgOrderValue || 0), 'USD')}
             </div>
             <p className="text-xs text-content-secondary mt-1">Avg Order Value</p>
           </div>
@@ -310,7 +311,7 @@ export default function UserDetailsModal({
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-content-primary">${order.total?.toFixed(2)}</p>
+                        <p className="font-bold text-content-primary">{formatPrice(order.total || 0, 'USD')}</p>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           order.status === 'completed' ? 'bg-status-success-light text-status-success-dark' :
                           order.status === 'preparing' ? 'bg-status-info-light text-status-info-dark' :

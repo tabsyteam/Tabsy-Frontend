@@ -13,7 +13,7 @@ import {
   Heart,
   Utensils,
   Clock,
-  DollarSign,
+  Banknote,
   Users,
   CheckCircle,
   ThumbsUp,
@@ -98,7 +98,7 @@ export function FeedbackView() {
     { id: 'food', name: 'Food Quality', icon: Utensils, rating: 0 },
     { id: 'service', name: 'Service', icon: Users, rating: 0 },
     { id: 'speed', name: 'Speed', icon: Clock, rating: 0 },
-    { id: 'value', name: 'Value for Money', icon: DollarSign, rating: 0 }
+    { id: 'value', name: 'Value for Money', icon: Banknote, rating: 0 }
   ])
   const [selectedQuickFeedback, setSelectedQuickFeedback] = useState<string[]>([])
   const [comment, setComment] = useState('')
@@ -243,11 +243,11 @@ export function FeedbackView() {
     { id: 'friendly', label: 'Friendly staff', icon: ThumbsUp, type: 'positive' },
     { id: 'fast', label: 'Quick service', icon: Clock, type: 'positive' },
     { id: 'clean', label: 'Clean environment', icon: CheckCircle, type: 'positive' },
-    { id: 'great_value', label: 'Great value', icon: DollarSign, type: 'positive' },
+    { id: 'great_value', label: 'Great value', icon: Banknote, type: 'positive' },
     { id: 'recommended', label: 'Highly recommended', icon: Heart, type: 'positive' },
     { id: 'slow', label: 'Slow service', icon: Clock, type: 'negative' },
     { id: 'cold', label: 'Food was cold', icon: ThumbsDown, type: 'negative' },
-    { id: 'expensive', label: 'Too expensive', icon: DollarSign, type: 'negative' },
+    { id: 'expensive', label: 'Too expensive', icon: Banknote, type: 'negative' },
     { id: 'poor_quality', label: 'Poor food quality', icon: ThumbsDown, type: 'negative' },
     { id: 'unfriendly', label: 'Unfriendly staff', icon: Users, type: 'negative' },
     { id: 'dirty', label: 'Cleanliness issues', icon: X, type: 'negative' },

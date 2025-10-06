@@ -28,8 +28,12 @@ export class TabsyWebSocketClient {
   private eventHandlers: WebSocketEventHandlers = {};
 
   constructor(config: TabsyWebSocketConfig = {}) {
+    if (!config.url) {
+      throw new Error('WebSocket URL is required. Please provide NEXT_PUBLIC_WS_BASE_URL in your environment variables.');
+    }
+
     this.config = {
-      url: config.url || 'http://192.168.68.50:5001',
+      url: config.url,
       autoConnect: config.autoConnect ?? true,
       reconnectAttempts: config.reconnectAttempts ?? 5,
       reconnectDelay: config.reconnectDelay ?? 1000,

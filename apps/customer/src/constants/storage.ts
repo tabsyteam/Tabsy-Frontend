@@ -1,13 +1,20 @@
 /**
  * Storage keys for localStorage and sessionStorage
+ *
+ * IMPORTANT: Store only IDs, not full objects
+ * Full data should live in React Query cache (source of truth)
+ * sessionStorage is only for persistence across page refreshes
  */
 export const STORAGE_KEYS = {
   // Cart related
   CART: 'tabsy-cart',
   SPECIAL_INSTRUCTIONS: 'tabsy-special-instructions',
 
+  // Restaurant and table IDs (for page refresh recovery)
+  RESTAURANT_ID: 'tabsy-restaurant-id',
+  TABLE_ID: 'tabsy-table-id',
+
   // Table and session related
-  TABLE_INFO: 'tabsy-table-info',
   TABLE_SESSION_ID: 'tabsy-table-session-id',
   TABLE_SESSION_LOCK: (tableId: string) => `tabsy-table-session-lock-${tableId}`,
 

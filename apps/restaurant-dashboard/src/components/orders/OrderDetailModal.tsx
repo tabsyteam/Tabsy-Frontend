@@ -2,10 +2,12 @@
 
 import { useState } from 'react'
 import { Button } from '@tabsy/ui-components'
-import { X, Clock, User, MapPin, FileText, DollarSign } from 'lucide-react'
+import { X, Clock, User, MapPin, FileText, Banknote } from 'lucide-react'
 import { Order, OrderStatus, OrderItem } from '@tabsy/shared-types'
 import { format } from 'date-fns'
 import { CustomizationList } from '@tabsy/ui-components'
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface OrderDetailModalProps {
   order: Order
@@ -15,6 +17,12 @@ interface OrderDetailModalProps {
 
 export function OrderDetailModal({ order, onClose, onStatusUpdate }: OrderDetailModalProps) {
   const [updating, setUpdating] = useState(false)
+
+  const { restaurant } = useCurrentRestaurant()
+  const currency = (restaurant?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
 
   const handleStatusUpdate = async (newStatus: OrderStatus) => {
     setUpdating(true)
@@ -132,7 +140,7 @@ export function OrderDetailModal({ order, onClose, onStatusUpdate }: OrderDetail
 
               <div className="space-y-4">
                 <div className="flex items-center space-x-3">
-                  <DollarSign className="w-5 h-5 text-content-disabled" />
+                  <Banknote className="w-5 h-5 text-content-disabled" />
                   <div>
                     <p className="text-sm text-content-secondary">Order Type</p>
                     <p className="font-medium">{(order.type || 'Dine In').replace('_', ' ')}</p>
@@ -172,9 +180,9 @@ export function OrderDetailModal({ order, onClose, onStatusUpdate }: OrderDetail
                         </p>
                       </div>
                       <div className="text-right ml-4">
-                        <p className="font-semibold">${parseFloat(String(item.subtotal || 0)).toFixed(2)}</p>
+                        <p className="font-semibold">{formatPrice(parseFloat(String(item.subtotal || 0)))}</p>
                         <p className="text-xs text-content-tertiary">
-                          ${parseFloat(String(item.price || 0)).toFixed(2)} each
+                          {formatPrice(parseFloat(String(item.price || 0)))} each
                         </p>
                       </div>
                     </div>
@@ -219,35 +227,35 @@ export function OrderDetailModal({ order, onClose, onStatusUpdate }: OrderDetail
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>${parseFloat(String(order.subtotal || 0)).toFixed(2)}</span>
+                  <span>{formatPrice(parseFloat(String(order.subtotal || 0)))}</span>
                 </div>
                 {parseFloat(String(order.tax || '0')) > 0 && (
                   <div className="flex justify-between">
                     <span>Tax:</span>
-                    <span>${parseFloat(String(order.tax || 0)).toFixed(2)}</span>
+                    <span>{formatPrice(parseFloat(String(order.tax || 0)))}</span>
                   </div>
                 )}
                 {(order.serviceChargeAmount || 0) > 0 && (
                   <div className="flex justify-between">
                     <span>Service Charge:</span>
-                    <span>${(order.serviceChargeAmount || 0).toFixed(2)}</span>
+                    <span>{formatPrice(order.serviceChargeAmount || 0)}</span>
                   </div>
                 )}
                 {parseFloat(String(order.tip || '0')) > 0 && (
                   <div className="flex justify-between">
                     <span>Tip:</span>
-                    <span>${parseFloat(String(order.tip || 0)).toFixed(2)}</span>
+                    <span>{formatPrice(parseFloat(String(order.tip || 0)))}</span>
                   </div>
                 )}
                 {(order.discountAmount || 0) > 0 && (
                   <div className="flex justify-between text-status-success">
                     <span>Discount:</span>
-                    <span>-${(order.discountAmount || 0).toFixed(2)}</span>
+                    <span>-{formatPrice(order.discountAmount || 0)}</span>
                   </div>
                 )}
                 <div className="border-t pt-2 flex justify-between font-semibold text-lg">
                   <span>Total:</span>
-                  <span>${parseFloat(String(order?.total || '0')).toFixed(2)}</span>
+                  <span>{formatPrice(parseFloat(String(order?.total || '0')))}</span>
                 </div>
               </div>
             </div>

@@ -1,13 +1,15 @@
 'use client';
 
 import React from 'react';
+import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency';
 
 interface WeeklyOverviewChartProps {
   data?: Array<{ day: string; orders: number; revenue: number }>;
+  currency?: CurrencyCode;
 }
 
 // Interactive chart component for restaurant dashboard
-function WeeklyOverviewChart({ data }: WeeklyOverviewChartProps) {
+function WeeklyOverviewChart({ data, currency = 'USD' }: WeeklyOverviewChartProps) {
   // Sample data if none provided
   const chartData = data || [
     { day: "Mon", orders: 24, revenue: 1200 },
@@ -63,7 +65,7 @@ function WeeklyOverviewChart({ data }: WeeklyOverviewChartProps) {
                 <div className="invisible group-hover:visible absolute -top-20 left-1/2 transform -translate-x-1/2 bg-foreground text-background text-xs rounded px-2 py-1 whitespace-nowrap z-10">
                   <div className="text-center">
                     <div>Orders: {item.orders}</div>
-                    <div>Revenue: ${item.revenue}</div>
+                    <div>Revenue: {formatPrice(item.revenue, currency)}</div>
                   </div>
                   <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-foreground"></div>
                 </div>

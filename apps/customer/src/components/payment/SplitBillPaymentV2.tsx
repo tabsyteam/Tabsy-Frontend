@@ -23,6 +23,8 @@ import { Button } from '@tabsy/ui-components'
 import { TabsyAPI } from '@tabsy/api-client'
 import { SplitBillType } from '@/constants/payment'
 import type { TableSessionBill, TableSessionUser } from '@tabsy/shared-types'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, getCurrencySymbol, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 // Custom hook
 import { useSplitCalculation } from '@/hooks/useSplitCalculation'
@@ -56,6 +58,13 @@ export function SplitBillPaymentV2({
   onProceedToPayment
 }: SplitBillPaymentV2Props) {
   const actualSessionId = bill.sessionId || sessionId
+
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
+  const currencySymbol = getCurrencySymbol(currency)
 
   if (!actualSessionId) {
     return (
@@ -136,7 +145,7 @@ export function SplitBillPaymentV2({
         <div>
           <h2 className="text-lg font-semibold text-content-primary">Split Bill</h2>
           <p className="text-sm text-content-secondary">
-            Total: ${bill.summary.remainingBalance.toFixed(2)}
+            Total: {formatPrice(bill.summary.remainingBalance)}
           </p>
         </div>
       </div>
@@ -155,6 +164,7 @@ export function SplitBillPaymentV2({
             users={users}
             serverState={serverState}
             currentUserId={currentUser.guestSessionId}
+            formatPrice={formatPrice}
           />
         )}
 
@@ -166,6 +176,7 @@ export function SplitBillPaymentV2({
             serverState={serverState}
             onChange={updateUserPercentage}
             disabled={uiState.isLoading || serverState.isLocked}
+            formatPrice={formatPrice}
           />
         )}
 
@@ -177,6 +188,8 @@ export function SplitBillPaymentV2({
             serverState={serverState}
             onChange={updateUserAmount}
             disabled={uiState.isLoading || serverState.isLocked}
+            formatPrice={formatPrice}
+            currencySymbol={currencySymbol}
           />
         )}
 
@@ -195,7 +208,7 @@ export function SplitBillPaymentV2({
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-content-primary">Your Amount</span>
           <span className="text-xl font-bold text-primary">
-            ${userSplitAmount.toFixed(2)}
+            {formatPrice(userSplitAmount)}
           </span>
         </div>
       </div>
@@ -217,7 +230,7 @@ export function SplitBillPaymentV2({
           className="flex-1"
           disabled={!validation.isValid || uiState.isLoading || userSplitAmount === 0}
         >
-          {uiState.isLoading ? 'Processing...' : `Pay $${userSplitAmount.toFixed(2)}`}
+          {uiState.isLoading ? 'Processing...' : `Pay ${formatPrice(userSplitAmount)}`}
         </Button>
       </div>
 

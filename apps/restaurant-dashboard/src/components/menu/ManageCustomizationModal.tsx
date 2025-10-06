@@ -13,7 +13,7 @@ import {
   AlertCircle,
   Loader2,
   Settings,
-  DollarSign,
+  Banknote,
   ToggleLeft,
   ToggleRight,
   Move,
@@ -33,6 +33,8 @@ import type {
   OptionValueCreateRequest,
   OptionValueUpdateRequest,
 } from '@tabsy/shared-types';
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant';
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency';
 
 interface ManageCustomizationModalProps {
   isOpen: boolean;
@@ -104,6 +106,8 @@ export function ManageCustomizationModal({
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
+  const { restaurant } = useCurrentRestaurant();
+  const currency = (restaurant?.currency as CurrencyCode) || 'USD';
   const queryClient = useQueryClient();
 
   // Reset form when modal opens/closes
@@ -356,13 +360,8 @@ export function ManageCustomizationModal({
     }));
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(price);
-  };
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency);
 
   const getOptionTypeIcon = (type: OptionType) => {
     switch (type) {

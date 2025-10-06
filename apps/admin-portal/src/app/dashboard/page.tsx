@@ -13,7 +13,7 @@ import {
   Shield,
   AlertTriangle,
   Activity,
-  DollarSign,
+  Banknote,
   TrendingUp,
   Globe,
   LogOut,
@@ -37,6 +37,8 @@ import { useAnalyticsUpdates } from '@tabsy/api-client';
 import { formatDistanceToNow } from 'date-fns';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { formatPrice, type CurrencyCode, getOrderCurrency, getPaymentCurrency } from '@tabsy/shared-utils';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Metric Card Component
 function MetricCard({
@@ -164,6 +166,17 @@ export default function AdminDashboard(): JSX.Element {
   const { data: liveOrders } = useLiveOrders();
   const { data: livePayments } = useLivePayments();
 
+  // Determine default currency from live orders or payments
+  const defaultCurrency: CurrencyCode = (() => {
+    if (liveOrders && liveOrders.length > 0) {
+      return getOrderCurrency(liveOrders[0]);
+    }
+    if (livePayments && livePayments.length > 0) {
+      return getPaymentCurrency(livePayments[0]);
+    }
+    return 'USD';
+  })();
+
   // Removed WebSocket - Admin portal uses periodic refresh instead of real-time updates
 
   // Auto-refresh dashboard
@@ -208,9 +221,10 @@ export default function AdminDashboard(): JSX.Element {
   const systemHealth = getSystemHealth();
 
   return (
-    <ProtectedRoute>
-      <DashboardLayout breadcrumbs={[{ label: 'Dashboard' }]}>
-        <div>
+    <ErrorBoundary>
+      <ProtectedRoute>
+        <DashboardLayout breadcrumbs={[{ label: 'Dashboard' }]}>
+          <div>
           {/* Quick Actions Bar */}
           <div className="bg-surface border-b border-border-default px-6 py-3">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -259,9 +273,9 @@ export default function AdminDashboard(): JSX.Element {
           {/* Key Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <MetricCard
-              icon={DollarSign}
+              icon={Banknote}
               title="Total Revenue"
-              value={`$${(dashboardData?.metrics.totalRevenue || 0).toLocaleString()}`}
+              value={formatPrice(dashboardData?.metrics.totalRevenue || 0, defaultCurrency)}
               change={`${(dashboardData?.metrics.revenueGrowth || 0) > 0 ? '+' : ''}${(dashboardData?.metrics.revenueGrowth || 0).toFixed(1)}%`}
               changeType={(dashboardData?.metrics.revenueGrowth || 0) > 0 ? 'positive' : 'negative'}
               subtitle="from yesterday"
@@ -315,7 +329,7 @@ export default function AdminDashboard(): JSX.Element {
                       <div key={order.id} className="flex items-center justify-between p-3 bg-surface-secondary rounded-lg">
                         <div>
                           <p className="text-sm font-medium text-content-primary">Order #{order.orderNumber}</p>
-                          <p className="text-xs text-content-secondary">Table {order.tableNumber} • ${order.totalAmount}</p>
+                          <p className="text-xs text-content-secondary">Table {order.tableNumber} • {formatPrice(order.totalAmount, getOrderCurrency(order))}</p>
                         </div>
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                           order.status === 'PENDING' ? 'badge-warning' :
@@ -344,7 +358,7 @@ export default function AdminDashboard(): JSX.Element {
                     {livePayments.slice(0, 5).map((payment: any) => (
                       <div key={payment.id} className="flex items-center justify-between p-3 bg-surface-secondary rounded-lg">
                         <div>
-                          <p className="text-sm font-medium text-content-primary">${payment.amount}</p>
+                          <p className="text-sm font-medium text-content-primary">{formatPrice(payment.amount, getPaymentCurrency(payment))}</p>
                           <p className="text-xs text-content-secondary">{payment.paymentMethod} • {payment.restaurantName}</p>
                         </div>
                         <span className="px-2 py-1 text-xs font-medium rounded-full badge-warning">
@@ -543,8 +557,9 @@ export default function AdminDashboard(): JSX.Element {
             </div>
           </div>
         </main>
-        </div>
-      </DashboardLayout>
-    </ProtectedRoute>
+          </div>
+        </DashboardLayout>
+      </ProtectedRoute>
+    </ErrorBoundary>
   );
 }

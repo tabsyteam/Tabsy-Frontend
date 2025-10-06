@@ -10,6 +10,8 @@ import { Button } from '@tabsy/ui-components'
 import { CreditCard, Split, Users, AlertTriangle, RefreshCw } from 'lucide-react'
 import { PaymentType } from '@/constants/payment'
 import { useBillStatus } from '@/hooks/useBillData' // ✅ Updated to use React Query version
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 import type {
   TableSessionBill as TableSessionBillType,
   TableSessionUser,
@@ -32,6 +34,11 @@ const TableSessionBillComponent = ({
   onPaymentInitiated
 }: TableSessionBillProps) => {
   const router = useRouter()
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
 
   // ARCHITECTURE FIX: Use shared useBillStatus hook instead of duplicate state
   // This ensures bill amount is consistent across BottomNav badge and this component
@@ -208,28 +215,28 @@ const TableSessionBillComponent = ({
         <div className="space-y-3">
           <div className="flex justify-between items-center py-2">
             <span className="text-content-secondary">Subtotal</span>
-            <span className="font-medium">${(adjustedBillSummary?.subtotal || 0).toFixed(2)}</span>
+            <span className="font-medium">{formatPrice(adjustedBillSummary?.subtotal || 0)}</span>
           </div>
           <div className="flex justify-between items-center py-2">
             <span className="text-content-secondary">Tax</span>
-            <span className="font-medium">${(adjustedBillSummary?.tax || 0).toFixed(2)}</span>
+            <span className="font-medium">{formatPrice(adjustedBillSummary?.tax || 0)}</span>
           </div>
           <div className="flex justify-between items-center py-2">
             <span className="text-content-secondary">Tip</span>
-            <span className="font-medium">${(adjustedBillSummary?.tip || 0).toFixed(2)}</span>
+            <span className="font-medium">{formatPrice(adjustedBillSummary?.tip || 0)}</span>
           </div>
 
           <div className="border-t border-default/50 pt-3">
             <div className="flex justify-between items-center py-2">
               <span className="font-semibold text-content-primary">Total</span>
-              <span className="font-bold text-lg">${(adjustedBillSummary?.grandTotal || 0).toFixed(2)}</span>
+              <span className="font-bold text-lg">{formatPrice(adjustedBillSummary?.grandTotal || 0)}</span>
             </div>
           </div>
 
           {(adjustedBillSummary?.totalPaid || 0) > 0 && (
             <div className="flex justify-between items-center py-2 bg-status-success/10 rounded-lg px-3 -mx-1">
               <span className="font-medium text-status-success">Amount Paid</span>
-              <span className="font-bold text-status-success">-${(adjustedBillSummary?.totalPaid || 0).toFixed(2)}</span>
+              <span className="font-bold text-status-success">-{formatPrice(adjustedBillSummary?.totalPaid || 0)}</span>
             </div>
           )}
 
@@ -247,7 +254,7 @@ const TableSessionBillComponent = ({
               <span className={`font-bold text-xl ${
                 hasRemainingBalance ? 'text-status-warning' : 'text-status-success'
               }`}>
-                ${(adjustedBillSummary?.remainingBalance || 0).toFixed(2)}
+                {formatPrice(adjustedBillSummary?.remainingBalance || 0)}
               </span>
             </div>
           </div>
@@ -339,7 +346,7 @@ const TableSessionBillComponent = ({
                             {item.quantity}x {item.name}
                           </span>
                           <span className={order.isPaid ? 'line-through' : ''}>
-                            ${Number(item.subtotal || 0).toFixed(2)}
+                            {formatPrice(Number(item.subtotal || 0))}
                           </span>
                         </div>
                       ))}
@@ -349,7 +356,7 @@ const TableSessionBillComponent = ({
                     }`}>
                       <span className={order.isPaid ? 'line-through' : ''}>Order Total</span>
                       <span className={order.isPaid ? 'line-through' : ''}>
-                        ${Number(order.total || 0).toFixed(2)}
+                        {formatPrice(Number(order.total || 0))}
                       </span>
                     </div>
                   </div>
@@ -357,7 +364,7 @@ const TableSessionBillComponent = ({
               </div>
               <div className="flex justify-between font-medium mt-3 pt-3 border-t border-default">
                 <span>Round {roundNum} Total</span>
-                <span>${activeOrders.reduce((sum, order: any) => sum + Number(order.total || 0), 0).toFixed(2)}</span>
+                <span>{formatPrice(activeOrders.reduce((sum, order: any) => sum + Number(order.total || 0), 0))}</span>
               </div>
             </div>
           )
@@ -389,7 +396,7 @@ const TableSessionBillComponent = ({
               <CreditCard className="w-5 h-5" />
               <div className="flex flex-col items-center">
                 <span className="font-semibold">Pay Full Amount</span>
-                <span className="text-sm opacity-90">${(adjustedBillSummary?.remainingBalance || 0).toFixed(2)}</span>
+                <span className="text-sm opacity-90">{formatPrice(adjustedBillSummary?.remainingBalance || 0)}</span>
               </div>
             </Button>
 
@@ -455,7 +462,7 @@ const TableSessionBillComponent = ({
               {/* Payment summary */}
               <div className="inline-flex items-center justify-center bg-surface/60 backdrop-blur-sm border border-status-success/30 rounded-full px-4 py-2 mt-4">
                 <span className="text-sm font-semibold text-status-success">
-                  Total Paid: ${(adjustedBillSummary?.totalPaid || 0).toFixed(2)}
+                  Total Paid: {formatPrice(adjustedBillSummary?.totalPaid || 0)}
                 </span>
               </div>
             </div>

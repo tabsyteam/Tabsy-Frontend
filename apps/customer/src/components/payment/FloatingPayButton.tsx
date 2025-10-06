@@ -1,11 +1,17 @@
 'use client'
 
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('FloatingPayButton')
+
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CreditCard, Wallet } from 'lucide-react'
 import { SessionManager } from '@/lib/session'
 import { useBillStatus } from '@/hooks/useBillData' // ✅ Updated to use React Query version
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface FloatingPayButtonProps {
   className?: string
@@ -20,6 +26,8 @@ export function FloatingPayButton({ className = '' }: FloatingPayButtonProps) {
   const router = useRouter()
   const pathname = usePathname()
   const { hasBill, remainingBalance, isPaid, isLoading } = useBillStatus()
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
 
   // CRITICAL: Session must be retrieved client-side only (after hydration)
   const [session, setSession] = useState<ReturnType<typeof SessionManager.getDiningSession>>(null)
@@ -42,7 +50,7 @@ export function FloatingPayButton({ className = '' }: FloatingPayButtonProps) {
   const isOnTablePage = pathname?.includes('/table')
   const shouldShow = isClient && hasValidSession && hasBill && !isPaid && remainingBalance > 0 && !isLoading && !isOnTablePage
 
-  console.log('[FloatingPayButton] Display logic:', {
+  log.debug('[FloatingPayButton] Display logic:', {
     isClient,
     hasValidSession,
     hasBill,
@@ -88,7 +96,7 @@ export function FloatingPayButton({ className = '' }: FloatingPayButtonProps) {
             whileTap={{ scale: 0.9 }}
             whileHover={{ scale: 1.05 }}
             className="relative flex items-center gap-3 px-6 py-4 bg-accent text-accent-foreground rounded-full shadow-2xl shadow-accent/40 hover:shadow-3xl hover:shadow-accent/50 transition-all duration-300 group"
-            aria-label={`Pay bill: $${remainingBalance.toFixed(2)}`}
+            aria-label={`Pay bill: ${formatPriceUtil(remainingBalance, currency)}`}
           >
             {/* Pulsing ring animation */}
             <motion.div
@@ -127,7 +135,7 @@ export function FloatingPayButton({ className = '' }: FloatingPayButtonProps) {
                   Pay Bill
                 </span>
                 <span className="text-lg font-bold leading-tight">
-                  ${remainingBalance.toFixed(2)}
+                  {formatPriceUtil(remainingBalance, currency)}
                 </span>
               </div>
 

@@ -79,7 +79,18 @@ export const CONSTANTS = {
   BUNDLE_SIZE_WARNING_THRESHOLD: 500 * 1024, // 500KB
 }
 
-// Environment-specific constants
+/**
+ * @deprecated DO NOT USE - Use environment variables instead
+ *
+ * Environment-specific constants (DEPRECATED)
+ *
+ * These hardcoded values should NOT be used in production.
+ * Always use environment variables:
+ * - NEXT_PUBLIC_API_BASE_URL
+ * - NEXT_PUBLIC_WS_BASE_URL
+ *
+ * This constant is kept only for reference and will be removed in future versions.
+ */
 export const ENV_CONSTANTS = {
   development: {
     API_BASE_URL: 'http://localhost:5001',

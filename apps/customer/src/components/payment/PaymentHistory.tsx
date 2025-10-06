@@ -1,9 +1,13 @@
 'use client'
 
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('PaymentHistory')
+
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import {
-  Receipt,
+  ReceiptText,
   Download,
   CreditCard,
   Smartphone,
@@ -22,6 +26,8 @@ import { SessionManager } from '@/lib/session'
 import { PaymentMethod, PaymentStatus } from '@tabsy/shared-types'
 import type { Payment } from '@tabsy/shared-types'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface PaymentHistoryProps {
   tableSessionId?: string
@@ -33,6 +39,11 @@ export function PaymentHistory({ tableSessionId, orderId, api }: PaymentHistoryP
   const [payments, setPayments] = useState<Payment[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
 
   useEffect(() => {
     loadPaymentHistory()
@@ -63,7 +74,7 @@ export function PaymentHistory({ tableSessionId, orderId, api }: PaymentHistoryP
         setPayments([])
       }
     } catch (err: any) {
-      console.error('[PaymentHistory] Error loading payments:', err)
+      log.error('[PaymentHistory] Error loading payments:', err)
       setError('Failed to load payment history')
     } finally {
       setIsLoading(false)
@@ -170,7 +181,7 @@ export function PaymentHistory({ tableSessionId, orderId, api }: PaymentHistoryP
         toast.error('Receipt not available')
       }
     } catch (error) {
-      console.error('Error viewing receipt:', error)
+      log.error('Error viewing receipt:', error)
       toast.error('Failed to load receipt')
     }
   }
@@ -191,7 +202,7 @@ export function PaymentHistory({ tableSessionId, orderId, api }: PaymentHistoryP
         toast.error('Receipt not available for download')
       }
     } catch (error) {
-      console.error('Error downloading receipt:', error)
+      log.error('Error downloading receipt:', error)
       toast.error('Failed to download receipt')
     }
   }
@@ -228,7 +239,7 @@ export function PaymentHistory({ tableSessionId, orderId, api }: PaymentHistoryP
     return (
       <div className="bg-surface rounded-xl border p-6">
         <div className="text-center py-8">
-          <Receipt className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
+          <ReceiptText className="w-12 h-12 text-content-tertiary mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-content-primary mb-2">
             No Payment History
           </h3>
@@ -248,7 +259,7 @@ export function PaymentHistory({ tableSessionId, orderId, api }: PaymentHistoryP
       <div className="p-6 border-b border-border-secondary">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-content-primary flex items-center space-x-2">
-            <Receipt className="w-5 h-5" />
+            <ReceiptText className="w-5 h-5" />
             <span>Payment History</span>
           </h3>
           <Button
@@ -271,7 +282,7 @@ export function PaymentHistory({ tableSessionId, orderId, api }: PaymentHistoryP
                 {getPaymentMethodIcon(payment.paymentMethod)}
                 <div>
                   <div className="font-medium text-content-primary">
-                    ${payment.totalAmount.toFixed(2)}
+                    {formatPrice(payment.totalAmount)}
                   </div>
                   <div className="text-sm text-content-secondary">
                     {getPaymentMethodLabel(payment.paymentMethod)}
@@ -308,7 +319,7 @@ export function PaymentHistory({ tableSessionId, orderId, api }: PaymentHistoryP
             {payment.tipAmount > 0 && (
               <div className="flex justify-between text-sm mb-4">
                 <span className="text-content-secondary">Tip included:</span>
-                <span className="text-content-primary">${payment.tipAmount.toFixed(2)}</span>
+                <span className="text-content-primary">{formatPrice(payment.tipAmount)}</span>
               </div>
             )}
 

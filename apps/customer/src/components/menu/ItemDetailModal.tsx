@@ -25,6 +25,7 @@ import { MenuItem, DietaryType, AllergyInfo, SpiceLevel, MenuItemOption, OptionT
 import { formatCurrency } from '@/lib/utils'
 import { haptics } from '@/lib/haptics'
 import { InteractiveButton, InteractiveCard, ToggleSwitch, AnimatedCounter, useShakeAnimation } from '@/components/ui/MicroInteractions'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
 
 interface ItemDetailModalProps {
   item: MenuItem | null
@@ -125,6 +126,20 @@ export function ItemDetailModal({
   const imageRef = useRef<HTMLImageElement>(null)
   const nutritionRef = useRef<HTMLDivElement>(null)
   const { controls: shakeControls, shake } = useShakeAnimation()
+  const restaurantContext = useRestaurantOptional()
+  const currency = restaurantContext?.currency || 'USD'
+
+  // Map currency to locale
+  const getLocale = (currency: string): string => {
+    const localeMap: Record<string, string> = {
+      USD: 'en-US',
+      AED: 'ar-AE',
+      INR: 'en-IN',
+      EUR: 'en-GB',
+      GBP: 'en-GB'
+    }
+    return localeMap[currency] || 'en-US'
+  }
 
   // Enhanced image gallery - supports single image with modern UI patterns
   // Future enhancement: backend support for multiple images per item
@@ -772,11 +787,11 @@ export function ItemDetailModal({
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-lg font-bold text-primary whitespace-nowrap">
-                        {formatCurrency(item?.basePrice || item?.price || 0)}
+                        {formatCurrency(item?.basePrice || item?.price || 0, currency, getLocale(currency))}
                       </div>
                       {getCustomizationPrice() > 0 && (
                         <div className="text-xs text-primary font-medium mt-0.5 whitespace-nowrap">
-                          +{formatCurrency(getCustomizationPrice())}
+                          +{formatCurrency(getCustomizationPrice(), currency, getLocale(currency))}
                         </div>
                       )}
                     </div>
@@ -896,7 +911,7 @@ export function ItemDetailModal({
                         {option.values[0]?.priceModifier !== 0 && (
                           <span className="text-sm text-content-secondary">
                             {(option.values[0]?.priceModifier ?? 0) > 0 ? '+' : ''}
-                            {formatCurrency(option.values[0]?.priceModifier ?? 0)} each
+                            {formatCurrency(option.values[0]?.priceModifier ?? 0, currency, getLocale(currency))} each
                           </span>
                         )}
                       </div>
@@ -938,7 +953,7 @@ export function ItemDetailModal({
                                   )}
                                   {value.priceModifier !== 0 && (
                                     <div className="text-sm text-content-secondary">
-                                      {value.priceModifier > 0 ? '+' : ''}{formatCurrency(value.priceModifier)}
+                                      {value.priceModifier > 0 ? '+' : ''}{formatCurrency(value.priceModifier, currency, getLocale(currency))}
                                     </div>
                                   )}
                                 </div>

@@ -8,13 +8,12 @@ import {
   Calendar,
   User,
   MapPin,
-  DollarSign,
   Clock,
   CheckCircle,
   AlertCircle,
   XCircle,
   RefreshCw,
-  Receipt,
+  ReceiptText,
   Banknote,
   Smartphone,
   BanknoteArrowDownIcon as Refund
@@ -23,6 +22,8 @@ import { tabsyClient } from '@tabsy/api-client'
 import { format } from 'date-fns'
 import { PaymentMethod } from '@tabsy/shared-types'
 import type { Payment, PaymentStatus } from '@tabsy/shared-types'
+import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
 
 interface PaymentDetailsModalProps {
   paymentId: string
@@ -41,6 +42,8 @@ export function PaymentDetailsModal({
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isRefunding, setIsRefunding] = useState(false)
+  const { restaurant } = useCurrentRestaurant()
+  const currency = (restaurant?.currency || 'USD') as CurrencyCode
 
   useEffect(() => {
     if (isOpen && paymentId) {
@@ -143,7 +146,7 @@ export function PaymentDetailsModal({
       case 'CASH':
         return <Banknote className="w-4 h-4" />
       case 'BANK_TRANSFER':
-        return <DollarSign className="w-4 h-4" />
+        return <Banknote className="w-4 h-4" />
       default:
         return <CreditCard className="w-4 h-4" />
     }
@@ -218,7 +221,7 @@ export function PaymentDetailsModal({
                   {getStatusIcon(payment.status)}
                   <div>
                     <h3 className="text-lg font-semibold text-content-primary">
-                      ${Number(payment.amount || 0).toFixed(2)}
+                      {formatPrice(Number(payment.amount || 0), currency)}
                     </h3>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(payment.status)}`}>
                       {payment.status}
@@ -245,7 +248,7 @@ export function PaymentDetailsModal({
                   <div>
                     <h4 className="text-sm font-medium text-content-secondary mb-2">Order ID</h4>
                     <div className="flex items-center space-x-2">
-                      <Receipt className="w-4 h-4 text-content-tertiary" />
+                      <ReceiptText className="w-4 h-4 text-content-tertiary" />
                       <span className="font-mono text-sm text-content-primary">
                         {payment.orderId.slice(-8)}
                       </span>
@@ -295,7 +298,7 @@ export function PaymentDetailsModal({
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span>Refund Amount:</span>
-                      <span className="font-medium">${Number(payment.refundAmount || 0).toFixed(2)}</span>
+                      <span className="font-medium">{formatPrice(Number(payment.refundAmount || 0), currency)}</span>
                     </div>
                     {payment.refundReason && (
                       <div className="flex justify-between text-sm">

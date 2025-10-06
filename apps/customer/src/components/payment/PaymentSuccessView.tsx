@@ -1,5 +1,9 @@
 'use client'
 
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('PaymentSuccessView')
+
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -11,7 +15,7 @@ import {
   Star,
   MessageCircle,
   ArrowRight,
-  Receipt,
+  ReceiptText,
   Home,
   Utensils,
   Users
@@ -21,6 +25,8 @@ import { useApi } from '@/components/providers/api-provider'
 import { SessionManager } from '@/lib/session'
 import type { Payment, PaymentMethod, PaymentStatus, Order, TableSessionBill } from '@tabsy/shared-types'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface EnhancedPayment extends Payment {
   order?: Order
@@ -50,6 +56,11 @@ export function PaymentSuccessView() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { api } = useApi()
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
 
   const [payment, setPayment] = useState<EnhancedPayment | null>(null)
   const [loading, setLoading] = useState(true)
@@ -69,7 +80,7 @@ export function PaymentSuccessView() {
     const restoreSession = () => {
       // Try to get session from URL params first
       if (guestSessionId) {
-        console.log('PaymentSuccessView: Restoring guest session from URL:', guestSessionId)
+        log.debug('PaymentSuccessView: Restoring guest session from URL:', guestSessionId)
         api.setGuestSession(guestSessionId)
         setSessionRestored(true)
         return
@@ -78,7 +89,7 @@ export function PaymentSuccessView() {
       // Try to get session from existing dining session
       const diningSession = SessionManager.getDiningSession()
       if (diningSession?.sessionId) {
-        console.log('PaymentSuccessView: Restoring guest session from dining session:', diningSession.sessionId)
+        log.debug('PaymentSuccessView: Restoring guest session from dining session:', diningSession.sessionId)
         api.setGuestSession(diningSession.sessionId)
         setSessionRestored(true)
         return
@@ -87,13 +98,13 @@ export function PaymentSuccessView() {
       // Try to get session from stored session storage
       const storedSessionId = sessionStorage.getItem('tabsy-guest-session-id')
       if (storedSessionId) {
-        console.log('PaymentSuccessView: Restoring guest session from storage:', storedSessionId)
+        log.debug('PaymentSuccessView: Restoring guest session from storage:', storedSessionId)
         api.setGuestSession(storedSessionId)
         setSessionRestored(true)
         return
       }
 
-      console.log('PaymentSuccessView: No guest session found, proceeding without session')
+      log.debug('PaymentSuccessView: No guest session found, proceeding without session')
       setSessionRestored(true)
     }
 
@@ -122,7 +133,7 @@ export function PaymentSuccessView() {
         } catch (authError: any) {
           // If authentication fails, try public endpoint as fallback
           if (authError?.status === 401 || authError?.message?.includes('Unauthorized')) {
-            console.log('Authentication failed, trying public endpoint as fallback')
+            log.debug('Authentication failed, trying public endpoint as fallback')
             response = await api.payment.getPublicDetails(paymentId)
             fallbackUsed = true
           } else {
@@ -142,7 +153,7 @@ export function PaymentSuccessView() {
                 enhancedPayment.order = orderResponse.data
               }
             } catch (orderError) {
-              console.warn('Could not load order details:', orderError)
+              log.warn('Could not load order details:', orderError)
             }
           }
 
@@ -154,7 +165,7 @@ export function PaymentSuccessView() {
                 enhancedPayment.tableBill = billResponse.data
               }
             } catch (billError) {
-              console.warn('Could not load table session bill:', billError)
+              log.warn('Could not load table session bill:', billError)
             }
           }
 
@@ -180,13 +191,13 @@ export function PaymentSuccessView() {
           setPayment(enhancedPayment)
 
           if (fallbackUsed) {
-            console.log('Payment loaded successfully using public endpoint fallback')
+            log.debug('Payment loaded successfully using public endpoint fallback')
           }
         } else {
           throw new Error('Payment not found')
         }
       } catch (error) {
-        console.error('Failed to load payment:', error)
+        log.error('Failed to load payment:', error)
         toast.error('Failed to load payment details')
         router.push('/')
       } finally {
@@ -220,7 +231,7 @@ ${payment.transactionId ? `Transaction ID: ${payment.transactionId}` : ''}
     if (payment.splitInfo) {
       receiptContent += `
 SPLIT PAYMENT
-Your portion: $${Number(payment.splitInfo.userAmount || 0).toFixed(2)}
+Your portion: ${formatPrice(Number(payment.splitInfo.userAmount || 0))}
 Total participants: ${payment.splitInfo.totalParticipants}
 
 =====================================
@@ -286,7 +297,7 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
       } catch (authError: any) {
         // If authentication fails, generate receipt from available payment data
         if (authError?.status === 401 || authError?.message?.includes('Unauthorized')) {
-          console.log('Authentication failed for receipt, generating from payment data')
+          log.debug('Authentication failed for receipt, generating from payment data')
           fallbackUsed = true
         } else {
           throw authError
@@ -319,7 +330,7 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
       toast.success(successMessage)
 
     } catch (error) {
-      console.error('Failed to download receipt:', error)
+      log.error('Failed to download receipt:', error)
       toast.error('Failed to download receipt. Please try again later.')
     } finally {
       setDownloadingReceipt(false)
@@ -343,11 +354,11 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
       // For group dining - feedback will be associated with the table session
       // This allows feedback for the entire dining experience including multiple orders
       params.set('tableSession', tableSessionId)
-      console.log('PaymentSuccessView: Leaving feedback for table session (group dining):', tableSessionId)
+      log.debug('PaymentSuccessView: Leaving feedback for table session (group dining):', tableSessionId)
     } else if (payment?.orderId) {
       // For individual order feedback
       params.set('order', payment.orderId)
-      console.log('PaymentSuccessView: Leaving feedback for individual order:', payment.orderId)
+      log.debug('PaymentSuccessView: Leaving feedback for individual order:', payment.orderId)
     }
 
     const feedbackUrl = `${baseUrl}?${params.toString()}`
@@ -491,7 +502,7 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-content-primary flex items-center space-x-2">
-              <Receipt className="w-5 h-5" />
+              <ReceiptText className="w-5 h-5" />
               <span>Payment Details</span>
             </h3>
             {(payment.tableBill || payment.order?.items) && (
@@ -544,16 +555,16 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
               <>
                 <div className="flex justify-between">
                   <span className="text-content-secondary">Subtotal</span>
-                  <span className="font-medium text-content-primary">${payment.tableBill.summary.subtotal.toFixed(2)}</span>
+                  <span className="font-medium text-content-primary">{formatPrice(payment.tableBill.summary.subtotal)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-content-secondary">Tax</span>
-                  <span className="font-medium text-content-primary">${payment.tableBill.summary.tax.toFixed(2)}</span>
+                  <span className="font-medium text-content-primary">{formatPrice(payment.tableBill.summary.tax)}</span>
                 </div>
                 {payment.tableBill.summary.tip > 0 && (
                   <div className="flex justify-between">
                     <span className="text-content-secondary">Tip</span>
-                    <span className="font-medium text-content-primary">${payment.tableBill.summary.tip.toFixed(2)}</span>
+                    <span className="font-medium text-content-primary">{formatPrice(payment.tableBill.summary.tip)}</span>
                   </div>
                 )}
               </>
@@ -578,7 +589,7 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
                 {payment.tipAmount && Number(payment.tipAmount) > 0 && (
                   <div className="flex justify-between">
                     <span className="text-content-secondary">Tip</span>
-                    <span className="font-medium text-content-primary">${Number(payment.tipAmount).toFixed(2)}</span>
+                    <span className="font-medium text-content-primary">{formatPrice(Number(payment.tipAmount))}</span>
                   </div>
                 )}
               </>
@@ -600,11 +611,11 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
               <div className="flex justify-between text-lg font-semibold">
                 <span className="text-content-primary">Total Paid</span>
                 <span className="text-content-primary">
-                  ${(() => {
+                  {(() => {
                     // Always show the actual payment amount that was just processed
                     // Don't rely on tableBill.summary.totalPaid as it may not be updated yet
                     // since payment might still be in PROCESSING status
-                    return Number(payment.amount || payment.totalAmount || 0).toFixed(2);
+                    return formatPrice(Number(payment.amount || payment.totalAmount || 0));
                   })()}
                 </span>
               </div>
@@ -655,14 +666,14 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
                                       Order #{order.orderNumber} by {order.placedBy}
                                     </span>
                                     <span className="text-xs font-medium text-content-primary">
-                                      ${Number(order.total || 0).toFixed(2)}
+                                      {formatPrice(Number(order.total || 0))}
                                     </span>
                                   </div>
                                   <div className="space-y-1">
                                     {order.items.map((item: any, idx: number) => (
                                       <div key={idx} className="flex justify-between text-xs text-content-secondary">
                                         <span>{item.quantity}x {item.name}</span>
-                                        <span>${Number(item.subtotal || 0).toFixed(2)}</span>
+                                        <span>{formatPrice(Number(item.subtotal || 0))}</span>
                                       </div>
                                     ))}
                                   </div>
@@ -671,7 +682,7 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
                             </div>
                             <div className="flex justify-between text-sm font-medium mt-2 pt-2 border-t border-border-secondary">
                               <span>Round {roundNum} Total</span>
-                              <span>${round.roundTotal.toFixed(2)}</span>
+                              <span>{formatPrice(round.roundTotal)}</span>
                             </div>
                           </div>
                         ))}
@@ -680,21 +691,21 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
                       <div className="mt-4 pt-3 border-t border-border-secondary space-y-1">
                         <div className="flex justify-between text-sm">
                           <span className="text-content-secondary">Subtotal</span>
-                          <span className="text-content-primary">${payment.tableBill.summary.subtotal.toFixed(2)}</span>
+                          <span className="text-content-primary">{formatPrice(payment.tableBill.summary.subtotal)}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-content-secondary">Tax</span>
-                          <span className="text-content-primary">${payment.tableBill.summary.tax.toFixed(2)}</span>
+                          <span className="text-content-primary">{formatPrice(payment.tableBill.summary.tax)}</span>
                         </div>
                         {payment.tableBill.summary.tip > 0 && (
                           <div className="flex justify-between text-sm">
                             <span className="text-content-secondary">Tip</span>
-                            <span className="text-content-primary">${payment.tableBill.summary.tip.toFixed(2)}</span>
+                            <span className="text-content-primary">{formatPrice(payment.tableBill.summary.tip)}</span>
                           </div>
                         )}
                         <div className="flex justify-between text-sm font-semibold pt-1 border-t">
                           <span>Grand Total</span>
-                          <span>${payment.tableBill.summary.grandTotal.toFixed(2)}</span>
+                          <span>{formatPrice(payment.tableBill.summary.grandTotal)}</span>
                         </div>
                       </div>
                     </div>
@@ -712,13 +723,13 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
                               {item.customizations?.length > 0 && (
                                 <div className="text-xs text-content-secondary mt-1">
                                   {item.customizations.map((custom: any, idx: number) => (
-                                    <div key={idx}>+ {custom.name} (+${Number(custom.price || 0).toFixed(2)})</div>
+                                    <div key={idx}>+ {custom.name} (+{formatPrice(Number(custom.price || 0))})</div>
                                   ))}
                                 </div>
                               )}
                             </div>
                             <div className="text-sm font-medium text-content-primary">
-                              ${(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}
+                              {formatPrice(Number(item.price || 0) * Number(item.quantity || 0))}
                             </div>
                           </div>
                         ))}
@@ -727,11 +738,11 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
                       <div className="mt-4 pt-3 border-t border-border-secondary space-y-1">
                         <div className="flex justify-between text-sm">
                           <span className="text-content-secondary">Subtotal</span>
-                          <span className="text-content-primary">${Number(payment.order.subtotal || 0).toFixed(2)}</span>
+                          <span className="text-content-primary">{formatPrice(Number(payment.order.subtotal || 0))}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                           <span className="text-content-secondary">Tax</span>
-                          <span className="text-content-primary">${Number(payment.order.tax || 0).toFixed(2)}</span>
+                          <span className="text-content-primary">{formatPrice(Number(payment.order.tax || 0))}</span>
                         </div>
                       </div>
                     </div>

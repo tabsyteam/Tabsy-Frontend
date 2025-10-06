@@ -1,5 +1,5 @@
 // Common currency codes
-export type Currency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CAD' | 'AUD'
+export type Currency = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CAD' | 'AUD' | 'AED' | 'INR'
 
 /**
  * Currency formatting utilities
@@ -26,7 +26,9 @@ export const currencyUtils = {
         GBP: '£',
         JPY: '¥',
         CAD: 'C$',
-        AUD: 'A$'
+        AUD: 'A$',
+        AED: 'د.إ',
+        INR: '₹'
       }
       return `${symbols[currency] || '$'}${amount.toFixed(2)}`
     }
@@ -111,7 +113,9 @@ export const currencyUtils = {
       GBP: '£',
       JPY: '¥',
       CAD: 'C$',
-      AUD: 'A$'
+      AUD: 'A$',
+      AED: 'د.إ',
+      INR: '₹'
     }
     return symbols[currency] || '$'
   },

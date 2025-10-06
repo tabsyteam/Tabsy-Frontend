@@ -23,6 +23,7 @@ import { useWebSocket } from '@tabsy/ui-components'
 import { type Notification } from '@tabsy/shared-types'
 import { useNotificationSound } from '@/hooks/useNotificationSound'
 import { useOrderWebSocketSync, useAssistanceWebSocketSync } from '@/hooks/useWebSocketSync'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface DashboardStats {
   todayOrders: number
@@ -312,12 +313,11 @@ export function DashboardClient(): JSX.Element {
   }, [metricsData])
 
   // OPTIMIZATION: Memoize formatting functions to prevent recreation on every render
+  // Use restaurant's currency for proper multi-currency support
+  const currency = (restaurant?.currency as CurrencyCode) || 'USD'
   const formatCurrency = useCallback((amount: number): string => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount)
-  }, [])
+    return formatPriceUtil(amount, currency)
+  }, [currency])
 
   const formatTrend = useCallback((trend: number): string => {
     const sign = trend >= 0 ? '+' : ''
@@ -509,7 +509,10 @@ export function DashboardClient(): JSX.Element {
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                   </div>
                 ) : (
-                  <DynamicWeeklyOverviewChart data={((weeklyData as any)?.data || []) as Array<{ day: string; orders: number; revenue: number }>} />
+                  <DynamicWeeklyOverviewChart
+                    data={((weeklyData as any)?.data || []) as Array<{ day: string; orders: number; revenue: number }>}
+                    currency={currency}
+                  />
                 )}
               </div>
 

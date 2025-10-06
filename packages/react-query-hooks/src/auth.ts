@@ -11,9 +11,22 @@ import {
 } from '@tabsy/shared-types';
 import { createTabsyClient, tabsyClient } from '@tabsy/api-client';
 
+// Get API base URL from environment or use global client's baseURL
+function getAPIBaseURL(): string {
+  // Try to get from environment (works in Next.js apps)
+  if (typeof window !== 'undefined' && (window as any).process?.env?.NEXT_PUBLIC_API_BASE_URL) {
+    return (window as any).process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+  if (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_BASE_URL) {
+    return process.env.NEXT_PUBLIC_API_BASE_URL;
+  }
+  // Fallback: use global client which gets URL from app config
+  return tabsyClient.axios.defaults.baseURL || '';
+}
+
 // Create API client instance for auth operations
 const apiClient = createTabsyClient({
-  baseURL: 'http://localhost:5001/api/v1',
+  baseURL: getAPIBaseURL(),
   timeout: 10000
 });
 

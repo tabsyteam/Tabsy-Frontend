@@ -26,6 +26,8 @@ import { tabsyClient } from '@tabsy/api-client'
 import { format, formatDistanceToNow } from 'date-fns'
 import type { Payment, PaymentStatus, PaymentMethod } from '@tabsy/shared-types'
 import { PaymentDetailsModal } from './PaymentDetailsModal'
+import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
 
 interface PaymentHistoryProps {
   restaurantId: string
@@ -56,6 +58,8 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
   const [selectedPayments, setSelectedPayments] = useState<string[]>([])
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const { restaurant } = useCurrentRestaurant()
+  const currency = (restaurant?.currency || 'USD') as CurrencyCode
 
   const { data: payments, isLoading, error, refetch } = useQuery({
     queryKey: ['restaurant', 'payment-history', restaurantId, filters],
@@ -223,11 +227,13 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
   }
 
   const formatAmount = (amount: any): string => {
-    if (!amount) return '0.00'
-    if (typeof amount === 'number') return amount.toFixed(2)
-    if (typeof amount === 'string') return parseFloat(amount).toFixed(2) || '0.00'
-    if (typeof amount === 'object' && 'toNumber' in amount) return amount.toNumber().toFixed(2)
-    return parseFloat(amount.toString()).toFixed(2) || '0.00'
+    let numericAmount = 0
+    if (!amount) numericAmount = 0
+    else if (typeof amount === 'number') numericAmount = amount
+    else if (typeof amount === 'string') numericAmount = parseFloat(amount) || 0
+    else if (typeof amount === 'object' && 'toNumber' in amount) numericAmount = amount.toNumber()
+    else numericAmount = parseFloat(amount.toString()) || 0
+    return formatPrice(numericAmount, currency)
   }
 
   if (error) {
@@ -536,7 +542,7 @@ export function PaymentHistory({ restaurantId }: PaymentHistoryProps) {
 
                     <div className="text-right">
                       <p className="font-semibold text-content-primary">
-                        ${formatAmount(payment.amount)}
+                        {formatAmount(payment.amount)}
                       </p>
                       <p className="text-sm text-content-secondary">
                         {format(new Date(payment.createdAt), 'MMM dd, h:mm a')}

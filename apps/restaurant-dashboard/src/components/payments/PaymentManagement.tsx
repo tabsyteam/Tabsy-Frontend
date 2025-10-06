@@ -5,7 +5,6 @@ import { Button } from '@tabsy/ui-components'
 import {
   CreditCard,
   TrendingUp,
-  DollarSign,
   Clock,
   CheckCircle,
   AlertCircle,
@@ -64,7 +63,7 @@ export function PaymentManagement({ restaurantId }: PaymentManagementProps) {
     {
       id: 'overview' as PaymentTab,
       label: 'Overview',
-      icon: DollarSign,
+      icon: Banknote,
       description: 'Payment summary and key metrics'
     },
     {

@@ -3,6 +3,34 @@ import { tabsyClient } from '@tabsy/api-client';
 import { useAuth } from '@tabsy/ui-components';
 import { Payment, PaymentStatus, PaymentMethod } from '@tabsy/shared-types';
 import { toast } from 'sonner';
+import { formatPrice, type CurrencyCode, getPaymentCurrency } from '@tabsy/shared-utils';
+
+// API Error type
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+}
+
+// Payment response type with consistent structure
+export interface PaymentsResponse {
+  payments: Payment[];
+  stats: {
+    paymentsByStatus: Record<PaymentStatus, number>;
+    paymentsByMethod: Record<PaymentMethod, number>;
+  };
+}
+
+// Refund request parameters
+export interface RefundPaymentParams {
+  paymentId: string;
+  amount?: number;
+  reason?: string;
+  currency?: CurrencyCode;
+}
 
 export function usePayments(filters?: {
   restaurantId?: string;
@@ -19,7 +47,7 @@ export function usePayments(filters?: {
 }) {
   const { isAuthenticated } = useAuth();
 
-  return useQuery({
+  return useQuery<PaymentsResponse>({
     queryKey: ['admin', 'payments', filters],
     queryFn: async () => {
       const paymentsResponse = await tabsyClient.payment.list({
@@ -31,7 +59,15 @@ export function usePayments(filters?: {
       });
 
       const payments = paymentsResponse.data || [];
-      if (!payments.length) return [];
+      if (!payments.length) {
+        return {
+          payments: [],
+          stats: {
+            paymentsByStatus: {} as Record<PaymentStatus, number>,
+            paymentsByMethod: {} as Record<PaymentMethod, number>
+          }
+        };
+      }
 
       let filtered = [...payments];
 
@@ -132,30 +168,46 @@ export function usePayment(paymentId: string) {
   });
 }
 
+/**
+ * Hook for processing payment refunds with proper currency handling
+ */
 export function useRefundPayment() {
-  const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ paymentId, amount, reason }: {
-      paymentId: string;
-      amount?: number;
-      reason?: string;
-    }) => {
+    mutationFn: async ({
+      paymentId,
+      amount,
+      reason,
+      currency
+    }: RefundPaymentParams) => {
       // Call refund endpoint
       const response = await tabsyClient.payment.updateStatus(paymentId, PaymentStatus.REFUNDED);
-      return response.data;
+      const refundedPayment = response.data;
+
+      // Return payment with currency info
+      return {
+        ...refundedPayment,
+        currency: currency || getPaymentCurrency(refundedPayment)
+      };
     },
-    onSuccess: (refundedPayment) => {
+    onSuccess: (data) => {
+      // Invalidate all payment-related queries
       queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-      if (refundedPayment) {
-        queryClient.invalidateQueries({ queryKey: ['admin', 'payment', refundedPayment.id] });
-        toast.success(`Payment refunded successfully! Amount: $${Number((refundedPayment as any).refundAmount || refundedPayment.amount || 0).toFixed(2)}`);
-      }
+      queryClient.invalidateQueries({ queryKey: ['admin', 'payment', data.id] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+
+      // Show success toast with proper currency
+      const refundAmount = data.refundAmount || data.amount || 0;
+      const currency = data.currency || 'USD';
+      toast.success(
+        `Payment refunded successfully! Amount: ${formatPrice(Number(refundAmount), currency as CurrencyCode)}`
+      );
     },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to refund payment');
+    onError: (error: ApiError) => {
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to refund payment';
+      toast.error(errorMessage);
+      console.error('[RefundPayment] Error:', error);
     }
   });
 }
@@ -216,33 +268,7 @@ export function usePaymentAlerts(restaurantId?: string) {
   });
 }
 
-export function useProcessRefund() {
-  const { isAuthenticated } = useAuth();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ paymentId, amount, reason }: {
-      paymentId: string;
-      amount?: number;
-      reason?: string;
-    }) => {
-      // Call refund endpoint
-      const response = await tabsyClient.payment.updateStatus(paymentId, PaymentStatus.REFUNDED);
-      return response.data;
-    },
-    onSuccess: (refundedPayment) => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
-      if (refundedPayment) {
-        queryClient.invalidateQueries({ queryKey: ['admin', 'payment', refundedPayment.id] });
-        toast.success(`Payment refunded successfully! Amount: $${Number((refundedPayment as any).refundAmount || refundedPayment.amount || 0).toFixed(2)}`);
-      }
-      queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to process refund');
-    }
-  });
-}
+// Removed duplicate useProcessRefund - use useRefundPayment instead
 
 function calculateTopRestaurants(payments: Payment[]): Array<{
   restaurantId: string;

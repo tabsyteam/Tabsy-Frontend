@@ -8,6 +8,8 @@ import { formatDistanceToNow } from 'date-fns'
 import { CustomizationSummary } from '@tabsy/ui-components'
 import { tabsyClient } from '@tabsy/api-client'
 import { toast } from 'sonner'
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface OrderCardProps {
   order: Order
@@ -21,6 +23,12 @@ function OrderCardComponent({ order, onStatusUpdate, onViewDetails }: OrderCardP
   const [payments, setPayments] = useState<Payment[]>([])
   const [loadingPayments, setLoadingPayments] = useState(false)
   const [processingCashPayment, setProcessingCashPayment] = useState(false)
+
+  const { restaurant } = useCurrentRestaurant()
+  const currency = (restaurant?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
 
   useEffect(() => {
     const updateTimeAgo = () => {
@@ -62,7 +70,7 @@ function OrderCardComponent({ order, onStatusUpdate, onViewDetails }: OrderCardP
 
       if (response.success) {
         toast.success('Cash Payment Confirmed', {
-          description: `Payment of $${orderTotal.toFixed(2)} confirmed for order #${order.orderNumber}`
+          description: `Payment of ${formatPrice(orderTotal)} confirmed for order #${order.orderNumber}`
         })
 
         // Refresh payments
@@ -128,7 +136,7 @@ function OrderCardComponent({ order, onStatusUpdate, onViewDetails }: OrderCardP
 
     if (totalPaid > 0) {
       return {
-        text: `Partial: $${totalPaid.toFixed(2)}/$${orderTotal.toFixed(2)}`,
+        text: `Partial: ${formatPrice(totalPaid)}/${formatPrice(orderTotal)}`,
         color: 'bg-primary/10 text-primary border-primary/20',
         icon: <CreditCard className="w-3 h-3" />
       }
@@ -258,7 +266,7 @@ function OrderCardComponent({ order, onStatusUpdate, onViewDetails }: OrderCardP
         </div>
         <div className="text-right">
           <p className="font-bold text-xl text-card-foreground group-hover:text-primary transition-colors duration-200">
-            ${parseFloat(String(order.total || 0)).toFixed(2)}
+            {formatPrice(parseFloat(String(order.total || 0)))}
           </p>
         </div>
       </div>
@@ -328,7 +336,7 @@ function OrderCardComponent({ order, onStatusUpdate, onViewDetails }: OrderCardP
                   )}
                 </div>
                 <span className="font-bold text-card-foreground flex-shrink-0">
-                  ${parseFloat(String(item.subtotal || 0)).toFixed(2)}
+                  {formatPrice(parseFloat(String(item.subtotal || 0)))}
                 </span>
               </div>
             ))}

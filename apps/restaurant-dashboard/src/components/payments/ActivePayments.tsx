@@ -26,6 +26,8 @@ import { useWebSocket } from '@tabsy/ui-components'
 import { PaymentDetailsModal } from './PaymentDetailsModal'
 import { logger } from '../../lib/logger'
 import { QUERY_STALE_TIME, QUERY_REFETCH_INTERVAL } from '../../lib/constants'
+import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
 
 interface ActivePaymentsProps {
   restaurantId: string
@@ -54,6 +56,8 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
   const [isExporting, setIsExporting] = useState(false)
   const queryClient = useQueryClient()
   const { isConnected } = useWebSocket()
+  const { restaurant } = useCurrentRestaurant()
+  const currency = (restaurant?.currency || 'USD') as CurrencyCode
 
   const { data: activePayments, isLoading, error, refetch } = useQuery({
     queryKey: ['restaurant', 'active-payments', restaurantId, filterStatus],
@@ -185,7 +189,7 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
           headers.join(','),
           ...response.data.map(payment => [
             payment.id.slice(-8),
-            `$${Number(payment.amount || 0).toFixed(2)}`,
+            formatPrice(Number(payment.amount || 0), currency),
             payment.status,
             payment.paymentMethod,
             payment.orderId?.slice(-8) || 'N/A',
@@ -380,7 +384,7 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
                       <div>
                         <div className="flex items-center space-x-2">
                           <h4 className="font-medium text-content-primary">
-                            ${Number(payment.amount || 0).toFixed(2)}
+                            {formatPrice(Number(payment.amount || 0), currency)}
                           </h4>
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(payment.status)}`}

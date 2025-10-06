@@ -44,19 +44,21 @@ export function ConnectionProvider({ children, apiClient }: ConnectionProviderPr
     healthCheck()
   }, [healthCheck])
 
-  // Health check on mount and periodic checks
+  // Health check on mount only - no periodic polling
   useEffect(() => {
-    // Initial health check
+    // Initial health check on mount
     healthCheck()
 
-    // Periodic health checks every 30 seconds
-    const healthInterval = setInterval(() => {
-      if (process.env.NODE_ENV === 'development') {
-        healthCheck()
-      }
-    }, 30000)
+    // REMOVED: Periodic 30-second health check interval
+    // Container deployment optimization: Prevents background CPU usage when idle
+    // Health check now only runs:
+    // 1. On mount (above)
+    // 2. On-demand via reconnect() function
+    // 3. When user explicitly triggers it
 
-    return () => clearInterval(healthInterval)
+    return () => {
+      // Cleanup if needed
+    }
   }, [healthCheck])
 
   const value: ConnectionContextType = {

@@ -6,10 +6,9 @@ import { Button } from '@tabsy/ui-components'
 import {
   TrendingUp,
   TrendingDown,
-  DollarSign,
+  Banknote,
   CreditCard,
   Smartphone,
-  Banknote,
   Users,
   Clock,
   CheckCircle,
@@ -27,6 +26,8 @@ import { tabsyClient } from '@tabsy/api-client'
 import { format, subDays, startOfDay, endOfDay, parseISO } from 'date-fns'
 import { useWebSocket } from '@tabsy/ui-components'
 import type { PaymentMetrics, RealTimePaymentMetrics, PaymentHealthStatus, PaymentAlert } from '@tabsy/shared-types'
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 // Chart library - Required dependency: recharts ^3.2.1 (installed in package.json)
 import {
   LineChart,
@@ -50,6 +51,8 @@ export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
   const [selectedMetric, setSelectedMetric] = useState<'revenue' | 'transactions' | 'success_rate'>('revenue')
   const queryClient = useQueryClient()
   const { isConnected } = useWebSocket()
+  const { restaurant } = useCurrentRestaurant()
+  const currency = (restaurant?.currency as CurrencyCode) || 'USD'
 
   const { data: analytics, isLoading, error, refetch } = useQuery({
     queryKey: ['restaurant', 'payment-analytics', restaurantId, selectedPeriod],
@@ -130,8 +133,8 @@ export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
    * This component now relies on React Query cache updates from the centralized hook.
    */
 
-
-  const formatCurrency = (amount: number) => `$${amount.toFixed(2)}`
+  // Use shared utility for consistent formatting
+  const formatCurrency = (amount: number) => formatPriceUtil(amount, currency)
   const formatPercent = (percent: number) => `${percent.toFixed(1)}%`
 
   const getTrendIcon = (value: number) => {
@@ -308,7 +311,7 @@ export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
               <span>Live: {realtimeMetrics.pendingPayments} pending</span>
             </div>
             <div className="flex items-center">
-              <DollarSign className="w-4 h-4 mr-1 text-status-success" />
+              <Banknote className="w-4 h-4 mr-1 text-status-success" />
               <span>Recent: ${realtimeMetrics.recentRevenue?.toFixed(2) || '0.00'}</span>
             </div>
           </div>
@@ -364,7 +367,7 @@ export function PaymentAnalytics({ restaurantId }: PaymentAnalyticsProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-primary/10 rounded-lg">
-                    <DollarSign className="w-6 h-6 text-primary" />
+                    <Banknote className="w-6 h-6 text-primary" />
                   </div>
                   <div>
                     <p className="text-sm text-content-secondary">Total Revenue</p>

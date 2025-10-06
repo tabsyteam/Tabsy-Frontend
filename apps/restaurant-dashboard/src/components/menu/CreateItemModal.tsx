@@ -9,7 +9,7 @@ import {
   AlertCircle,
   CheckCircle,
   Loader2,
-  DollarSign,
+  Banknote,
   Package,
   Leaf,
   ShieldAlert,
@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import type { MenuCategory, MenuItem } from '@tabsy/shared-types';
 import { MenuItemStatus, DietaryType, AllergenType, AllergyInfo, SpiceLevel } from '@tabsy/shared-types';
+import { getCurrencySymbol, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency';
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant';
 
 const getDietaryIcon = (dietaryType: DietaryType) => {
   switch (dietaryType) {
@@ -113,6 +115,11 @@ export function CreateItemModal({
   editMode = false,
   initialData,
 }: CreateItemModalProps) {
+  // Early return must come before hooks to satisfy Rules of Hooks
+  const { restaurant } = useCurrentRestaurant()
+  const currency = (restaurant?.currency || 'USD') as CurrencyCode
+  const currencySymbol = getCurrencySymbol(currency)
+
   // Utility functions to convert between backend AllergyInfo and frontend AllergenType array
   const convertAllergyInfoToAllergens = (allergyInfo: AllergyInfo): AllergenType[] => {
     if (!allergyInfo) return [];
@@ -555,9 +562,9 @@ export function CreateItemModal({
     return mockUrl;
   };
 
-  if (!open) return null;
-
-  return (
+  // Conditional rendering: return null if modal is not open
+  // This must come AFTER all hooks to satisfy Rules of Hooks
+  return !open ? null : (
     <div className="fixed inset-0 modal-backdrop z-50 flex items-center justify-center p-2 sm:p-4">
       <div className="modal-content rounded-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] overflow-hidden">
         {/* Enhanced Header */}
@@ -765,11 +772,11 @@ export function CreateItemModal({
                       htmlFor="price"
                       className="block text-sm font-semibold text-foreground mb-3"
                     >
-                      Price *
+                      Price ({currencySymbol}) *
                     </label>
                     <div className="relative">
                       <div className="absolute left-4 top-1/2 transform -translate-y-1/2 p-2 bg-primary/10 rounded-lg">
-                        <DollarSign className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-semibold text-primary">{currencySymbol}</span>
                       </div>
                       <input
                         id="price"

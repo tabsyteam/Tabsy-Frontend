@@ -217,10 +217,11 @@ export function createDashboardHooks(useQuery: any) {
           }
         },
         enabled: !!restaurantId && (options?.enabled !== false),
-        staleTime: 0, // Always fetch fresh data for debugging
-        cacheTime: 0, // Don't cache for debugging
-        refetchOnMount: true, // Always refetch on mount
-        refetchOnWindowFocus: true, // Refetch when window gets focus
+        // PRODUCTION SETTINGS: Proper caching to reduce API calls
+        staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh, prevents duplicate fetches
+        gcTime: 30 * 60 * 1000, // 30 minutes cache (formerly cacheTime)
+        refetchOnMount: false, // Don't refetch if we have fresh cached data
+        refetchOnWindowFocus: false, // Don't refetch on window focus - rely on WebSocket for real-time updates
         refetchInterval: false,
         refetchIntervalInBackground: false,
         // Merge with passed options, allowing caller to override defaults
@@ -335,10 +336,11 @@ export function createDashboardHooks(useQuery: any) {
           return { data: dailyStats }
         },
         enabled: !!restaurantId && (options?.enabled !== false),
-        staleTime: 0, // Always fetch fresh data for debugging
-        cacheTime: 0, // Don't cache for debugging
-        refetchOnMount: true, // Always refetch on mount
-        refetchOnWindowFocus: true, // Refetch when window gets focus
+        // PRODUCTION SETTINGS: Proper caching to reduce API calls
+        staleTime: 5 * 60 * 1000, // 5 minutes - data stays fresh, prevents duplicate fetches
+        gcTime: 30 * 60 * 1000, // 30 minutes cache (formerly cacheTime)
+        refetchOnMount: false, // Don't refetch if we have fresh cached data
+        refetchOnWindowFocus: false, // Don't refetch on window focus - rely on WebSocket for real-time updates
         refetchInterval: false,
         refetchIntervalInBackground: false,
         // Merge with passed options, allowing caller to override defaults

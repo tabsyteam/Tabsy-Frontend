@@ -22,6 +22,8 @@ import type {
   Order,
   OrderStatus
 } from '@tabsy/shared-types'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface OrderTrackingSharedProps {
   tableSession: MultiUserTableSession
@@ -61,6 +63,12 @@ export function OrderTrackingShared({
   const [ordersByRound, setOrdersByRound] = useState<OrdersByRound>({})
   const [isLoading, setIsLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
 
   // Use global WebSocket connection for order tracking
   const { client } = useWebSocket()
@@ -361,7 +369,7 @@ export function OrderTrackingShared({
                                 {orderStatusLabels[order.status as OrderStatus]}
                               </div>
                               <div className="text-lg font-bold text-content-primary mt-2">
-                                ${Number(order.total || 0).toFixed(2)}
+                                {formatPrice(Number(order.total || 0))}
                               </div>
                             </div>
                           </div>
@@ -377,7 +385,7 @@ export function OrderTrackingShared({
                                     </span>
                                     <span className="text-content-primary font-medium">{item.name}</span>
                                   </div>
-                                  <span className="font-semibold text-content-primary">${Number(item.subtotal || 0).toFixed(2)}</span>
+                                  <span className="font-semibold text-content-primary">{formatPrice(Number(item.subtotal || 0))}</span>
                                 </div>
                               )) || (
                                 <div className="text-sm text-content-secondary">

@@ -1,5 +1,9 @@
 'use client'
 
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('SplitBillPayment')
+
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@tabsy/ui-components'
@@ -7,8 +11,7 @@ import {
   ArrowLeft,
   CreditCard,
   Smartphone,
-  DollarSign,
-  Receipt,
+  ReceiptText,
   CheckCircle,
   AlertCircle,
   AlertTriangle,
@@ -96,7 +99,7 @@ export function SplitBillPayment({
   // Get the actual sessionId, with fallback to prop if bill.sessionId is undefined
   const actualSessionId = bill.sessionId || sessionId
   if (!actualSessionId) {
-    console.error('[SplitBillPayment] No sessionId available:', { billSessionId: bill.sessionId, propSessionId: sessionId })
+    log.error('[SplitBillPayment] No sessionId available:', { billSessionId: bill.sessionId, propSessionId: sessionId })
   }
 
   // Ensure unique users to prevent React key warnings (memoized to prevent infinite loops)
@@ -199,13 +202,13 @@ export function SplitBillPayment({
 
       try {
         setLoadingInitialSplit(true)
-        console.log('[SplitBillPayment] Fetching initial split calculation for session:', actualSessionId)
+        log.debug('[SplitBillPayment] Fetching initial split calculation for session:', actualSessionId)
 
         const response = await api.tableSession.getSplitCalculation(actualSessionId)
 
         if (response.success && response.data) {
           const splitCalc = response.data
-          console.log('[SplitBillPayment] Found existing split calculation:', splitCalc)
+          log.debug('[SplitBillPayment] Found existing split calculation:', splitCalc)
 
           // Set the split type from existing calculation
           setSplitOption(prev => ({
@@ -245,13 +248,13 @@ export function SplitBillPayment({
           }
 
           setInitialSplitLoaded(true)
-          console.log('[SplitBillPayment] Successfully loaded existing split calculation')
+          log.debug('[SplitBillPayment] Successfully loaded existing split calculation')
         } else {
-          console.log('[SplitBillPayment] No existing split calculation found, using defaults')
+          log.debug('[SplitBillPayment] No existing split calculation found, using defaults')
           setInitialSplitLoaded(false)
         }
       } catch (error) {
-        console.error('[SplitBillPayment] Error fetching initial split calculation:', error)
+        log.error('[SplitBillPayment] Error fetching initial split calculation:', error)
         setInitialSplitLoaded(false)
         // Don't show error to user for missing split calculation - it's expected for new sessions
       } finally {
@@ -288,7 +291,7 @@ export function SplitBillPayment({
         amounts[user.guestSessionId] = equalAmount
       })
 
-      console.log('[SplitBillPayment] Initializing split amounts:', {
+      log.debug('[SplitBillPayment] Initializing split amounts:', {
         percentages,
         amounts,
         remainingBalance: bill.summary.remainingBalance,
@@ -300,7 +303,7 @@ export function SplitBillPayment({
 
       // Create initial split calculation if we don't have backend amounts
       if (actualSessionId && Object.keys(backendSplitAmounts).length === 0) {
-        console.log('[SplitBillPayment] Creating initial split calculation...')
+        log.debug('[SplitBillPayment] Creating initial split calculation...')
         createSplitCalculation()
       }
     }
@@ -309,7 +312,7 @@ export function SplitBillPayment({
   // Auto-switch from BY_ITEMS if only one item remains
   useEffect(() => {
     if (splitOption.type === SplitBillType.BY_ITEMS && totalUniqueItems <= 1) {
-      console.log('[SplitBillPayment] Auto-switching from BY_ITEMS to EQUAL due to single item')
+      log.debug('[SplitBillPayment] Auto-switching from BY_ITEMS to EQUAL due to single item')
       setSplitOption(prev => ({
         ...prev,
         type: SplitBillType.EQUAL
@@ -472,7 +475,7 @@ export function SplitBillPayment({
 
     // Check if update is stale (older than last processed update)
     if (lastUpdateMetadata && lastUpdateMetadata.timestamp && incomingTimestamp <= lastUpdateMetadata.timestamp) {
-      console.log('[SplitBillPayment] ⏭️ Skipping stale/duplicate update:', {
+      log.debug('[SplitBillPayment] ⏭️ Skipping stale/duplicate update:', {
         incomingTimestamp: new Date(incomingTimestamp).toISOString(),
         lastTimestamp: new Date(lastUpdateMetadata.timestamp).toISOString()
       })
@@ -490,7 +493,7 @@ export function SplitBillPayment({
     )
 
     if (!stateChanged) {
-      console.log('[SplitBillPayment] Skipping WebSocket update - no state changes detected')
+      log.debug('[SplitBillPayment] Skipping WebSocket update - no state changes detected')
       // Still update metadata to track we saw this update
       if (data.updateId && data.timestamp) {
         setLastUpdateMetadata({
@@ -511,11 +514,11 @@ export function SplitBillPayment({
     if (recentLocalSplitChange &&
         recentLocalSplitChange.type === splitCalculation.splitType &&
         Date.now() - recentLocalSplitChange.timestamp < 1000) {
-      console.log('[SplitBillPayment] ⏭️ Skipping WebSocket split method update - matches recent local change')
+      log.debug('[SplitBillPayment] ⏭️ Skipping WebSocket split method update - matches recent local change')
       return
     }
 
-    console.log('[SplitBillPayment] ✅ Applying WebSocket update:', {
+    log.debug('[SplitBillPayment] ✅ Applying WebSocket update:', {
       isSplitMethodChange,
       currentType: splitOption.type,
       incomingType: splitCalculation.splitType,
@@ -529,13 +532,13 @@ export function SplitBillPayment({
 
     // CRITICAL FIX: Always update backend split amounts when provided
     if (splitCalculation.splitAmounts) {
-      console.log('[SplitBillPayment] 🔄 Updating backend split amounts:', splitCalculation.splitAmounts)
+      log.debug('[SplitBillPayment] 🔄 Updating backend split amounts:', splitCalculation.splitAmounts)
       setBackendSplitAmounts(splitCalculation.splitAmounts)
     }
 
     // Handle split type change
     if (isSplitMethodChange) {
-      console.log('[SplitBillPayment] 🔄 Split method changed from', splitOption.type, 'to', splitCalculation.splitType)
+      log.debug('[SplitBillPayment] 🔄 Split method changed from', splitOption.type, 'to', splitCalculation.splitType)
 
       // Show notification about split method change
       const updatedByUser = users.find(u => u.guestSessionId === data.updatedBy)
@@ -649,7 +652,7 @@ export function SplitBillPayment({
   const handleTableSessionUpdate = useCallback((data: any) => {
     // CRITICAL FIX: Correct event type is 'split:calculation_updated' (with colon)
     if (data.type === 'split:calculation_updated') {
-      console.log('[SplitBillPayment] ✅ Received split calculation update:', data)
+      log.debug('[SplitBillPayment] ✅ Received split calculation update:', data)
 
       // FIXED: Determine if this is a split method change
       const isSplitMethodChange = data.splitCalculation?.splitType &&
@@ -663,7 +666,7 @@ export function SplitBillPayment({
                               data.updatedUser === currentUser.guestSessionId
 
       if (shouldSkipUpdate) {
-        console.log('[SplitBillPayment] ⏭️ Skipping own value update echo')
+        log.debug('[SplitBillPayment] ⏭️ Skipping own value update echo')
         return
       }
 
@@ -687,7 +690,7 @@ export function SplitBillPayment({
 
     // Handle split calculation lock events
     if (data.type === 'split:calculation_locked') {
-      console.log('[SplitBillPayment] Split calculation locked:', data)
+      log.debug('[SplitBillPayment] Split calculation locked:', data)
       setSplitLockStatus({
         isLocked: true,
         lockedBy: data.lockedBy,
@@ -707,7 +710,7 @@ export function SplitBillPayment({
     }
 
     if (data.type === 'split:calculation_unlocked') {
-      console.log('[SplitBillPayment] Split calculation unlocked:', data)
+      log.debug('[SplitBillPayment] Split calculation unlocked:', data)
       setSplitLockStatus({ isLocked: false })
 
       if (data.unlockedBy !== currentUser.guestSessionId) {
@@ -719,7 +722,7 @@ export function SplitBillPayment({
 
     // Handle user join events for proper sync status display
     if (data.type === 'user_joined_table_session') {
-      console.log('[SplitBillPayment] User joined table session:', data)
+      log.debug('[SplitBillPayment] User joined table session:', data)
 
       // If someone else joined, show sync indicator briefly for existing users
       if (data.guestSessionId !== currentUser.guestSessionId) {
@@ -740,7 +743,7 @@ export function SplitBillPayment({
 
     // Handle user leave events
     if (data.type === 'user_left_table_session') {
-      console.log('[SplitBillPayment] User left table session:', data)
+      log.debug('[SplitBillPayment] User left table session:', data)
 
       if (data.guestSessionId !== currentUser.guestSessionId) {
         const leftUser = data.userName || 'Someone'
@@ -777,7 +780,7 @@ export function SplitBillPayment({
         return response.data.isLocked
       }
     } catch (error) {
-      console.error('[SplitBillPayment] Error checking lock status:', error)
+      log.error('[SplitBillPayment] Error checking lock status:', error)
     }
     return false
   }
@@ -799,16 +802,16 @@ export function SplitBillPayment({
           lockedAt: new Date().toISOString()
         })
 
-        console.log('[SplitBillPayment] Split calculation locked successfully')
+        log.debug('[SplitBillPayment] Split calculation locked successfully')
 
         // Show notification to other users via WebSocket (handled by backend)
         const lockMessage = `${currentUser.userName || 'Someone'} is processing payment - split method is now locked`
-        console.log('[SplitBillPayment] Lock notification:', lockMessage)
+        log.debug('[SplitBillPayment] Lock notification:', lockMessage)
 
         return true
       }
     } catch (error) {
-      console.error('[SplitBillPayment] Error locking split calculation:', error)
+      log.error('[SplitBillPayment] Error locking split calculation:', error)
       toast.error('Failed to lock payment. Please try again.')
     } finally {
       setLockingPayment(false)
@@ -829,7 +832,7 @@ export function SplitBillPayment({
         return true
       }
     } catch (error) {
-      console.error('[SplitBillPayment] Error unlocking split calculation:', error)
+      log.error('[SplitBillPayment] Error unlocking split calculation:', error)
     }
     return false
   }
@@ -858,7 +861,7 @@ export function SplitBillPayment({
         )
 
         if (existingPayment) {
-          console.log('[SplitBillPayment] Recovering existing payment intent:', existingPayment.id)
+          log.debug('[SplitBillPayment] Recovering existing payment intent:', existingPayment.id)
 
           // Restore payment state
           setClientSecret(existingPayment.clientSecret)
@@ -869,11 +872,11 @@ export function SplitBillPayment({
             setSelectedPaymentMethod(existingPayment.paymentMethod)
           }
 
-          console.log('[SplitBillPayment] Payment intent recovered successfully')
+          log.debug('[SplitBillPayment] Payment intent recovered successfully')
         }
       }
     } catch (error) {
-      console.error('[SplitBillPayment] Error recovering payment intent:', error)
+      log.error('[SplitBillPayment] Error recovering payment intent:', error)
       // Don't show error to user, just log it
     }
   }
@@ -920,7 +923,7 @@ export function SplitBillPayment({
         await checkSplitLockStatus()
       }
     } catch (error) {
-      console.error('[SplitBillPayment] Error during lock recovery:', error)
+      log.error('[SplitBillPayment] Error during lock recovery:', error)
       // Fallback to normal lock status check
       await checkSplitLockStatus()
     }
@@ -949,7 +952,7 @@ export function SplitBillPayment({
   }
 
   const applyOptimisticUpdate = (updateType: 'percentages' | 'amounts' | 'itemAssignments', data: any, updateId: string) => {
-    console.log(`[SplitBillPayment] ⚡ Applying optimistic ${updateType} update:`, {
+    log.debug(`[SplitBillPayment] ⚡ Applying optimistic ${updateType} update:`, {
       updateId,
       data,
       currentState: updateType === 'percentages' ? customPercentages : updateType === 'amounts' ? customAmounts : itemAssignments
@@ -975,20 +978,20 @@ export function SplitBillPayment({
 
   const confirmOptimisticUpdate = (updateId: string) => {
     if (optimisticState.updateId === updateId) {
-      console.log(`[SplitBillPayment] ✅ Confirming optimistic update (delayed clear):`, {
+      log.debug(`[SplitBillPayment] ✅ Confirming optimistic update (delayed clear):`, {
         updateId,
         optimisticState
       })
       // Delay clearing optimistic state to protect against WebSocket echo
       // This prevents race condition where WebSocket event arrives after API response
       setTimeout(() => {
-        console.log(`[SplitBillPayment] 🧹 Clearing optimistic state after delay:`, updateId)
+        log.debug(`[SplitBillPayment] 🧹 Clearing optimistic state after delay:`, updateId)
         setOptimisticState(prev => {
           // Only clear if the updateId still matches (no new updates)
           if (prev.updateId === updateId) {
             return {}
           }
-          console.log(`[SplitBillPayment] ⚠️ Not clearing - new update exists:`, prev.updateId)
+          log.debug(`[SplitBillPayment] ⚠️ Not clearing - new update exists:`, prev.updateId)
           return prev
         })
         setRollbackState(null)
@@ -1000,7 +1003,7 @@ export function SplitBillPayment({
     if (optimisticState.updateId === updateId) {
       rollbackToSnapshot()
       if (error) {
-        console.error('[SplitBillPayment] Optimistic update rejected:', error)
+        log.error('[SplitBillPayment] Optimistic update rejected:', error)
       }
     }
   }
@@ -1145,11 +1148,11 @@ export function SplitBillPayment({
 
   // Get split amounts from backend calculation or fallback to empty
   const getSplitAmounts = (): { [guestSessionId: string]: number } => {
-    console.log('[SplitBillPayment] getSplitAmounts called, backendSplitAmounts:', backendSplitAmounts)
+    log.debug('[SplitBillPayment] getSplitAmounts called, backendSplitAmounts:', backendSplitAmounts)
 
     // If backend amounts are empty or invalid, calculate fallback amounts
     if (!backendSplitAmounts || Object.keys(backendSplitAmounts).length === 0) {
-      console.log('[SplitBillPayment] Backend split amounts empty, calculating fallback')
+      log.debug('[SplitBillPayment] Backend split amounts empty, calculating fallback')
 
       // Fallback calculation based on split type
       const fallbackAmounts: { [guestSessionId: string]: number } = {}
@@ -1171,7 +1174,7 @@ export function SplitBillPayment({
         })
       }
 
-      console.log('[SplitBillPayment] Fallback amounts calculated:', fallbackAmounts)
+      log.debug('[SplitBillPayment] Fallback amounts calculated:', fallbackAmounts)
       return fallbackAmounts
     }
 
@@ -1220,7 +1223,7 @@ export function SplitBillPayment({
           throw new Error(response.error?.message || 'Failed to update tip')
         }
       } catch (error: any) {
-        console.error('Failed to update tip:', error)
+        log.error('Failed to update tip:', error)
         toast.error('Failed to update tip. Please try again.')
         setSelectedTip(0) // Reset tip selection on error
       } finally {
@@ -1236,13 +1239,13 @@ export function SplitBillPayment({
     // FIXED: Prevent duplicate simultaneous requests
     const requestKey = `create_${actualSessionId}_${splitOption.type}`
     if (inFlightRequestsRef.current.has(requestKey)) {
-      console.log('[SplitBillPayment] ⏭️ Skipping duplicate createSplitCalculation request')
+      log.debug('[SplitBillPayment] ⏭️ Skipping duplicate createSplitCalculation request')
       return
     }
 
     // FIXED: Prevent infinite loops from useEffect
     if (isCreatingSplitRef.current) {
-      console.log('[SplitBillPayment] ⏭️ Already creating split calculation, skipping')
+      log.debug('[SplitBillPayment] ⏭️ Already creating split calculation, skipping')
       return
     }
 
@@ -1255,7 +1258,7 @@ export function SplitBillPayment({
       setSplitCalculationLoading(true)
       setSplitCalculationError(null)
 
-      console.log('[SplitBillPayment] 📤 Creating split calculation:', {
+      log.debug('[SplitBillPayment] 📤 Creating split calculation:', {
         splitType: splitOption.type,
         participants: splitOption.participants.length
       })
@@ -1274,7 +1277,7 @@ export function SplitBillPayment({
 
       if (response.success && response.data) {
         setBackendSplitAmounts(response.data.splitAmounts)
-        console.log('[SplitBillPayment] ✅ Split calculation created successfully:', response.data)
+        log.debug('[SplitBillPayment] ✅ Split calculation created successfully:', response.data)
 
         // Update metadata with the new split calculation (using timestamp for deduplication)
         const timestamp = response.data.timestamp ? new Date(response.data.timestamp).getTime() : Date.now()
@@ -1287,7 +1290,7 @@ export function SplitBillPayment({
         throw new Error(response.error?.message || 'Failed to create split calculation')
       }
     } catch (error: any) {
-      console.error('[SplitBillPayment] ❌ Error creating split calculation:', error)
+      log.error('[SplitBillPayment] ❌ Error creating split calculation:', error)
 
       // FIXED: Detect rate limiting
       isRateLimited = error?.message?.includes('Rate limit') ||
@@ -1296,7 +1299,7 @@ export function SplitBillPayment({
                       error?.status === 429
 
       if (isRateLimited) {
-        console.error('[SplitBillPayment] 🚫 Rate limited - stopping requests')
+        log.error('[SplitBillPayment] 🚫 Rate limited - stopping requests')
         setSplitCalculationError('Too many requests. Please wait a moment.')
         toast.error('Too many requests. Please wait a moment and try again.')
         // Clear in-flight tracking after rate limit to allow retry later
@@ -1343,7 +1346,7 @@ export function SplitBillPayment({
       const pendingUpdate = pendingUpdatesRef.current[updateKey]
       if (pendingUpdate) {
         try {
-          console.log(`[SplitBillPayment] Executing debounced update for ${updateKey}:`, pendingUpdate)
+          log.debug(`[SplitBillPayment] Executing debounced update for ${updateKey}:`, pendingUpdate)
           await updateSplitCalculation(
             pendingUpdate.userId,
             pendingUpdate.percentage,
@@ -1351,7 +1354,7 @@ export function SplitBillPayment({
             pendingUpdate.itemAssignments
           )
         } catch (error) {
-          console.error(`[SplitBillPayment] Debounced update failed for ${updateKey}:`, error)
+          log.error(`[SplitBillPayment] Debounced update failed for ${updateKey}:`, error)
         } finally {
           // Clear debouncing state
           setDebouncingUpdates(prev => {
@@ -1380,7 +1383,7 @@ export function SplitBillPayment({
     // FIXED: Prevent duplicate simultaneous update requests
     const requestKey = `update_${actualSessionId}_${userId}_${percentage !== undefined ? 'pct' : amount !== undefined ? 'amt' : 'items'}`
     if (inFlightRequestsRef.current.has(requestKey)) {
-      console.log('[SplitBillPayment] ⏭️ Skipping duplicate updateSplitCalculation request')
+      log.debug('[SplitBillPayment] ⏭️ Skipping duplicate updateSplitCalculation request')
       return
     }
 
@@ -1403,7 +1406,7 @@ export function SplitBillPayment({
 
       if (response.success && response.data) {
         setBackendSplitAmounts(response.data.splitAmounts)
-        console.log('[SplitBillPayment] Split calculation updated successfully:', response.data)
+        log.debug('[SplitBillPayment] Split calculation updated successfully:', response.data)
 
         // Confirm the optimistic update was successful
         confirmOptimisticUpdate(updateId)
@@ -1411,7 +1414,7 @@ export function SplitBillPayment({
         // Update local state to reflect backend changes (in case backend auto-adjusted)
         // IMPORTANT: Only update the specific user's value, not all users
         if (response.data.percentages && response.data.percentages[userId] !== undefined) {
-          console.log(`[SplitBillPayment] 📊 API Response updating percentage for user ${userId}:`, {
+          log.debug(`[SplitBillPayment] 📊 API Response updating percentage for user ${userId}:`, {
             oldValue: customPercentages[userId],
             newValue: response.data.percentages[userId],
             allPercentages: response.data.percentages
@@ -1422,7 +1425,7 @@ export function SplitBillPayment({
           }))
         }
         if (response.data.amounts && response.data.amounts[userId] !== undefined) {
-          console.log(`[SplitBillPayment] 💰 API Response updating amount for user ${userId}:`, {
+          log.debug(`[SplitBillPayment] 💰 API Response updating amount for user ${userId}:`, {
             oldValue: customAmounts[userId],
             newValue: response.data.amounts[userId]
           })
@@ -1435,7 +1438,7 @@ export function SplitBillPayment({
         throw new Error(response.error?.message || 'Failed to update split calculation')
       }
     } catch (error: any) {
-      console.error('[SplitBillPayment] Error updating split calculation:', error)
+      log.error('[SplitBillPayment] Error updating split calculation:', error)
 
       // FIXED: Detect rate limiting
       isRateLimited = error?.message?.includes('Rate limit') ||
@@ -1444,7 +1447,7 @@ export function SplitBillPayment({
                       error?.status === 429
 
       if (isRateLimited) {
-        console.error('[SplitBillPayment] 🚫 Rate limited on update')
+        log.error('[SplitBillPayment] 🚫 Rate limited on update')
         setSplitCalculationError('Too many requests. Please wait a moment.')
         toast.error('Too many requests. Please slow down.')
         // Clear in-flight tracking after rate limit to allow retry later
@@ -1546,7 +1549,7 @@ export function SplitBillPayment({
 
     // FIXED: Don't trigger API call if split type was changed by WebSocket
     if (splitTypeChangedByWebSocketRef.current) {
-      console.log('[SplitBillPayment] ⏭️ Skipping createSplitCalculation - split type changed by WebSocket')
+      log.debug('[SplitBillPayment] ⏭️ Skipping createSplitCalculation - split type changed by WebSocket')
       return
     }
 
@@ -1601,7 +1604,7 @@ export function SplitBillPayment({
 
   // SECURE: Handle custom percentage change with backend API and optimistic updates
   const handlePercentageChange = async (userId: string, value: string) => {
-    console.log('[SplitBillPayment] Percentage change:', userId, value, 'Current split type:', splitOption.type)
+    log.debug('[SplitBillPayment] Percentage change:', userId, value, 'Current split type:', splitOption.type)
 
     // CRITICAL FIX: Mark input as active on EVERY change, not just on focus
     // This maintains input protection throughout typing, preventing WebSocket overwrites
@@ -1647,7 +1650,7 @@ export function SplitBillPayment({
       }))
 
       // CRITICAL FIX: Call backend to sync item assignments with other users
-      console.log('[SplitBillPayment] 📤 Syncing item assignment to backend:', { itemId, userId })
+      log.debug('[SplitBillPayment] 📤 Syncing item assignment to backend:', { itemId, userId })
       debouncedUpdateSplitCalculation(
         currentUser.guestSessionId,
         undefined,
@@ -1662,14 +1665,14 @@ export function SplitBillPayment({
   const handleSessionExpiry = async (): Promise<boolean> => {
     try {
       // Attempt to recover session (simplified - in real implementation, use SessionManager recovery)
-      console.log('[SplitBillPayment] Attempting session recovery...')
+      log.debug('[SplitBillPayment] Attempting session recovery...')
       toast.info('Session expired. Attempting to recover...', { duration: 3000 })
 
       // In a real implementation, this would call SessionManager recovery
       // For now, return false to indicate recovery failed
       return false
     } catch (error) {
-      console.error('[SplitBillPayment] Session recovery failed:', error)
+      log.error('[SplitBillPayment] Session recovery failed:', error)
       return false
     }
   }
@@ -1683,7 +1686,7 @@ export function SplitBillPayment({
       setPaymentLock(lockId)
       return lockId
     } catch (error) {
-      console.error('[SplitBillPayment] Failed to acquire payment lock:', error)
+      log.error('[SplitBillPayment] Failed to acquire payment lock:', error)
       return null
     }
   }
@@ -1695,7 +1698,7 @@ export function SplitBillPayment({
       }
       // This would ideally call a backend endpoint to release the lock
     } catch (error) {
-      console.error('[SplitBillPayment] Failed to release payment lock:', error)
+      log.error('[SplitBillPayment] Failed to release payment lock:', error)
     }
   }
 
@@ -1717,7 +1720,7 @@ export function SplitBillPayment({
 
       return { updated: false }
     } catch (error) {
-      console.error('[SplitBillPayment] Failed to check for bill updates:', error)
+      log.error('[SplitBillPayment] Failed to check for bill updates:', error)
       return { updated: false }
     }
   }
@@ -1753,7 +1756,7 @@ export function SplitBillPayment({
     try {
       return await processPaymentWithLock(currentLockId, true)
     } catch (retryError) {
-      console.error('[SplitBillPayment] Retry failed:', retryError)
+      log.error('[SplitBillPayment] Retry failed:', retryError)
       return false
     }
   }
@@ -1853,7 +1856,7 @@ export function SplitBillPayment({
         throw new Error(paymentResponse.error?.message || 'Payment failed')
       }
     } catch (error: any) {
-      console.error('[SplitBillPayment] Payment processing failed:', error)
+      log.error('[SplitBillPayment] Payment processing failed:', error)
 
       // Enhanced error handling with retry logic
       if (error.message?.includes('conflict') ||
@@ -1892,7 +1895,7 @@ export function SplitBillPayment({
 
     // If current user already owns the lock, skip confirmation and proceed directly
     if (isLocked && splitLockStatus.lockedBy === currentUser.guestSessionId) {
-      console.log('[SplitBillPayment] User already owns the lock, proceeding directly to payment')
+      log.debug('[SplitBillPayment] User already owns the lock, proceeding directly to payment')
       await confirmPaymentAndLock()
       return
     }
@@ -1908,7 +1911,7 @@ export function SplitBillPayment({
       setLockingPayment(true)
 
       // First, ensure split calculation is up to date and verify amounts
-      console.log('[SplitBillPayment] Creating/updating split calculation before payment...')
+      log.debug('[SplitBillPayment] Creating/updating split calculation before payment...')
       await createSplitCalculation()
 
       // Wait a moment for the calculation to complete
@@ -1917,15 +1920,15 @@ export function SplitBillPayment({
       // Verify we have valid split amounts
       const splitAmounts = getSplitAmounts()
       const userAmount = splitAmounts[currentUser.guestSessionId] || 0
-      console.log('[SplitBillPayment] Split amounts after creation:', splitAmounts)
-      console.log('[SplitBillPayment] User amount:', userAmount)
+      log.debug('[SplitBillPayment] Split amounts after creation:', splitAmounts)
+      log.debug('[SplitBillPayment] User amount:', userAmount)
 
       if (userAmount <= 0) {
         toast.error('Unable to calculate your payment amount. Please check the split settings and try again.')
         return
       }
 
-      console.log('[SplitBillPayment] Attempting to lock split calculation...')
+      log.debug('[SplitBillPayment] Attempting to lock split calculation...')
       // First lock the split calculation
       const lockSuccess = await lockSplitCalculation('pending_payment_intent')
       if (!lockSuccess) {
@@ -1933,11 +1936,11 @@ export function SplitBillPayment({
         return
       }
 
-      console.log('[SplitBillPayment] Split locked successfully, proceeding with payment intent...')
+      log.debug('[SplitBillPayment] Split locked successfully, proceeding with payment intent...')
       // Now proceed with payment intent creation
       await createPaymentIntent()
     } catch (error) {
-      console.error('[SplitBillPayment] Error in payment confirmation flow:', error)
+      log.error('[SplitBillPayment] Error in payment confirmation flow:', error)
       // Unlock if there was an error
       await unlockSplitCalculation('pending_payment_intent')
       toast.error('Failed to prepare payment. Please try again.')
@@ -1982,7 +1985,7 @@ export function SplitBillPayment({
         throw new Error(response?.error?.message || 'Failed to create payment intent')
       }
     } catch (error: any) {
-      console.error('Payment intent creation error:', error)
+      log.error('Payment intent creation error:', error)
       toast.error(error.message || 'Failed to create payment intent')
     } finally {
       setIsProcessing(false)
@@ -1997,7 +2000,7 @@ export function SplitBillPayment({
     })
 
     if (!paymentId) {
-      console.error('Internal payment ID not found')
+      log.error('Internal payment ID not found')
       toast.error('Payment completed but unable to show details')
       return
     }
@@ -2043,10 +2046,10 @@ export function SplitBillPayment({
     try {
       const success = await processPaymentWithLock(lockId)
       if (!success) {
-        console.log('[SplitBillPayment] Payment processing failed')
+        log.debug('[SplitBillPayment] Payment processing failed')
       }
     } catch (error: any) {
-      console.error('[SplitBillPayment] Unexpected error during payment:', error)
+      log.error('[SplitBillPayment] Unexpected error during payment:', error)
       toast.error(`Unexpected error: ${error.message}`)
     } finally {
       await releasePaymentLock(lockId)
@@ -2060,7 +2063,7 @@ export function SplitBillPayment({
       const billResponse = await api.tableSession.getBill(actualSessionId!)
       if (billResponse.success && billResponse.data) {
         // In a real implementation, you'd update the parent component's bill state
-        console.log('[SplitBillPayment] Bill refreshed:', billResponse.data)
+        log.debug('[SplitBillPayment] Bill refreshed:', billResponse.data)
 
         // Check if remaining balance changed significantly
         const currentRemaining = billResponse.data.summary.remainingBalance
@@ -2071,7 +2074,7 @@ export function SplitBillPayment({
         }
       }
     } catch (error) {
-      console.warn('[SplitBillPayment] Failed to refresh bill data:', error)
+      log.warn('[SplitBillPayment] Failed to refresh bill data:', error)
     }
   }
 
@@ -2141,7 +2144,7 @@ export function SplitBillPayment({
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-content-primary flex items-center space-x-2">
-                  <Receipt className="w-5 h-5" />
+                  <ReceiptText className="w-5 h-5" />
                   <span>Bill Summary</span>
                 </h3>
                 <div className="flex items-center space-x-2 text-sm text-content-secondary">
@@ -2314,7 +2317,7 @@ export function SplitBillPayment({
                   className={`h-16 flex-col ${splitLockStatus.isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
                   title={splitLockStatus.isLocked ? 'Split calculation is locked during payment' : ''}
                 >
-                  <DollarSign className="w-5 h-5" />
+                  <Banknote className="w-5 h-5" />
                   <span className="text-sm font-semibold">Custom Amount</span>
                   <span className="text-xs opacity-75">Specify exact amounts</span>
                 </Button>
@@ -2487,7 +2490,7 @@ export function SplitBillPayment({
                 className="bg-surface rounded-xl border p-6"
               >
                 <h3 className="text-lg font-semibold text-content-primary mb-4 flex items-center space-x-2">
-                  <DollarSign className="w-5 h-5" />
+                  <Banknote className="w-5 h-5" />
                   <span>Set Amounts</span>
                 </h3>
                 <div className="space-y-4">
@@ -2502,7 +2505,7 @@ export function SplitBillPayment({
                         </div>
                       </div>
                       <div className="flex items-center space-x-3">
-                        <DollarSign className="w-4 h-4 text-content-tertiary" />
+                        <Banknote className="w-4 h-4 text-content-tertiary" />
                         <input
                           type="number"
                           min="0"
@@ -2737,7 +2740,7 @@ export function SplitBillPayment({
 
               <div className="space-y-3">
                 <div className="flex items-center space-x-3">
-                  <DollarSign className="w-4 h-4 text-content-tertiary" />
+                  <Banknote className="w-4 h-4 text-content-tertiary" />
                   <input
                     type="number"
                     value={customTip}

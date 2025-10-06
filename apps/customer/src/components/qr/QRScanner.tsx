@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQueryClient } from '@tanstack/react-query'
 import { Button, ErrorBoundary, LoadingState } from '@tabsy/ui-components'
 import { Camera, Upload, X, Loader2 } from 'lucide-react'
 import { Html5QrcodeScanner } from 'html5-qrcode'
@@ -19,6 +20,7 @@ export function QRScanner() {
   const scannerRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const { api } = useApi()
+  const queryClient = useQueryClient()
 
   const config = {
     fps: 10,
@@ -62,10 +64,10 @@ export function QRScanner() {
 
       // Call the API to get table information with retry logic
       const response = await api.qr.getTableInfo(qrCode)
-      
+
       if (response.success && response.data) {
         const { restaurant, table, isActive } = response.data
-        
+
         if (!isActive) {
           toast.error('Table Unavailable', {
             description: 'This table is currently unavailable. Please contact restaurant staff for assistance.',
@@ -77,13 +79,32 @@ export function QRScanner() {
           setIsProcessing(false)
           return
         }
-        
-        // Store table and restaurant info in sessionStorage for the flow
-        sessionStorage.setItem(STORAGE_KEYS.TABLE_INFO, JSON.stringify({
-          restaurant,
-          table,
-          qrCode
-        }))
+
+        // ARCHITECTURE: React Query is source of truth, not sessionStorage
+        // 1. Populate React Query cache with fetched data (primary state)
+        queryClient.setQueryData(['restaurant', restaurant.id], restaurant)
+        queryClient.setQueryData(['table', table.id], table)
+
+        // 2. Store ONLY IDs in sessionStorage (for page refresh recovery)
+        sessionStorage.setItem(STORAGE_KEYS.RESTAURANT_ID, restaurant.id)
+        sessionStorage.setItem(STORAGE_KEYS.TABLE_ID, table.id)
+
+        // 3. CRITICAL: Store restaurant currency for fallback during loading
+        const qrAccessData = {
+          qrCode,
+          restaurant: {
+            id: restaurant.id,
+            name: restaurant.name,
+            logo: restaurant.logo,
+            currency: restaurant.currency  // CRITICAL: Include currency
+          },
+          table: {
+            id: table.id,
+            tableNumber: table.tableNumber,
+            qrCode: table.qrCode
+          }
+        }
+        sessionStorage.setItem('tabsy-qr-access', JSON.stringify(qrAccessData))
 
         // Create a guest session
         const sessionResponse = await api.session.createGuest({

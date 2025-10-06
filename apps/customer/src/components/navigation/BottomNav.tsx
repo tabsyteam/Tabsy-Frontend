@@ -12,6 +12,8 @@ import {
 } from 'lucide-react'
 import { SessionManager } from '@/lib/session'
 import { useBillStatus } from '@/hooks/useBillData' // ✅ Updated to use React Query version
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface BottomNavProps {
   cartItemCount?: number
@@ -28,6 +30,8 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
   const router = useRouter()
   const [hasSession, setHasSession] = useState(false)
   const [hasCurrentOrder, setHasCurrentOrder] = useState(false)
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
 
   // Get bill status for badge indicator
   // ✅ Data automatically updated via WebSocketEventCoordinator → React Query cache
@@ -43,9 +47,9 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
       billAmount,
       isPaid,
       shouldShowBillBadge,
-      badgeDisplay: shouldShowBillBadge ? `$${roundedBalance}` : 'hidden'
+      badgeDisplay: shouldShowBillBadge ? formatPriceUtil(roundedBalance, currency) : 'hidden'
     })
-  }, [hasBill, remainingBalance, billAmount, isPaid, shouldShowBillBadge])
+  }, [hasBill, remainingBalance, billAmount, isPaid, shouldShowBillBadge, roundedBalance, currency])
 
   useEffect(() => {
     // Update session state
@@ -98,11 +102,11 @@ const BottomNav: React.FC<BottomNavProps> = React.memo(({
       label: 'Table',
       icon: Users,
       path: `/table${hasSession ? SessionManager.getDiningQueryParams() : ''}`,
-      badge: shouldShowBillBadge ? `$${roundedBalance}` : null,
+      badge: shouldShowBillBadge ? formatPriceUtil(roundedBalance, currency) : null,
       badgeType: 'bill' as const,
       disabled: false // Always available to show session status
     }
-  ], [hasSession, cartItemCount, hasCurrentOrder, shouldShowBillBadge, roundedBalance])
+  ], [hasSession, cartItemCount, hasCurrentOrder, shouldShowBillBadge, roundedBalance, currency])
 
   const isActive = useCallback((item: typeof navItems[0]) => {
     if (item.id === 'home') {

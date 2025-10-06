@@ -183,3 +183,77 @@ export function formatBytes(bytes: number, decimals = 2): string {
 
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
 }
+
+/**
+ * Clean request data by removing undefined and optionally null values
+ *
+ * This is a type-safe alternative to JSON.parse(JSON.stringify(data))
+ * Properly handles nested objects and arrays while maintaining type safety.
+ *
+ * @param data - The data object to clean
+ * @param removeNull - Whether to also remove null values (default: false)
+ * @returns Cleaned object with undefined (and optionally null) values removed
+ *
+ * @example
+ * ```ts
+ * const data = {
+ *   name: 'John',
+ *   email: undefined,
+ *   phone: null,
+ *   address: { city: 'NYC', zip: undefined }
+ * }
+ *
+ * cleanRequestData(data)
+ * // Result: { name: 'John', phone: null, address: { city: 'NYC' } }
+ *
+ * cleanRequestData(data, true)
+ * // Result: { name: 'John', address: { city: 'NYC' } }
+ * ```
+ */
+export function cleanRequestData<T extends Record<string, any>>(
+  data: T,
+  removeNull: boolean = false
+): Partial<T> {
+  const cleaned: any = {}
+
+  for (const key in data) {
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      const value = data[key]
+
+      // Skip undefined values
+      if (value === undefined) {
+        continue
+      }
+
+      // Optionally skip null values
+      if (removeNull && value === null) {
+        continue
+      }
+
+      // Recursively clean nested objects
+      if (value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
+        const cleanedNested = cleanRequestData(value, removeNull)
+        // Only add if the nested object has properties
+        if (Object.keys(cleanedNested).length > 0) {
+          cleaned[key] = cleanedNested
+        }
+      }
+      // Handle arrays
+      else if (Array.isArray(value)) {
+        cleaned[key] = value
+          .map(item =>
+            item !== null && typeof item === 'object' && !Array.isArray(item) && !(item instanceof Date)
+              ? cleanRequestData(item, removeNull)
+              : item
+          )
+          .filter(item => item !== undefined && (!removeNull || item !== null))
+      }
+      // Add primitive values and dates
+      else {
+        cleaned[key] = value
+      }
+    }
+  }
+
+  return cleaned
+}

@@ -36,6 +36,7 @@ export interface Order {
   discountAmount?: number // Optional since not in current API
   total: string | number // API field name
   totalAmount?: number // Keep for backward compatibility
+  currency?: string // ISO 4217 currency code (e.g., 'USD', 'EUR', 'AED') - Optional as backend may not always return it
   specialInstructions?: string
   estimatedPreparationTime?: number // Made optional since not in API
   actualPreparationTime?: number // in minutes
@@ -62,6 +63,7 @@ export interface Order {
     website?: string
     active?: boolean
     posEnabled?: boolean
+    currency?: string // ISO 4217 currency code
   }
   table?: {
     id: string

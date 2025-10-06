@@ -1,7 +1,10 @@
 // Utility functions
 export * from './format'
 export * from './validation'
-export * from './currency'
+// Note: Removed old ./currency to avoid conflicts with ./formatting/currency
+// export * from './currency'
+export * from './formatting/currency'
+export * from './currency-helpers'
 export * from './date'
 export * from './text'
 export * from './api'

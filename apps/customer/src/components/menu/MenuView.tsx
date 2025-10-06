@@ -33,6 +33,7 @@ import { SessionManager } from '@/lib/session'
 import { useMenuData } from '@/hooks/useMenuData'
 import { useTableInfo } from '@/hooks/useTableInfo'
 import { useGuestSession } from '@/hooks/useGuestSession'
+import { RestaurantProvider, useRestaurantOptional } from '@/contexts/RestaurantContext'
 
 // Import our new modern components
 import SearchBar from '@/components/navigation/SearchBar'
@@ -110,6 +111,10 @@ export function MenuView() {
   const { api } = useApi()
   const { cart, cartCount, addToCart, updateCartItem, updateQuantity, getItemQuantity, removeFromCart } = useCart()
   const searchBarRef = useRef<HTMLDivElement>(null)
+
+  // Get currency from context with sessionStorage fallback (prevents $ flash on navigation)
+  const restaurantContext = useRestaurantOptional()
+  const restaurantCurrency = restaurantContext?.currency || 'USD'
 
   // URL parameters with validation
   const urlRestaurantId = searchParams.get('restaurant')
@@ -703,7 +708,8 @@ export function MenuView() {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-24" ref={pullToRefresh.bind}>
+    <RestaurantProvider restaurant={restaurant} table={table} isLoading={loading}>
+      <div className="min-h-screen bg-background pb-24" ref={pullToRefresh.bind}>
       {/* Pull-to-refresh indicator */}
       <PullToRefreshIndicator
         isPulling={pullToRefresh.isPulling}
@@ -1117,6 +1123,7 @@ export function MenuView() {
                   isFavorite={favorites.has(item.id)}
                   layout={layout}
                   showQuickAdd={true}
+                  currency={restaurantCurrency}
                 />
               </motion.div>
             ))}
@@ -1233,5 +1240,6 @@ export function MenuView() {
         }}
       />
     </div>
+    </RestaurantProvider>
   )
 }

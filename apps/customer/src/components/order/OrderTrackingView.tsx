@@ -29,6 +29,8 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh'
 import { PullToRefreshIndicator } from '@/components/ui/PullToRefreshIndicator'
 import { processOrderUpdatePayload } from '@/utils/websocket'
 import { CustomizationList } from '@tabsy/ui-components'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface OrderTrackingViewProps {
   orderId: string
@@ -147,6 +149,12 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
   const [timeElapsed, setTimeElapsed] = useState(0)
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const [showPaymentOption, setShowPaymentOption] = useState(false)
+
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
 
   // Call waiter state
   const [waiterCalled, setWaiterCalled] = useState(false)
@@ -804,7 +812,7 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                         <p className="text-sm text-content-secondary">{item.categoryName}</p>
                       )}
                       <div className="flex items-center space-x-2 text-sm text-content-tertiary">
-                        <span>${item.unitPrice.toFixed(2)} each</span>
+                        <span>{formatPrice(item.unitPrice)} each</span>
                         <span>•</span>
                         <span>Qty: {item.quantity}</span>
                       </div>
@@ -821,7 +829,7 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
                     </div>
                     <div className="text-right">
                       <div className="font-semibold text-content-primary">
-                        ${item.totalPrice.toFixed(2)}
+                        {formatPrice(item.totalPrice)}
                       </div>
                     </div>
                   </motion.div>
@@ -856,16 +864,16 @@ export function OrderTrackingView({ orderId, restaurantId, tableId }: OrderTrack
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-content-secondary">
                   <span>Subtotal ({order.items.length} items)</span>
-                  <span>${order.subtotal.toFixed(2)}</span>
+                  <span>{formatPrice(order.subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-content-secondary">
                   <span>Tax</span>
-                  <span>${order.tax.toFixed(2)}</span>
+                  <span>{formatPrice(order.tax)}</span>
                 </div>
                 <div className="border-t pt-3">
                   <div className="flex justify-between text-lg font-semibold text-content-primary">
                     <span>Total</span>
-                    <span>${order.total.toFixed(2)}</span>
+                    <span>{formatPrice(order.total)}</span>
                   </div>
                 </div>
               </div>

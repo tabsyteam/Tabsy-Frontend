@@ -15,7 +15,7 @@ const ApiContext = createContext<ApiContextType | undefined>(undefined)
 export function ApiProvider({ children }: { children: React.ReactNode }) {
   const [api] = useState(() =>
     createTabsyClient({
-      baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api/v1',
+      baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5001/api/v1',
       timeout: 10000,
     })
   )
@@ -165,28 +165,14 @@ export function ApiProvider({ children }: { children: React.ReactNode }) {
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('focus', handleFocus)
 
-    // Periodic session refresh to prevent loss
-    const refreshInterval = setInterval(() => {
-      const currentSessionId = api.getGuestSessionId()
-      if (currentSessionId) {
-        // Refresh session storage to prevent expiration
-        const storedId = sessionStorage.getItem('tabsy-guest-session-id')
-        if (!storedId || storedId !== currentSessionId) {
-          console.log('ApiProvider: Refreshing session persistence')
-          sessionStorage.setItem('tabsy-guest-session-id', currentSessionId)
-        }
-      } else {
-        // If API client lost session, try to restore from storage
-        const storedId = sessionStorage.getItem('tabsy-guest-session-id')
-        if (storedId) {
-          console.log('ApiProvider: Periodic check detected lost session, restoring:', storedId)
-          api.setGuestSession(storedId)
-        }
-      }
-    }, 30000) // Every 30 seconds
+    // REMOVED: Periodic 30-second session refresh interval
+    // This was duplicating SessionProvider functionality and causing unnecessary CPU usage
+    // Session restoration is now handled by:
+    // 1. Event listeners above (visibility, focus) - these only fire when user is active
+    // 2. Initial session restoration on mount (already done above)
+    // Container deployment optimization: Prevents background polling when no users connected
 
     return () => {
-      clearInterval(refreshInterval)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
     }

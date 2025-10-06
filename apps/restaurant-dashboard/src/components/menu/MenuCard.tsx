@@ -8,7 +8,7 @@ import {
   Edit,
   Trash2,
   Eye,
-  DollarSign,
+  Banknote,
   Clock,
   Star,
   CheckCircle,
@@ -19,6 +19,8 @@ import {
 import { MenuItemImage } from '../ui/OptimizedImage'
 import type { MenuCategory, MenuItem } from '@tabsy/shared-types'
 import { MenuItemStatus } from '@tabsy/shared-types'
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface MenuCategoryCardProps {
   type: 'category'
@@ -39,7 +41,11 @@ interface MenuItemCardProps {
 type MenuCardProps = MenuCategoryCardProps | MenuItemCardProps
 
 export function MenuCard(props: MenuCardProps) {
-  const { type, data, onEdit, onDelete, onSelect } = props
+  const { type, data, onEdit, onDelete, onSelect} = props
+
+  // Always call hooks before any conditional returns
+  const { restaurant } = useCurrentRestaurant()
+  const currency = (restaurant?.currency as CurrencyCode) || 'USD'
 
   if (type === 'category') {
     const category = data as MenuCategory
@@ -153,13 +159,10 @@ export function MenuCard(props: MenuCardProps) {
   // Menu Item Card
   const item = data as MenuItem
 
+  // Use shared utility for consistent formatting
   const formatPrice = (price: number | string) => {
     const numPrice = typeof price === 'string' ? parseFloat(price) : price
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2
-    }).format(numPrice) // Backend sends price in dollars, not cents
+    return formatPriceUtil(numPrice, currency)
   }
 
   return (

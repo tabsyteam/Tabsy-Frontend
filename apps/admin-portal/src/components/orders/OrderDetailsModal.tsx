@@ -8,7 +8,7 @@ import {
   User,
   Store,
   Clock,
-  DollarSign,
+  Banknote,
   Package,
   CreditCard,
   MapPin,
@@ -32,6 +32,7 @@ import { Order, OrderStatus, OrderItem, Payment, PaymentStatus } from '@tabsy/sh
 import { useUpdateOrderStatus, useOrderPayment } from '@/hooks/api';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
+import { formatPrice, type CurrencyCode, getOrderCurrency } from '@tabsy/shared-utils';
 
 interface OrderDetailsModalProps {
   order: Order;
@@ -56,6 +57,9 @@ export default function OrderDetailsModal({
   const [notes, setNotes] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingAction, setProcessingAction] = useState<string | null>(null);
+
+  // Get currency from order with proper fallback chain (order.currency -> order.restaurant.currency -> USD)
+  const currency: CurrencyCode = getOrderCurrency(order);
 
   const updateOrderStatus = useUpdateOrderStatus();
   const { data: payment } = useOrderPayment(order.id);
@@ -404,31 +408,31 @@ export default function OrderDetailsModal({
                   <div className="flex justify-between">
                     <span className="text-xs text-content-secondary">Subtotal</span>
                     <span className="text-sm font-medium text-content-primary">
-                      ${Number(order.subtotal || 0).toFixed(2)}
+                      {formatPrice(Number(order.subtotal || 0), currency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-xs text-content-secondary">Tax</span>
                     <span className="text-sm text-content-primary">
-                      ${Number(order.tax || 0).toFixed(2)}
+                      {formatPrice(Number(order.tax || 0), currency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-xs text-content-secondary">Service Fee</span>
                     <span className="text-sm text-content-primary">
-                      ${Number(order.serviceChargeAmount || 0).toFixed(2)}
+                      {formatPrice(Number(order.serviceChargeAmount || 0), currency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-xs text-content-secondary">Tip</span>
                     <span className="text-sm text-content-primary">
-                      ${Number(order.tip || 0).toFixed(2)}
+                      {formatPrice(Number(order.tip || 0), currency)}
                     </span>
                   </div>
                   <div className="pt-2 border-t border-border-tertiary flex justify-between">
                     <span className="text-sm font-medium text-content-primary">Total</span>
                     <span className="text-lg font-bold text-primary">
-                      ${Number(order.total || 0).toFixed(2)}
+                      {formatPrice(Number(order.total || 0), currency)}
                     </span>
                   </div>
                 </div>
@@ -482,7 +486,7 @@ export default function OrderDetailsModal({
                                 • <span className="font-medium">{option.optionName || option.name}:</span>{' '}
                                 <span>{option.valueName || option.value || option.choice}</span>
                                 {option.price > 0 && (
-                                  <span className="ml-1 text-content-tertiary">(+${option.price.toFixed(2)})</span>
+                                  <span className="ml-1 text-content-tertiary">(+{formatPrice(option.price, currency)})</span>
                                 )}
                               </div>
                             ))}
@@ -497,10 +501,10 @@ export default function OrderDetailsModal({
                     </div>
                     <div className="text-right ml-4">
                       <p className="text-sm font-medium text-content-primary">
-                        ${(Number(item.price || 0) * item.quantity).toFixed(2)}
+                        {formatPrice(Number(item.price || 0) * item.quantity, currency)}
                       </p>
                       <p className="text-xs text-content-secondary">
-                        ${Number(item.price || 0).toFixed(2)} each
+                        {formatPrice(Number(item.price || 0), currency)} each
                       </p>
                     </div>
                   </div>
@@ -611,7 +615,7 @@ export default function OrderDetailsModal({
                   <div className="flex justify-between">
                     <span className="text-xs text-content-secondary">Amount Paid</span>
                     <span className="text-lg font-bold text-primary">
-                      ${Number(order.total || 0).toFixed(2)}
+                      {formatPrice(Number(order.total || 0), currency)}
                     </span>
                   </div>
                 </div>

@@ -23,7 +23,12 @@ import {
   SplitCalculationWebSocketEvent,
   RateLimitError
 } from '@/types/split-calculation'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('useSplitCalculation')
 import type { TableSessionUser } from '@tabsy/shared-types'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface UseSplitCalculationProps {
   sessionId: string
@@ -73,6 +78,13 @@ export function useSplitCalculation({
   api,
   totalBillAmount
 }: UseSplitCalculationProps): UseSplitCalculationReturn {
+  // ===== CURRENCY =====
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
+
   // ===== STATE =====
 
   // Server state - single source of truth
@@ -116,7 +128,7 @@ export function useSplitCalculation({
       setUiState(prev => ({ ...prev, isLoading: true, error: null }))
 
       try {
-        console.log('[useSplitCalculation] Loading initial split calculation')
+        log.debug('[useSplitCalculation] Loading initial split calculation')
 
         // Try to load existing
         const existing = await service.loadSplitCalculation()
@@ -124,13 +136,13 @@ export function useSplitCalculation({
         if (cancelled) return
 
         if (existing) {
-          console.log('[useSplitCalculation] Found existing split calculation:', existing)
+          log.debug('[useSplitCalculation] Found existing split calculation:', existing)
           setServerState(existing)
           setLocalInputs(convertServerStateToLocalInputs(existing))
           // Reset retry count on success
           retryAttemptsRef.current = 0
         } else {
-          console.log('[useSplitCalculation] No existing split, creating default EQUAL split')
+          log.debug('[useSplitCalculation] No existing split, creating default EQUAL split')
           // Create default EQUAL split
           const created = await service.changeSplitType(SplitBillType.EQUAL, userIds)
 
@@ -145,21 +157,23 @@ export function useSplitCalculation({
         if (cancelled) return
 
         const err = error instanceof Error ? error : new Error(String(error))
-        console.error('[useSplitCalculation] Error loading initial split:', err)
+        log.error('Error loading initial split:', err)
 
         // Increment retry count
         retryAttemptsRef.current++
 
-        if (retryAttemptsRef.current >= MAX_RETRY_ATTEMPTS) {
-          console.error('[useSplitCalculation] Max retry attempts reached. Stopping retries.')
+        if (retryAttemptsRef.current > MAX_RETRY_ATTEMPTS) {
+          log.error(`Max retry attempts (${MAX_RETRY_ATTEMPTS}) exceeded. Stopping retries.`)
           setUiState(prev => ({
             ...prev,
+            isLoading: false,
             error: `Failed to load split calculation after ${MAX_RETRY_ATTEMPTS} attempts. Please refresh the page.`
           }))
-        } else {
-          console.warn(`[useSplitCalculation] Retry attempt ${retryAttemptsRef.current}/${MAX_RETRY_ATTEMPTS}`)
-          setUiState(prev => ({ ...prev, error: err.message }))
+          return // Stop further execution
         }
+
+        log.warn(`Retry attempt ${retryAttemptsRef.current}/${MAX_RETRY_ATTEMPTS}`)
+        setUiState(prev => ({ ...prev, error: err.message }))
       } finally {
         if (!cancelled) {
           setUiState(prev => ({ ...prev, isLoading: false }))
@@ -178,17 +192,17 @@ export function useSplitCalculation({
 
   // WebSocket handler - ONLY updates state, NEVER calls API
   const handleWebSocketUpdate = useCallback((data: any) => {
-    console.log('[useSplitCalculation] WebSocket update received:', data)
+    log.debug('[useSplitCalculation] WebSocket update received:', data)
 
     // Ignore own updates to prevent echo
     if (data.updatedBy === currentUserId) {
-      console.log('[useSplitCalculation] Ignoring own update')
+      log.debug('[useSplitCalculation] Ignoring own update')
       return
     }
 
     // Update server state from WebSocket
     if (data.splitCalculation) {
-      console.log('[useSplitCalculation] Updating server state from WebSocket')
+      log.debug('[useSplitCalculation] Updating server state from WebSocket')
       setServerState(data.splitCalculation)
 
       // Update local inputs for other users (not current user)
@@ -231,11 +245,11 @@ export function useSplitCalculation({
   const debouncedUpdatePercentage = useRef(
     debounce(async (userId: string, value: number, svc: SplitCalculationService) => {
       try {
-        console.log('[useSplitCalculation] Debounced percentage update:', userId, value)
+        log.debug('[useSplitCalculation] Debounced percentage update:', userId, value)
         const result = await svc.updateUserPercentage(userId, value)
         setServerState(result)
       } catch (error: any) {
-        console.error('[useSplitCalculation] Error updating percentage:', error)
+        log.error('[useSplitCalculation] Error updating percentage:', error)
 
         if (error instanceof RateLimitError) {
           setUiState(prev => ({
@@ -253,11 +267,11 @@ export function useSplitCalculation({
   const debouncedUpdateAmount = useRef(
     debounce(async (userId: string, value: number, svc: SplitCalculationService) => {
       try {
-        console.log('[useSplitCalculation] Debounced amount update:', userId, value)
+        log.debug('[useSplitCalculation] Debounced amount update:', userId, value)
         const result = await svc.updateUserAmount(userId, value)
         setServerState(result)
       } catch (error: any) {
-        console.error('[useSplitCalculation] Error updating amount:', error)
+        log.error('[useSplitCalculation] Error updating amount:', error)
 
         if (error instanceof RateLimitError) {
           setUiState(prev => ({
@@ -278,7 +292,7 @@ export function useSplitCalculation({
     setUiState(prev => ({ ...prev, isLoading: true, error: null }))
 
     try {
-      console.log('[useSplitCalculation] Changing split type to:', type)
+      log.debug('[useSplitCalculation] Changing split type to:', type)
 
       const userIds = users.map(u => u.guestSessionId)
       const result = await service.changeSplitType(type, userIds)
@@ -286,9 +300,9 @@ export function useSplitCalculation({
       setServerState(result)
       setLocalInputs({})  // Clear all local inputs on type change
 
-      console.log('[useSplitCalculation] Split type changed successfully')
+      log.debug('[useSplitCalculation] Split type changed successfully')
     } catch (error: any) {
-      console.error('[useSplitCalculation] Error changing split type:', error)
+      log.error('[useSplitCalculation] Error changing split type:', error)
 
       if (error instanceof RateLimitError) {
         setUiState(prev => ({
@@ -338,11 +352,11 @@ export function useSplitCalculation({
     setUiState(prev => ({ ...prev, isSyncing: true, error: null }))
 
     try {
-      console.log('[useSplitCalculation] Updating item assignment:', itemId, userId)
+      log.debug('[useSplitCalculation] Updating item assignment:', itemId, userId)
       const result = await service.updateItemAssignment(itemId, userId)
       setServerState(result)
     } catch (error: any) {
-      console.error('[useSplitCalculation] Error updating item assignment:', error)
+      log.error('[useSplitCalculation] Error updating item assignment:', error)
       setUiState(prev => ({ ...prev, error: error.message }))
     } finally {
       setUiState(prev => ({ ...prev, isSyncing: false }))
@@ -380,10 +394,10 @@ export function useSplitCalculation({
       const totalAmt = Object.values(serverState.amounts || {}).reduce((sum, amt) => sum + amt, 0)
 
       if (totalAmt > totalBillAmount + 0.01) {
-        errors.push(`Total amount $${totalAmt.toFixed(2)} exceeds bill $${totalBillAmount.toFixed(2)}`)
+        errors.push(`Total amount ${formatPrice(totalAmt)} exceeds bill ${formatPrice(totalBillAmount)}`)
       } else if (totalAmt < totalBillAmount - 0.01) {
         const remaining = totalBillAmount - totalAmt
-        warnings.push(`$${remaining.toFixed(2)} remaining - incomplete split`)
+        warnings.push(`${formatPrice(remaining)} remaining - incomplete split`)
       }
     }
 

@@ -32,7 +32,7 @@ export class ChunkErrorBoundary extends Component<Props, State> {
     };
   }
 
-  componentDidCatch(error: Error) {
+  override componentDidCatch(error: Error) {
     const isChunkError =
       error.message.includes('Loading chunk') ||
       error.message.includes('ChunkLoadError') ||
@@ -48,7 +48,7 @@ export class ChunkErrorBoundary extends Component<Props, State> {
     }
   }
 
-  render() {
+  override render() {
     if (this.state.hasError && this.state.errorCount >= 3) {
       return (
         <div className="flex min-h-screen items-center justify-center bg-background p-4">

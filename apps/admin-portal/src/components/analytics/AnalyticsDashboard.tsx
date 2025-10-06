@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { 
-  TrendingUp, TrendingDown, DollarSign, Users, 
+import {
+  TrendingUp, TrendingDown, Banknote, Users,
   ShoppingBag, Building, BarChart3, PieChart,
   Download
 } from 'lucide-react'
 import { format, subDays } from 'date-fns'
 import { useAnalytics } from '@/hooks/api/useAnalytics'
+import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface AnalyticsData {
   revenue: {
@@ -57,11 +58,13 @@ interface AnalyticsDashboardProps {
 
 export function AnalyticsDashboard({ onExportData }: AnalyticsDashboardProps) {
   const [dateRange, setDateRange] = useState<'7d' | '30d' | '3m' | '1y'>('30d')
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>('USD')
 
   // Map dateRange to period for useAnalytics
   const period = dateRange === '7d' ? 'week' : dateRange === '30d' ? 'month' : dateRange === '3m' ? 'month' : 'year'
 
   // Use real analytics API
+  // NOTE: Backend should support currency filtering in future
   const { data: analyticsApiData, isLoading: loading, error } = useAnalytics(period)
 
   // Transform API data to match component interface
@@ -98,11 +101,9 @@ export function AnalyticsDashboard({ onExportData }: AnalyticsDashboardProps) {
     }))
   } : null
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount)
+  // Currency formatting now uses selected currency instead of hardcoded USD
+  const formatCurrencyValue = (amount: number) => {
+    return formatPrice(amount, selectedCurrency)
   }
 
   const formatNumber = (num: number) => {
@@ -162,7 +163,20 @@ export function AnalyticsDashboard({ onExportData }: AnalyticsDashboardProps) {
             <option value="3m">Last 3 months</option>
             <option value="1y">Last year</option>
           </select>
-          
+
+          <select
+            value={selectedCurrency}
+            onChange={(e) => setSelectedCurrency(e.target.value as CurrencyCode)}
+            className="border border-border rounded-md px-3 py-2 focus:ring-2 focus:ring-primary focus:border-transparent"
+            title="Select currency for display. Note: Backend filtering by currency coming soon."
+          >
+            <option value="USD">USD ($)</option>
+            <option value="AED">AED (د.إ)</option>
+            <option value="INR">INR (₹)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="GBP">GBP (£)</option>
+          </select>
+
           <button
             onClick={() => onExportData?.(dateRange)}
             className="flex items-center gap-2 px-4 py-2 border border-border rounded-md hover:bg-interactive-hover transition-colors"
@@ -173,6 +187,13 @@ export function AnalyticsDashboard({ onExportData }: AnalyticsDashboardProps) {
         </div>
       </div>
 
+      {/* Currency Display Note - Senior Engineering: Clear communication about current limitations */}
+      <div className="bg-status-info/10 border border-status-info/30 rounded-lg p-3 text-sm text-content-secondary">
+        <strong className="text-status-info">ℹ️ Currency Display:</strong> Currently showing all analytics formatted in {selectedCurrency}.
+        Backend filtering by restaurant currency is planned for future release. For accurate currency-specific analytics,
+        filter by individual restaurants in their respective currency.
+      </div>
+
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="bg-surface p-6 rounded-lg border">
@@ -180,11 +201,11 @@ export function AnalyticsDashboard({ onExportData }: AnalyticsDashboardProps) {
             <div>
               <p className="text-sm font-medium text-content-secondary">Total Revenue</p>
               <p className="text-2xl font-bold text-content-primary">
-                {formatCurrency(analyticsData.revenue.total)}
+                {formatCurrencyValue(analyticsData.revenue.total)}
               </p>
             </div>
             <div className="bg-status-success-light p-3 rounded-full">
-              <DollarSign className="w-6 h-6 text-status-success" />
+              <Banknote className="w-6 h-6 text-status-success" />
             </div>
           </div>
           <div className="flex items-center gap-1 mt-2">
@@ -297,7 +318,7 @@ export function AnalyticsDashboard({ onExportData }: AnalyticsDashboardProps) {
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-medium text-content-primary">
-                    {formatCurrency(category.revenue)}
+                    {formatCurrencyValue(category.revenue)}
                   </div>
                   <div className="text-xs text-content-tertiary">{category.percentage}%</div>
                 </div>
@@ -341,7 +362,7 @@ export function AnalyticsDashboard({ onExportData }: AnalyticsDashboardProps) {
                     <div className="font-medium text-content-primary">{restaurant.name}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-content-primary">{formatCurrency(restaurant.revenue)}</div>
+                    <div className="text-sm text-content-primary">{formatCurrencyValue(restaurant.revenue)}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-content-primary">{formatNumber(restaurant.orders)}</div>

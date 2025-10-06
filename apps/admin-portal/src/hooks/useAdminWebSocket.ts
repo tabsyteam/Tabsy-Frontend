@@ -31,7 +31,7 @@ export function useAdminWebSocket({
   const [isConnected, setIsConnected] = useState(false)
 
   const wsOptions: UseWebSocketOptions = {
-    url: process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:5001',
+    url: process.env.NEXT_PUBLIC_WS_BASE_URL || 'http://localhost:5001',
     auth: {
       namespace: 'restaurant', // Admin uses restaurant namespace with elevated permissions
       // token would come from auth context/localStorage with ADMIN role

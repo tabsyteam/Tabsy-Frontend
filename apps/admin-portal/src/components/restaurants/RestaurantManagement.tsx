@@ -2,25 +2,27 @@
 
 import { useState } from 'react'
 import { Button } from '@tabsy/ui-components'
-import { 
-  Store, 
-  Users, 
-  MapPin, 
-  Phone, 
-  Mail, 
-  Clock, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Store,
+  Users,
+  MapPin,
+  Phone,
+  Mail,
+  Clock,
+  Eye,
+  Edit,
+  Trash2,
   MoreHorizontal,
   Search,
   Filter,
   Plus,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Banknote
 } from 'lucide-react'
 import { Restaurant } from '@tabsy/shared-types'
+import { getCurrencySymbol, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 type RestaurantStatus = 'ACTIVE' | 'INACTIVE' | 'PENDING' | 'SUSPENDED'
 
@@ -193,6 +195,13 @@ function RestaurantCard({
           <Users className="w-4 h-4 mr-2 text-content-tertiary" />
           <span>{restaurant.settings.maxTables} tables • {restaurant.settings.maxCapacity} capacity</span>
         </div>
+
+        {restaurant.currency && (
+          <div className="flex items-center">
+            <Banknote className="w-4 h-4 mr-2 text-content-tertiary" />
+            <span>Currency: {restaurant.currency} ({getCurrencySymbol(restaurant.currency as CurrencyCode)})</span>
+          </div>
+        )}
       </div>
 
       {/* Quick Stats */}

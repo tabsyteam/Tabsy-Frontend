@@ -14,6 +14,10 @@ import { SessionManager } from '@/lib/session'
 import { calculateTax } from '@/constants/tax'
 import { STORAGE_KEYS } from '@/constants/storage'
 import { unifiedSessionStorage } from '@/lib/unifiedSessionStorage'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
+import { validateEmail, validatePhone, validateName } from '@/lib/validation'
+import { ERROR_MESSAGES } from '@/constants/errorMessages'
 
 interface CartItem {
   id: string
@@ -40,6 +44,8 @@ export function CheckoutView() {
   const searchParams = useSearchParams()
   const { api } = useApi()
   const { clearCart } = useCart()
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
 
   const [cart, setCart] = useState<CartItem[]>([])
   const [guestInfo, setGuestInfo] = useState<GuestInfo>({
@@ -55,6 +61,9 @@ export function CheckoutView() {
 
   const urlRestaurantId = searchParams.get('restaurant')
   const urlTableId = searchParams.get('table')
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
 
   // Get session from unified storage
   const session = SessionManager.getDiningSession()
@@ -148,10 +157,31 @@ export function CheckoutView() {
     }
 
     // Validate guest info (name is required for orders)
-    if (!guestInfo.name.trim()) {
-      console.log('Guest name is missing - returning early')
-      toast.error('Please enter your name')
+    const nameValidation = validateName(guestInfo.name)
+    if (!nameValidation.isValid) {
+      console.log('Guest name validation failed:', nameValidation.errorMessage)
+      toast.error(nameValidation.errorMessage || ERROR_MESSAGES.INVALID_NAME)
       return
+    }
+
+    // Validate email if provided (optional field)
+    if (guestInfo.email.trim()) {
+      const emailValidation = validateEmail(guestInfo.email)
+      if (!emailValidation.isValid) {
+        console.log('Email validation failed:', emailValidation.errorMessage)
+        toast.error(emailValidation.errorMessage || ERROR_MESSAGES.INVALID_EMAIL)
+        return
+      }
+    }
+
+    // Validate phone if provided (optional field)
+    if (guestInfo.phone.trim()) {
+      const phoneValidation = validatePhone(guestInfo.phone, false)
+      if (!phoneValidation.isValid) {
+        console.log('Phone validation failed:', phoneValidation.errorMessage)
+        toast.error(phoneValidation.errorMessage || ERROR_MESSAGES.INVALID_PHONE)
+        return
+      }
     }
 
     console.log('Starting order placement...')
@@ -420,6 +450,7 @@ export function CheckoutView() {
                     categoryName={item.categoryName}
                     options={item.options}
                     specialInstructions={item.specialInstructions}
+                    currency={currency}
                   />
                 ))}
               </div>
@@ -458,16 +489,16 @@ export function CheckoutView() {
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-content-secondary">
                   <span>Subtotal ({getTotalItems()} items)</span>
-                  <span>${getSubtotal().toFixed(2)}</span>
+                  <span>{formatPrice(getSubtotal())}</span>
                 </div>
                 <div className="flex justify-between text-content-secondary">
                   <span>Tax</span>
-                  <span>${getTax().toFixed(2)}</span>
+                  <span>{formatPrice(getTax())}</span>
                 </div>
                 <div className="border-t pt-3">
                   <div className="flex justify-between text-lg font-semibold text-content-primary">
                     <span>Total</span>
-                    <span>${getTotal().toFixed(2)}</span>
+                    <span>{formatPrice(getTotal())}</span>
                   </div>
                 </div>
               </div>

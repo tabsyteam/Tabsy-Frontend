@@ -12,6 +12,8 @@ import {
   Hash
 } from 'lucide-react'
 import { MenuItem } from '@tabsy/shared-types'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface SearchBarProps {
   placeholder?: string
@@ -46,6 +48,12 @@ const SearchBar = React.memo<SearchBarProps>(({
   const [userInteracted, setUserInteracted] = useState(false)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
 
   const popularSearches = [
     'Pizza', 'Burger', 'Pasta', 'Salad', 'Dessert', 'Coffee', 'Appetizer', 'Drinks'
@@ -303,7 +311,7 @@ const SearchBar = React.memo<SearchBarProps>(({
                         </div>
                       </div>
                       <div className="text-body-sm font-semibold text-content-primary">
-                        ${(item.price || item.basePrice || 0).toFixed(2)}
+                        {formatPrice(item.price || item.basePrice || 0)}
                       </div>
                     </motion.button>
                   ))}

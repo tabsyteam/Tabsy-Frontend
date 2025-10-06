@@ -5,7 +5,7 @@ import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { Button } from '@tabsy/ui-components';
 import {
   TrendingUp,
-  DollarSign,
+  Banknote,
   ShoppingBag,
   Users,
   Store,
@@ -34,6 +34,8 @@ import {
 import { useAnalytics, useOrderMetrics, usePaymentMetrics, useAnalyticsRestaurantMetrics } from '@/hooks/api';
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { toast } from 'sonner';
+import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Metric Card Component
 function MetricCard({
@@ -155,8 +157,9 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <ProtectedRoute>
-      <div className="min-h-screen bg-background">
+    <ErrorBoundary>
+      <ProtectedRoute>
+        <div className="min-h-screen bg-background">
         {/* Header */}
         <div className="bg-surface border-b border-border-tertiary">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -237,7 +240,7 @@ export default function AnalyticsPage() {
               value={`$${metrics?.revenue.total.toLocaleString() || '0'}`}
               change={metrics?.revenue.change}
               trend={metrics?.revenue.trend as 'up' | 'down' | 'neutral'}
-              icon={DollarSign}
+              icon={Banknote}
               subtitle={`${dateRange === 'today' ? 'Today' : `This ${dateRange}`}`}
             />
             <MetricCard
@@ -246,7 +249,8 @@ export default function AnalyticsPage() {
               change={metrics?.orders.change}
               trend={metrics?.orders.trend as 'up' | 'down' | 'neutral'}
               icon={ShoppingBag}
-              subtitle={`Avg: $${metrics?.orders.averageValue.toFixed(2) || '0'}`}
+              subtitle={`Avg: ${formatPrice(metrics?.orders.averageValue || 0, 'USD')}`}
+              // TODO: Add currency filter to analytics - currently aggregates multi-currency data
             />
             <MetricCard
               title="Active Customers"
@@ -459,7 +463,7 @@ export default function AnalyticsPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <div className="flex items-center">
-                    <DollarSign className="h-4 w-4 text-status-success mr-2" />
+                    <Banknote className="h-4 w-4 text-status-success mr-2" />
                     <span className="text-sm text-content-secondary">Cash</span>
                   </div>
                   <div className="flex items-center">
@@ -532,7 +536,8 @@ export default function AnalyticsPage() {
             </div>
           </div>
         </div>
-      </div>
-    </ProtectedRoute>
+        </div>
+      </ProtectedRoute>
+    </ErrorBoundary>
   );
 }

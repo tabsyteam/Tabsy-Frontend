@@ -17,6 +17,7 @@ import { MenuItem, MenuCategory, AllergyInfo } from '@tabsy/shared-types'
 import { dualReadSession } from '@/lib/unifiedSessionStorage'
 import { SessionManager } from '@/lib/session'
 import { useMenuData } from '@/hooks/useMenuData' // ✅ NEW: React Query hook
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
 
 const convertAllergyInfoToArray = (allergyInfo?: AllergyInfo): string[] | undefined => {
   if (!allergyInfo) return undefined
@@ -40,6 +41,10 @@ export function SearchView() {
   const { api } = useApi()
   const searchParams = useSearchParams()
   const { cart, cartCount, getItemQuantity } = useCart()
+
+  // Get currency from context with sessionStorage fallback
+  const restaurantContext = useRestaurantOptional()
+  const currency = restaurantContext?.currency || 'USD'
 
   // Get restaurantId from URL parameters or session
   const urlRestaurantId = searchParams.get('restaurant')
@@ -419,6 +424,7 @@ export function SearchView() {
                   isFavorite={favorites.has(item.id)}
                   layout="grid"
                   showQuickAdd={true}
+                  currency={currency}
                 />
               ))}
             </div>

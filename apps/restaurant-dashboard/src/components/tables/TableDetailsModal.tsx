@@ -9,7 +9,7 @@ import {
   Users,
   Clock,
   MapPin,
-  DollarSign,
+  Banknote,
   Calendar,
   ChevronRight,
   AlertTriangle,
@@ -30,6 +30,8 @@ import { toast } from 'sonner'
 import { SessionDetailsModal } from './SessionDetailsModal'
 import { createTableHooks } from '@tabsy/react-query-hooks'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
+import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface TableDetailsModalProps {
   table: Table
@@ -50,6 +52,10 @@ export function TableDetailsModal({
 }: TableDetailsModalProps) {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+
+  // Get restaurant currency for proper multi-currency support
+  const { restaurant } = useCurrentRestaurant()
+  const currency = (restaurant?.currency as CurrencyCode) || 'USD'
 
   const queryClient = useQueryClient()
   const tableHooks = createTableHooks(useQuery)
@@ -144,7 +150,7 @@ export function TableDetailsModal({
       case 'ORDERING_LOCKED':
         return <Clock className="w-4 h-4" />
       case 'PAYMENT_PENDING':
-        return <DollarSign className="w-4 h-4" />
+        return <Banknote className="w-4 h-4" />
       case 'CLOSED':
         return <XCircle className="w-4 h-4" />
       default:
@@ -559,9 +565,9 @@ export function TableDetailsModal({
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="text-right">
-                            <div className="font-medium">${session.totalAmount.toFixed(2)}</div>
+                            <div className="font-medium">{formatPrice(session.totalAmount, currency)}</div>
                             <div className="text-xs text-content-secondary">
-                              Paid: ${Number(session.paidAmount || 0).toFixed(2)}
+                              Paid: {formatPrice(Number(session.paidAmount || 0), currency)}
                             </div>
                           </div>
                           <ChevronRight className="w-4 h-4 text-content-secondary" />

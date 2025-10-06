@@ -198,6 +198,42 @@ export function WebSocketEventCoordinator({ children }: { children: React.ReactN
   }, [debouncedInvalidateBill])
 
   // ============================================================================
+  // RESTAURANT/TABLE EVENTS - Real-time updates for restaurant data changes
+  // ============================================================================
+
+  /**
+   * Handle restaurant updates (e.g., currency change, settings update)
+   * Invalidates: restaurant query to refetch fresh data from API
+   */
+  const handleRestaurantUpdate = useCallback((data: any) => {
+    console.log('[WebSocketCoordinator] restaurant:updated', {
+      restaurantId: data.restaurantId
+    })
+
+    // Invalidate restaurant query - will refetch from API
+    queryClient.invalidateQueries({
+      queryKey: ['restaurant', data.restaurantId],
+      refetchType: 'active'
+    })
+  }, [queryClient])
+
+  /**
+   * Handle table updates (e.g., status change, QR regeneration)
+   * Invalidates: table query to refetch fresh data from API
+   */
+  const handleTableUpdate = useCallback((data: any) => {
+    console.log('[WebSocketCoordinator] table:updated', {
+      tableId: data.tableId
+    })
+
+    // Invalidate table query - will refetch from API
+    queryClient.invalidateQueries({
+      queryKey: ['table', data.tableId],
+      refetchType: 'active'
+    })
+  }, [queryClient])
+
+  // ============================================================================
   // REGISTER EVENT LISTENERS - This is the ONLY place these events are heard
   // ============================================================================
 
@@ -214,10 +250,14 @@ export function WebSocketEventCoordinator({ children }: { children: React.ReactN
   useWebSocketEvent('table:session_updated', handleTableSessionUpdate, [handleTableSessionUpdate], 'WebSocketCoordinator')
   useWebSocketEvent('split:calculation_updated', handleSplitCalculationUpdate, [handleSplitCalculationUpdate], 'WebSocketCoordinator')
 
+  // Restaurant/Table events
+  useWebSocketEvent('restaurant:updated', handleRestaurantUpdate, [handleRestaurantUpdate], 'WebSocketCoordinator')
+  useWebSocketEvent('table:updated', handleTableUpdate, [handleTableUpdate], 'WebSocketCoordinator')
+
   // Log coordinator activation
   useEffect(() => {
     console.log('🎯 [WebSocketCoordinator] Centralized event coordinator active')
-    console.log('   - Listening to: order:*, payment:*, table:*, split:*')
+    console.log('   - Listening to: order:*, payment:*, table:*, split:*, restaurant:*')
     console.log('   - This is the ONLY place these events are handled')
     console.log('   - All components read from React Query cache')
 

@@ -1,9 +1,10 @@
 # Tabsy API Documentation
 
-> **Version**: 2.0
-> **Last Updated**: 2025-09-30
+> **Version**: 2.1
+> **Last Updated**: 2025-10-05
 > **Backend**: Tabsy-Core API v1
 > **Coverage**: 134 REST endpoints + 94 WebSocket events
+> **Multi-Currency**: Full support for USD, AED, INR, EUR, GBP, CAD, AUD, JPY
 
 ## Table of Contents
 
@@ -574,6 +575,7 @@ const rateLimits = {
   phoneNumber: string         // Required
   email?: string              // Valid email
   website?: string            // Valid URI
+  currency?: string           // Optional, ISO 4217 code (USD, AED, INR), default: 'USD'
   openingHours?: {
     [day: string]: Array<{
       open: string           // HH:MM format
@@ -581,6 +583,8 @@ const rateLimits = {
     }>
   }
   active?: boolean            // Default: true
+  taxRatePercentage?: number  // Optional, decimal 0-1 (e.g., 0.10 for 10%), default: 0.10
+  taxFixedAmount?: number     // Optional, fixed tax amount 0-999.99, default: 0.00
 }
 ```
 
@@ -608,8 +612,12 @@ const rateLimits = {
     phoneNumber: string
     email?: string
     website?: string
+    currency: string              // ISO 4217 code (USD, AED, INR)
     openingHours?: Record<string, OpeningHours[]>
+    taxRatePercentage: number     // Decimal 0-1 (e.g., 0.10 for 10%)
+    taxFixedAmount: number        // Fixed tax amount
     active: boolean
+    posEnabled: boolean
     createdAt: string
     updatedAt: string
   }
@@ -1216,19 +1224,35 @@ const rateLimits = {
   data: {
     table: {
       id: string
-      number: string
+      tableNumber: string
       restaurantId: string
       qrCode: string
       status: TableStatus
       seats: number
       shape: TableShape
+      locationDescription?: string
     }
     restaurant: {
       id: string
       name: string
-      description: string
-      logoUrl?: string
-      theme?: string
+      description?: string
+      logo?: string
+      address: string
+      city: string
+      state: string
+      zipCode: string
+      country: string
+      phoneNumber: string
+      email?: string
+      website?: string
+      currency: string              // ISO 4217 code (USD, AED, INR) - REQUIRED for multi-currency support
+      openingHours?: Record<string, OpeningHours[]>
+      taxRatePercentage: number     // Decimal 0-1 (e.g., 0.10 for 10%)
+      taxFixedAmount: number        // Fixed tax amount
+      active: boolean
+      posEnabled: boolean
+      createdAt: string
+      updatedAt: string
     }
     isActive: boolean
   }
@@ -4111,7 +4135,7 @@ const headers = {
 
 **Restaurant Staff Connection**:
 ```typescript
-const socket = io('wss://api.tabsy.com/restaurant', {
+const socket = io('wss://api.tabsy.io/restaurant', {
   auth: {
     token: accessToken,
     restaurantId: restaurantId
@@ -4125,7 +4149,7 @@ socket.on('connection:success', (data) => {
 
 **Customer Connection**:
 ```typescript
-const socket = io('wss://api.tabsy.com/customer', {
+const socket = io('wss://api.tabsy.io/customer', {
   query: {
     tableId: tableId,
     restaurantId: restaurantId
@@ -4139,6 +4163,252 @@ socket.on('session:info', (data) => {
   console.log('Session info:', data)
 })
 ```
+
+---
+
+### Multi-Currency Support
+
+**Version**: 2.1 (Updated 2025-10-05)
+
+Tabsy provides comprehensive multi-currency support for international restaurants. Each restaurant operates in a single currency, configured at the restaurant level.
+
+#### Supported Currencies
+
+| Code | Name | Symbol | Locale | Status |
+|------|------|--------|--------|--------|
+| `USD` | US Dollar | $ | en-US | ✅ Full Support |
+| `AED` | UAE Dirham | د.إ | ar-AE | ✅ Full Support |
+| `INR` | Indian Rupee | ₹ | en-IN | ✅ Full Support |
+| `EUR` | Euro | € | de-DE | ✅ Full Support |
+| `GBP` | British Pound | £ | en-GB | ✅ Full Support |
+| `CAD` | Canadian Dollar | C$ | en-CA | ✅ Full Support |
+| `AUD` | Australian Dollar | A$ | en-AU | ✅ Full Support |
+| `JPY` | Japanese Yen | ¥ | ja-JP | ✅ Full Support |
+
+#### Currency Configuration
+
+**Creating Restaurant with Currency**:
+```typescript
+POST /api/v1/restaurants
+{
+  name: "Dubai Spice House",
+  currency: "AED",  // Optional, defaults to 'USD'
+  // ... other fields
+}
+```
+
+**Updating Restaurant Currency**:
+```typescript
+PATCH /api/v1/restaurants/:id
+{
+  currency: "INR"  // Valid ISO 4217 code
+}
+```
+
+**Getting Restaurant (includes currency)**:
+```typescript
+GET /api/v1/restaurants/:id
+// Response:
+{
+  success: true,
+  data: {
+    id: "rest-123",
+    name: "Mumbai Masala",
+    currency: "INR",  // ← Always included
+    // ... other fields
+  }
+}
+```
+
+#### Currency in Orders & Payments
+
+**Order Response** (includes currency):
+```typescript
+GET /api/v1/orders/:id
+{
+  success: true,
+  data: {
+    id: "order-456",
+    restaurantId: "rest-123",
+    currency: "AED",     // ← Currency from restaurant
+    subtotal: 125.50,    // Amount in AED
+    tax: 12.55,          // Tax in AED
+    total: 138.05,       // Total in AED
+    // ... other fields
+  }
+}
+```
+
+**Payment Response** (includes currency):
+```typescript
+GET /api/v1/payments/:id
+{
+  success: true,
+  data: {
+    id: "pay-789",
+    orderId: "order-456",
+    currency: "AED",     // ← Currency from restaurant
+    amount: 138.05,      // Amount in AED
+    // ... other fields
+  }
+}
+```
+
+**Table Session Response** (includes currency):
+```typescript
+GET /api/v1/table-sessions/:id
+{
+  success: true,
+  data: {
+    id: "session-101",
+    restaurantId: "rest-123",
+    currency: "INR",     // ← Currency from restaurant
+    totalAmount: 2500.00, // Total in INR
+    // ... other fields
+  }
+}
+```
+
+#### Stripe Payment Integration
+
+**Critical**: Stripe payment intents must use the restaurant's currency:
+
+```typescript
+// Backend implementation (required)
+const restaurant = await getRestaurant(restaurantId);
+
+const paymentIntent = await stripe.paymentIntents.create({
+  amount: Math.round(totalAmount * 100),  // Cents/Fils/Paise
+  currency: restaurant.currency.toLowerCase(), // 'aed', 'inr', 'usd'
+  // ... other params
+});
+```
+
+**⚠️ Important**: Stripe requires lowercase currency codes ('usd', 'aed', 'inr')
+
+#### Currency Behavior & Rules
+
+1. **No Currency Conversion**: Each restaurant operates in ONE currency only. The system does NOT perform currency conversion.
+
+2. **Consistency**: All monetary values within a restaurant context use the same currency:
+   - Menu item prices
+   - Order calculations
+   - Payment amounts
+   - Tax calculations
+   - Tips and service charges
+
+3. **Stripe Integration**: Payment processing always uses the restaurant's configured currency.
+
+4. **Decimal Precision**:
+   - All currencies except JPY use 2 decimal places
+   - JPY uses 0 decimal places (whole numbers)
+   - Database stores as `Decimal(10, 2)`
+
+5. **Frontend Display**: Currency symbols and formatting automatically adapt to the restaurant's currency.
+
+#### Frontend Currency Utilities
+
+The frontend includes comprehensive currency formatting utilities:
+
+```typescript
+import {
+  formatPrice,
+  formatCurrency,
+  getCurrencySymbol,
+  type CurrencyCode
+} from '@tabsy/shared-utils/formatting/currency';
+
+// Format price with currency symbol
+formatPrice(25.99, 'USD')   // "$25.99"
+formatPrice(95.50, 'AED')   // "د.إ95.50"
+formatPrice(1999, 'INR')    // "₹1,999.00"
+formatPrice(25.50, 'EUR')   // "€25.50"
+formatPrice(19.99, 'GBP')   // "£19.99"
+
+// Get currency symbol only
+getCurrencySymbol('AED')    // "د.إ"
+getCurrencySymbol('INR')    // "₹"
+
+// Format with custom options
+formatCurrency(1500, 'INR', {
+  locale: 'en-IN',
+  showCents: true,
+  showSymbol: true
+}) // "₹1,500.00"
+```
+
+#### Multi-Currency Frontend Implementation
+
+All three frontend applications (Customer App, Restaurant Dashboard, Admin Portal) are fully currency-aware:
+
+**Customer App**:
+- Menu prices display in restaurant currency
+- Cart and checkout use restaurant currency
+- Payment confirmation shows correct currency
+- Order history maintains currency context
+
+**Restaurant Dashboard**:
+- All order displays use restaurant currency
+- Payment analytics show restaurant currency
+- Menu management shows currency in price inputs
+- Reports and exports include currency
+
+**Admin Portal**:
+- Restaurant list shows currency for each restaurant
+- Analytics dashboard supports currency selection
+- Order and payment details show correct currency
+- Can create restaurants with any supported currency
+
+#### Testing Multi-Currency
+
+For testing, use Stripe test cards specific to each currency:
+
+```typescript
+// USD
+4242 4242 4242 4242
+
+// AED (UAE)
+4000 0078 4000 0007
+
+// INR (India)
+4000 0356 4000 0008
+
+// EUR
+4000 0002 4000 0002
+
+// GBP
+4000 0082 6000 0000
+```
+
+#### Backward Compatibility
+
+- Existing restaurants without currency default to `USD`
+- Existing orders and payments maintain their original currency
+- Migration scripts preserve historical data integrity
+
+#### Future Enhancements
+
+**Planned Features** (not yet implemented):
+- Multi-currency analytics aggregation
+- Currency conversion API integration
+- Exchange rate tracking for reporting
+- Multi-currency export/import for reconciliation
+
+#### Implementation Status
+
+| Component | Status | Coverage |
+|-----------|--------|----------|
+| Database Schema | ✅ Complete | Currency field in Restaurant table |
+| Backend API | 🟡 In Progress | See `BACKEND_MULTI_CURRENCY_REQUIREMENTS.md` |
+| Frontend - Customer App | ✅ Complete | 100% currency-aware |
+| Frontend - Restaurant Dashboard | ✅ Complete | 100% currency-aware |
+| Frontend - Admin Portal | ✅ Complete | 100% currency-aware |
+| Stripe Integration | 🟡 Pending | Requires backend update |
+| Testing | 🟡 Pending | See `MULTI_CURRENCY_TESTING_CHECKLIST.md` |
+
+For complete implementation details, see:
+- `BACKEND_MULTI_CURRENCY_REQUIREMENTS.md` - Backend requirements
+- `MULTI_CURRENCY_TESTING_CHECKLIST.md` - Comprehensive testing guide
 
 ---
 
@@ -4169,4 +4439,5 @@ This documentation covers **100% of the Tabsy backend API**:
 
 For questions or updates, refer to the backend codebase at `/Users/vishalsoni/Documents/ainexustech/Tabsy-core/`
 
-**Last Verified**: 2025-09-30
+**Last Verified**: 2025-10-05
+**Multi-Currency Update**: 2025-10-05 - Added comprehensive multi-currency support documentation

@@ -8,7 +8,7 @@ import {
   User,
   Store,
   Clock,
-  DollarSign,
+  Banknote,
   CheckCircle,
   XCircle,
   AlertCircle,
@@ -18,7 +18,6 @@ import {
   ArrowRight,
   RefreshCw,
   Shield,
-  Banknote,
   Smartphone,
   Wallet,
   Package,
@@ -28,9 +27,10 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { Payment, PaymentStatus, PaymentMethod } from '@tabsy/shared-types';
-import { useOrder, useProcessRefund } from '@/hooks/api';
+import { useOrder, useRefundPayment } from '@/hooks/api';
 import { format, formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
+import { formatPrice, type CurrencyCode, getPaymentCurrency } from '@tabsy/shared-utils';
 
 interface PaymentDetailsModalProps {
   payment: Payment;
@@ -46,8 +46,11 @@ export default function PaymentDetailsModal({
   const [activeTab, setActiveTab] = useState<'details' | 'order' | 'timeline' | 'security'>('details');
   const [processingRefund, setProcessingRefund] = useState(false);
 
+  // Get currency from payment with proper fallback chain
+  const currency: CurrencyCode = getPaymentCurrency(payment);
+
   const { data: order } = useOrder(payment.orderId || '');
-  const processRefund = useProcessRefund();
+  const processRefund = useRefundPayment();
 
   const tabs = [
     { id: 'details', label: 'Payment Details', icon: CreditCard },
@@ -97,7 +100,7 @@ export default function PaymentDetailsModal({
   };
 
   const handleProcessRefund = async () => {
-    if (!confirm(`Are you sure you want to refund $${payment.amount?.toFixed(2)}?`)) {
+    if (!confirm(`Are you sure you want to refund ${formatPrice(payment.amount || 0, currency)}?`)) {
       return;
     }
 
@@ -106,13 +109,15 @@ export default function PaymentDetailsModal({
       await processRefund.mutateAsync({
         paymentId: payment.id,
         amount: payment.amount,
-        reason: 'Admin initiated refund'
+        reason: 'Admin initiated refund',
+        currency: currency // Pass currency to refund handler
       });
-      toast.success('Refund processed successfully');
+      // Success toast is handled in the hook
       onUpdate?.();
       onClose();
     } catch (error) {
-      toast.error('Failed to process refund');
+      // Error toast is handled in the hook
+      console.error('Refund failed:', error);
     } finally {
       setProcessingRefund(false);
     }
@@ -161,11 +166,11 @@ export default function PaymentDetailsModal({
         <div className="grid grid-cols-4 gap-4 p-6 bg-surface-secondary/50">
           <div className="bg-surface rounded-lg p-3 border border-border-tertiary">
             <div className="flex items-center justify-between mb-1">
-              <DollarSign className="h-4 w-4 text-status-success" />
+              <Banknote className="h-4 w-4 text-status-success" />
               <span className="text-xs text-status-success">Amount</span>
             </div>
             <div className="text-xl font-bold text-content-primary">
-              ${payment.amount?.toFixed(2)}
+              {formatPrice(payment.amount || 0, currency)}
             </div>
           </div>
 
@@ -195,7 +200,7 @@ export default function PaymentDetailsModal({
               <span className="text-xs text-secondary">Fee</span>
             </div>
             <div className="text-sm font-medium text-content-primary">
-              ${((payment.amount || 0) * 0.029).toFixed(2)}
+              {formatPrice((payment.amount || 0) * 0.029, currency)}
             </div>
           </div>
         </div>
@@ -319,38 +324,38 @@ export default function PaymentDetailsModal({
               {/* Amount Breakdown */}
               <div className="bg-surface-secondary rounded-lg p-4 border border-border-tertiary">
                 <h3 className="text-sm font-medium text-content-primary mb-3 flex items-center">
-                  <DollarSign className="h-4 w-4 mr-2 text-primary" />
+                  <Banknote className="h-4 w-4 mr-2 text-primary" />
                   Amount Breakdown
                 </h3>
                 <div className="space-y-2">
                   <div className="flex justify-between">
                     <span className="text-xs text-content-secondary">Subtotal</span>
                     <span className="text-sm font-medium text-content-primary">
-                      ${((payment.amount || 0) / 1.1).toFixed(2)}
+                      {formatPrice((payment.amount || 0) / 1.1, currency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-xs text-content-secondary">Tax</span>
                     <span className="text-sm text-content-primary">
-                      ${((payment.amount || 0) * 0.1).toFixed(2)}
+                      {formatPrice((payment.amount || 0) * 0.1, currency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-xs text-content-secondary">Tip</span>
                     <span className="text-sm text-content-primary">
-                      ${Number(payment.tipAmount || 0).toFixed(2)}
+                      {formatPrice(Number(payment.tipAmount || 0), currency)}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-xs text-content-secondary">Processing Fee</span>
                     <span className="text-sm text-content-primary">
-                      ${((payment.amount || 0) * 0.029).toFixed(2)}
+                      {formatPrice((payment.amount || 0) * 0.029, currency)}
                     </span>
                   </div>
                   <div className="pt-2 border-t border-border-tertiary flex justify-between">
                     <span className="text-sm font-medium text-content-primary">Total</span>
                     <span className="text-lg font-bold text-primary">
-                      ${payment.amount?.toFixed(2)}
+                      ${formatPrice(payment.amount || 0, currency)}
                     </span>
                   </div>
                 </div>
@@ -427,7 +432,7 @@ export default function PaymentDetailsModal({
                             {item.quantity}x {item.menuItem?.name}
                           </span>
                           <span className="text-sm font-medium text-content-primary">
-                            ${(item.price * item.quantity).toFixed(2)}
+                            {formatPrice(item.price * item.quantity, currency)}
                           </span>
                         </div>
                       ))}
@@ -482,7 +487,7 @@ export default function PaymentDetailsModal({
                       <div className="ml-4 flex-1">
                         <p className="text-sm font-medium text-content-primary">Payment Completed</p>
                         <p className="text-xs text-content-secondary">
-                          Successfully charged ${payment.amount?.toFixed(2)}
+                          Successfully charged {formatPrice(payment.amount || 0, currency)}
                         </p>
                       </div>
                     </div>
@@ -510,7 +515,7 @@ export default function PaymentDetailsModal({
                       <div className="ml-4 flex-1">
                         <p className="text-sm font-medium text-content-primary">Refund Processed</p>
                         <p className="text-xs text-content-secondary">
-                          Amount refunded: ${payment.amount?.toFixed(2)}
+                          Amount refunded: {formatPrice(payment.amount || 0, currency)}
                         </p>
                       </div>
                     </div>

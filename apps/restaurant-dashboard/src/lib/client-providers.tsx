@@ -30,6 +30,7 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
   return (
     <ConnectionProvider apiClient={tabsyClient}>
       <WebSocketProvider
+        url={process.env.NEXT_PUBLIC_WS_BASE_URL}
         authToken={session?.token}
         restaurantId={restaurantId}
         namespace="restaurant"

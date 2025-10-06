@@ -15,7 +15,7 @@ type SessionFilters = RestaurantSessionFilters
 import {
   Users,
   Clock,
-  DollarSign,
+  Banknote,
   AlertTriangle,
   Search,
   Filter,
@@ -29,6 +29,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Badge } from '@tabsy/ui-components'
+import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 export function SessionMonitoring() {
   const api = tabsyClient
@@ -214,11 +215,11 @@ export function SessionMonitoring() {
           <div className="bg-surface rounded-lg border border-default p-6">
             <div className="flex items-center">
               <div className="p-2 bg-success/10 rounded-lg">
-                <DollarSign className="w-6 h-6 text-success" />
+                <Banknote className="w-6 h-6 text-success" />
               </div>
               <div className="ml-4">
                 <p className="text-sm text-content-secondary">Total Revenue</p>
-                <p className="text-2xl font-bold">${metrics.totalRevenue.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{formatPrice(metrics.totalRevenue, 'USD')}</p>
               </div>
             </div>
           </div>
@@ -431,9 +432,9 @@ export function SessionMonitoring() {
                     </td>
                     <td className="p-4">
                       <div>
-                        <div className="font-medium">${session.totalAmount.toFixed(2)}</div>
+                        <div className="font-medium">{formatPrice(session.totalAmount, 'USD')}</div>
                         <div className="text-sm text-content-secondary">
-                          Paid: ${session.paidAmount.toFixed(2)}
+                          Paid: {formatPrice(session.paidAmount, 'USD')}
                         </div>
                       </div>
                     </td>
@@ -552,9 +553,9 @@ export function SessionMonitoring() {
                 <h4 className="font-medium mb-2">Financial Information</h4>
                 <div className="bg-surface-secondary rounded-lg p-4">
                   <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div><strong>Total Amount:</strong> ${selectedSession.totalAmount.toFixed(2)}</div>
-                    <div><strong>Paid Amount:</strong> ${selectedSession.paidAmount.toFixed(2)}</div>
-                    <div><strong>Remaining:</strong> ${(selectedSession.totalAmount - selectedSession.paidAmount).toFixed(2)}</div>
+                    <div><strong>Total Amount:</strong> {formatPrice(selectedSession.totalAmount, 'USD')}</div>
+                    <div><strong>Paid Amount:</strong> {formatPrice(selectedSession.paidAmount, 'USD')}</div>
+                    <div><strong>Remaining:</strong> {formatPrice(selectedSession.totalAmount - selectedSession.paidAmount, 'USD')}</div>
                     <div><strong>Payment Status:</strong> {selectedSession.paidAmount >= selectedSession.totalAmount ? 'Fully Paid' : 'Pending'}</div>
                   </div>
                 </div>

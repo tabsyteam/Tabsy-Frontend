@@ -11,12 +11,14 @@ interface EqualSplitDisplayProps {
   users: TableSessionUser[]
   serverState: SplitCalculationServerState
   currentUserId: string
+  formatPrice?: (price: number) => string
 }
 
 export function EqualSplitDisplay({
   users,
   serverState,
-  currentUserId
+  currentUserId,
+  formatPrice = (price) => `$${price.toFixed(2)}`
 }: EqualSplitDisplayProps) {
   return (
     <div className="space-y-3">
@@ -46,7 +48,7 @@ export function EqualSplitDisplay({
                   )}
                 </div>
                 <div className="text-sm font-semibold text-content-primary">
-                  ${amount.toFixed(2)}
+                  {formatPrice(amount)}
                 </div>
               </div>
             </div>
@@ -65,6 +67,7 @@ interface PercentageInputsProps {
   serverState: SplitCalculationServerState
   onChange: (userId: string, value: string) => void
   disabled?: boolean
+  formatPrice?: (price: number) => string
 }
 
 export function PercentageInputs({
@@ -73,7 +76,8 @@ export function PercentageInputs({
   localInputs,
   serverState,
   onChange,
-  disabled = false
+  disabled = false,
+  formatPrice = (price) => `$${price.toFixed(2)}`
 }: PercentageInputsProps) {
   return (
     <div className="space-y-3">
@@ -107,7 +111,7 @@ export function PercentageInputs({
                     )}
                   </div>
                   <div className="text-xs text-content-tertiary mt-0.5">
-                    ${amount.toFixed(2)}
+                    {formatPrice(amount)}
                   </div>
                 </div>
 
@@ -150,6 +154,8 @@ interface AmountInputsProps {
   serverState: SplitCalculationServerState
   onChange: (userId: string, value: string) => void
   disabled?: boolean
+  formatPrice?: (price: number) => string
+  currencySymbol?: string
 }
 
 export function AmountInputs({
@@ -158,7 +164,9 @@ export function AmountInputs({
   localInputs,
   serverState,
   onChange,
-  disabled = false
+  disabled = false,
+  formatPrice = (price) => `$${price.toFixed(2)}`,
+  currencySymbol = '$'
 }: AmountInputsProps) {
   return (
     <div className="space-y-3">
@@ -192,13 +200,13 @@ export function AmountInputs({
                     )}
                   </div>
                   <div className="text-xs text-content-tertiary mt-0.5">
-                    Calculated: ${amount.toFixed(2)}
+                    Calculated: {formatPrice(amount)}
                   </div>
                 </div>
 
                 {/* Amount input */}
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-content-secondary">$</span>
+                  <span className="text-sm text-content-secondary">{currencySymbol}</span>
                   <input
                     type="number"
                     min="0"

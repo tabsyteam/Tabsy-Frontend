@@ -20,7 +20,7 @@ import {
   Eye,
   Download,
   Clock,
-  DollarSign,
+  Banknote,
   ChevronLeft,
   ChevronRight,
   RefreshCw,
@@ -34,7 +34,6 @@ import {
   Store,
   User,
   Hash,
-  Banknote,
   Smartphone,
   Wallet,
   ArrowUpRight,
@@ -51,6 +50,8 @@ import { useAuth } from '@tabsy/ui-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useAdminWebSocket } from '@/hooks/useAdminWebSocket';
+import { formatPrice, type CurrencyCode, getPaymentCurrency } from '@tabsy/shared-utils';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 // Payment Method Icon
 function PaymentMethodIcon({ method }: { method: PaymentMethod }) {
@@ -134,7 +135,8 @@ export default function PaymentsPage() {
 
       // Show toast notification for significant payment events
       if (data.type === 'payment:completed') {
-        toast.success(`Payment of $${data.amount?.toFixed(2)} completed successfully`)
+        const currency = (data as any).currency || 'USD';
+        toast.success(`Payment of ${formatPrice(data.amount || 0, currency as CurrencyCode)} completed successfully`)
       } else if (data.type === 'payment:failed') {
         toast.error(`Payment failed: ${data.errorMessage}`)
       }
@@ -151,6 +153,15 @@ export default function PaymentsPage() {
 
   // Calculate pagination
   const payments = Array.isArray(paymentsData) ? paymentsData : paymentsData?.payments || [];
+
+  // Determine default currency from first payment (for aggregate metrics)
+  const defaultCurrency: CurrencyCode = useMemo(() => {
+    if (payments.length > 0) {
+      return getPaymentCurrency(payments[0]);
+    }
+    return 'USD';
+  }, [payments]);
+
   const totalPages = Math.ceil((payments?.length || 0) / itemsPerPage);
   const paginatedPayments = useMemo(() => {
     if (!payments) return [];
@@ -183,8 +194,9 @@ export default function PaymentsPage() {
   ];
 
   return (
-    <ProtectedRoute>
-      <DashboardLayout breadcrumbs={breadcrumbs}>
+    <ErrorBoundary>
+      <ProtectedRoute>
+        <DashboardLayout breadcrumbs={breadcrumbs}>
         {/* Header Actions */}
         <div className="px-6 py-4 bg-surface border-b border-border-default">
           <div className="flex items-center justify-between">
@@ -310,7 +322,7 @@ export default function PaymentsPage() {
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div className="bg-surface rounded-lg shadow-card p-4 border border-border-tertiary">
               <div className="flex items-center justify-between mb-2">
-                <DollarSign className="h-5 w-5 text-status-success" />
+                <Banknote className="h-5 w-5 text-status-success" />
                 <span className={`text-xs flex items-center ${
                   (metrics?.revenueGrowth || 0) >= 0 ? 'text-status-success' : 'text-status-error'
                 }`}>
@@ -323,12 +335,12 @@ export default function PaymentsPage() {
                 </span>
               </div>
               <div className="text-2xl font-bold text-content-primary">
-                ${metrics?.totalRevenue?.toFixed(2) || '0.00'}
+                {formatPrice(metrics?.totalRevenue || 0, defaultCurrency)}
               </div>
               <p className="text-xs text-content-secondary mt-1">Total Revenue</p>
               {realtimeMetrics && (
                 <p className="text-xs text-status-info mt-1">
-                  Recent: ${realtimeMetrics.recentRevenue?.toFixed(2) || '0.00'}
+                  Recent: {formatPrice(realtimeMetrics.recentRevenue || 0, defaultCurrency)}
                 </p>
               )}
             </div>
@@ -364,7 +376,7 @@ export default function PaymentsPage() {
                 </span>
               </div>
               <div className="text-2xl font-bold text-content-primary">
-                ${metrics?.pendingAmount?.toFixed(2) || '0.00'}
+                {formatPrice(metrics?.pendingAmount || 0, defaultCurrency)}
               </div>
               <p className="text-xs text-content-secondary mt-1">Pending Amount</p>
               {realtimeMetrics && (
@@ -403,7 +415,7 @@ export default function PaymentsPage() {
                 <span className="text-xs text-secondary">AOV</span>
               </div>
               <div className="text-2xl font-bold text-content-primary">
-                ${metrics?.averageTransactionValue?.toFixed(2) || '0.00'}
+                {formatPrice(metrics?.averageTransactionValue || 0, defaultCurrency)}
               </div>
               <p className="text-xs text-content-secondary mt-1">Average Order Value</p>
               <p className="text-xs text-secondary mt-1">
@@ -430,7 +442,7 @@ export default function PaymentsPage() {
                   {metrics?.cardTransactions || 0} transactions
                 </div>
                 <div className="text-xs text-content-tertiary">
-                  ${metrics?.cardAmount?.toFixed(2) || '0.00'} revenue
+                  {formatPrice(metrics?.cardAmount || 0, defaultCurrency)} revenue
                 </div>
               </div>
 
@@ -448,7 +460,7 @@ export default function PaymentsPage() {
                   {metrics?.digitalWalletTransactions || 0} transactions
                 </div>
                 <div className="text-xs text-content-tertiary">
-                  ${metrics?.digitalWalletAmount?.toFixed(2) || '0.00'} revenue
+                  {formatPrice(metrics?.digitalWalletAmount || 0, defaultCurrency)} revenue
                 </div>
               </div>
 
@@ -466,7 +478,7 @@ export default function PaymentsPage() {
                   {metrics?.cashTransactions || 0} transactions
                 </div>
                 <div className="text-xs text-content-tertiary">
-                  ${metrics?.cashAmount?.toFixed(2) || '0.00'} revenue
+                  {formatPrice(metrics?.cashAmount || 0, defaultCurrency)} revenue
                 </div>
               </div>
 
@@ -646,9 +658,8 @@ export default function PaymentsPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
-                              <DollarSign className="h-4 w-4 text-status-success mr-1" />
                               <span className="text-sm font-bold text-content-primary">
-                                {Number(payment.amount || 0).toFixed(2)}
+                                {formatPrice(Number(payment.amount || 0), getPaymentCurrency(payment))}
                               </span>
                             </div>
                           </td>
@@ -770,7 +781,8 @@ export default function PaymentsPage() {
             onUpdate={() => refetch()}
           />
         )}
-      </DashboardLayout>
-    </ProtectedRoute>
+        </DashboardLayout>
+      </ProtectedRoute>
+    </ErrorBoundary>
   );
 }

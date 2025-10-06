@@ -4,7 +4,7 @@
  */
 
 import { SplitBillType } from '@/constants/payment'
-import { Users, Percent, DollarSign, Hash } from 'lucide-react'
+import { Users, Percent, Banknote, Hash } from 'lucide-react'
 
 interface SplitTypeSelectorProps {
   selected: SplitBillType
@@ -33,7 +33,7 @@ export function SplitTypeSelector({
     {
       type: SplitBillType.BY_AMOUNT,
       label: 'By Amount',
-      icon: DollarSign,
+      icon: Banknote,
       description: 'Set dollar amount for each person'
     },
     {

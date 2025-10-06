@@ -93,20 +93,16 @@ export function SessionProvider({ children }: SessionProviderProps) {
       api.setGuestSession(standaloneSessionId)
     }
 
-    // Periodic session refresh to prevent loss
-    const refreshInterval = setInterval(() => {
-      const currentSessionId = api.getGuestSessionId()
-      if (currentSessionId) {
-        // Refresh session storage to prevent expiration
-        const storedId = sessionStorage.getItem('tabsy-guest-session-id')
-        if (!storedId || storedId !== currentSessionId) {
-          console.log('SessionProvider: Refreshing session persistence')
-          sessionStorage.setItem('tabsy-guest-session-id', currentSessionId)
-        }
-      }
-    }, 30000) // Every 30 seconds
+    // REMOVED: Periodic session refresh interval (was running every 30 seconds)
+    // Session persistence is now handled entirely by:
+    // 1. Initial restoration on mount (above)
+    // 2. Visibility change events (handled by api-provider)
+    // 3. Focus events (handled by api-provider)
+    // This prevents unnecessary CPU usage when no users are connected
 
-    return () => clearInterval(refreshInterval)
+    return () => {
+      // Cleanup if needed
+    }
   }, [api])
 
   const value: SessionContextType = {

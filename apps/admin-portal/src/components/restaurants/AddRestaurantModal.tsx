@@ -9,12 +9,13 @@ import {
   Phone,
   Mail,
   Globe,
-  DollarSign,
+  Banknote,
   Info
 } from 'lucide-react';
 import { useCreateRestaurant, useUpdateRestaurant } from '@/hooks/api';
 import { Restaurant, CreateRestaurantRequest, UpdateRestaurantRequest } from '@tabsy/shared-types';
 import { toast } from 'sonner';
+import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency';
 
 interface AddRestaurantModalProps {
   restaurant?: Restaurant | null;
@@ -40,6 +41,7 @@ export default function AddRestaurantModal({
     state: '',
     zipCode: '',
     country: 'USA',
+    currency: 'USD',
     taxRatePercentage: '0.10', // 10% default
     taxFixedAmount: '0.00'
   });
@@ -63,6 +65,7 @@ export default function AddRestaurantModal({
         state: restaurant.state || '',
         zipCode: restaurant.zipCode || '',
         country: restaurant.country || 'USA',
+        currency: restaurant.currency || 'USD',
         taxRatePercentage: restaurant.taxRatePercentage?.toString() || '0.10',
         taxFixedAmount: restaurant.taxFixedAmount?.toString() || '0.00'
       });
@@ -148,6 +151,7 @@ export default function AddRestaurantModal({
           phoneNumber: formData.phone,
           email: formData.email,
           website: formData.website || undefined,
+          currency: formData.currency,
           active: true,
           taxRatePercentage: parseFloat(formData.taxRatePercentage),
           taxFixedAmount: parseFloat(formData.taxFixedAmount)
@@ -170,6 +174,7 @@ export default function AddRestaurantModal({
           phoneNumber: formData.phone,
           email: formData.email,
           website: formData.website || undefined,
+          currency: formData.currency,
           active: true,
           taxRatePercentage: parseFloat(formData.taxRatePercentage),
           taxFixedAmount: parseFloat(formData.taxFixedAmount)
@@ -393,10 +398,36 @@ export default function AddRestaurantModal({
             </div>
           </div>
 
+          {/* Currency Configuration */}
+          <div>
+            <h3 className="text-lg font-medium text-content-primary mb-4 flex items-center">
+              <Banknote className="h-5 w-5 mr-2 text-primary" />
+              Currency Configuration
+            </h3>
+            <div>
+              <label className="block text-sm font-medium text-content-primary mb-2">
+                Currency *
+              </label>
+              <select
+                name="currency"
+                value={formData.currency}
+                onChange={handleInputChange}
+                className="input-professional w-full"
+              >
+                <option value="USD">USD ($) - US Dollar</option>
+                <option value="AED">AED (د.إ) - UAE Dirham</option>
+                <option value="INR">INR (₹) - Indian Rupee</option>
+              </select>
+              <p className="mt-1 text-xs text-content-tertiary">
+                Select the currency for this restaurant. All prices and payments will use this currency.
+              </p>
+            </div>
+          </div>
+
           {/* Tax Configuration (Admin Only) */}
           <div className="bg-primary-light/5 border-l-4 border-primary rounded-lg p-6">
             <h3 className="text-lg font-medium text-content-primary mb-2 flex items-center">
-              <DollarSign className="h-5 w-5 mr-2 text-primary" />
+              <Banknote className="h-5 w-5 mr-2 text-primary" />
               Tax Configuration
             </h3>
             <div className="flex items-start space-x-2 mb-4 text-sm text-content-secondary bg-primary-light/10 p-3 rounded">
@@ -439,7 +470,7 @@ export default function AddRestaurantModal({
                   Fixed Tax Amount *
                 </label>
                 <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-content-tertiary" />
+                  <Banknote className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-content-tertiary" />
                   <input
                     type="number"
                     name="taxFixedAmount"
@@ -463,30 +494,30 @@ export default function AddRestaurantModal({
               <div className="space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-content-secondary">Example Subtotal:</span>
-                  <span className="font-medium text-content-primary">$100.00</span>
+                  <span className="font-medium text-content-primary">{formatPrice(100, (formData.currency as CurrencyCode) || 'USD')}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-content-secondary">Tax ({(parseFloat(formData.taxRatePercentage || '0') * 100).toFixed(2)}%):</span>
                   <span className="font-medium text-content-primary">
-                    ${(100 * parseFloat(formData.taxRatePercentage || '0')).toFixed(2)}
+                    {formatPrice((100 * parseFloat(formData.taxRatePercentage || '0')), (formData.currency as CurrencyCode) || 'USD')}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-content-secondary">Fixed Amount:</span>
                   <span className="font-medium text-content-primary">
-                    ${parseFloat(formData.taxFixedAmount || '0').toFixed(2)}
+                    {formatPrice(parseFloat(formData.taxFixedAmount || '0'), (formData.currency as CurrencyCode) || 'USD')}
                   </span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-border-tertiary">
                   <span className="text-content-primary font-medium">Total Tax:</span>
                   <span className="font-bold text-primary">
-                    ${((100 * parseFloat(formData.taxRatePercentage || '0')) + parseFloat(formData.taxFixedAmount || '0')).toFixed(2)}
+                    {formatPrice(((100 * parseFloat(formData.taxRatePercentage || '0')) + parseFloat(formData.taxFixedAmount || '0')), (formData.currency as CurrencyCode) || 'USD')}
                   </span>
                 </div>
                 <div className="flex justify-between font-semibold">
                   <span className="text-content-primary">Order Total:</span>
                   <span className="text-content-primary">
-                    ${(100 + (100 * parseFloat(formData.taxRatePercentage || '0')) + parseFloat(formData.taxFixedAmount || '0')).toFixed(2)}
+                    {formatPrice((100 + (100 * parseFloat(formData.taxRatePercentage || '0')) + parseFloat(formData.taxFixedAmount || '0')), (formData.currency as CurrencyCode) || 'USD')}
                   </span>
                 </div>
               </div>

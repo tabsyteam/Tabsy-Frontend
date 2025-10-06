@@ -7,6 +7,7 @@ import { TabsyLoader } from '@/components/ui/TabsyLoader'
 import { useApi } from '@/components/providers/api-provider'
 import { queryKeys, queryConfigs } from '@/hooks/useQueryConfig'
 import { toast } from 'sonner'
+import { STORAGE_KEYS } from '@/constants/storage'
 
 interface QRCodePageProps {
   params: Promise<{
@@ -81,13 +82,24 @@ export default function QRCodePage({ params }: QRCodePageProps) {
         }
 
 
-        // Store QR access info for the session
+        // ARCHITECTURE: React Query is source of truth, not sessionStorage
+        // 1. Populate React Query cache with fetched data (primary state)
+        queryClient.setQueryData(['restaurant', restaurant.id], restaurant)
+        queryClient.setQueryData(['table', table.id], table)
+
+        // 2. Store ONLY IDs in sessionStorage (for page refresh recovery)
+        sessionStorage.setItem(STORAGE_KEYS.RESTAURANT_ID, restaurant.id)
+        sessionStorage.setItem(STORAGE_KEYS.TABLE_ID, table.id)
+
+        // CRITICAL: Store restaurant currency for fallback during loading
+        // This prevents showing "$" (USD) flash before actual data loads
         const qrAccessData = {
           qrCode,
           restaurant: {
             id: restaurant.id,
             name: restaurant.name,
-            logo: restaurant.logo
+            logo: restaurant.logo,
+            currency: restaurant.currency  // CRITICAL: Include currency for fallback
           },
           table: {
             id: table.id,
@@ -95,7 +107,6 @@ export default function QRCodePage({ params }: QRCodePageProps) {
             qrCode: table.qrCode
           }
         }
-
         sessionStorage.setItem('tabsy-qr-access', JSON.stringify(qrAccessData))
 
         // Get restaurant/table IDs for redirect

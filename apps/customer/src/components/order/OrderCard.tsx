@@ -14,6 +14,8 @@ import {
   User
 } from 'lucide-react'
 import { OrderStatus, type Order } from '@tabsy/shared-types'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface OrderCardProps {
   order: Order & { restaurantName?: string }
@@ -93,6 +95,15 @@ export function OrderCard({ order, onClick, showCustomer = false, className = ''
   const statusConfig = ORDER_STATUS_CONFIG[order.status] || DEFAULT_STATUS_CONFIG
   const StatusIcon = statusConfig.icon
 
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: string | number) => {
+    const numPrice = typeof price === 'string' ? parseFloat(price) : price
+    return formatPriceUtil(numPrice, currency)
+  }
+
   const getTimeAgo = (dateString: string): string => {
     const now = new Date()
     const date = new Date(dateString)
@@ -107,11 +118,6 @@ export function OrderCard({ order, onClick, showCustomer = false, className = ''
       const days = Math.floor(diffInMinutes / 1440)
       return `${days} day${days > 1 ? 's' : ''} ago`
     }
-  }
-
-  const formatPrice = (price: string | number): string => {
-    const numPrice = typeof price === 'string' ? parseFloat(price) : price
-    return numPrice.toFixed(2)
   }
 
   const isActive = ![OrderStatus.COMPLETED, OrderStatus.CANCELLED].includes(order.status)
@@ -158,7 +164,7 @@ export function OrderCard({ order, onClick, showCustomer = false, className = ''
           {/* Price */}
           <div className="text-right flex-shrink-0 ml-3">
             <div className="text-lg font-semibold text-content-primary">
-              ${formatPrice(order.total)}
+              {formatPrice(order.total)}
             </div>
             {isActive && order.estimatedPreparationTime && (
               <div className="flex items-center text-xs text-content-tertiary">

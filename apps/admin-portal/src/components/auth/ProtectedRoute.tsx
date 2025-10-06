@@ -39,11 +39,13 @@ export function ProtectedRoute({
         // User doesn't have admin role
         if (userWithRole?.role === UserRole.RESTAURANT_OWNER || userWithRole?.role === UserRole.RESTAURANT_STAFF) {
           // Restaurant user - redirect to restaurant dashboard
-          window.location.href = 'http://localhost:3000/dashboard';
+          const restaurantUrl = process.env.NEXT_PUBLIC_RESTAURANT_APP_URL || 'http://localhost:3000';
+          window.location.href = `${restaurantUrl}/dashboard`;
           return;
         } else if (userWithRole?.role === UserRole.CUSTOMER) {
           // Customer user - redirect to customer app
-          window.location.href = 'http://localhost:3001';
+          const customerUrl = process.env.NEXT_PUBLIC_CUSTOMER_APP_URL || 'http://localhost:3001';
+          window.location.href = customerUrl;
           return;
         } else {
           // Unknown role - show unauthorized page
@@ -101,13 +103,19 @@ export function ProtectedRoute({
                 Other access options:
               </div>
               <button
-                onClick={() => window.location.href = 'http://localhost:3000/login'}
+                onClick={() => {
+                  const restaurantUrl = process.env.NEXT_PUBLIC_RESTAURANT_APP_URL || 'http://localhost:3000';
+                  window.location.href = `${restaurantUrl}/login`;
+                }}
                 className="w-full bg-status-warning-light text-status-warning-dark px-4 py-2 rounded-lg hover:bg-status-warning transition-colors"
               >
                 Restaurant Portal
               </button>
               <button
-                onClick={() => window.location.href = 'http://localhost:3001'}
+                onClick={() => {
+                  const customerUrl = process.env.NEXT_PUBLIC_CUSTOMER_APP_URL || 'http://localhost:3001';
+                  window.location.href = customerUrl;
+                }}
                 className="w-full bg-status-success-light text-status-success-dark px-4 py-2 rounded-lg hover:bg-status-success transition-colors"
               >
                 Customer App

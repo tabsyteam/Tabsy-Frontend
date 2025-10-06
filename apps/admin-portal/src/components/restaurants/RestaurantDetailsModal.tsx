@@ -10,7 +10,7 @@ import {
   Mail,
   Globe,
   Clock,
-  DollarSign,
+  Banknote,
   Users,
   ShoppingBag,
   TrendingUp,
@@ -27,6 +27,7 @@ import { useRestaurantDetails, useRestaurantOrders, useRestaurantTables } from '
 import { format } from 'date-fns';
 import { useAuth } from '@tabsy/ui-components';
 import { useQueryClient } from '@tanstack/react-query';
+import { formatPrice, getCurrencySymbol, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency';
 
 interface RestaurantDetailsModalProps {
   restaurant: Restaurant;
@@ -86,6 +87,8 @@ export default function RestaurantDetailsModal({
     averageOrderValue: orders.length ? (orders.reduce((sum: number, o: Order) => sum + Number(o.total || 0), 0) / orders.length) : 0
   };
 
+  const currency = (restaurant.currency || 'USD') as CurrencyCode;
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Store },
     { id: 'tables', label: 'Tables', icon: Users },
@@ -142,12 +145,12 @@ export default function RestaurantDetailsModal({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-surface-secondary/50">
           <div className="bg-surface rounded-lg p-4 border border-border-tertiary">
             <div className="flex items-center justify-between mb-2">
-              <DollarSign className="h-5 w-5 text-primary" />
+              <Banknote className="h-5 w-5 text-primary" />
               {loadingOrders && <span className="text-xs text-content-tertiary">Loading...</span>}
               {ordersError && <span className="text-xs text-status-error">Error</span>}
             </div>
             <div className="text-2xl font-bold text-content-primary">
-              ${stats.totalRevenue.toFixed(2)}
+              {formatPrice(stats.totalRevenue, currency)}
             </div>
             <p className="text-xs text-content-secondary mt-1">Total Revenue</p>
           </div>
@@ -188,7 +191,7 @@ export default function RestaurantDetailsModal({
               <span className="text-xs text-primary">AOV</span>
             </div>
             <div className="text-2xl font-bold text-content-primary">
-              ${stats.averageOrderValue.toFixed(2)}
+              {formatPrice(stats.averageOrderValue, (restaurant.currency as CurrencyCode) || 'USD')}
             </div>
             <p className="text-xs text-content-secondary mt-1">Avg Order Value</p>
           </div>
@@ -297,6 +300,19 @@ export default function RestaurantDetailsModal({
                     </div>
                   </div>
                   <div className="flex items-start space-x-3">
+                    <Banknote className="h-5 w-5 text-content-tertiary mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-content-primary">Currency</p>
+                      <p className="text-sm text-content-secondary">
+                        {restaurant.currency ? (
+                          <span className="font-medium">{restaurant.currency} ({getCurrencySymbol(currency)})</span>
+                        ) : (
+                          <span className="text-content-tertiary">USD (default)</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start space-x-3">
                     <Calendar className="h-5 w-5 text-content-tertiary mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-content-primary">Created</p>
@@ -326,7 +342,7 @@ export default function RestaurantDetailsModal({
               {/* Tax Configuration */}
               <div className="bg-primary-light/5 border-l-4 border-primary rounded-lg p-4">
                 <h3 className="text-lg font-medium text-content-primary mb-4 flex items-center">
-                  <DollarSign className="h-5 w-5 mr-2 text-primary" />
+                  <Banknote className="h-5 w-5 mr-2 text-primary" />
                   Tax Configuration
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -342,7 +358,7 @@ export default function RestaurantDetailsModal({
                   <div>
                     <p className="text-sm font-medium text-content-primary">Fixed Tax Amount</p>
                     <p className="text-2xl font-bold text-primary">
-                      ${Number(restaurant.taxFixedAmount || 0).toFixed(2)}
+                      {formatPrice(Number(restaurant.taxFixedAmount || 0), (restaurant.currency as CurrencyCode) || 'USD')}
                     </p>
                     <p className="text-xs text-content-tertiary mt-1">Added to every order</p>
                   </div>
@@ -350,13 +366,13 @@ export default function RestaurantDetailsModal({
                 <div className="mt-4 p-3 bg-surface-secondary rounded border border-border-tertiary">
                   <p className="text-xs text-content-secondary mb-2">Tax Calculation Formula:</p>
                   <p className="text-sm font-mono text-content-primary">
-                    Tax = (Subtotal × {Number(restaurant.taxRatePercentage || 0.10).toFixed(4)}) + ${Number(restaurant.taxFixedAmount || 0).toFixed(2)}
+                    Tax = (Subtotal × {Number(restaurant.taxRatePercentage || 0.10).toFixed(4)}) + {formatPrice(Number(restaurant.taxFixedAmount || 0), (restaurant.currency as CurrencyCode) || 'USD')}
                   </p>
                   <div className="mt-2 pt-2 border-t border-border-tertiary">
-                    <p className="text-xs text-content-secondary">Example on $100 order:</p>
+                    <p className="text-xs text-content-secondary">Example on {formatPrice(100, (restaurant.currency as CurrencyCode) || 'USD')} order:</p>
                     <p className="text-sm text-content-primary">
-                      Tax = ${(100 * Number(restaurant.taxRatePercentage || 0.10) + Number(restaurant.taxFixedAmount || 0)).toFixed(2)}
-                      → Total: ${(100 + (100 * Number(restaurant.taxRatePercentage || 0.10)) + Number(restaurant.taxFixedAmount || 0)).toFixed(2)}
+                      Tax = {formatPrice((100 * Number(restaurant.taxRatePercentage || 0.10) + Number(restaurant.taxFixedAmount || 0)), (restaurant.currency as CurrencyCode) || 'USD')}
+                      → Total: {formatPrice((100 + (100 * Number(restaurant.taxRatePercentage || 0.10)) + Number(restaurant.taxFixedAmount || 0)), (restaurant.currency as CurrencyCode) || 'USD')}
                     </p>
                   </div>
                 </div>
@@ -433,7 +449,7 @@ export default function RestaurantDetailsModal({
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-content-primary">${Number(order.total || 0).toFixed(2)}</p>
+                        <p className="font-bold text-content-primary">{formatPrice(Number(order.total || 0), (restaurant.currency as CurrencyCode) || 'USD')}</p>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           order.status === OrderStatus.DELIVERED ? 'bg-status-success-light text-status-success-dark' :
                           order.status === OrderStatus.PREPARING ? 'bg-status-info-light text-status-info-dark' :
@@ -486,7 +502,7 @@ export default function RestaurantDetailsModal({
                   </div>
                   <div>
                     <p className="text-sm text-content-secondary">Total Revenue</p>
-                    <p className="text-2xl font-bold text-content-primary">${stats.totalRevenue.toFixed(2)}</p>
+                    <p className="text-2xl font-bold text-content-primary">{formatPrice(stats.totalRevenue, (restaurant.currency as CurrencyCode) || 'USD')}</p>
                     <p className="text-xs text-content-tertiary mt-1">From all orders</p>
                   </div>
                 </div>
@@ -509,7 +525,7 @@ export default function RestaurantDetailsModal({
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-content-secondary">Average Order Value</span>
-                    <span className="font-medium text-content-primary">${stats.averageOrderValue.toFixed(2)}</span>
+                    <span className="font-medium text-content-primary">{formatPrice(stats.averageOrderValue, (restaurant.currency as CurrencyCode) || 'USD')}</span>
                   </div>
                 </div>
               </div>

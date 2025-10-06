@@ -13,7 +13,7 @@ import {
   Info,
   QrCode,
   Timer,
-  Receipt,
+  ReceiptText,
   ClipboardList,
   CreditCard,
   CheckCircle
@@ -28,6 +28,8 @@ import { useBillStatus } from '@/hooks/useBillData' // ✅ Updated to use React 
 import { STORAGE_KEYS } from '@/constants/storage'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { PaymentType } from '@/constants/payment'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 interface TableInfo {
   restaurant: {
@@ -53,6 +55,12 @@ export function TableSessionView() {
   // Get bill status for payment card
   // ✅ Data automatically updated via WebSocketEventCoordinator → React Query cache
   const { hasBill, remainingBalance, isPaid, billAmount } = useBillStatus()
+
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
 
   // Get current session for WebSocket authentication
   const session = SessionManager.getDiningSession()
@@ -133,25 +141,7 @@ export function TableSessionView() {
           }
         })
       }
-      // Priority 2: Try STORAGE_KEYS.TABLE_INFO
-      else {
-        const storedTableInfo = sessionStorage.getItem(STORAGE_KEYS.TABLE_INFO)
-        if (storedTableInfo) {
-          try {
-            const parsedInfo = JSON.parse(storedTableInfo)
-            setTableInfo(parsedInfo)
-
-            // Update SessionManager with the names for next time
-            SessionManager.setDiningSession({
-              ...session,
-              restaurantName: parsedInfo.restaurant.name,
-              tableName: parsedInfo.table.tableNumber
-            })
-          } catch (error) {
-            console.error('Failed to parse table info:', error)
-          }
-        }
-        // Priority 3: Try tabsy-qr-access (QR scan cache)
+      // Priority 2: Try tabsy-qr-access (QR scan cache - backward compatibility)
         else {
           const qrAccessData = sessionStorage.getItem('tabsy-qr-access')
           if (qrAccessData) {
@@ -225,7 +215,6 @@ export function TableSessionView() {
       const interval = setInterval(updateSessionTime, 60000) // Update every minute
 
       return () => clearInterval(interval)
-      }
     }
 
     // Call checkSession with tiny delay to ensure storage is ready
@@ -236,7 +225,8 @@ export function TableSessionView() {
   const handleEndSession = () => {
     SessionManager.clearDiningSession()
     sessionStorage.removeItem('tabsy-session')
-    sessionStorage.removeItem(STORAGE_KEYS.TABLE_INFO)
+    sessionStorage.removeItem(STORAGE_KEYS.RESTAURANT_ID)
+    sessionStorage.removeItem(STORAGE_KEYS.TABLE_ID)
     sessionStorage.removeItem(STORAGE_KEYS.CART)
     sessionStorage.removeItem('tabsy-qr-access') // Clear QR cache on session end
     toast.success('Session ended successfully')
@@ -389,7 +379,7 @@ export function TableSessionView() {
                     }}
                     className="w-12 h-12 bg-accent-foreground/10 rounded-xl flex items-center justify-center"
                   >
-                    <Receipt className="w-6 h-6 text-accent-foreground" />
+                    <ReceiptText className="w-6 h-6 text-accent-foreground" />
                   </motion.div>
                   <div>
                     <h2 className="text-xl font-bold text-accent-foreground">
@@ -415,7 +405,7 @@ export function TableSessionView() {
                     Due Now
                   </p>
                   <p className="text-2xl font-bold text-accent-foreground">
-                    ${remainingBalance.toFixed(2)}
+                    {formatPrice(remainingBalance)}
                   </p>
                 </motion.div>
               </div>
@@ -424,11 +414,11 @@ export function TableSessionView() {
               <div className="mb-4 p-3 bg-accent-foreground/5 rounded-lg border border-accent-foreground/10">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-accent-foreground/70">Total Bill:</span>
-                  <span className="font-semibold text-accent-foreground">${billAmount.toFixed(2)}</span>
+                  <span className="font-semibold text-accent-foreground">{formatPrice(billAmount)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm mt-1">
                   <span className="text-accent-foreground/70">Remaining:</span>
-                  <span className="font-bold text-accent-foreground">${remainingBalance.toFixed(2)}</span>
+                  <span className="font-bold text-accent-foreground">{formatPrice(remainingBalance)}</span>
                 </div>
               </div>
 
@@ -516,7 +506,7 @@ export function TableSessionView() {
               className="w-full justify-start"
               onClick={handleViewBill}
             >
-              <Receipt className="w-4 h-4 mr-3" />
+              <ReceiptText className="w-4 h-4 mr-3" />
               View Bill & Payment
             </Button>
 
@@ -629,7 +619,7 @@ export function TableSessionView() {
               <div className="flex justify-between">
                 <span className="text-content-secondary">Total Amount:</span>
                 <span className="text-content-primary">
-                  ${Number(sessionOrders.totalAmount).toFixed(2)}
+                  {formatPrice(Number(sessionOrders.totalAmount))}
                 </span>
               </div>
             )}

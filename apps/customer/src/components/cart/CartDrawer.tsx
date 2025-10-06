@@ -23,6 +23,8 @@ import { CompactCartItemDisplay } from '@tabsy/ui-components'
 import { haptics } from '@/lib/haptics'
 import { useCart } from '@/hooks/useCart'
 import { STORAGE_KEYS } from '@/constants/storage'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
 
 interface CartDrawerProps {
@@ -53,9 +55,14 @@ export function CartDrawer({ isOpen, onClose, onEditItem }: CartDrawerProps) {
   const searchParams = useSearchParams()
   const { cart, cartCount, cartTotal, updateQuantity, removeFromCart, clearCart } = useCart()
   const [specialInstructions, setSpecialInstructions] = useState('')
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
 
   const restaurantId = searchParams.get('restaurant')
   const tableId = searchParams.get('table')
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
 
   const handleUpdateQuantity = (cartItemId: string, newQuantity: number) => {
     haptics.buttonPress()
@@ -188,6 +195,7 @@ export function CartDrawer({ isOpen, onClose, onEditItem }: CartDrawerProps) {
                         quantity={item.quantity}
                         options={item.options}
                         className="mb-3"
+                        currency={currency}
                       />
 
                       {/* Dietary indicators (compact) */}
@@ -309,7 +317,7 @@ export function CartDrawer({ isOpen, onClose, onEditItem }: CartDrawerProps) {
                 {/* Total */}
                 <div className="flex items-center justify-between text-lg font-semibold">
                   <span className="text-content-primary">Total</span>
-                  <span className="text-primary">${getTotalPrice().toFixed(2)}</span>
+                  <span className="text-primary">{formatPrice(getTotalPrice())}</span>
                 </div>
 
                 {/* Checkout Button */}

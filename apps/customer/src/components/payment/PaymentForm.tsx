@@ -7,6 +7,11 @@ import { CreditCard } from 'lucide-react'
 import { toast } from 'sonner'
 import { StripeCardForm } from './StripeCardForm'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { useRestaurantOptional } from '@/contexts/RestaurantContext'
+import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
+import { createLogger } from '@/lib/logger'
+
+const log = createLogger('PaymentForm')
 
 interface PaymentFormProps {
   amount: number
@@ -35,6 +40,12 @@ export function PaymentForm({
   const elements = useElements()
   const [cardValid, setCardValid] = useState(false)
   const [cardError, setCardError] = useState<string | null>(null)
+
+  const restaurantContext = useRestaurantOptional()
+  const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
+
+  // Use shared utility for consistent formatting
+  const formatPrice = (price: number) => formatPriceUtil(price, currency)
 
   const handlePayment = async () => {
     // Show loading state immediately for better UX
@@ -71,10 +82,10 @@ export function PaymentForm({
       })
 
       if (error) {
-        console.error('Payment confirmation error:', error)
+        log.error('Payment confirmation error:', error)
         onPaymentError(error.message || 'Payment failed. Please try again.')
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
-        console.log('Payment succeeded:', paymentIntent.id)
+        log.debug('Payment succeeded:', paymentIntent.id)
         onPaymentSuccess(paymentIntent.id)
       } else {
         onPaymentError('Payment was not completed. Please try again.')
@@ -119,7 +130,7 @@ export function PaymentForm({
         ) : (
           <div className="flex items-center space-x-2">
             <CreditCard className="w-4 h-4" />
-            <span>Pay ${(amount / 100).toFixed(2)}</span>
+            <span>Pay {formatPrice(amount / 100)}</span>
           </div>
         )}
       </Button>
