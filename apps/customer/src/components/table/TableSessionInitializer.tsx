@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
 import { TabsySplash } from '@/components/splash/TabsySplash'
 import { TableSessionManager } from '@/components/table/TableSessionManager'
-import { useApi } from '@/components/providers/api-provider'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { useTableInfo } from '@/hooks/useTableInfo'
+import type { Restaurant, Table } from '@tabsy/shared-types'
 
 interface TableSessionInitializerProps {
   restaurantId: string
@@ -34,61 +34,70 @@ export function TableSessionInitializer({ restaurantId, tableId }: TableSessionI
   const router = useRouter()
   const searchParams = useSearchParams()
   const qrCode = searchParams.get('qr')
+  const queryClient = useQueryClient()
 
-  // ✅ NEW: Use React Query hook for QR validation (prevents duplicate API calls)
-  const {
-    data: tableInfoData,
-    isLoading,
-    error: fetchError
-  } = useTableInfo({
-    qrCode,
-    enabled: !!qrCode
-  })
-
-  // Convert to legacy format for compatibility
+  // ✅ OPTIMIZED: Use cached data from QR page instead of re-fetching
+  // The /table/[qrCode] page already fetched and cached this data
   const [tableInfo, setTableInfo] = useState<TableInfo | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Update state when React Query data changes
+  // Load data from React Query cache (populated by QR page)
   useEffect(() => {
-    if (fetchError) {
-      const errorMessage = fetchError.message || 'Failed to connect to your table. Please try scanning the QR code again.'
-      setError(errorMessage)
+    try {
+      // Get cached restaurant and table data (set by /table/[qrCode] page)
+      const cachedRestaurant = queryClient.getQueryData<Restaurant>(['restaurant', restaurantId])
+      const cachedTable = queryClient.getQueryData<Table>(['table', tableId])
 
-      toast.error('Connection Failed', {
-        description: errorMessage,
-        action: {
-          label: 'Scan QR Code',
-          onClick: () => router.push('/')
+      if (cachedRestaurant && cachedTable) {
+        // Validate that cached data matches URL parameters
+        if (cachedRestaurant.id !== restaurantId) {
+          setError('Restaurant data mismatch. Please scan the QR code again.')
+          setIsLoading(false)
+          return
         }
-      })
-    } else if (tableInfoData) {
-      // Validate that QR data matches the URL parameters
-      if (tableInfoData.restaurant.id !== restaurantId) {
-        setError('QR code does not match this restaurant')
-        return
-      }
-      if (tableInfoData.table.id !== tableId) {
-        setError('QR code does not match this table')
-        return
-      }
+        if (cachedTable.id !== tableId) {
+          setError('Table data mismatch. Please scan the QR code again.')
+          setIsLoading(false)
+          return
+        }
 
-      setTableInfo({
-        restaurant: {
-          id: tableInfoData.restaurant.id,
-          name: tableInfoData.restaurant.name,
-          logo: tableInfoData.restaurant.logo || undefined,
-          theme: undefined
-        },
-        table: {
-          id: tableInfoData.table.id,
-          tableNumber: tableInfoData.table.tableNumber,
-          qrCode: (tableInfoData.table as any).qrCode || qrCode || ''
-        },
-        isActive: tableInfoData.isActive
-      })
+        // Use cached data - no API call needed!
+        setTableInfo({
+          restaurant: {
+            id: cachedRestaurant.id,
+            name: cachedRestaurant.name,
+            logo: cachedRestaurant.logo || undefined,
+            theme: undefined
+          },
+          table: {
+            id: cachedTable.id,
+            number: cachedTable.tableNumber,
+            qrCode: cachedTable.qrCode || qrCode || ''
+          },
+          isActive: cachedTable.isActive ?? true
+        })
+        setIsLoading(false)
+      } else {
+        // Cache miss - this shouldn't happen in normal flow
+        // User might have refreshed the page or navigated directly
+        const errorMsg = 'Session data not found. Please scan the QR code again.'
+        setError(errorMsg)
+        setIsLoading(false)
+
+        toast.error('Session Required', {
+          description: errorMsg,
+          action: {
+            label: 'Scan QR Code',
+            onClick: () => router.push('/')
+          }
+        })
+      }
+    } catch (err) {
+      setError('Failed to load session data. Please try again.')
+      setIsLoading(false)
     }
-  }, [fetchError, tableInfoData, restaurantId, tableId, qrCode, router])
+  }, [restaurantId, tableId, qrCode, queryClient, router])
 
   if (error) {
     return (
