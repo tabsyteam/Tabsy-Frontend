@@ -3,21 +3,23 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
-import { Button, CartItemDisplay } from '@tabsy/ui-components'
+import { Button, CartItemDisplay, Form, FormInput, Input } from '@tabsy/ui-components'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { ArrowLeft, Clock, CheckCircle, User, Phone, Mail } from 'lucide-react'
+import { ArrowLeft, Clock, CheckCircle, User } from 'lucide-react'
 import { toast } from 'sonner'
 import { useApi } from '@/components/providers/api-provider'
 import { useCart } from '@/hooks/useCart'
-import { dualReadSession } from '@/lib/unifiedSessionStorage'
 import { SessionManager } from '@/lib/session'
 import { calculateTax } from '@/constants/tax'
 import { STORAGE_KEYS } from '@/constants/storage'
 import { unifiedSessionStorage } from '@/lib/unifiedSessionStorage'
 import { useRestaurantOptional } from '@/contexts/RestaurantContext'
 import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
-import { validateEmail, validatePhone, validateName } from '@/lib/validation'
-import { ERROR_MESSAGES } from '@/constants/errorMessages'
+import { TabsyLoader } from '../ui/TabsyLoader'
+import { AppStorage } from '@/lib/storage'
+import { z } from 'zod'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 
 interface CartItem {
   id: string
@@ -39,6 +41,31 @@ interface GuestInfo {
   email: string
 }
 
+// Zod schema for guest info validation
+const guestInfoSchema = z.object({
+  name: z.string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name must be less than 100 characters')
+    .regex(/^[a-zA-Z\s'-]+$/, 'Name can only contain letters, spaces, hyphens, and apostrophes'),
+  phone: z.string()
+    .optional()
+    .refine((val) => {
+      if (!val || val.trim() === '') return true
+      // Basic phone validation - can be enhanced
+      const phoneRegex = /^\+?[1-9]\d{1,14}$/
+      return phoneRegex.test(val.replace(/[\s()-]/g, ''))
+    }, 'Please enter a valid phone number'),
+  email: z.string()
+    .optional()
+    .refine((val) => {
+      if (!val || val.trim() === '') return true
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      return emailRegex.test(val)
+    }, 'Please enter a valid email address')
+})
+
+type GuestInfoFormData = z.infer<typeof guestInfoSchema>
+
 export function CheckoutView() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -48,16 +75,22 @@ export function CheckoutView() {
   const currency = (restaurantContext?.currency as CurrencyCode) || 'USD'
 
   const [cart, setCart] = useState<CartItem[]>([])
-  const [guestInfo, setGuestInfo] = useState<GuestInfo>({
-    name: '',
-    phone: '',
-    email: ''
-  })
   const [specialInstructions, setSpecialInstructions] = useState('')
   const [loading, setLoading] = useState(true)
   const [placing, setPlacing] = useState(false)
   const [placingStatus, setPlacingStatus] = useState<'placing' | 'success' | 'idle'>('idle')
   const [estimatedTime, setEstimatedTime] = useState<number>(20)
+
+  // React Hook Form setup with Zod validation
+  const form = useForm<GuestInfoFormData>({
+    resolver: zodResolver(guestInfoSchema),
+    defaultValues: {
+      name: '',
+      phone: '',
+      email: ''
+    },
+    mode: 'onBlur' // Validate on blur for better UX
+  })
 
   const urlRestaurantId = searchParams.get('restaurant')
   const urlTableId = searchParams.get('table')
@@ -104,8 +137,19 @@ export function CheckoutView() {
       setSpecialInstructions(savedInstructions)
     }
 
+    // Load saved guest information for auto-fill
+    const savedGuestInfo = AppStorage.guestInfo.get()
+    if (savedGuestInfo) {
+      console.log('[CheckoutView] Loading saved guest info:', savedGuestInfo)
+      form.reset({
+        name: savedGuestInfo.name || '',
+        phone: savedGuestInfo.phone || '',
+        email: savedGuestInfo.email || ''
+      })
+    }
+
     setLoading(false)
-  }, [router])
+  }, [router, form])
 
   const getSubtotal = (): number => {
     return cart.reduce((total, item) => {
@@ -129,6 +173,17 @@ export function CheckoutView() {
   }
 
   const handlePlaceOrder = async () => {
+    // Validate form using React Hook Form
+    const isValid = await form.trigger()
+    if (!isValid) {
+      toast.error('Please fix the errors in the form', {
+        description: 'Check the highlighted fields below'
+      })
+      return
+    }
+
+    const guestInfo = form.getValues()
+
     console.log('handlePlaceOrder called')
     console.log('Cart:', cart)
     console.log('Guest info:', guestInfo)
@@ -154,34 +209,6 @@ export function CheckoutView() {
       console.log('Cart is empty - returning early')
       toast.error('Cart is empty')
       return
-    }
-
-    // Validate guest info (name is required for orders)
-    const nameValidation = validateName(guestInfo.name)
-    if (!nameValidation.isValid) {
-      console.log('Guest name validation failed:', nameValidation.errorMessage)
-      toast.error(nameValidation.errorMessage || ERROR_MESSAGES.INVALID_NAME)
-      return
-    }
-
-    // Validate email if provided (optional field)
-    if (guestInfo.email.trim()) {
-      const emailValidation = validateEmail(guestInfo.email)
-      if (!emailValidation.isValid) {
-        console.log('Email validation failed:', emailValidation.errorMessage)
-        toast.error(emailValidation.errorMessage || ERROR_MESSAGES.INVALID_EMAIL)
-        return
-      }
-    }
-
-    // Validate phone if provided (optional field)
-    if (guestInfo.phone.trim()) {
-      const phoneValidation = validatePhone(guestInfo.phone, false)
-      if (!phoneValidation.isValid) {
-        console.log('Phone validation failed:', phoneValidation.errorMessage)
-        toast.error(phoneValidation.errorMessage || ERROR_MESSAGES.INVALID_PHONE)
-        return
-      }
     }
 
     console.log('Starting order placement...')
@@ -249,8 +276,8 @@ export function CheckoutView() {
         })),
         specialInstructions: specialInstructions.trim() || undefined,
         customerName: guestInfo.name.trim() || undefined,
-        customerPhone: guestInfo.phone.trim() || undefined,
-        customerEmail: guestInfo.email.trim() || undefined
+        customerPhone: guestInfo.phone?.trim() || undefined,
+        customerEmail: guestInfo.email?.trim() || undefined
       }
 
       // Clean up undefined fields to avoid validation issues
@@ -267,6 +294,15 @@ export function CheckoutView() {
       console.log('API response:', response)
 
       if (response.success && response.data) {
+        // Save guest information for future orders (auto-fill)
+        const currentGuestInfo = form.getValues()
+        AppStorage.guestInfo.set({
+          name: currentGuestInfo.name.trim(),
+          phone: currentGuestInfo.phone?.trim() || '',
+          email: currentGuestInfo.email?.trim() || ''
+        })
+        console.log('[CheckoutView] Saved guest info for future orders')
+
         // Clear cart using useCart hook and clear special instructions
         clearCart()
         sessionStorage.removeItem(STORAGE_KEYS.SPECIAL_INSTRUCTIONS)
@@ -336,7 +372,7 @@ export function CheckoutView() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <LoadingSpinner size="xl" />
+        <TabsyLoader message="Loading Payment" size="lg" />
       </div>
     )
   }
@@ -382,43 +418,40 @@ export function CheckoutView() {
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-content-primary mb-2">
-                    Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={guestInfo.name}
-                    onChange={(e) => setGuestInfo(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter your name"
-                    className="w-full p-3 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                    required
-                  />
-                </div>
+                <FormInput
+                  form={form}
+                  name="name"
+                  label="Name"
+                  required
+                  placeholder="Enter your name"
+                  disabled={placing}
+                  description=""
+                  className=""
+                />
 
-                <div>
-                  <label className="block text-sm font-medium text-content-primary mb-2">
-                    Phone (optional)
-                  </label>
-                  <input
-                    type="tel"
-                    value={guestInfo.phone}
-                    onChange={(e) => setGuestInfo(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="+1 (555) 123-4567"
-                    className="w-full p-3 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
-                  />
-                </div>
+                <FormInput
+                  form={form}
+                  name="phone"
+                  label="Phone (optional)"
+                  type="tel"
+                  placeholder="+1 (555) 123-4567"
+                  disabled={placing}
+                  description=""
+                  required={false}
+                  className=""
+                />
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-content-primary mb-2">
-                    Email (optional)
-                  </label>
-                  <input
+                  <FormInput
+                    form={form}
+                    name="email"
+                    label="Email (optional)"
                     type="email"
-                    value={guestInfo.email}
-                    onChange={(e) => setGuestInfo(prev => ({ ...prev, email: e.target.value }))}
                     placeholder="your@email.com"
-                    className="w-full p-3 border border-default rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary transition-colors"
+                    disabled={placing}
+                    description=""
+                    required={false}
+                    className=""
                   />
                 </div>
               </div>
@@ -523,7 +556,7 @@ export function CheckoutView() {
                       : 'bg-primary/80 cursor-not-allowed transform'
                     : 'hover:shadow-lg hover:scale-[1.02] active:scale-[0.98]'
                 }`}
-                disabled={placing || !guestInfo.name.trim()}
+                disabled={placing || !form.watch('name')?.trim()}
                 aria-label={
                   placingStatus === 'success'
                     ? 'Order placed successfully, redirecting...'

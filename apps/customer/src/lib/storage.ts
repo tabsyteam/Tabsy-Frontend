@@ -59,6 +59,15 @@ interface OrderHistoryItem {
 }
 
 /**
+ * Guest information
+ */
+interface GuestInfo {
+  name: string
+  phone: string
+  email: string
+}
+
+/**
  * Centralized Storage Manager
  *
  * Usage:
@@ -376,6 +385,56 @@ export const AppStorage = {
   },
 
   /**
+   * Guest Information Operations
+   * Stores guest info in localStorage for auto-fill on subsequent orders
+   */
+  guestInfo: {
+    /**
+     * Get saved guest information
+     */
+    get(): GuestInfo | null {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEYS.GUEST_INFO)
+        return stored ? JSON.parse(stored) : null
+      } catch (error) {
+        console.error('[AppStorage] Error reading guest info:', error)
+        return null
+      }
+    },
+
+    /**
+     * Save guest information
+     */
+    set(guestInfo: GuestInfo): void {
+      try {
+        // Only save if name is provided (required field)
+        if (guestInfo.name.trim()) {
+          localStorage.setItem(STORAGE_KEYS.GUEST_INFO, JSON.stringify(guestInfo))
+        }
+      } catch (error) {
+        console.error('[AppStorage] Error saving guest info:', error)
+      }
+    },
+
+    /**
+     * Update guest information (partial update)
+     */
+    update(updates: Partial<GuestInfo>): void {
+      const current = this.get()
+      if (current) {
+        this.set({ ...current, ...updates })
+      }
+    },
+
+    /**
+     * Clear saved guest information
+     */
+    clear(): void {
+      localStorage.removeItem(STORAGE_KEYS.GUEST_INFO)
+    }
+  },
+
+  /**
    * Utility Methods
    */
   utils: {
@@ -469,4 +528,4 @@ export const AppStorage = {
 }
 
 // Export type definitions for consumers
-export type { CartItem, MenuCacheData, OrderHistoryItem }
+export type { CartItem, MenuCacheData, OrderHistoryItem, GuestInfo }

@@ -10,6 +10,9 @@ export const STORAGE_KEYS = {
   CART: 'tabsy-cart',
   SPECIAL_INSTRUCTIONS: 'tabsy-special-instructions',
 
+  // Guest information (persisted for auto-fill)
+  GUEST_INFO: 'tabsy-guest-info',
+
   // Restaurant and table IDs (for page refresh recovery)
   RESTAURANT_ID: 'tabsy-restaurant-id',
   TABLE_ID: 'tabsy-table-id',
