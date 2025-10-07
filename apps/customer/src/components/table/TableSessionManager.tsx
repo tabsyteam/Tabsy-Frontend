@@ -406,7 +406,8 @@ export function TableSessionManager({ restaurantId, tableId, children }: TableSe
       console.error('[TableSessionManager] Session creation failed:', sessionError)
       setError('Failed to initialize table session')
     }
-  }, [sessionData, sessionError, hasValidSession, existingSession, sessionInitialized, api])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionData, sessionError, hasValidSession, existingSession, sessionInitialized])
 
   // Handle splash completion after session initialization
   useEffect(() => {
