@@ -523,7 +523,7 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
               <div className="flex items-center space-x-2 text-sm">
                 <Users className="w-4 h-4 text-status-info" />
                 <span className="text-status-info font-medium">
-                  Split Payment - Your portion of ${payment.splitInfo.totalParticipants} people
+                  Split Payment - Your portion of {payment.splitInfo.totalParticipants} people
                 </span>
               </div>
             </div>

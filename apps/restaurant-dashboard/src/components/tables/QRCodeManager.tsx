@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import NextImage from 'next/image';
 import { Button } from '@tabsy/ui-components';
 import { Table } from '@tabsy/shared-types';
 import {
@@ -18,6 +19,7 @@ import {
 import { createTableHooks } from '@tabsy/react-query-hooks';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { logger } from '@/lib/logger';
 
 interface QRCodeManagerProps {
   table: Table;
@@ -759,26 +761,26 @@ export function QRCodeManager({ table, restaurantId, onClose }: QRCodeManagerPro
             <div className="bg-white p-8 rounded-xl border-2 border-primary shadow-lg inline-block relative overflow-hidden">
               {/* Tabsy Watermark */}
               <div className="absolute top-3 left-3 flex items-center space-x-2 opacity-60">
-                <img
+                <NextImage
                   src="/tabsy_logo.svg"
                   alt="Tabsy"
+                  width={64}
+                  height={16}
                   className="h-4 w-auto"
                 />
               </div>
 
               {/* QR Code */}
               <div className="w-64 h-64 flex items-center justify-center rounded-lg bg-gradient-to-br from-teal-50 to-violet-50 border border-primary/20">
-                {(() => {
-                  console.log('qrImageUrl state:', qrImageUrl);
-                  return null;
-                })()}
                 {qrImageUrl ? (
-                  <img
+                  <NextImage
                     src={qrImageUrl}
                     alt={`QR Code for Table ${table.tableNumber}`}
+                    width={256}
+                    height={256}
                     className="w-full h-full object-contain rounded-lg"
-                    onLoad={() => console.log('QR image loaded successfully')}
-                    onError={(e) => console.log('QR image failed to load:', e)}
+                    onLoad={() => logger.debug('QR image loaded successfully')}
+                    onError={(e) => logger.error('QR image failed to load', e)}
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-br from-teal-50 to-violet-50 border-2 border-dashed border-primary/30 flex items-center justify-center rounded-lg">

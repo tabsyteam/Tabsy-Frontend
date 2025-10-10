@@ -12,38 +12,38 @@ body {
   font-family: var(--font-inter), Arial, Helvetica, sans-serif;
 }
 
-/* Placeholder text styling */
+/* Placeholder text styling using semantic colors */
 input::placeholder {
-  color: #9ca3af !important; /* gray-400 */
+  color: rgb(var(--content-tertiary)) !important;
   opacity: 1;
 }
 
 input::-webkit-input-placeholder {
-  color: #9ca3af !important; /* gray-400 */
+  color: rgb(var(--content-tertiary)) !important;
   opacity: 1;
 }
 
 input::-moz-placeholder {
-  color: #9ca3af !important; /* gray-400 */
+  color: rgb(var(--content-tertiary)) !important;
   opacity: 1;
 }
 
 input:-ms-input-placeholder {
-  color: #9ca3af !important; /* gray-400 */
+  color: rgb(var(--content-tertiary)) !important;
   opacity: 1;
 }
 
-/* Form input styling */
+/* Form input styling using semantic colors */
 input[type="email"],
 input[type="password"],
 input[type="text"] {
-  color: #111827 !important; /* gray-900 - for actual text */
+  color: rgb(var(--content-primary)) !important;
 }
 
 input[type="email"]:focus::placeholder,
 input[type="password"]:focus::placeholder,
 input[type="text"]:focus::placeholder {
-  color: #d1d5db !important; /* gray-300 - lighter on focus */
+  color: rgb(var(--content-disabled)) !important;
 }
 
 /* Background patterns for login page */

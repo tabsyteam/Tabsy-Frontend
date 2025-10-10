@@ -174,7 +174,7 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
     setIsModalOpen(true)
   }
 
-  const handleExportPayments = async () => {
+  const handleExportPayments = useCallback(async () => {
     try {
       setIsExporting(true)
       const response = await tabsyClient.payment.getByRestaurant(restaurantId, {
@@ -210,11 +210,11 @@ export const ActivePayments = forwardRef<ActivePaymentsRef, ActivePaymentsProps>
         document.body.removeChild(a)
       }
     } catch (error) {
-      console.error('Error exporting payments:', error)
+      logger.error('Error exporting payments', error)
     } finally {
       setIsExporting(false)
     }
-  }
+  }, [restaurantId, currency])
 
   // Expose functions to parent via ref
   useImperativeHandle(ref, () => ({

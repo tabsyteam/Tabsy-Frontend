@@ -14,7 +14,8 @@ import { SessionManager } from '@/lib/session'
 import { ItemDetailModal } from '@/components/menu/ItemDetailModal'
 import { calculateTax } from '@/constants/tax'
 import { STORAGE_KEYS } from '@/constants/storage'
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { TabsyLoader } from '@/components/ui/TabsyLoader'
+import { RestaurantLogo } from '@/components/ui/RestaurantLogo'
 import { useRestaurantOptional } from '@/contexts/RestaurantContext'
 import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
@@ -230,7 +231,7 @@ export function CartView() {
   if (loading || isLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-background">
-        <LoadingSpinner size="xl" />
+        <TabsyLoader message="Loading Payment" size="lg" />
       </div>
     )
   }
@@ -334,17 +335,11 @@ export function CartView() {
               {restaurantContext?.restaurant && restaurantContext?.table && (
                 <div className="bg-surface rounded-xl border p-4 mb-6">
                   <div className="flex items-center space-x-3">
-                    {restaurantContext.restaurant.logo ? (
-                      <img
-                        src={restaurantContext.restaurant.logo}
-                        alt={restaurantContext.restaurant.name}
-                        className="w-12 h-12 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                        <MapPin className="w-6 h-6 text-primary" />
-                      </div>
-                    )}
+                    <RestaurantLogo
+                      src={restaurantContext.restaurant.logo || undefined}
+                      alt={restaurantContext.restaurant.name}
+                      size="md"
+                    />
                     <div className="flex-1">
                       <h3 className="font-semibold text-content-primary">
                         {restaurantContext.restaurant.name}

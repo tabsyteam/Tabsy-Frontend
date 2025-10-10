@@ -67,10 +67,10 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
   })
 
 
-  // Extract orders from the proper hook response with type safety
+  // Extract orders from the proper hook response with type safety and runtime validation
   let orders: Order[] = []
 
-  // Use the proper useOrdersByRestaurant response with ApiResponse type
+  // Use the proper useOrdersByRestaurant response
   if (ordersResponse) {
     const typedResponse = ordersResponse as ApiResponse<{ orders: Order[]; totalCount?: number }>
     if (typedResponse.data?.orders) {
@@ -203,7 +203,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
     }
 
     if (!order?.id) {
-      console.error('❌ Invalid order update data:', data)
+      logger.error('Invalid order update data', data)
       return
     }
 
@@ -420,8 +420,8 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
       }
       
     } catch (err: any) {
-      console.error('Failed to update order status:', err)
-      console.error('Error details:', {
+      logger.error('Failed to update order status', err)
+      logger.error('Error details', {
         message: err.message,
         response: err.response,
         status: err.status,
@@ -446,7 +446,7 @@ export function OrdersManagement({ restaurantId }: OrdersManagementProps) {
         toast.error(`Failed to update order status: ${err.message || 'Unknown error'}`)
       }
     }
-  }, [queryClient, restaurantId]) // Dependencies for useCallback
+  }, [queryClient, restaurantId, finalOrders, selectedOrder]) // Dependencies for useCallback
 
   // Show loading state during authentication
   if (authLoading) {

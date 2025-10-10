@@ -10,6 +10,8 @@ import { ThemeProvider } from '@/components/ThemeProvider'
 import { NotificationMuteProvider } from '@/contexts/NotificationMuteContext'
 import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
 import { useAuth } from '@tabsy/ui-components'
+import { config } from './config'
+import { logger } from './logger'
 
 interface ClientProvidersProps {
   children: React.ReactNode
@@ -30,7 +32,7 @@ function InnerProviders({ children }: { children: React.ReactNode }) {
   return (
     <ConnectionProvider apiClient={tabsyClient}>
       <WebSocketProvider
-        url={process.env.NEXT_PUBLIC_WS_BASE_URL}
+        url={config.wsBaseUrl}
         authToken={session?.token}
         restaurantId={restaurantId}
         namespace="restaurant"
@@ -76,7 +78,7 @@ export function ClientProviders({ children }: ClientProvidersProps) {
   // PERFORMANCE: Remove excessive debug logging in production
   // Only log in development if needed for debugging
   if (process.env.NODE_ENV === 'development' && process.env.DEBUG_PROVIDERS) {
-    console.log('🔧 ClientProviders - Rendering with QueryClient:', {
+    logger.debug('ClientProviders - Rendering with QueryClient', {
       queryClient,
       hasQueryClient: !!queryClient,
       queryClientType: typeof queryClient,

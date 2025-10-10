@@ -1,10 +1,11 @@
 # Tabsy API Documentation
 
-> **Version**: 2.1
-> **Last Updated**: 2025-10-05
+> **Version**: 2.2
+> **Last Updated**: 2025-10-10
 > **Backend**: Tabsy-Core API v1
 > **Coverage**: 134 REST endpoints + 94 WebSocket events
 > **Multi-Currency**: Full support for USD, AED, INR, EUR, GBP, CAD, AUD, JPY
+> **Schema Alignment**: All enums synchronized with Prisma schema
 
 ## Table of Contents
 
@@ -70,9 +71,9 @@ The Tabsy API is a RESTful API with WebSocket support for real-time features.
 ```typescript
 enum Role {
   ADMIN = 'ADMIN'
+  RESTAURANT_ADMIN = 'RESTAURANT_ADMIN'
   RESTAURANT_OWNER = 'RESTAURANT_OWNER'
   RESTAURANT_STAFF = 'RESTAURANT_STAFF'
-  CUSTOMER = 'CUSTOMER'
 }
 ```
 
@@ -3135,15 +3136,17 @@ stripe-signature: <signature>
     orderId?: string
     restaurantId: string
     tableId?: string
-    userId?: string
-    sessionId?: string
     overallRating: number
-    categories?: CategoryRatings
+    foodRating?: number
+    serviceRating?: number
+    ambianceRating?: number
+    valueRating?: number
     quickFeedback?: string[]
     comment?: string
     photos?: FeedbackPhoto[]
-    guestInfo?: GuestInfo
-    status: 'PENDING' | 'APPROVED' | 'FLAGGED' | 'HIDDEN'
+    guestName?: string
+    guestEmail?: string
+    guestPhone?: string
     createdAt: string
     updatedAt: string
   }
@@ -3295,9 +3298,9 @@ stripe-signature: <signature>
 // User Roles
 enum Role {
   ADMIN = 'ADMIN'
+  RESTAURANT_ADMIN = 'RESTAURANT_ADMIN'
   RESTAURANT_OWNER = 'RESTAURANT_OWNER'
   RESTAURANT_STAFF = 'RESTAURANT_STAFF'
-  CUSTOMER = 'CUSTOMER'
 }
 
 // Table Status
@@ -3331,9 +3334,65 @@ enum PaymentStatus {
 
 // Payment Method
 enum PaymentMethod {
-  CARD = 'CARD'
+  CREDIT_CARD = 'CREDIT_CARD'
+  DEBIT_CARD = 'DEBIT_CARD'
+  MOBILE_PAYMENT = 'MOBILE_PAYMENT'
   CASH = 'CASH'
-  DIGITAL_WALLET = 'DIGITAL_WALLET'
+}
+
+// Table Shape
+enum TableShape {
+  ROUND = 'ROUND'
+  SQUARE = 'SQUARE'
+  RECTANGULAR = 'RECTANGULAR'
+}
+
+// Table Session Status
+enum TableSessionStatus {
+  ACTIVE = 'ACTIVE'
+  ORDERING_LOCKED = 'ORDERING_LOCKED'
+  PAYMENT_PENDING = 'PAYMENT_PENDING'
+  PAYMENT_COMPLETE = 'PAYMENT_COMPLETE'
+  CLOSED = 'CLOSED'
+}
+
+// Option Type
+enum OptionType {
+  SINGLE_SELECT = 'SINGLE_SELECT'
+  MULTI_SELECT = 'MULTI_SELECT'
+  TEXT_INPUT = 'TEXT_INPUT'
+  NUMBER_INPUT = 'NUMBER_INPUT'
+}
+
+// Dietary Type
+enum DietaryType {
+  VEGETARIAN = 'VEGETARIAN'
+  VEGAN = 'VEGAN'
+  GLUTEN_FREE = 'GLUTEN_FREE'
+  DAIRY_FREE = 'DAIRY_FREE'
+  CONTAINS_NUTS = 'CONTAINS_NUTS'
+  CONTAINS_ALCOHOL = 'CONTAINS_ALCOHOL'
+  SPICY = 'SPICY'
+}
+
+// Split Type
+enum SplitType {
+  EQUAL = 'EQUAL'
+  BY_PERCENTAGE = 'BY_PERCENTAGE'
+  BY_AMOUNT = 'BY_AMOUNT'
+  BY_ITEMS = 'BY_ITEMS'
+}
+
+// Currency
+enum Currency {
+  USD = 'USD'
+  AED = 'AED'
+  INR = 'INR'
+  EUR = 'EUR'
+  GBP = 'GBP'
+  CAD = 'CAD'
+  AUD = 'AUD'
+  JPY = 'JPY'
 }
 
 // Notification Type

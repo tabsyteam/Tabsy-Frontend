@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@tabsy/ui-components'
 import {
   X,
@@ -24,6 +24,7 @@ import { PaymentMethod } from '@tabsy/shared-types'
 import type { Payment, PaymentStatus } from '@tabsy/shared-types'
 import { formatPrice, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 import { useCurrentRestaurant } from '@/hooks/useCurrentRestaurant'
+import { logger } from '@/lib/logger'
 
 interface PaymentDetailsModalProps {
   paymentId: string
@@ -45,36 +46,36 @@ export function PaymentDetailsModal({
   const { restaurant } = useCurrentRestaurant()
   const currency = (restaurant?.currency || 'USD') as CurrencyCode
 
-  useEffect(() => {
-    if (isOpen && paymentId) {
-      loadPaymentDetails()
-    }
-  }, [isOpen, paymentId])
-
-  const loadPaymentDetails = async () => {
+  const loadPaymentDetails = useCallback(async () => {
     try {
       setIsLoading(true)
       setError(null)
 
-      console.log('[PaymentDetailsModal] Loading payment details for ID:', paymentId)
+      logger.debug('[PaymentDetailsModal] Loading payment details for ID', { paymentId })
       const response = await tabsyClient.payment.getById(paymentId)
-      console.log('[PaymentDetailsModal] Payment API response:', response)
+      logger.debug('[PaymentDetailsModal] Payment API response', response)
 
       if (response.success && response.data) {
-        console.log('[PaymentDetailsModal] Payment data:', response.data)
-        console.log('[PaymentDetailsModal] Payment method:', response.data.paymentMethod)
+        logger.debug('[PaymentDetailsModal] Payment data', response.data)
+        logger.debug('[PaymentDetailsModal] Payment method', response.data.paymentMethod)
         setPayment(response.data)
       } else {
-        console.error('[PaymentDetailsModal] API error:', response.error)
+        logger.error('[PaymentDetailsModal] API error', response.error)
         throw new Error(response.error?.message || 'Failed to load payment details')
       }
     } catch (error: any) {
-      console.error('[PaymentDetailsModal] Error loading payment details:', error)
+      logger.error('[PaymentDetailsModal] Error loading payment details', error)
       setError(error.message || 'Failed to load payment details')
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [paymentId])
+
+  useEffect(() => {
+    if (isOpen && paymentId) {
+      loadPaymentDetails()
+    }
+  }, [isOpen, paymentId, loadPaymentDetails])
 
   const handleRefund = async () => {
     if (!payment || !onRefund) return
@@ -84,7 +85,7 @@ export function PaymentDetailsModal({
       await onRefund(payment.id)
       await loadPaymentDetails() // Reload to show updated status
     } catch (error) {
-      console.error('Error processing refund:', error)
+      logger.error('Error processing refund', error)
     } finally {
       setIsRefunding(false)
     }

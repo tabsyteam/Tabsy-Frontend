@@ -123,6 +123,20 @@ export function useTableSessionWebSocket(
     }
   }, [tableSessionId, onTableSessionUpdate])
 
+  const handleSplitCalculationLocked = useCallback((data: any) => {
+    if (data.tableSessionId === tableSessionId) {
+      console.log(`[useTableSessionWebSocket] Split calculation LOCKED for table session ${tableSessionId}:`, data)
+      onTableSessionUpdate?.({ type: 'split:calculation_locked', ...data })
+    }
+  }, [tableSessionId, onTableSessionUpdate])
+
+  const handleSplitCalculationUnlocked = useCallback((data: any) => {
+    if (data.tableSessionId === tableSessionId) {
+      console.log(`[useTableSessionWebSocket] Split calculation UNLOCKED for table session ${tableSessionId}:`, data)
+      onTableSessionUpdate?.({ type: 'split:calculation_unlocked', ...data })
+    }
+  }, [tableSessionId, onTableSessionUpdate])
+
   // Register event listeners
   useWebSocketEvent('table:session_created', handleTableSessionCreated, [handleTableSessionCreated], 'useTableSessionWebSocket')
   useWebSocketEvent('table:user_joined', handleTableUserJoined, [handleTableUserJoined], 'useTableSessionWebSocket')
@@ -132,6 +146,8 @@ export function useTableSessionWebSocket(
   useWebSocketEvent('payment:status_updated', handlePaymentStatusUpdate, [handlePaymentStatusUpdate], 'useTableSessionWebSocket')
   useWebSocketEvent('payment:completed', handlePaymentCompleted, [handlePaymentCompleted], 'useTableSessionWebSocket')
   useWebSocketEvent('split:calculation_updated', handleSplitCalculationUpdated, [handleSplitCalculationUpdated], 'useTableSessionWebSocket')
+  useWebSocketEvent('split:calculation_locked', handleSplitCalculationLocked, [handleSplitCalculationLocked], 'useTableSessionWebSocket')
+  useWebSocketEvent('split:calculation_unlocked', handleSplitCalculationUnlocked, [handleSplitCalculationUnlocked], 'useTableSessionWebSocket')
 
   return {
     isConnected,

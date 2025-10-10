@@ -159,11 +159,13 @@ export function PaymentNotifications({ restaurantId, onNotification }: PaymentNo
 
     return () => {
       // Clear all pending timeouts when component unmounts
-      const count = timeoutIdsRef.current.size
+      // Copy the current Set to avoid issues with ref changes
+      const currentTimeouts = timeoutIdsRef.current
+      const count = currentTimeouts.size
       if (count > 0) {
         logger.debug('Cleaning up notification timeouts', { count })
-        timeoutIdsRef.current.forEach(timeoutId => clearTimeout(timeoutId))
-        timeoutIdsRef.current.clear()
+        currentTimeouts.forEach(timeoutId => clearTimeout(timeoutId))
+        currentTimeouts.clear()
       }
     }
   }, [restaurantId])

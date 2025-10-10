@@ -3,6 +3,7 @@ import { createRestaurantHooks } from '@tabsy/react-query-hooks'
 import { User, UserRole } from '@tabsy/shared-types'
 import { useQuery } from '@tanstack/react-query'
 import { useRef, useEffect } from 'react'
+import { logger } from '@/lib/logger'
 
 /**
  * Hook to get the current user's restaurant ID and restaurant data
@@ -15,7 +16,7 @@ export function useCurrentRestaurant() {
 
   // PERFORMANCE: Reduce excessive logging - only log when debugging is specifically enabled
   if (process.env.NODE_ENV === 'development' && process.env.DEBUG_RESTAURANT_HOOK) {
-    console.log('🔍 useCurrentRestaurant - User object:', {
+    logger.debug('useCurrentRestaurant - User object', {
       user,
       hasRestaurantOwner: !!(user as any)?.restaurantOwner,
       hasRestaurantStaff: !!(user as any)?.restaurantStaff,
@@ -46,15 +47,17 @@ export function useCurrentRestaurant() {
     : undefined
 
   // Debug: Log what we're actually receiving from the API
-  console.log('🔍 useCurrentRestaurant - Debug API response:', {
-    userId: user?.id,
-    userRole: user?.role,
-    restaurantOwner: (user as any)?.restaurantOwner,
-    restaurantStaff: (user as any)?.restaurantStaff,
-    restaurantId,
-    authLoading,
-    isVerifying
-  })
+  if (process.env.NODE_ENV === 'development' && process.env.DEBUG_RESTAURANT_HOOK) {
+    logger.debug('useCurrentRestaurant - Debug API response', {
+      userId: user?.id,
+      userRole: user?.role,
+      restaurantOwner: (user as any)?.restaurantOwner,
+      restaurantStaff: (user as any)?.restaurantStaff,
+      restaurantId,
+      authLoading,
+      isVerifying
+    })
+  }
 
   // Handle missing restaurant relationships - only check after auth is complete
   useEffect(() => {
@@ -69,8 +72,8 @@ export function useCurrentRestaurant() {
       // This gives time for any remaining async operations to complete
       errorTimeoutRef.current = setTimeout(() => {
         if (!errorLoggedRef.current && !restaurantId) {
-          console.error('❌ Restaurant user found but no restaurant relationships in database. User needs to be properly associated with a restaurant.')
-          console.error('User data:', {
+          logger.error('Restaurant user found but no restaurant relationships in database. User needs to be properly associated with a restaurant.')
+          logger.error('User data', {
             id: user?.id,
             email: user?.email,
             role: user?.role,

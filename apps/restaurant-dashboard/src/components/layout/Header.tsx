@@ -344,7 +344,7 @@ export function Header({
     const firstInitial = user.firstName?.[0] || ''
     const lastInitial = user.lastName?.[0] || ''
     return `${firstInitial}${lastInitial}`.toUpperCase() || 'U'
-  }, [user?.firstName, user?.lastName])
+  }, [user])
 
   const getUserRole = () => {
     if (!user?.role) return 'Staff'

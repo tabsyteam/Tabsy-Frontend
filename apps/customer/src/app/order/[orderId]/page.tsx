@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import { Suspense } from 'react'
 import { OrderTrackingView } from '@/components/order/OrderTrackingView'
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { TabsyLoader } from '@/components/ui/TabsyLoader'
 
 interface OrderPageProps {
   params: {
@@ -26,7 +26,11 @@ export default async function OrderPage({ params, searchParams }: OrderPageProps
 
   return (
     <div className="min-h-screen bg-background">
-      <Suspense fallback={<LoadingSpinner />}>
+      <Suspense fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <TabsyLoader message="Loading Order" size="lg" />
+        </div>
+      }>
         <OrderTrackingView
           orderId={orderId}
           restaurantId={restaurantId}

@@ -61,7 +61,8 @@
       "WebSearch",
       "Bash(./fix-colors.sh:*)",
       "Bash(./fix-colors-final.sh:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(pnpm lint:fix:*)"
     ],
     "deny": [],
     "ask": []
