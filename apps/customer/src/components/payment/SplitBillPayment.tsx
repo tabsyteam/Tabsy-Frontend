@@ -745,15 +745,8 @@ export function SplitBillPayment({
         lockedAt: data.lockedAt
       })
 
-      const lockedByUser = users.find(u => u.guestSessionId === data.lockedBy)
-      const lockedByName = lockedByUser?.userName || 'Another user'
-
-      if (data.lockedBy !== currentUser.guestSessionId) {
-        toast.info(`${lockedByName} is also making a payment`, {
-          description: 'You can both pay simultaneously',
-          duration: 5000
-        })
-      }
+      // No need to show info about other users making payments
+      // Multiple users can pay simultaneously without notifications
     }
 
     if (data.type === 'split:calculation_unlocked') {
@@ -2058,26 +2051,11 @@ export function SplitBillPayment({
 
   // Handle payment confirmation and lock split calculation
   const handlePaymentConfirmation = async () => {
-    // Check if split is already locked
-    const isLocked = await checkSplitLockStatus()
-    if (isLocked && splitLockStatus.lockedBy !== currentUser.guestSessionId) {
-      const lockedByUser = users.find(u => u.guestSessionId === splitLockStatus.lockedBy)
-      const lockedByName = lockedByUser?.userName || 'Another user'
-      toast.error(`Payment is already being processed by ${lockedByName}`, {
-        description: 'Please wait for them to complete their payment',
-        duration: 5000
-      })
-      return
-    }
+    // Allow all users to proceed with payment simultaneously
+    // No need to check lock status - multiple payments are allowed
+    log.debug('[SplitBillPayment] Proceeding with payment confirmation')
 
-    // If current user already owns the lock, skip confirmation and proceed directly
-    if (isLocked && splitLockStatus.lockedBy === currentUser.guestSessionId) {
-      log.debug('[SplitBillPayment] User already owns the lock, proceeding directly to payment')
-      await confirmPaymentAndLock()
-      return
-    }
-
-    // Show confirmation dialog for first-time lock
+    // Show confirmation dialog
     setShowPaymentConfirmDialog(true)
   }
 
@@ -2106,25 +2084,16 @@ export function SplitBillPayment({
       }
 
       log.debug('[SplitBillPayment] Attempting to lock split calculation...')
-      // Lock the split calculation to prevent configuration changes (but allow concurrent payments)
+      // Try to lock the split calculation to prevent configuration changes
+      // But continue with payment regardless of lock status (allow concurrent payments)
       const lockSuccess = await lockSplitCalculation('pending_payment_intent')
       if (!lockSuccess) {
-        // If we can't get the lock, it means someone else is already processing
-        // But this is OK - multiple users can pay simultaneously
+        // If we can't get the lock, someone else is already processing
+        // This is OK - continue with concurrent payment
         log.info('[SplitBillPayment] Split already locked by another user - proceeding with concurrent payment')
-
-        // Optional: Show info that another user is also paying
-        const currentLockStatus = await checkSplitLockStatus()
-        if (splitLockStatus.isLocked && splitLockStatus.lockedBy !== currentUser.guestSessionId) {
-          const lockedByUser = users.find(u => u.guestSessionId === splitLockStatus.lockedBy)
-          toast.info(`${lockedByUser?.userName || 'Another user'} is also processing payment. Both payments will be handled.`, {
-            duration: 3000
-          })
-        }
-        // Continue with payment even without the lock
+      } else {
+        log.debug('[SplitBillPayment] Split locked successfully')
       }
-
-      log.debug('[SplitBillPayment] Split locked successfully, proceeding with payment intent...')
       // Now proceed with payment intent creation
       await createPaymentIntent()
     } catch (error) {
@@ -3135,20 +3104,6 @@ export function SplitBillPayment({
                 </div>
               )}
 
-              {/* Info message when another user is processing (non-blocking) */}
-              {isAnotherUserProcessing && (
-                <div className="mb-3 p-3 rounded-lg border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-                  <div className="flex items-center space-x-2">
-                    <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm text-blue-800 dark:text-blue-200">
-                      {(() => {
-                        const lockedByUser = users.find(u => u.guestSessionId === splitLockStatus.lockedBy)
-                        return `${lockedByUser?.userName || 'Another user'} is also making a payment. You can proceed simultaneously.`
-                      })()}
-                    </span>
-                  </div>
-                </div>
-              )}
 
               {selectedPaymentMethod === PaymentMethod.CREDIT_CARD && !clientSecret && (
                 <Button
