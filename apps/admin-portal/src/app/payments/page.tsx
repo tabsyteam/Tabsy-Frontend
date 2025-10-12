@@ -40,7 +40,8 @@ import {
   ArrowDownRight,
   Wifi,
   WifiOff,
-  Activity
+  Activity,
+  Trash2
 } from 'lucide-react';
 import { usePayments, usePaymentMetrics, useRealTimePaymentMetrics, usePaymentHealthStatus, usePaymentAlerts } from '@/hooks/api';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -52,6 +53,7 @@ import { toast } from 'sonner';
 import { useAdminWebSocket } from '@/hooks/useAdminWebSocket';
 import { formatPrice, type CurrencyCode, getPaymentCurrency } from '@tabsy/shared-utils';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { tabsyClient } from '@tabsy/api-client';
 
 // Payment Method Icon
 function PaymentMethodIcon({ method }: { method: PaymentMethod }) {
@@ -188,6 +190,34 @@ export default function PaymentsPage() {
     }
   };
 
+  const handleCleanupStaleLocks = async () => {
+    if (!confirm('This will cleanup all stale split payment locks across the system. Continue?')) {
+      return;
+    }
+
+    try {
+      const response = await tabsyClient.tableSession.cleanupStaleSplitLocks();
+
+      if (response.success && response.data) {
+        const { cleanedCount, totalFound, results } = response.data;
+
+        if (cleanedCount === 0) {
+          toast.info('No stale locks found to cleanup');
+        } else {
+          const successCount = results?.filter((r: any) => r.success).length || cleanedCount;
+          toast.success(`🧹 Successfully cleaned up ${successCount} of ${totalFound} stale locks`);
+        }
+
+        queryClient.invalidateQueries({ queryKey: ['admin', 'payments'] });
+      } else {
+        toast.info('No stale locks found');
+      }
+    } catch (error) {
+      console.error('Failed to cleanup stale split locks:', error);
+      toast.error('Failed to cleanup stale locks');
+    }
+  };
+
   const breadcrumbs = [
     { label: 'Dashboard', href: '/dashboard' },
     { label: 'Payments' }
@@ -235,6 +265,16 @@ export default function PaymentsPage() {
               </p>
             </div>
             <div className="flex gap-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCleanupStaleLocks}
+                className="hover-lift text-status-warning border-status-warning/20 hover:bg-status-warning/10"
+                title="Cleanup stale split payment locks system-wide"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Cleanup Stale Locks
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
