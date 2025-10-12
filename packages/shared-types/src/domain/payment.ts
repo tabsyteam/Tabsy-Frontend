@@ -47,6 +47,7 @@ export interface Payment {
   // Enhanced payment system fields
   tableSessionId?: string  // Links payment to table session
   paymentType?: string     // Differentiates individual vs table-wide payments
+  splitCalculationId?: string  // Links payment to split calculation for split bill payments
   createdAt: string
   updatedAt: string
   completedAt?: string

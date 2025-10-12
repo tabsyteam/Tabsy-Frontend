@@ -179,7 +179,7 @@ export interface TableSessionBill {
 }
 
 export interface SplitPaymentOption {
-  type: 'equal' | 'by_items' | 'by_percentage' | 'by_amount';
+  type: 'EQUAL' | 'BY_ITEMS' | 'BY_PERCENTAGE' | 'BY_AMOUNT';  // ✅ UPPERCASE to match backend Prisma schema
   participants: string[]; // Guest session IDs
   percentages?: { [guestSessionId: string]: number };
   amounts?: { [guestSessionId: string]: number };

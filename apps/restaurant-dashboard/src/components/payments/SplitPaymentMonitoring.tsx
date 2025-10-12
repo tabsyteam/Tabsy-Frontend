@@ -121,8 +121,64 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
 
   // Group payments by split payment group
   const groupBySplitPayment = (payments: Payment[]): SplitPaymentGroup[] => {
-    // This is a mock implementation - actual grouping logic would depend on backend structure
-    return []
+    // Filter for split payments (payments with splitCalculationId)
+    const splitPayments = payments.filter(p => p.splitCalculationId)
+
+    // Group by splitCalculationId
+    const groups = new Map<string, Payment[]>()
+    splitPayments.forEach(payment => {
+      const groupId = payment.splitCalculationId!
+      if (!groups.has(groupId)) {
+        groups.set(groupId, [])
+      }
+      groups.get(groupId)!.push(payment)
+    })
+
+    // Transform to SplitPaymentGroup format
+    const groupedPayments: SplitPaymentGroup[] = []
+
+    groups.forEach((payments, groupId) => {
+      // Get split calculation details from first payment's metadata
+      const firstPayment = payments[0]
+      if (!firstPayment) {
+        // Skip groups with no payments
+        return
+      }
+
+      const totalAmount = payments.reduce((sum, p) => sum + Number(p.amount), 0)
+      const paidAmount = payments
+        .filter(p => p.status === PaymentStatus.COMPLETED)
+        .reduce((sum, p) => sum + Number(p.amount), 0)
+      const completedParticipants = payments.filter(p => p.status === PaymentStatus.COMPLETED).length
+      const metadata = firstPayment.metadata as any
+
+      groupedPayments.push({
+        groupId,
+        orderId: firstPayment.orderId || '',
+        tableId: firstPayment.tableSessionId,
+        tableName: `Table ${firstPayment.tableSessionId?.substring(0, 8)}`,
+        totalAmount,
+        paidAmount,
+        remainingAmount: totalAmount - paidAmount,
+        completedParticipants,
+        totalParticipants: payments.length,
+        isComplete: completedParticipants === payments.length,
+        createdAt: firstPayment.createdAt,
+        splitType: metadata?.splitType || 'EQUAL',
+        isLocked: false, // Would need to fetch from split calculation
+        participants: payments.map(payment => ({
+          participantId: payment.id,
+          participantName: (payment.metadata as any)?.guestSessionId?.substring(0, 8) || 'Guest',
+          amount: Number(payment.amount),
+          tipAmount: Number(payment.tipAmount || 0),
+          hasPaid: payment.status === PaymentStatus.COMPLETED,
+          paymentId: payment.id,
+          paymentMethod: payment.paymentMethod
+        }))
+      })
+    })
+
+    return groupedPayments
   }
 
   // Split payment event handlers using correct frontend WebSocket event types
@@ -320,23 +376,6 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
     }
   }
 
-  const handleCleanupStaleLocks = async () => {
-    try {
-      const response = await tabsyClient.tableSession.cleanupStaleSplitLocks()
-
-      if (response.success && response.data) {
-        const { cleanedCount, affectedTableSessions } = response.data
-        toast.success(`🧹 Cleaned up ${cleanedCount} stale locks across ${affectedTableSessions.length} table sessions`)
-        queryClient.invalidateQueries({ queryKey: ['restaurant', 'split-payments', restaurantId] })
-      } else {
-        toast.info('No stale locks found to cleanup')
-      }
-    } catch (error) {
-      console.error('Failed to cleanup stale split locks')
-      toast.error('Failed to cleanup stale locks')
-    }
-  }
-
   const filteredPayments = splitPayments.filter(group => {
     switch (filterStatus) {
       case 'pending':
@@ -392,17 +431,8 @@ export const SplitPaymentMonitoring = forwardRef<SplitPaymentMonitoringRef, Spli
             )}
           </div>
 
-          {/* Administrative Tools */}
+          {/* Tools */}
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCleanupStaleLocks}
-              className="flex items-center gap-1"
-            >
-              <Zap className="w-4 h-4" />
-              Cleanup Stale Locks
-            </Button>
             <Button
               variant="outline"
               size="sm"
