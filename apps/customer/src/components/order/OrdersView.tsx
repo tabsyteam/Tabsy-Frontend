@@ -11,6 +11,7 @@ import {
   Receipt
 } from 'lucide-react'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { TabsyLoader } from '@/components/ui/TabsyLoader'
 import { useApi } from '@/components/providers/api-provider'
 import { OrderStatus, Order as ApiOrder } from '@tabsy/shared-types'
 import { SessionManager } from '@/lib/session'
@@ -725,16 +726,8 @@ export function OrdersView() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="bg-surface shadow-sm border-b">
-          <div className="max-w-4xl mx-auto px-4 py-6">
-            <div className="h-8 w-32 bg-surface-secondary rounded animate-pulse mb-2" />
-            <div className="h-5 w-48 bg-surface-secondary rounded animate-pulse" />
-          </div>
-        </div>
-        <div className="flex justify-center py-12">
-          <LoadingSpinner />
-        </div>
+      <div className="flex justify-center items-center min-h-screen">
+        <TabsyLoader message="Loading Orders" size="lg" />
       </div>
     )
   }

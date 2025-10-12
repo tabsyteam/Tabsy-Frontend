@@ -3,7 +3,7 @@
 import { useEffect, use, useState, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
-import { TabsyLoader } from '@/components/ui/TabsyLoader'
+import { BrandedWelcome } from '@/components/ui/BrandedWelcome'
 import { useApi } from '@/components/providers/api-provider'
 import { queryKeys, queryConfigs } from '@/hooks/useQueryConfig'
 import { toast } from 'sonner'
@@ -20,6 +20,7 @@ export default function QRCodePage({ params }: QRCodePageProps) {
   const searchParams = useSearchParams()
   const { qrCode } = use(params)
   const [isProcessing, setIsProcessing] = useState(true)
+  const [restaurantName, setRestaurantName] = useState<string | null>(null)
   const { api } = useApi()
   const queryClient = useQueryClient()
 
@@ -100,6 +101,9 @@ export default function QRCodePage({ params }: QRCodePageProps) {
           throw new Error('Invalid table data format received')
         }
 
+
+        // Set restaurant name for display
+        setRestaurantName(restaurant.name)
 
         // ARCHITECTURE: React Query is source of truth, not sessionStorage
         // 1. Populate React Query cache with fetched data (primary state)
@@ -192,12 +196,9 @@ export default function QRCodePage({ params }: QRCodePageProps) {
   }, [qrCode, searchParams, router])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <TabsyLoader
-        message="Processing QR Code"
-        size="lg"
-        className="py-12"
-      />
-    </div>
+    <BrandedWelcome
+      restaurantName={restaurantName || undefined}
+      message="Setting up your dining experience"
+    />
   )
 }

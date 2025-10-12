@@ -28,6 +28,7 @@ import { StripeCardForm } from './StripeCardForm'
 import { StripeProvider } from '@/components/providers/stripe-provider'
 import { PaymentForm } from './PaymentForm'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { TabsyLoader } from '@/components/ui/TabsyLoader'
 import { useWebSocketEvent } from '@tabsy/ui-components'
 import { useRestaurantOptional } from '@/contexts/RestaurantContext'
 import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
@@ -1533,10 +1534,7 @@ export function PaymentView() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center space-y-4">
-          <LoadingSpinner size="lg" />
-          <p className="text-content-secondary">Loading payment details...</p>
-        </div>
+        <TabsyLoader message="Loading Payment" size="lg" />
       </div>
     )
   }

@@ -18,159 +18,84 @@ export function TabsyLoader({
   className = ''
 }: TabsyLoaderProps) {
   const iconSizes = {
-    sm: { icon: 72, ring: 88, strokeWidth: 3 },
-    md: { icon: 96, ring: 120, strokeWidth: 4 },
-    lg: { icon: 120, ring: 152, strokeWidth: 5 }
+    sm: { icon: 64 },
+    md: { icon: 80 },
+    lg: { icon: 96 }
   }
 
   const currentSize = iconSizes[size]
-  const radius = (currentSize.ring - currentSize.strokeWidth * 2) / 2
-  const circumference = 2 * Math.PI * radius
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
       className={`flex flex-col items-center justify-center space-y-6 ${className}`}
     >
-      {/* Main Loading Animation Container */}
-      <div
-        className="relative flex items-center justify-center"
-        style={{ width: currentSize.ring, height: currentSize.ring }}
+      {/* Icon Container */}
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.4, ease: [0.34, 1.56, 0.64, 1] }}
+        className="relative"
       >
-        {/* Soft Ambient Glow - Background */}
+        {/* Subtle glow behind icon */}
         <motion.div
-          className="absolute inset-0 rounded-full bg-gradient-to-br from-primary/5 via-accent/5 to-secondary/5 blur-xl"
+          className="absolute inset-0 rounded-2xl bg-primary/10 blur-2xl"
           animate={{
-            scale: [1, 1.15, 1],
-            opacity: [0.4, 0.7, 0.4]
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3]
           }}
           transition={{
-            duration: 3,
+            duration: 2,
             repeat: Infinity,
             ease: "easeInOut"
           }}
         />
 
-        {/* SVG Circular Progress Ring */}
-        <svg
-          className="absolute inset-0 -rotate-90"
-          width={currentSize.ring}
-          height={currentSize.ring}
-        >
-          {/* Background Circle */}
-          <circle
-            cx={currentSize.ring / 2}
-            cy={currentSize.ring / 2}
-            r={radius}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={currentSize.strokeWidth}
-            className="text-primary/10"
-          />
-
-          {/* Animated Progress Circle - Gradient Stroke */}
-          <motion.circle
-            cx={currentSize.ring / 2}
-            cy={currentSize.ring / 2}
-            r={radius}
-            fill="none"
-            strokeWidth={currentSize.strokeWidth}
-            stroke="url(#gradient)"
-            strokeLinecap="round"
-            initial={{ strokeDasharray: circumference, strokeDashoffset: circumference }}
-            animate={{
-              strokeDashoffset: [circumference, 0]
-            }}
-            transition={{
-              duration: 2.5,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          />
-
-          {/* Gradient Definition */}
-          <defs>
-            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="rgb(59, 130, 246)" />
-              <stop offset="50%" stopColor="rgb(249, 115, 22)" />
-              <stop offset="100%" stopColor="rgb(6, 182, 212)" />
-            </linearGradient>
-          </defs>
-        </svg>
-
-        {/* Tabsy Icon - Floating & Breathing */}
+        {/* Icon with gentle float */}
         <motion.div
-          initial={{ scale: 0, rotate: -180 }}
           animate={{
-            scale: 1,
-            rotate: 0,
+            y: [0, -8, 0],
           }}
           transition={{
-            duration: 0.7,
-            ease: [0.34, 1.56, 0.64, 1] // Spring-like easing
+            duration: 2.5,
+            repeat: Infinity,
+            ease: "easeInOut"
           }}
-          className="relative z-10"
+          className="relative"
         >
+          <Image
+            src="/tabsy-icon.svg"
+            alt="Tabsy"
+            width={currentSize.icon}
+            height={currentSize.icon}
+            className="rounded-2xl shadow-xl"
+            priority
+          />
+        </motion.div>
+      </motion.div>
+
+      {/* Progress Bar */}
+      <motion.div
+        initial={{ opacity: 0, width: 0 }}
+        animate={{ opacity: 1, width: 240 }}
+        transition={{ delay: 0.2, duration: 0.4 }}
+        className="w-60"
+      >
+        <div className="relative h-1.5 bg-surface-secondary rounded-full overflow-hidden">
           <motion.div
-            animate={{
-              y: [0, -6, 0],
-              scale: [1, 1.03, 1],
-            }}
+            className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary via-accent to-secondary rounded-full"
+            initial={{ width: '0%' }}
+            animate={{ width: '100%' }}
             transition={{
-              duration: 3,
+              duration: 1.8,
               repeat: Infinity,
               ease: "easeInOut"
             }}
-          >
-            <div className="relative">
-              {/* Icon Shadow */}
-              <div
-                className="absolute inset-0 rounded-2xl bg-black/20 blur-md"
-                style={{
-                  transform: 'translateY(8px) scale(0.9)'
-                }}
-              />
-
-              {/* Actual Icon */}
-              <Image
-                src="/tabsy-icon.svg"
-                alt="Tabsy"
-                width={currentSize.icon}
-                height={currentSize.icon}
-                className="rounded-2xl shadow-xl relative z-10"
-                priority
-              />
-
-              {/* Shimmer Effect Overlay */}
-              <motion.div
-                className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: [0, 0.3, 0] }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 0.5
-                }}
-              >
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent"
-                  animate={{
-                    x: ['-100%', '200%']
-                  }}
-                  transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                />
-              </motion.div>
-            </div>
-          </motion.div>
-        </motion.div>
-      </div>
+          />
+        </div>
+      </motion.div>
 
       {/* Loading Text */}
       {showMessage && (

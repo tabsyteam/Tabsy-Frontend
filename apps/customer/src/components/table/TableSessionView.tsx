@@ -27,6 +27,7 @@ import { useSessionDetails } from '@/hooks/useSessionDetails'
 import { useBillStatus } from '@/hooks/useBillData' // ✅ Updated to use React Query version
 import { STORAGE_KEYS } from '@/constants/storage'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { TabsyLoader } from '@/components/ui/TabsyLoader'
 import { PaymentType } from '@/constants/payment'
 import { useRestaurantOptional } from '@/contexts/RestaurantContext'
 import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
@@ -294,7 +295,7 @@ export function TableSessionView() {
   if (isCheckingSession) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <LoadingSpinner size="lg" />
+        <TabsyLoader message="Loading Table Session" size="lg" />
       </div>
     )
   }

@@ -123,9 +123,9 @@ export function PaymentForm({
         disabled={processing || disabled || !stripe || !elements || !clientSecret || !cardValid}
       >
         {processing ? (
-          <div className="flex items-center space-x-2">
-            <LoadingSpinner size="sm" color="white" centered={false} />
-            <span>Processing Payment...</span>
+          <div className="flex items-center justify-center space-x-2">
+            <span>Processing Payment</span>
+            <LoadingSpinner size="sm" color="white" centered={false} variant="dots" />
           </div>
         ) : (
           <div className="flex items-center space-x-2">

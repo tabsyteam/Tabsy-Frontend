@@ -372,7 +372,7 @@ export function CheckoutView() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <TabsyLoader message="Loading Payment" size="lg" />
+        <TabsyLoader message="Loading Checkout" size="lg" />
       </div>
     )
   }

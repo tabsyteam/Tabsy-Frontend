@@ -25,6 +25,7 @@ import { useApi } from '@/components/providers/api-provider'
 import { SessionManager } from '@/lib/session'
 import type { Payment, PaymentMethod, PaymentStatus, Order, TableSessionBill } from '@tabsy/shared-types'
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
+import { TabsyLoader } from '@/components/ui/TabsyLoader'
 import { useRestaurantOptional } from '@/contexts/RestaurantContext'
 import { formatPrice as formatPriceUtil, type CurrencyCode } from '@tabsy/shared-utils/formatting/currency'
 
@@ -179,6 +180,17 @@ export function PaymentSuccessView() {
             } else if (enhancedPayment.tableBill && enhancedPayment.tableBill.guestSessions) {
               // Use actual number of users in table session
               totalParticipants = enhancedPayment.tableBill.guestSessions.length
+            } else if (tableSessionId && !fallbackUsed) {
+              // FIXED: Fallback to split calculation to get participant count
+              try {
+                const splitResponse = await api.tableSession.getSplitCalculation(tableSessionId)
+                if (splitResponse.success && splitResponse.data && splitResponse.data.participants) {
+                  totalParticipants = splitResponse.data.participants.length
+                  log.debug('[PaymentSuccess] Got participant count from split calculation:', totalParticipants)
+                }
+              } catch (splitError) {
+                log.warn('Could not load split calculation for participant count:', splitError)
+              }
             }
 
             enhancedPayment.splitInfo = {
@@ -386,10 +398,27 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
   const handleOrderAgain = () => {
     const currentGuestSessionId = api.getGuestSessionId()
 
-    if (restaurantId && tableId) {
-      // Simply navigate to menu page - let backend handle session management
+    // CRITICAL FIX: Include tableSessionId to continue existing session, not create new one
+    if (tableSessionId) {
+      // For table sessions - continue existing session
+      const session = SessionManager.getDiningSession()
+      if (session) {
+        // Preserve guest session and table session in query params
+        const queryParams = SessionManager.getDiningQueryParams()
+        const guestParam = currentGuestSessionId ? `&guestSession=${currentGuestSessionId}` : ''
+        router.push(`/menu${queryParams}${guestParam}`)
+        log.debug('PaymentSuccessView: Continuing table session to menu:', { queryParams, guestParam })
+      } else {
+        // Fallback: construct URL manually if session manager doesn't have dining session
+        const guestParam = currentGuestSessionId ? `&guestSession=${currentGuestSessionId}` : ''
+        router.push(`/menu?restaurant=${restaurantId}&table=${tableId}&tableSession=${tableSessionId}${guestParam}`)
+        log.debug('PaymentSuccessView: Navigating to menu with tableSessionId (manual):', tableSessionId)
+      }
+    } else if (restaurantId && tableId) {
+      // For individual orders - navigate to menu without table session
       const guestParam = currentGuestSessionId ? `&guestSession=${currentGuestSessionId}` : ''
       router.push(`/menu?restaurant=${restaurantId}&table=${tableId}${guestParam}`)
+      log.debug('PaymentSuccessView: Navigating to menu without table session (individual order)')
     } else {
       router.push('/')
     }
@@ -402,10 +431,7 @@ TOTAL: $${(Number(payment.totalAmount || 0) + Number(payment.tipAmount || 0)).to
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="text-center space-y-4">
-          <LoadingSpinner size="lg" />
-          <p className="text-content-secondary">Loading payment details...</p>
-        </div>
+        <TabsyLoader message="Loading Payment Confirmation" size="lg" />
       </div>
     )
   }
